@@ -1,0 +1,20 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/client"
+    },
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/mcp-core"
+    },
+    {
+      "path": "./packages/mcp-stdio"
+    },
+    {
+      "path": "./packages/mcp-http"
+    }
+  ]
+}

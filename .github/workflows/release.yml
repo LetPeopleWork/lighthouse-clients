@@ -1,0 +1,167 @@
+name: Release Clients
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to publish
+        required: true
+        type: string
+      environment:
+        description: Deployment environment gate
+        required: true
+        type: choice
+        options:
+          - Development
+          - Staging
+          - Release
+      npm_dist_tag:
+        description: npm dist-tag
+        required: true
+        default: latest
+        type: string
+      prerelease:
+        description: Mark GitHub release as prerelease
+        required: true
+        default: false
+        type: boolean
+      publish_npm:
+        description: Publish npm packages
+        required: true
+        default: true
+        type: boolean
+      publish_github_release:
+        description: Publish GitHub release assets
+        required: true
+        default: true
+        type: boolean
+      publish_container:
+        description: Publish mcp-http container to GHCR
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - verify
+    environment:
+      name: ${{ inputs.environment }}
+
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish npm packages
+        if: inputs.publish_npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          pnpm release:publish --tag ${{ inputs.npm_dist_tag }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Build CLI release binaries
+        run: |
+          mkdir -p release-assets
+          bun build ./packages/cli/src/bin.ts --compile --target bun-linux-x64-modern --outfile ./release-assets/lighthouse
+          tar -czf ./release-assets/lighthouse-linux-x64.tar.gz -C ./release-assets lighthouse
+
+          bun build ./packages/cli/src/bin.ts --compile --target bun-darwin-x64-modern --outfile ./release-assets/lighthouse
+          tar -czf ./release-assets/lighthouse-darwin-x64.tar.gz -C ./release-assets lighthouse
+
+          bun build ./packages/cli/src/bin.ts --compile --target bun-windows-x64-modern --outfile ./release-assets/lighthouse.exe
+          cd release-assets && zip -q lighthouse-windows-x64.zip lighthouse.exe
+
+      - name: Create GitHub release
+        if: inputs.publish_github_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: Lighthouse Clients ${{ inputs.release_tag }}
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            release-assets/lighthouse-linux-x64.tar.gz
+            release-assets/lighthouse-darwin-x64.tar.gz
+            release-assets/lighthouse-windows-x64.zip
+
+      - name: Login to GHCR
+        if: inputs.publish_container
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push mcp-http container
+        if: inputs.publish_container
+        uses: docker/build-push-action@v6
+        with:
+          context: ./packages/mcp-http
+          file: ./packages/mcp-http/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ inputs.release_tag }}
+            ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest

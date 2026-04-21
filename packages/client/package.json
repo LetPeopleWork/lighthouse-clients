@@ -1,0 +1,23 @@
+{
+  "name": "@lighthouse/client",
+  "version": "0.1.0",
+  "description": "Shared Lighthouse API client contracts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "clean": "rimraf dist"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

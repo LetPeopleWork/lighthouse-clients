@@ -1,0 +1,35 @@
+{
+  "name": "@lighthouse/cli",
+  "version": "0.1.0",
+  "description": "User-facing Lighthouse CLI",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "lighthouse": "./dist/bin.cjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./bin": {
+      "types": "./dist/bin.d.ts",
+      "import": "./dist/bin.js",
+      "require": "./dist/bin.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts src/bin.ts --format esm,cjs --dts --clean",
+    "clean": "rimraf dist"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@lighthouse/client": "workspace:*"
+  }
+}
