@@ -7,14 +7,6 @@ on:
         description: Release tag to publish
         required: true
         type: string
-      environment:
-        description: Deployment environment gate
-        required: true
-        type: choice
-        options:
-          - Development
-          - Staging
-          - Release
       npm_dist_tag:
         description: npm dist-tag
         required: true
@@ -42,7 +34,7 @@ on:
         type: boolean
 
 concurrency:
-  group: release-${{ github.ref }}-${{ inputs.environment }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -86,8 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - verify
-    environment:
-      name: ${{ inputs.environment }}
 
     permissions:
       contents: write
