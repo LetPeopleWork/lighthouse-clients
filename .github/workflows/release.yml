@@ -90,9 +90,6 @@ jobs:
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
-
       # Extract versions from package.json files
       - name: Extract Versions
         id: get_versions
@@ -111,6 +108,8 @@ jobs:
       - name: Publish npm packages
         if: inputs.publish_npm
         run: pnpm release:publish --tag ${{ inputs.npm_dist_tag }}
+        env:
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
