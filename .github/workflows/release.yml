@@ -107,9 +107,7 @@ jobs:
 
       - name: Publish npm packages
         if: inputs.publish_npm
-        run: pnpm release:publish --tag ${{ inputs.npm_dist_tag }}
-        env:
-          NPM_CONFIG_PROVENANCE: true
+        run: pnpm release:publish --provenance --tag ${{ inputs.npm_dist_tag }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
