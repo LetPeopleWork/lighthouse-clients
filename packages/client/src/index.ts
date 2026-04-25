@@ -55,10 +55,14 @@ export type ConnectivityFetchResponse = {
   readonly ok: boolean;
   readonly status: number;
   readonly text: () => Promise<string>;
+  readonly json?: () => Promise<unknown>;
 };
 
 export type ConnectivityDependencies = {
-  readonly fetch: (url: string) => Promise<ConnectivityFetchResponse>;
+  readonly fetch: (
+    url: string,
+    init?: RequestInit,
+  ) => Promise<ConnectivityFetchResponse>;
 };
 
 export type ResolvedLighthouseEndpoint = {
@@ -302,6 +306,7 @@ const getFailureCategoryForStatus = (
 export const validateLighthouseConnectivity = async (
   configuration: LighthouseConnectionConfiguration,
   dependencies: ConnectivityDependencies,
+  requestInit?: RequestInit,
 ): Promise<ConnectivityValidationResult> => {
   const resolvedEndpoint = await resolveConnectionEndpoint(configuration);
   if (!resolvedEndpoint.isValid) {
@@ -311,7 +316,10 @@ export const validateLighthouseConnectivity = async (
   const endpoint = resolvedEndpoint.endpoint;
 
   try {
-    const response = await dependencies.fetch(endpoint.healthCheckUrl);
+    const response = await dependencies.fetch(
+      endpoint.healthCheckUrl,
+      requestInit,
+    );
     if (response.ok) {
       const serverVersion = (await response.text()).trim();
 
@@ -339,3 +347,239 @@ export const validateLighthouseConnectivity = async (
     };
   }
 };
+
+export type LighthouseClientAuth =
+  | {
+      readonly kind: "none";
+    }
+  | {
+      readonly kind: "api-key";
+      readonly value: string;
+      readonly headerName?: string;
+    }
+  | {
+      readonly kind: "bearer-token";
+      readonly token: string;
+    };
+
+export type LighthouseClientConfiguration = {
+  readonly connection: LighthouseConnectionConfiguration;
+  readonly auth?: LighthouseClientAuth;
+};
+
+export type LighthouseApiError = {
+  readonly category: ConnectivityCategory;
+  readonly reason: string;
+  readonly statusCode?: number;
+};
+
+export type LighthouseApiResult<TValue> =
+  | {
+      readonly ok: true;
+      readonly value: TValue;
+    }
+  | {
+      readonly ok: false;
+      readonly error: LighthouseApiError;
+    };
+
+export type LighthouseClient = {
+  readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
+  readonly getVersion: () => Promise<LighthouseApiResult<string>>;
+  readonly listTeams: () => Promise<LighthouseApiResult<readonly unknown[]>>;
+};
+
+export type LighthouseClientDependencies = {
+  readonly fetch?: (
+    url: string,
+    init?: RequestInit,
+  ) => Promise<ConnectivityFetchResponse>;
+};
+
+const getAuthHeaders = (
+  auth: LighthouseClientAuth | undefined,
+): Record<string, string> => {
+  if (auth === undefined || auth.kind === "none") {
+    return {};
+  }
+
+  if (auth.kind === "api-key") {
+    return {
+      [auth.headerName ?? "X-Api-Key"]: auth.value,
+    };
+  }
+
+  return {
+    Authorization: `Bearer ${auth.token}`,
+  };
+};
+
+const getRequestInit = (
+  auth: LighthouseClientAuth | undefined,
+): RequestInit => {
+  const headers = getAuthHeaders(auth);
+
+  return {
+    headers,
+  };
+};
+
+const getFetchDependency = (
+  dependencies: LighthouseClientDependencies,
+): ConnectivityDependencies["fetch"] => {
+  if (dependencies.fetch !== undefined) {
+    return dependencies.fetch;
+  }
+
+  return async (url: string, init?: RequestInit) => {
+    const response = await fetch(url, init);
+    return response;
+  };
+};
+
+const getErrorResult = <TValue>(
+  error: LighthouseApiError,
+): LighthouseApiResult<TValue> => ({
+  ok: false,
+  error,
+});
+
+const getErrorFromConnectivityResult = (
+  result: Exclude<
+    ConnectivityValidationResult,
+    { readonly category: "success" }
+  >,
+): LighthouseApiError => ({
+  category: result.category,
+  reason: result.reason,
+  statusCode: result.statusCode,
+});
+
+const toApiError = (
+  statusCode: number,
+  reason: string,
+): LighthouseApiError => ({
+  category: getFailureCategoryForStatus(statusCode),
+  reason,
+  statusCode,
+});
+
+const requestText = async (
+  configuration: LighthouseClientConfiguration,
+  dependencies: LighthouseClientDependencies,
+  route: string,
+): Promise<LighthouseApiResult<string>> => {
+  const fetchDependency = getFetchDependency(dependencies);
+  const connectivityResult = await validateLighthouseConnectivity(
+    configuration.connection,
+    {
+      fetch: fetchDependency,
+    },
+    getRequestInit(configuration.auth),
+  );
+
+  if (connectivityResult.category !== "success") {
+    return getErrorResult(getErrorFromConnectivityResult(connectivityResult));
+  }
+
+  try {
+    const response = await fetchDependency(
+      `${connectivityResult.endpoint.apiBaseUrl}${route}`,
+      getRequestInit(configuration.auth),
+    );
+    if (!response.ok) {
+      return getErrorResult(
+        toApiError(
+          response.status,
+          `Request failed with status ${response.status}.`,
+        ),
+      );
+    }
+
+    return {
+      ok: true,
+      value: (await response.text()).trim(),
+    };
+  } catch (error: unknown) {
+    const reason =
+      error instanceof Error ? error.message : "Request execution failed.";
+
+    return getErrorResult({
+      category: "unreachable",
+      reason,
+    });
+  }
+};
+
+const requestJson = async <TValue>(
+  configuration: LighthouseClientConfiguration,
+  dependencies: LighthouseClientDependencies,
+  route: string,
+): Promise<LighthouseApiResult<TValue>> => {
+  const fetchDependency = getFetchDependency(dependencies);
+  const connectivityResult = await validateLighthouseConnectivity(
+    configuration.connection,
+    {
+      fetch: fetchDependency,
+    },
+    getRequestInit(configuration.auth),
+  );
+
+  if (connectivityResult.category !== "success") {
+    return getErrorResult(getErrorFromConnectivityResult(connectivityResult));
+  }
+
+  try {
+    const response = await fetchDependency(
+      `${connectivityResult.endpoint.apiBaseUrl}${route}`,
+      getRequestInit(configuration.auth),
+    );
+    if (!response.ok) {
+      return getErrorResult(
+        toApiError(
+          response.status,
+          `Request failed with status ${response.status}.`,
+        ),
+      );
+    }
+
+    const value =
+      response.json !== undefined
+        ? ((await response.json()) as TValue)
+        : (JSON.parse(await response.text()) as TValue);
+
+    return {
+      ok: true,
+      value,
+    };
+  } catch (error: unknown) {
+    const reason =
+      error instanceof Error ? error.message : "Request execution failed.";
+
+    return getErrorResult({
+      category: "unreachable",
+      reason,
+    });
+  }
+};
+
+export const createLighthouseClient = (
+  configuration: LighthouseClientConfiguration,
+  dependencies: LighthouseClientDependencies = {},
+): LighthouseClient => ({
+  checkConnectivity: async () => {
+    const fetchDependency = getFetchDependency(dependencies);
+
+    return validateLighthouseConnectivity(
+      configuration.connection,
+      {
+        fetch: fetchDependency,
+      },
+      getRequestInit(configuration.auth),
+    );
+  },
+  getVersion: async () =>
+    requestText(configuration, dependencies, "/v1/version"),
+  listTeams: async () =>
+    requestJson<readonly unknown[]>(configuration, dependencies, "/v1/teams"),
+});
