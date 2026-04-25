@@ -1,6 +1,11 @@
 import {
   type LighthouseApiResult,
+  type LighthouseAuthContext,
+  type LighthouseAuthOverrides,
   type LighthouseClient,
+  type LighthouseClientAuth,
+  type StoredLighthouseAuth,
+  createLighthouseAuthContext,
   createLighthouseClient,
 } from "@lighthouse/client";
 
@@ -31,10 +36,10 @@ type CliClientLike = Pick<LighthouseClient, "checkConnectivity" | "getVersion">;
 export type RunCliCommandDependencies = {
   readonly loadConfig: () => Promise<CliRuntimeConfig | null>;
   readonly saveConfig: (config: CliRuntimeConfig) => Promise<void>;
+  readonly authContext: LighthouseAuthContext;
   readonly createClient: (options: {
     readonly endpointUrl: string;
-    readonly apiKey?: string;
-    readonly bearerToken?: string;
+    readonly auth: LighthouseClientAuth;
   }) => CliClientLike;
 };
 
@@ -55,6 +60,10 @@ const getUsageText = (): string =>
     "Usage:",
     "  lighthouse config endpoint set --url <lighthouse-url>",
     "  lighthouse config endpoint show",
+    "  lighthouse auth status [--api-key <key>] [--bearer-token <token>]",
+    "  lighthouse auth login --api-key <key> [--api-key-header <header-name>]",
+    "  lighthouse auth login --bearer-token <token>",
+    "  lighthouse auth logout",
     "  lighthouse health check [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
     "  lighthouse version get [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
   ].join("\n");
@@ -97,25 +106,33 @@ const mapApiResultToCliResult = <TValue>(
   return getErrorResult(`${result.error.category}: ${result.error.reason}`);
 };
 
+const getAuthOverrides = (
+  args: readonly string[],
+): LighthouseAuthOverrides => ({
+  apiKey: getOptionValue(args, "--api-key"),
+  bearerToken: getOptionValue(args, "--bearer-token"),
+  apiKeyHeaderName: getOptionValue(args, "--api-key-header"),
+});
+
+const mapStatusToMessage = (
+  status: Awaited<ReturnType<LighthouseAuthContext["getStatus"]>>,
+): string => {
+  if (!status.isAuthenticated) {
+    return "Auth status: not configured";
+  }
+
+  return `Auth status: ${status.kind} (${status.source})`;
+};
+
 const getDefaultDependencies = (): RunCliCommandDependencies => ({
   loadConfig: async () => null,
   saveConfig: async () => undefined,
-  createClient: ({ endpointUrl, apiKey, bearerToken }) => {
-    const auth =
-      apiKey !== undefined
-        ? {
-            kind: "api-key" as const,
-            value: apiKey,
-          }
-        : bearerToken !== undefined
-          ? {
-              kind: "bearer-token" as const,
-              token: bearerToken,
-            }
-          : {
-              kind: "none" as const,
-            };
-
+  authContext: createLighthouseAuthContext({
+    load: async () => null,
+    save: async (_auth: StoredLighthouseAuth) => undefined,
+    clear: async () => undefined,
+  }),
+  createClient: ({ endpointUrl, auth }) => {
     return createLighthouseClient({
       connection: {
         kind: "explicit",
@@ -158,6 +175,43 @@ export const runCliCommand = async (
     return getSuccessResult(`Configured endpoint: ${config.endpointUrl}`);
   }
 
+  if (scope === "auth" && action === "status") {
+    try {
+      const status = await dependencies.authContext.getStatus(
+        getAuthOverrides(args),
+      );
+      return getSuccessResult(mapStatusToMessage(status));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to resolve auth status.";
+      return getErrorResult(message);
+    }
+  }
+
+  if (scope === "auth" && action === "login") {
+    try {
+      const overrides = getAuthOverrides(args);
+      await dependencies.authContext.login(overrides);
+      const status = await dependencies.authContext.getStatus();
+      if (!status.isAuthenticated) {
+        return getErrorResult("Auth login failed.");
+      }
+
+      return getSuccessResult(`Authenticated with ${status.kind}.`);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Auth login failed.";
+      return getErrorResult(message);
+    }
+  }
+
+  if (scope === "auth" && action === "logout") {
+    await dependencies.authContext.logout();
+    return getSuccessResult("Authentication cleared.");
+  }
+
   if (scope === "health" && action === "check") {
     const config = await dependencies.loadConfig();
     const endpointUrl = getEndpointUrl(args, config);
@@ -167,12 +221,18 @@ export const runCliCommand = async (
       );
     }
 
-    const apiKey = getOptionValue(args, "--api-key");
-    const bearerToken = getOptionValue(args, "--bearer-token");
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
     const client = dependencies.createClient({
       endpointUrl,
-      apiKey,
-      bearerToken,
+      auth,
     });
     const health = await client.checkConnectivity();
     if (health.category === "success") {
@@ -191,12 +251,18 @@ export const runCliCommand = async (
       );
     }
 
-    const apiKey = getOptionValue(args, "--api-key");
-    const bearerToken = getOptionValue(args, "--bearer-token");
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
     const client = dependencies.createClient({
       endpointUrl,
-      apiKey,
-      bearerToken,
+      auth,
     });
     const versionResult = await client.getVersion();
 

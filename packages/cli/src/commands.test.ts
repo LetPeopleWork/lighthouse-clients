@@ -1,3 +1,8 @@
+import {
+  type LighthouseClientAuth,
+  type StoredLighthouseAuth,
+  createLighthouseAuthContext,
+} from "@lighthouse/client";
 import { describe, expect, it } from "vitest";
 import {
   type CliRuntimeConfig,
@@ -37,13 +42,26 @@ const getDependencies = (overrides?: {
 }): {
   readonly dependencies: RunCliCommandDependencies;
   readonly getSavedConfig: () => CliRuntimeConfig | null;
+  readonly getLastAuth: () => LighthouseClientAuth | null;
 } => {
   let savedConfig = overrides?.config ?? null;
+  let savedAuth: StoredLighthouseAuth | null = null;
+  let lastAuth: LighthouseClientAuth | null = null;
 
   const defaultClient: MockClient = {
     checkConnectivity: async () => ({ category: "success" }),
     getVersion: async () => ({ ok: true, value: "v1.2.3" }),
   };
+
+  const authContext = createLighthouseAuthContext({
+    load: async () => savedAuth,
+    save: async (auth: StoredLighthouseAuth) => {
+      savedAuth = auth;
+    },
+    clear: async () => {
+      savedAuth = null;
+    },
+  });
 
   return {
     dependencies: {
@@ -51,9 +69,14 @@ const getDependencies = (overrides?: {
       saveConfig: async (config: CliRuntimeConfig) => {
         savedConfig = config;
       },
-      createClient: () => overrides?.client ?? defaultClient,
+      authContext,
+      createClient: ({ auth }) => {
+        lastAuth = auth;
+        return overrides?.client ?? defaultClient;
+      },
     },
     getSavedConfig: () => savedConfig,
+    getLastAuth: () => lastAuth,
   };
 };
 
@@ -115,6 +138,50 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("No endpoint configured");
+  });
+
+  it("reports auth status when no credentials are configured", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(["auth", "status"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("not configured");
+  });
+
+  it("logs in with api key through a non-interactive command", async () => {
+    const { dependencies } = getDependencies();
+
+    const loginResult = await runCliCommand(
+      ["auth", "login", "--api-key", "secret-key"],
+      dependencies,
+    );
+
+    expect(loginResult.exitCode).toBe(0);
+    expect(loginResult.stdout).toContain("Authenticated");
+
+    const statusResult = await runCliCommand(["auth", "status"], dependencies);
+    expect(statusResult.exitCode).toBe(0);
+    expect(statusResult.stdout).toContain("api-key");
+  });
+
+  it("reuses stored auth credentials on API commands", async () => {
+    const { dependencies, getLastAuth } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    await runCliCommand(
+      ["auth", "login", "--bearer-token", "stored-token"],
+      dependencies,
+    );
+
+    const result = await runCliCommand(["version", "get"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(getLastAuth()).toEqual({
+      kind: "bearer-token",
+      token: "stored-token",
+    });
   });
 
   it("gets version from Lighthouse", async () => {

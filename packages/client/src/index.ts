@@ -1,7 +1,8 @@
 export type ClientCapability =
   | "versioned-api-contracts"
   | "shared-domain-operations"
-  | "connectivity-and-discovery-contracts";
+  | "connectivity-and-discovery-contracts"
+  | "automation-auth-contracts";
 
 export type ClientPackageContract = {
   readonly name: "@lighthouse/client";
@@ -14,6 +15,7 @@ export const getClientPackageContract = (): ClientPackageContract => ({
     "versioned-api-contracts",
     "shared-domain-operations",
     "connectivity-and-discovery-contracts",
+    "automation-auth-contracts",
   ],
 });
 
@@ -361,6 +363,143 @@ export type LighthouseClientAuth =
       readonly kind: "bearer-token";
       readonly token: string;
     };
+
+export type StoredLighthouseAuth = Exclude<
+  LighthouseClientAuth,
+  { kind: "none" }
+>;
+
+export type LighthouseAuthOverrides = {
+  readonly apiKey?: string;
+  readonly bearerToken?: string;
+  readonly apiKeyHeaderName?: string;
+};
+
+export type LighthouseAuthStatus = {
+  readonly isAuthenticated: boolean;
+  readonly kind: LighthouseClientAuth["kind"];
+  readonly source: "none" | "stored" | "override";
+};
+
+export type LighthouseAuthStore = {
+  readonly load: () => Promise<StoredLighthouseAuth | null>;
+  readonly save: (auth: StoredLighthouseAuth) => Promise<void>;
+  readonly clear: () => Promise<void>;
+};
+
+export type LighthouseAuthContext = {
+  readonly resolveAuth: (
+    overrides?: LighthouseAuthOverrides,
+  ) => Promise<LighthouseClientAuth>;
+  readonly login: (overrides: LighthouseAuthOverrides) => Promise<void>;
+  readonly logout: () => Promise<void>;
+  readonly getStatus: (
+    overrides?: LighthouseAuthOverrides,
+  ) => Promise<LighthouseAuthStatus>;
+};
+
+const getTrimmedValue = (value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  return trimmed;
+};
+
+const getAuthFromOverrides = (
+  overrides: LighthouseAuthOverrides | undefined,
+): StoredLighthouseAuth | null => {
+  const apiKey = getTrimmedValue(overrides?.apiKey);
+  const bearerToken = getTrimmedValue(overrides?.bearerToken);
+  if (apiKey !== undefined && bearerToken !== undefined) {
+    throw new Error("Specify either --api-key or --bearer-token, not both.");
+  }
+
+  if (apiKey !== undefined) {
+    return {
+      kind: "api-key",
+      value: apiKey,
+      headerName: getTrimmedValue(overrides?.apiKeyHeaderName),
+    };
+  }
+
+  if (bearerToken !== undefined) {
+    return {
+      kind: "bearer-token",
+      token: bearerToken,
+    };
+  }
+
+  return null;
+};
+
+const getStatusFromAuth = (
+  auth: LighthouseClientAuth,
+  source: LighthouseAuthStatus["source"],
+): LighthouseAuthStatus => {
+  if (auth.kind === "none") {
+    return {
+      isAuthenticated: false,
+      kind: "none",
+      source: "none",
+    };
+  }
+
+  return {
+    isAuthenticated: true,
+    kind: auth.kind,
+    source,
+  };
+};
+
+export const createLighthouseAuthContext = (
+  store: LighthouseAuthStore,
+): LighthouseAuthContext => ({
+  resolveAuth: async (overrides?: LighthouseAuthOverrides) => {
+    const overrideAuth = getAuthFromOverrides(overrides);
+    if (overrideAuth !== null) {
+      return overrideAuth;
+    }
+
+    const storedAuth = await store.load();
+    if (storedAuth !== null) {
+      return storedAuth;
+    }
+
+    return {
+      kind: "none",
+    };
+  },
+  login: async (overrides: LighthouseAuthOverrides) => {
+    const auth = getAuthFromOverrides(overrides);
+    if (auth === null) {
+      throw new Error("Provide --api-key or --bearer-token for auth login.");
+    }
+
+    await store.save(auth);
+  },
+  logout: async () => {
+    await store.clear();
+  },
+  getStatus: async (overrides?: LighthouseAuthOverrides) => {
+    const overrideAuth = getAuthFromOverrides(overrides);
+    if (overrideAuth !== null) {
+      return getStatusFromAuth(overrideAuth, "override");
+    }
+
+    const storedAuth = await store.load();
+    if (storedAuth !== null) {
+      return getStatusFromAuth(storedAuth, "stored");
+    }
+
+    return getStatusFromAuth({ kind: "none" }, "none");
+  },
+});
 
 export type LighthouseClientConfiguration = {
   readonly connection: LighthouseConnectionConfiguration;

@@ -3,7 +3,10 @@ import {
   type ServerResponse,
   createServer,
 } from "node:http";
-import { createLighthouseClient } from "@lighthouse/client";
+import {
+  createLighthouseAuthContext,
+  createLighthouseClient,
+} from "@lighthouse/client";
 import { createMcpHttpRuntime } from "./index";
 
 export type McpHttpServerOptions = {
@@ -39,20 +42,28 @@ const writeJson = (
   response.end(JSON.stringify(payload));
 };
 
-const getAuth = (options: McpHttpServerOptions) =>
-  options.apiKey !== undefined
-    ? {
-        kind: "api-key" as const,
-        value: options.apiKey,
+const getAuthContext = (options: McpHttpServerOptions) =>
+  createLighthouseAuthContext({
+    load: async () => {
+      if (options.apiKey !== undefined) {
+        return {
+          kind: "api-key" as const,
+          value: options.apiKey,
+        };
       }
-    : options.bearerToken !== undefined
-      ? {
+
+      if (options.bearerToken !== undefined) {
+        return {
           kind: "bearer-token" as const,
           token: options.bearerToken,
-        }
-      : {
-          kind: "none" as const,
         };
+      }
+
+      return null;
+    },
+    save: async () => undefined,
+    clear: async () => undefined,
+  });
 
 const getCoreRuntime = (options: McpHttpServerOptions) => ({
   listTools: () =>
@@ -77,12 +88,13 @@ const getCoreRuntime = (options: McpHttpServerOptions) => ({
       },
     ] as const,
   callTool: async (name: string) => {
+    const auth = await getAuthContext(options).resolveAuth();
     const client = createLighthouseClient({
       connection: {
         kind: "explicit",
         lighthouseUrl: options.lighthouseUrl,
       },
-      auth: getAuth(options),
+      auth,
     });
 
     if (name === "lighthouse.health.check") {

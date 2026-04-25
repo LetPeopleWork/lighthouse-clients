@@ -11,5 +11,6 @@ describe("client package contract", () => {
     expect(contract.capabilities).toContain(
       "connectivity-and-discovery-contracts",
     );
+    expect(contract.capabilities).toContain("automation-auth-contracts");
   });
 });
