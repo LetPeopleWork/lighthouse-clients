@@ -90,6 +90,9 @@ jobs:
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       # Extract versions from package.json files
       - name: Extract Versions
         id: get_versions
