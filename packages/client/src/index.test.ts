@@ -8,5 +8,8 @@ describe("client package contract", () => {
     expect(contract.name).toBe("@lighthouse/client");
     expect(contract.capabilities).toContain("versioned-api-contracts");
     expect(contract.capabilities).toContain("shared-domain-operations");
+    expect(contract.capabilities).toContain(
+      "connectivity-and-discovery-contracts",
+    );
   });
 });
