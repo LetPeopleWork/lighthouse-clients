@@ -19,7 +19,8 @@
     "clean": "rimraf dist"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "dependencies": {
     "@letpeoplework/lighthouse-mcp-core": "workspace:*"
