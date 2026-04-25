@@ -6,13 +6,15 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -23,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install
@@ -40,3 +42,89 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - verify
+    if: github.ref == 'refs/heads/main'
+    environment: Release
+
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Extract Versions
+        id: get_versions
+        run: |
+          CLI_VER=$(jq -r .version packages/cli/package.json)
+          MCP_VER=$(jq -r .version packages/mcp-http/package.json)
+          echo "CLI_VERSION=$CLI_VER" >> $GITHUB_ENV
+          echo "MCP_VERSION=$MCP_VER" >> $GITHUB_ENV
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish npm packages
+        run: pnpm release:publish --provenance --tag latest
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Build CLI release binaries
+        run: |
+          mkdir -p release-assets
+          bun build ./packages/cli/src/bin.ts --compile --target bun-linux-x64-modern --outfile ./release-assets/lighthouse
+          tar -czf ./release-assets/lighthouse-linux-x64.tar.gz -C ./release-assets lighthouse
+
+          bun build ./packages/cli/src/bin.ts --compile --target bun-darwin-x64-modern --outfile ./release-assets/lighthouse
+          tar -czf ./release-assets/lighthouse-darwin-x64.tar.gz -C ./release-assets lighthouse
+
+          bun build ./packages/cli/src/bin.ts --compile --target bun-windows-x64-modern --outfile ./release-assets/lighthouse.exe
+          cd release-assets && zip -q lighthouse-windows-x64.zip lighthouse.exe
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.CLI_VERSION }}
+          name: Lighthouse Clients ${{ env.CLI_VERSION }}
+          prerelease: false
+          files: |
+            release-assets/lighthouse-linux-x64.tar.gz
+            release-assets/lighthouse-darwin-x64.tar.gz
+            release-assets/lighthouse-windows-x64.zip
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push mcp-http container
+        uses: docker/build-push-action@v6
+        with:
+          context: ./packages/mcp-http
+          file: ./packages/mcp-http/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
+            ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
