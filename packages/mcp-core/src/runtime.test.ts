@@ -7,6 +7,14 @@ describe("createMcpCoreRuntime", () => {
       createClient: () => ({
         checkConnectivity: async () => ({ category: "success" }),
         getVersion: async () => ({ ok: true, value: "v1.2.3" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       }),
     });
 
@@ -15,6 +23,14 @@ describe("createMcpCoreRuntime", () => {
     expect(tools.map((tool) => tool.name)).toEqual([
       "lighthouse.health.check",
       "lighthouse.version.get",
+      "lighthouse.worktracking.list",
+      "lighthouse.worktracking.get",
+      "lighthouse.team.list",
+      "lighthouse.team.get",
+      "lighthouse.team.refresh",
+      "lighthouse.portfolio.list",
+      "lighthouse.portfolio.get",
+      "lighthouse.portfolio.refresh",
     ]);
   });
 
@@ -23,6 +39,14 @@ describe("createMcpCoreRuntime", () => {
       createClient: () => ({
         checkConnectivity: async () => ({ category: "success" }),
         getVersion: async () => ({ ok: true, value: "v1.2.3" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       }),
     });
 
@@ -37,6 +61,14 @@ describe("createMcpCoreRuntime", () => {
       createClient: () => ({
         checkConnectivity: async () => ({ category: "success" }),
         getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       }),
     });
 
@@ -51,6 +83,14 @@ describe("createMcpCoreRuntime", () => {
       createClient: () => ({
         checkConnectivity: async () => ({ category: "success" }),
         getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       }),
     });
 
@@ -68,6 +108,14 @@ describe("createMcpCoreRuntime", () => {
           reason: "token missing",
         }),
         getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       }),
     });
 
@@ -75,5 +123,58 @@ describe("createMcpCoreRuntime", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("unauthorized");
+  });
+
+  it("calls worktracking, team, and portfolio tools", async () => {
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+        listWorkTrackingConnections: async () => ({
+          ok: true,
+          value: [{ id: 1, name: "Jira" }],
+        }),
+        getWorkTrackingConnection: async () => ({
+          ok: true,
+          value: { id: 1, name: "Jira" },
+        }),
+        listTeams: async () => ({
+          ok: true,
+          value: [{ id: 5, name: "Team A" }],
+        }),
+        getTeam: async () => ({
+          ok: true,
+          value: { id: 5, name: "Team A" },
+        }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({
+          ok: true,
+          value: [{ id: 9, name: "Portfolio A" }],
+        }),
+        getPortfolio: async () => ({
+          ok: true,
+          value: { id: 9, name: "Portfolio A" },
+        }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+      }),
+    });
+
+    const worktrackingList = await runtime.callTool(
+      "lighthouse.worktracking.list",
+      {},
+    );
+    expect(worktrackingList.isError).toBe(false);
+    expect(worktrackingList.content[0]?.text).toContain("Jira");
+
+    const teamGet = await runtime.callTool("lighthouse.team.get", { id: 5 });
+    expect(teamGet.isError).toBe(false);
+    expect(teamGet.content[0]?.text).toContain("Team A");
+
+    const portfolioRefresh = await runtime.callTool(
+      "lighthouse.portfolio.refresh",
+      { id: 9 },
+    );
+    expect(portfolioRefresh.isError).toBe(false);
+    expect(portfolioRefresh.content[0]?.text).toContain("portfolio refreshed");
   });
 });

@@ -522,10 +522,60 @@ export type LighthouseApiResult<TValue> =
       readonly error: LighthouseApiError;
     };
 
+export type LighthouseWritePayload = Readonly<Record<string, unknown>>;
+
 export type LighthouseClient = {
   readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
   readonly getVersion: () => Promise<LighthouseApiResult<string>>;
+
+  readonly listWorkTrackingConnections: () => Promise<
+    LighthouseApiResult<readonly unknown[]>
+  >;
+  readonly getWorkTrackingConnection: (
+    connectionId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly createWorkTrackingConnection: (
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly updateWorkTrackingConnection: (
+    connectionId: number,
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly deleteWorkTrackingConnection: (
+    connectionId: number,
+  ) => Promise<LighthouseApiResult<void>>;
+
   readonly listTeams: () => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getTeam: (teamId: number) => Promise<LighthouseApiResult<unknown>>;
+  readonly createTeam: (
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly updateTeam: (
+    teamId: number,
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly deleteTeam: (teamId: number) => Promise<LighthouseApiResult<void>>;
+  readonly refreshTeam: (teamId: number) => Promise<LighthouseApiResult<void>>;
+
+  readonly listPortfolios: () => Promise<
+    LighthouseApiResult<readonly unknown[]>
+  >;
+  readonly getPortfolio: (
+    portfolioId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly createPortfolio: (
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly updatePortfolio: (
+    portfolioId: number,
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly deletePortfolio: (
+    portfolioId: number,
+  ) => Promise<LighthouseApiResult<void>>;
+  readonly refreshPortfolio: (
+    portfolioId: number,
+  ) => Promise<LighthouseApiResult<void>>;
 };
 
 export type LighthouseClientDependencies = {
@@ -555,11 +605,24 @@ const getAuthHeaders = (
 
 const getRequestInit = (
   auth: LighthouseClientAuth | undefined,
+  requestOptions?: {
+    readonly method?: "GET" | "POST" | "PUT" | "DELETE";
+    readonly body?: unknown;
+  },
 ): RequestInit => {
-  const headers = getAuthHeaders(auth);
+  const authHeaders = getAuthHeaders(auth);
+  const hasBody = requestOptions?.body !== undefined;
+  const headers = hasBody
+    ? {
+        ...authHeaders,
+        "content-type": "application/json",
+      }
+    : authHeaders;
 
   return {
+    method: requestOptions?.method,
     headers,
+    body: hasBody ? JSON.stringify(requestOptions.body) : undefined,
   };
 };
 
@@ -654,6 +717,10 @@ const requestJson = async <TValue>(
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies,
   route: string,
+  requestOptions?: {
+    readonly method?: "GET" | "POST" | "PUT" | "DELETE";
+    readonly body?: unknown;
+  },
 ): Promise<LighthouseApiResult<TValue>> => {
   const fetchDependency = getFetchDependency(dependencies);
   const connectivityResult = await validateLighthouseConnectivity(
@@ -661,7 +728,9 @@ const requestJson = async <TValue>(
     {
       fetch: fetchDependency,
     },
-    getRequestInit(configuration.auth),
+    getRequestInit(configuration.auth, {
+      method: "GET",
+    }),
   );
 
   if (connectivityResult.category !== "success") {
@@ -671,7 +740,7 @@ const requestJson = async <TValue>(
   try {
     const response = await fetchDependency(
       `${connectivityResult.endpoint.apiBaseUrl}${route}`,
-      getRequestInit(configuration.auth),
+      getRequestInit(configuration.auth, requestOptions),
     );
     if (!response.ok) {
       return getErrorResult(
@@ -702,6 +771,58 @@ const requestJson = async <TValue>(
   }
 };
 
+const requestNoContent = async (
+  configuration: LighthouseClientConfiguration,
+  dependencies: LighthouseClientDependencies,
+  route: string,
+  requestOptions: {
+    readonly method: "POST" | "DELETE";
+  },
+): Promise<LighthouseApiResult<void>> => {
+  const fetchDependency = getFetchDependency(dependencies);
+  const connectivityResult = await validateLighthouseConnectivity(
+    configuration.connection,
+    {
+      fetch: fetchDependency,
+    },
+    getRequestInit(configuration.auth, {
+      method: "GET",
+    }),
+  );
+
+  if (connectivityResult.category !== "success") {
+    return getErrorResult(getErrorFromConnectivityResult(connectivityResult));
+  }
+
+  try {
+    const response = await fetchDependency(
+      `${connectivityResult.endpoint.apiBaseUrl}${route}`,
+      getRequestInit(configuration.auth, requestOptions),
+    );
+    if (!response.ok) {
+      return getErrorResult(
+        toApiError(
+          response.status,
+          `Request failed with status ${response.status}.`,
+        ),
+      );
+    }
+
+    return {
+      ok: true,
+      value: undefined,
+    };
+  } catch (error: unknown) {
+    const reason =
+      error instanceof Error ? error.message : "Request execution failed.";
+
+    return getErrorResult({
+      category: "unreachable",
+      reason,
+    });
+  }
+};
+
 export const createLighthouseClient = (
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies = {},
@@ -719,6 +840,134 @@ export const createLighthouseClient = (
   },
   getVersion: async () =>
     requestText(configuration, dependencies, "/v1/version"),
+  listWorkTrackingConnections: async () =>
+    requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      "/v1/worktrackingsystemconnections",
+      {
+        method: "GET",
+      },
+    ),
+  getWorkTrackingConnection: async (connectionId: number) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/worktrackingsystemconnections/${connectionId}`,
+      {
+        method: "GET",
+      },
+    ),
+  createWorkTrackingConnection: async (payload: LighthouseWritePayload) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      "/v1/worktrackingsystemconnections",
+      {
+        method: "POST",
+        body: payload,
+      },
+    ),
+  updateWorkTrackingConnection: async (
+    connectionId: number,
+    payload: LighthouseWritePayload,
+  ) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/worktrackingsystemconnections/${connectionId}`,
+      {
+        method: "PUT",
+        body: payload,
+      },
+    ),
+  deleteWorkTrackingConnection: async (connectionId: number) =>
+    requestNoContent(
+      configuration,
+      dependencies,
+      `/v1/worktrackingsystemconnections/${connectionId}`,
+      {
+        method: "DELETE",
+      },
+    ),
   listTeams: async () =>
-    requestJson<readonly unknown[]>(configuration, dependencies, "/v1/teams"),
+    requestJson<readonly unknown[]>(configuration, dependencies, "/v1/teams", {
+      method: "GET",
+    }),
+  getTeam: async (teamId: number) =>
+    requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
+      method: "GET",
+    }),
+  createTeam: async (payload: LighthouseWritePayload) =>
+    requestJson<unknown>(configuration, dependencies, "/v1/teams", {
+      method: "POST",
+      body: payload,
+    }),
+  updateTeam: async (teamId: number, payload: LighthouseWritePayload) =>
+    requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
+      method: "PUT",
+      body: payload,
+    }),
+  deleteTeam: async (teamId: number) =>
+    requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
+      method: "DELETE",
+    }),
+  refreshTeam: async (teamId: number) =>
+    requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
+      method: "POST",
+    }),
+  listPortfolios: async () =>
+    requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      "/v1/portfolios",
+      {
+        method: "GET",
+      },
+    ),
+  getPortfolio: async (portfolioId: number) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}`,
+      {
+        method: "GET",
+      },
+    ),
+  createPortfolio: async (payload: LighthouseWritePayload) =>
+    requestJson<unknown>(configuration, dependencies, "/v1/portfolios", {
+      method: "POST",
+      body: payload,
+    }),
+  updatePortfolio: async (
+    portfolioId: number,
+    payload: LighthouseWritePayload,
+  ) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}`,
+      {
+        method: "PUT",
+        body: payload,
+      },
+    ),
+  deletePortfolio: async (portfolioId: number) =>
+    requestNoContent(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}`,
+      {
+        method: "DELETE",
+      },
+    ),
+  refreshPortfolio: async (portfolioId: number) =>
+    requestNoContent(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/refresh`,
+      {
+        method: "POST",
+      },
+    ),
 });

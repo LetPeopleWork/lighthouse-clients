@@ -7,6 +7,7 @@ import {
   createLighthouseAuthContext,
   createLighthouseClient,
 } from "@lighthouse/client";
+import { createMcpCoreRuntime } from "@lighthouse/mcp-core";
 import { createMcpHttpRuntime } from "./index";
 
 export type McpHttpServerOptions = {
@@ -65,101 +66,66 @@ const getAuthContext = (options: McpHttpServerOptions) =>
     clear: async () => undefined,
   });
 
-const getCoreRuntime = (options: McpHttpServerOptions) => ({
-  listTools: () =>
-    [
-      {
-        name: "lighthouse.health.check",
-        description: "Validate Lighthouse API connectivity.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          additionalProperties: false,
-        },
-      },
-      {
-        name: "lighthouse.version.get",
-        description: "Get Lighthouse version from /api/v1/version.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          additionalProperties: false,
-        },
-      },
-    ] as const,
-  callTool: async (name: string) => {
-    const auth = await getAuthContext(options).resolveAuth();
-    const client = createLighthouseClient({
-      connection: {
-        kind: "explicit",
-        lighthouseUrl: options.lighthouseUrl,
-      },
-      auth,
-    });
+const getCoreRuntime = (options: McpHttpServerOptions) =>
+  createMcpCoreRuntime({
+    createClient: () => {
+      const authContext = getAuthContext(options);
+      const getClient = async () => {
+        const auth = await authContext.resolveAuth();
 
-    if (name === "lighthouse.health.check") {
-      const health = await client.checkConnectivity();
-      if (health.category === "success") {
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text" as const,
-              text: "connectivity: success",
-            },
-          ],
-        };
-      }
+        return createLighthouseClient({
+          connection: {
+            kind: "explicit",
+            lighthouseUrl: options.lighthouseUrl,
+          },
+          auth,
+        });
+      };
 
       return {
-        isError: true,
-        content: [
-          {
-            type: "text" as const,
-            text: `connectivity: ${health.category}${
-              health.reason !== undefined ? ` (${health.reason})` : ""
-            }`,
-          },
-        ],
-      };
-    }
-
-    if (name === "lighthouse.version.get") {
-      const version = await client.getVersion();
-      if (version.ok) {
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text" as const,
-              text: `version: ${version.value}`,
-            },
-          ],
-        };
-      }
-
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text" as const,
-            text: `version: ${version.error.category} (${version.error.reason})`,
-          },
-        ],
-      };
-    }
-
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text" as const,
-          text: `Unknown tool: ${name}`,
+        checkConnectivity: async () => {
+          const client = await getClient();
+          return client.checkConnectivity();
         },
-      ],
-    };
-  },
-});
+        getVersion: async () => {
+          const client = await getClient();
+          return client.getVersion();
+        },
+        listWorkTrackingConnections: async () => {
+          const client = await getClient();
+          return client.listWorkTrackingConnections();
+        },
+        getWorkTrackingConnection: async (id: number) => {
+          const client = await getClient();
+          return client.getWorkTrackingConnection(id);
+        },
+        listTeams: async () => {
+          const client = await getClient();
+          return client.listTeams();
+        },
+        getTeam: async (id: number) => {
+          const client = await getClient();
+          return client.getTeam(id);
+        },
+        refreshTeam: async (id: number) => {
+          const client = await getClient();
+          return client.refreshTeam(id);
+        },
+        listPortfolios: async () => {
+          const client = await getClient();
+          return client.listPortfolios();
+        },
+        getPortfolio: async (id: number) => {
+          const client = await getClient();
+          return client.getPortfolio(id);
+        },
+        refreshPortfolio: async (id: number) => {
+          const client = await getClient();
+          return client.refreshPortfolio(id);
+        },
+      };
+    },
+  });
 
 export const renderMcpHttpBanner = (url: string): string =>
   `Lighthouse MCP HTTP server running at ${url}`;

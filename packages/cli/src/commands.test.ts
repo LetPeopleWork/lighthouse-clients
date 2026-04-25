@@ -34,6 +34,38 @@ type MockClient = {
         };
       }
   >;
+  readonly listWorkTrackingConnections: () => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getWorkTrackingConnection: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly listTeams: () => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getTeam: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly refreshTeam: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: undefined;
+  }>;
+  readonly listPortfolios: () => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getPortfolio: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly refreshPortfolio: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: undefined;
+  }>;
 };
 
 const getDependencies = (overrides?: {
@@ -51,6 +83,38 @@ const getDependencies = (overrides?: {
   const defaultClient: MockClient = {
     checkConnectivity: async () => ({ category: "success" }),
     getVersion: async () => ({ ok: true, value: "v1.2.3" }),
+    listWorkTrackingConnections: async () => ({
+      ok: true,
+      value: [{ id: 100, name: "Jira" }],
+    }),
+    getWorkTrackingConnection: async (id: number) => ({
+      ok: true,
+      value: { id, name: "Jira" },
+    }),
+    listTeams: async () => ({
+      ok: true,
+      value: [{ id: 1, name: "Team A" }],
+    }),
+    getTeam: async (id: number) => ({
+      ok: true,
+      value: { id, name: "Team A" },
+    }),
+    refreshTeam: async () => ({
+      ok: true,
+      value: undefined,
+    }),
+    listPortfolios: async () => ({
+      ok: true,
+      value: [{ id: 7, name: "Portfolio A" }],
+    }),
+    getPortfolio: async (id: number) => ({
+      ok: true,
+      value: { id, name: "Portfolio A" },
+    }),
+    refreshPortfolio: async () => ({
+      ok: true,
+      value: undefined,
+    }),
   };
 
   const authContext = createLighthouseAuthContext({
@@ -207,6 +271,14 @@ describe("runCliCommand", () => {
             reason: "Access denied",
           },
         }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       },
     });
 
@@ -217,5 +289,102 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("unauthorized");
+  });
+
+  it("lists work-tracking connections", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(["worktracking", "list"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Jira");
+  });
+
+  it("gets one work-tracking connection by id", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(
+      ["worktracking", "get", "--id", "100"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('"id":100');
+  });
+
+  it("lists teams", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(["team", "list"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Team A");
+  });
+
+  it("gets one team by id", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(
+      ["team", "get", "--id", "1"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('"id":1');
+  });
+
+  it("refreshes one team by id", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(
+      ["team", "refresh", "--id", "1"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Team refreshed");
+  });
+
+  it("lists portfolios", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(["portfolio", "list"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Portfolio A");
+  });
+
+  it("gets and refreshes one portfolio by id", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const getResult = await runCliCommand(
+      ["portfolio", "get", "--id", "7"],
+      dependencies,
+    );
+
+    expect(getResult.exitCode).toBe(0);
+    expect(getResult.stdout).toContain('"id":7');
+
+    const refreshResult = await runCliCommand(
+      ["portfolio", "refresh", "--id", "7"],
+      dependencies,
+    );
+
+    expect(refreshResult.exitCode).toBe(0);
+    expect(refreshResult.stdout).toContain("Portfolio refreshed");
   });
 });

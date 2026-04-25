@@ -32,6 +32,18 @@ export type CliCommandResult = {
 };
 
 type CliClientLike = Pick<LighthouseClient, "checkConnectivity" | "getVersion">;
+type CliDomainClientLike = Pick<
+  LighthouseClient,
+  | "listWorkTrackingConnections"
+  | "getWorkTrackingConnection"
+  | "listTeams"
+  | "getTeam"
+  | "refreshTeam"
+  | "listPortfolios"
+  | "getPortfolio"
+  | "refreshPortfolio"
+>;
+type CliClientOperations = CliClientLike & CliDomainClientLike;
 
 export type RunCliCommandDependencies = {
   readonly loadConfig: () => Promise<CliRuntimeConfig | null>;
@@ -40,7 +52,7 @@ export type RunCliCommandDependencies = {
   readonly createClient: (options: {
     readonly endpointUrl: string;
     readonly auth: LighthouseClientAuth;
-  }) => CliClientLike;
+  }) => CliClientOperations;
 };
 
 const getOptionValue = (
@@ -64,6 +76,14 @@ const getUsageText = (): string =>
     "  lighthouse auth login --api-key <key> [--api-key-header <header-name>]",
     "  lighthouse auth login --bearer-token <token>",
     "  lighthouse auth logout",
+    "  lighthouse worktracking list [--url <lighthouse-url>]",
+    "  lighthouse worktracking get --id <connection-id> [--url <lighthouse-url>]",
+    "  lighthouse team list [--url <lighthouse-url>]",
+    "  lighthouse team get --id <team-id> [--url <lighthouse-url>]",
+    "  lighthouse team refresh --id <team-id> [--url <lighthouse-url>]",
+    "  lighthouse portfolio list [--url <lighthouse-url>]",
+    "  lighthouse portfolio get --id <portfolio-id> [--url <lighthouse-url>]",
+    "  lighthouse portfolio refresh --id <portfolio-id> [--url <lighthouse-url>]",
     "  lighthouse health check [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
     "  lighthouse version get [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
   ].join("\n");
@@ -100,6 +120,10 @@ const mapApiResultToCliResult = <TValue>(
   result: LighthouseApiResult<TValue>,
 ): CliCommandResult => {
   if (result.ok) {
+    if (result.value === undefined) {
+      return getSuccessResult("ok");
+    }
+
     return getSuccessResult(JSON.stringify(result.value));
   }
 
@@ -122,6 +146,23 @@ const mapStatusToMessage = (
   }
 
   return `Auth status: ${status.kind} (${status.source})`;
+};
+
+const getRequiredIdOption = (
+  args: readonly string[],
+  optionName: string,
+): number | null => {
+  const value = getOptionValue(args, optionName);
+  if (value === undefined) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+
+  return parsed;
 };
 
 const getDefaultDependencies = (): RunCliCommandDependencies => ({
@@ -210,6 +251,223 @@ export const runCliCommand = async (
   if (scope === "auth" && action === "logout") {
     await dependencies.authContext.logout();
     return getSuccessResult("Authentication cleared.");
+  }
+
+  if (scope === "worktracking" && action === "list") {
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.listWorkTrackingConnections();
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "worktracking" && action === "get") {
+    const connectionId = getRequiredIdOption(args, "--id");
+    if (connectionId === null) {
+      return getErrorResult("Missing required --id for worktracking get.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.getWorkTrackingConnection(connectionId);
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "team" && action === "list") {
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.listTeams();
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "team" && action === "get") {
+    const teamId = getRequiredIdOption(args, "--id");
+    if (teamId === null) {
+      return getErrorResult("Missing required --id for team get.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.getTeam(teamId);
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "team" && action === "refresh") {
+    const teamId = getRequiredIdOption(args, "--id");
+    if (teamId === null) {
+      return getErrorResult("Missing required --id for team refresh.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.refreshTeam(teamId);
+    if (!result.ok) {
+      return getErrorResult(`${result.error.category}: ${result.error.reason}`);
+    }
+
+    return getSuccessResult(`Team refreshed: ${teamId}`);
+  }
+
+  if (scope === "portfolio" && action === "list") {
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.listPortfolios();
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "portfolio" && action === "get") {
+    const portfolioId = getRequiredIdOption(args, "--id");
+    if (portfolioId === null) {
+      return getErrorResult("Missing required --id for portfolio get.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.getPortfolio(portfolioId);
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "portfolio" && action === "refresh") {
+    const portfolioId = getRequiredIdOption(args, "--id");
+    if (portfolioId === null) {
+      return getErrorResult("Missing required --id for portfolio refresh.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.refreshPortfolio(portfolioId);
+    if (!result.ok) {
+      return getErrorResult(`${result.error.category}: ${result.error.reason}`);
+    }
+
+    return getSuccessResult(`Portfolio refreshed: ${portfolioId}`);
   }
 
   if (scope === "health" && action === "check") {
