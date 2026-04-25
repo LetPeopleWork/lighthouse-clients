@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-mcp-http",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Streamable HTTP transport runtime for Lighthouse MCP",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
@@ -22,7 +22,9 @@
       "require": "./dist/bin.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts src/bin.ts --format esm,cjs --dts --clean --tsconfig tsconfig.build.json",
     "clean": "rimraf dist"

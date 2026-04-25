@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared Lighthouse API client contracts",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "main": "dist/index.cjs",
@@ -13,7 +13,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "clean": "rimraf dist"

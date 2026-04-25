@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "User-facing Lighthouse CLI",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
@@ -22,7 +22,9 @@
       "require": "./dist/bin.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist"
