@@ -22,9 +22,7 @@
       "require": "./dist/bin.cjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup src/index.ts src/bin.ts --format esm,cjs --dts --clean --tsconfig tsconfig.build.json",
     "clean": "rimraf dist"

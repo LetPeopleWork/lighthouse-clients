@@ -1,7 +1,7 @@
 {
   "name": "lighthouse-clients",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Workspace for Lighthouse client, CLI, and MCP packages",
   "packageManager": "pnpm@10.33.0",
   "engines": {
