@@ -3,10 +3,6 @@ name: Release Clients
 on:
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: Release tag to publish
-        required: true
-        type: string
       npm_dist_tag:
         description: npm dist-tag
         required: true
@@ -40,10 +36,8 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -96,6 +90,15 @@ jobs:
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
+      # Extract versions from package.json files
+      - name: Extract Versions
+        id: get_versions
+        run: |
+          CLI_VER=$(jq -r .version packages/cli/package.json)
+          MCP_VER=$(jq -r .version packages/mcp-http/package.json)
+          echo "CLI_VERSION=$CLI_VER" >> $GITHUB_ENV
+          echo "MCP_VERSION=$MCP_VER" >> $GITHUB_ENV
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -125,8 +128,9 @@ jobs:
         if: inputs.publish_github_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag }}
-          name: Lighthouse Clients ${{ inputs.release_tag }}
+          # Using the CLI version for the GitHub Release tag
+          tag_name: v${{ env.CLI_VERSION }}
+          name: Lighthouse Clients ${{ env.CLI_VERSION }}
           prerelease: ${{ inputs.prerelease }}
           files: |
             release-assets/lighthouse-linux-x64.tar.gz
@@ -149,5 +153,5 @@ jobs:
           file: ./packages/mcp-http/Dockerfile
           push: true
           tags: |
-            ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ inputs.release_tag }}
+            ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
