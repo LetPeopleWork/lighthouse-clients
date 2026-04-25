@@ -6,8 +6,8 @@ import {
 import {
   createLighthouseAuthContext,
   createLighthouseClient,
-} from "@lighthouse/client";
-import { createMcpCoreRuntime } from "@lighthouse/mcp-core";
+} from "@letpeoplework/lighthouse-client";
+import { createMcpCoreRuntime } from "@letpeoplework/lighthouse-mcp-core";
 import { createMcpHttpRuntime } from "./index";
 
 export type McpHttpServerOptions = {

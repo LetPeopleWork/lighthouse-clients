@@ -1,7 +1,8 @@
 {
-  "name": "@lighthouse/client",
+  "name": "@letpeoplework/lighthouse-client",
   "version": "0.1.0",
   "description": "Shared Lighthouse API client contracts",
+  "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",

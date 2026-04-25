@@ -1,11 +1,11 @@
 export type McpStdioPackageContract = {
-  readonly name: "@lighthouse/mcp-stdio";
-  readonly dependsOn: "@lighthouse/mcp-core";
+  readonly name: "@letpeoplework/lighthouse-mcp-stdio";
+  readonly dependsOn: "@letpeoplework/lighthouse-mcp-core";
   readonly transport: "stdio";
 };
 
 export const getMcpStdioPackageContract = (): McpStdioPackageContract => ({
-  name: "@lighthouse/mcp-stdio",
-  dependsOn: "@lighthouse/mcp-core",
+  name: "@letpeoplework/lighthouse-mcp-stdio",
+  dependsOn: "@letpeoplework/lighthouse-mcp-core",
   transport: "stdio",
 });

@@ -1,14 +1,14 @@
-import type { McpCoreRuntime } from "@lighthouse/mcp-core";
+import type { McpCoreRuntime } from "@letpeoplework/lighthouse-mcp-core";
 
 export type McpHttpPackageContract = {
-  readonly name: "@lighthouse/mcp-http";
-  readonly dependsOn: "@lighthouse/mcp-core";
+  readonly name: "@letpeoplework/lighthouse-mcp-http";
+  readonly dependsOn: "@letpeoplework/lighthouse-mcp-core";
   readonly transport: "streamable-http";
 };
 
 export const getMcpHttpPackageContract = (): McpHttpPackageContract => ({
-  name: "@lighthouse/mcp-http",
-  dependsOn: "@lighthouse/mcp-core",
+  name: "@letpeoplework/lighthouse-mcp-http",
+  dependsOn: "@letpeoplework/lighthouse-mcp-core",
   transport: "streamable-http",
 });
 
@@ -87,7 +87,7 @@ export const createMcpHttpRuntime = (
           tools: {},
         },
         serverInfo: {
-          name: "@lighthouse/mcp-http",
+          name: "@letpeoplework/lighthouse-mcp-http",
           version: "0.1.0",
         },
       });

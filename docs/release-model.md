@@ -4,18 +4,18 @@
 Define independent package lifecycle expectations for the Lighthouse client workspace.
 
 ## Package Ownership Boundaries
-- `@lighthouse/client`
+- `@letpeoplework/lighthouse-client`
   - Owns shared Lighthouse API contracts and domain-level request/response behavior.
-- `@lighthouse/cli`
+- `@letpeoplework/lighthouse-cli`
   - Owns user-facing command orchestration and output behavior.
-- `@lighthouse/mcp-core`
+- `@letpeoplework/lighthouse-mcp-core`
   - Owns transport-agnostic MCP semantic behavior (tools/resources/prompts, orchestration, mapping).
-- `@lighthouse/mcp-stdio`
+- `@letpeoplework/lighthouse-mcp-stdio`
   - Owns stdio transport adapter behavior only.
-- `@lighthouse/mcp-http`
+- `@letpeoplework/lighthouse-mcp-http`
   - Owns Streamable HTTP transport/runtime behavior only.
 
-Business/domain behavior must be implemented in shared packages (`@lighthouse/client`, `@lighthouse/mcp-core`) and not duplicated in transport adapters.
+Business/domain behavior must be implemented in shared packages (`@letpeoplework/lighthouse-client`, `@letpeoplework/lighthouse-mcp-core`) and not duplicated in transport adapters.
 
 ## Versioning Expectations
 - Packages are versioned independently.

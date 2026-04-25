@@ -59,7 +59,9 @@ describe("mcp-http runtime entrypoint", () => {
         };
       };
 
-      expect(payload.result?.serverInfo?.name).toBe("@lighthouse/mcp-http");
+      expect(payload.result?.serverInfo?.name).toBe(
+        "@letpeoplework/lighthouse-mcp-http",
+      );
     } finally {
       await server.close();
     }

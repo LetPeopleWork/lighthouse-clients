@@ -64,7 +64,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.14.0
           cache: pnpm
 
       - name: Install
@@ -104,8 +104,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.14.0
           cache: pnpm
+          registry-url: https://registry.npmjs.org
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -115,12 +116,7 @@ jobs:
 
       - name: Publish npm packages
         if: inputs.publish_npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          pnpm release:publish --tag ${{ inputs.npm_dist_tag }}
+        run: pnpm release:publish --tag ${{ inputs.npm_dist_tag }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

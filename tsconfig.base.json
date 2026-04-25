@@ -12,11 +12,11 @@
     "verbatimModuleSyntax": true,
     "types": ["vitest/globals", "node"],
     "paths": {
-      "@lighthouse/client": ["packages/client/src/index.ts"],
-      "@lighthouse/cli": ["packages/cli/src/index.ts"],
-      "@lighthouse/mcp-core": ["packages/mcp-core/src/index.ts"],
-      "@lighthouse/mcp-http": ["packages/mcp-http/src/index.ts"],
-      "@lighthouse/mcp-stdio": ["packages/mcp-stdio/src/index.ts"]
+      "@letpeoplework/lighthouse-client": ["packages/client/src/index.ts"],
+      "@letpeoplework/lighthouse-cli": ["packages/cli/src/index.ts"],
+      "@letpeoplework/lighthouse-mcp-core": ["packages/mcp-core/src/index.ts"],
+      "@letpeoplework/lighthouse-mcp-http": ["packages/mcp-http/src/index.ts"],
+      "@letpeoplework/lighthouse-mcp-stdio": ["packages/mcp-stdio/src/index.ts"]
     }
   }
 }

@@ -35,7 +35,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@lighthouse/client':
+      '@letpeoplework/lighthouse-client':
         specifier: workspace:*
         version: link:../client
 
@@ -43,19 +43,22 @@ importers:
 
   packages/mcp-core:
     dependencies:
-      '@lighthouse/client':
+      '@letpeoplework/lighthouse-client':
         specifier: workspace:*
         version: link:../client
 
   packages/mcp-http:
     dependencies:
-      '@lighthouse/mcp-core':
+      '@letpeoplework/lighthouse-client':
+        specifier: workspace:*
+        version: link:../client
+      '@letpeoplework/lighthouse-mcp-core':
         specifier: workspace:*
         version: link:../mcp-core
 
   packages/mcp-stdio:
     dependencies:
-      '@lighthouse/mcp-core':
+      '@letpeoplework/lighthouse-mcp-core':
         specifier: workspace:*
         version: link:../mcp-core
 

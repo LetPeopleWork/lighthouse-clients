@@ -43,7 +43,7 @@ describe("createMcpHttpRuntime", () => {
           tools: {},
         },
         serverInfo: {
-          name: "@lighthouse/mcp-http",
+          name: "@letpeoplework/lighthouse-mcp-http",
           version: "0.1.0",
         },
       },

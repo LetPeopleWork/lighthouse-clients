@@ -5,7 +5,7 @@ import {
   type StoredLighthouseAuth,
   createLighthouseAuthContext,
   createLighthouseClient,
-} from "@lighthouse/client";
+} from "@letpeoplework/lighthouse-client";
 import { type CliRuntimeConfig, runCliCommand } from "./index";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";

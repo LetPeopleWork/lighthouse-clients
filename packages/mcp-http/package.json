@@ -1,7 +1,8 @@
 {
-  "name": "@lighthouse/mcp-http",
+  "name": "@letpeoplework/lighthouse-mcp-http",
   "version": "0.1.0",
   "description": "Streamable HTTP transport runtime for Lighthouse MCP",
+  "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -30,6 +31,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@lighthouse/mcp-core": "workspace:*"
+    "@letpeoplework/lighthouse-client": "workspace:*",
+    "@letpeoplework/lighthouse-mcp-core": "workspace:*"
   }
 }

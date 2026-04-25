@@ -2,7 +2,7 @@ import {
   type LighthouseClientAuth,
   type StoredLighthouseAuth,
   createLighthouseAuthContext,
-} from "@lighthouse/client";
+} from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
 import {
   type CliRuntimeConfig,

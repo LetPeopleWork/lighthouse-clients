@@ -7,17 +7,17 @@ import {
   type StoredLighthouseAuth,
   createLighthouseAuthContext,
   createLighthouseClient,
-} from "@lighthouse/client";
+} from "@letpeoplework/lighthouse-client";
 
 export type CliPackageContract = {
-  readonly name: "@lighthouse/cli";
-  readonly dependsOn: "@lighthouse/client";
+  readonly name: "@letpeoplework/lighthouse-cli";
+  readonly dependsOn: "@letpeoplework/lighthouse-client";
   readonly runtime: "command-line";
 };
 
 export const getCliPackageContract = (): CliPackageContract => ({
-  name: "@lighthouse/cli",
-  dependsOn: "@lighthouse/client",
+  name: "@letpeoplework/lighthouse-cli",
+  dependsOn: "@letpeoplework/lighthouse-client",
   runtime: "command-line",
 });
 

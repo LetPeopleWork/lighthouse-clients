@@ -4,11 +4,11 @@ Workspace for Lighthouse external client packages.
 
 ## Packages
 
-- `@lighthouse/client`: Shared Lighthouse API client contracts.
-- `@lighthouse/cli`: User-facing command-line runtime.
-- `@lighthouse/mcp-core`: Shared MCP semantic layer.
-- `@lighthouse/mcp-stdio`: stdio transport adapter.
-- `@lighthouse/mcp-http`: Streamable HTTP transport/runtime adapter.
+- `@letpeoplework/lighthouse-client`: Shared Lighthouse API client contracts.
+- `@letpeoplework/lighthouse-cli`: User-facing command-line runtime.
+- `@letpeoplework/lighthouse-mcp-core`: Shared MCP semantic layer.
+- `@letpeoplework/lighthouse-mcp-stdio`: stdio transport adapter.
+- `@letpeoplework/lighthouse-mcp-http`: Streamable HTTP transport/runtime adapter.
 
 ## Local Development
 
@@ -30,4 +30,4 @@ Deployment details for npm, GitHub Releases, and hosted MCP images are documente
 - Release options:
 	- npm package publish
 	- GitHub Release with CLI binaries
-	- GHCR image publish for `@lighthouse/mcp-http`
+	- GHCR image publish for `@letpeoplework/lighthouse-mcp-http`

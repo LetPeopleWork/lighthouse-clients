@@ -16,8 +16,8 @@ This repository is intentionally dedicated to client deliverables, so release ta
 
 ## CLI Deployment
 ### npm
-- Package: `@lighthouse/cli`
-- Install path: `pnpm add -g @lighthouse/cli` or `npm i -g @lighthouse/cli`
+- Package: `@letpeoplework/lighthouse-cli`
+- Install path: `pnpm add -g @letpeoplework/lighthouse-cli` or `npm i -g @letpeoplework/lighthouse-cli`
 
 ### GitHub Releases
 - Release workflow builds standalone CLI binaries for Linux, macOS, and Windows.
@@ -26,7 +26,7 @@ This repository is intentionally dedicated to client deliverables, so release ta
 
 ## MCP Deployment
 ### npm
-- Package: `@lighthouse/mcp-http`
+- Package: `@letpeoplework/lighthouse-mcp-http`
 - Hosted runtime entrypoint is provided via package bin `lighthouse-mcp-http`.
 
 ### Container
@@ -43,5 +43,18 @@ This repository is intentionally dedicated to client deliverables, so release ta
   - GHCR container publish
 
 ## Required Secrets
-- `NPM_TOKEN` for npm publishing
 - Default GitHub token is used for GitHub Releases and GHCR push
+
+## npm Trusted Publishing (OIDC)
+- npm publish is configured to use GitHub Actions OIDC trusted publishing (no `NPM_TOKEN` secret required).
+- Configure a trusted publisher in npm package settings for each published package:
+  - `@letpeoplework/lighthouse-client`
+  - `@letpeoplework/lighthouse-cli`
+  - `@letpeoplework/lighthouse-mcp-core`
+  - `@letpeoplework/lighthouse-mcp-stdio`
+  - `@letpeoplework/lighthouse-mcp-http`
+- Trusted publisher fields must match exactly:
+  - Organization: `LetPeopleWork`
+  - Repository: `lighthouse-clients`
+  - Workflow filename: `release.yml`
+  - Environment: leave empty to allow all release environments, or set one exact value and use only that value in workflow dispatch.

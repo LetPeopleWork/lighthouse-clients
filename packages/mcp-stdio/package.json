@@ -1,7 +1,8 @@
 {
-  "name": "@lighthouse/mcp-stdio",
+  "name": "@letpeoplework/lighthouse-mcp-stdio",
   "version": "0.1.0",
   "description": "stdio transport adapter for Lighthouse MCP",
+  "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,6 +22,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@lighthouse/mcp-core": "workspace:*"
+    "@letpeoplework/lighthouse-mcp-core": "workspace:*"
   }
 }

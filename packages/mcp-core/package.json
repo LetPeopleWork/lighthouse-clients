@@ -1,7 +1,8 @@
 {
-  "name": "@lighthouse/mcp-core",
+  "name": "@letpeoplework/lighthouse-mcp-core",
   "version": "0.1.0",
   "description": "Shared MCP semantics for Lighthouse",
+  "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,6 +22,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@lighthouse/client": "workspace:*"
+    "@letpeoplework/lighthouse-client": "workspace:*"
   }
 }

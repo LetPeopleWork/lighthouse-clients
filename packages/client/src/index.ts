@@ -5,12 +5,12 @@ export type ClientCapability =
   | "automation-auth-contracts";
 
 export type ClientPackageContract = {
-  readonly name: "@lighthouse/client";
+  readonly name: "@letpeoplework/lighthouse-client";
   readonly capabilities: readonly ClientCapability[];
 };
 
 export const getClientPackageContract = (): ClientPackageContract => ({
-  name: "@lighthouse/client",
+  name: "@letpeoplework/lighthouse-client",
   capabilities: [
     "versioned-api-contracts",
     "shared-domain-operations",
