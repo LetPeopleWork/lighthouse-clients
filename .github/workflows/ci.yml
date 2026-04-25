@@ -59,6 +59,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Update npm to latest version for OIDC support
+        run: npm install -g npm@latest
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
