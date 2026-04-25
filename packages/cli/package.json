@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "User-facing Lighthouse CLI",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
@@ -24,7 +24,7 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.ts src/bin.ts --format esm,cjs --dts --clean --tsconfig tsconfig.build.json",
+    "build": "tsup",
     "clean": "rimraf dist"
   },
   "publishConfig": {

@@ -524,6 +524,35 @@ export type LighthouseApiResult<TValue> =
 
 export type LighthouseWritePayload = Readonly<Record<string, unknown>>;
 
+export type MetricsDateRange = {
+  readonly startDate: string;
+  readonly endDate: string;
+};
+
+export const getDefaultMetricsDateRange = (): MetricsDateRange => {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 90);
+  const toIsoDate = (d: Date): string =>
+    d.toISOString().split("T")[0] as string;
+  return {
+    startDate: toIsoDate(start),
+    endDate: toIsoDate(end),
+  };
+};
+
+export type ManualForecastInput = {
+  readonly remainingItems?: number;
+  readonly targetDate?: string;
+};
+
+export type BacktestInput = {
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly historicalStartDate: string;
+  readonly historicalEndDate: string;
+};
+
 export type LighthouseClient = {
   readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
   readonly getVersion: () => Promise<LighthouseApiResult<string>>;
@@ -576,6 +605,57 @@ export type LighthouseClient = {
   readonly refreshPortfolio: (
     portfolioId: number,
   ) => Promise<LighthouseApiResult<void>>;
+
+  // Metrics
+  readonly getTeamThroughput: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamCycleTimePercentiles: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getPortfolioThroughput: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+
+  // Features
+  readonly getFeaturesByIds: (
+    ids: readonly number[],
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getFeaturesByReferences: (
+    refs: readonly string[],
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getFeatureWorkItems: (
+    featureId: number,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+
+  // Deliveries
+  readonly listDeliveries: (
+    portfolioId: number,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly createDelivery: (
+    portfolioId: number,
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly updateDelivery: (
+    deliveryId: number,
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly deleteDelivery: (
+    deliveryId: number,
+  ) => Promise<LighthouseApiResult<undefined>>;
+
+  // Forecasts
+  readonly runManualForecast: (
+    teamId: number,
+    payload: ManualForecastInput,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly runBacktest: (
+    teamId: number,
+    payload: BacktestInput,
+  ) => Promise<LighthouseApiResult<unknown>>;
 };
 
 export type LighthouseClientDependencies = {
@@ -778,7 +858,7 @@ const requestNoContent = async (
   requestOptions: {
     readonly method: "POST" | "DELETE";
   },
-): Promise<LighthouseApiResult<void>> => {
+): Promise<LighthouseApiResult<undefined>> => {
   const fetchDependency = getFetchDependency(dependencies);
   const connectivityResult = await validateLighthouseConnectivity(
     configuration.connection,
@@ -969,5 +1049,112 @@ export const createLighthouseClient = (
       {
         method: "POST",
       },
+    ),
+  getTeamThroughput: async (teamId: number, range?: MetricsDateRange) => {
+    const r = range ?? getDefaultMetricsDateRange();
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/throughput?startDate=${r.startDate}&endDate=${r.endDate}`,
+      { method: "GET" },
+    );
+  },
+  getTeamCycleTimePercentiles: async (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = range ?? getDefaultMetricsDateRange();
+    return requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/cycleTimePercentiles?startDate=${r.startDate}&endDate=${r.endDate}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioThroughput: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = range ?? getDefaultMetricsDateRange();
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/throughput?startDate=${r.startDate}&endDate=${r.endDate}`,
+      { method: "GET" },
+    );
+  },
+  getFeaturesByIds: async (ids: readonly number[]) => {
+    const queryString = ids
+      .map((id) => `ids=${encodeURIComponent(id)}`)
+      .join("&");
+    return requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/features?${queryString}`,
+      { method: "GET" },
+    );
+  },
+  getFeaturesByReferences: async (refs: readonly string[]) => {
+    const queryString = refs
+      .map((r) => `featureReferences=${encodeURIComponent(r)}`)
+      .join("&");
+    return requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/features/references?${queryString}`,
+      { method: "GET" },
+    );
+  },
+  getFeatureWorkItems: async (featureId: number) =>
+    requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/features/${featureId}/workitems`,
+      { method: "GET" },
+    ),
+  listDeliveries: async (portfolioId: number) =>
+    requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/deliveries/portfolio/${portfolioId}`,
+      { method: "GET" },
+    ),
+  createDelivery: async (
+    portfolioId: number,
+    payload: LighthouseWritePayload,
+  ) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/deliveries/portfolio/${portfolioId}`,
+      { method: "POST", body: payload },
+    ),
+  updateDelivery: async (deliveryId: number, payload: LighthouseWritePayload) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/deliveries/${deliveryId}`,
+      { method: "PUT", body: payload },
+    ),
+  deleteDelivery: async (deliveryId: number) =>
+    requestNoContent(
+      configuration,
+      dependencies,
+      `/v1/deliveries/${deliveryId}`,
+      { method: "DELETE" },
+    ),
+  runManualForecast: async (teamId: number, payload: ManualForecastInput) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/forecast/manual/${teamId}`,
+      { method: "POST", body: payload },
+    ),
+  runBacktest: async (teamId: number, payload: BacktestInput) =>
+    requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/forecast/backtest/${teamId}`,
+      { method: "POST", body: payload },
     ),
 });

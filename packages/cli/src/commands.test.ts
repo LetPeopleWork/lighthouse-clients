@@ -66,7 +66,113 @@ type MockClient = {
     readonly ok: true;
     readonly value: undefined;
   }>;
+  readonly getTeamThroughput: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getTeamCycleTimePercentiles: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getPortfolioThroughput: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getFeaturesByIds: (ids: readonly number[]) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getFeaturesByReferences: (refs: readonly string[]) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getFeatureWorkItems: (featureId: number) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly listDeliveries: (portfolioId: number) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly createDelivery: (
+    portfolioId: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly updateDelivery: (
+    deliveryId: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly deleteDelivery: (deliveryId: number) => Promise<{
+    readonly ok: true;
+    readonly value: undefined;
+  }>;
+  readonly runManualForecast: (
+    teamId: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly runBacktest: (
+    teamId: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
 };
+
+const getDefaultMockClient = (): MockClient => ({
+  checkConnectivity: async () => ({ category: "success" }),
+  getVersion: async () => ({ ok: true, value: "v1.2.3" }),
+  listWorkTrackingConnections: async () => ({
+    ok: true,
+    value: [{ id: 100, name: "Jira" }],
+  }),
+  getWorkTrackingConnection: async (id: number) => ({
+    ok: true,
+    value: { id, name: "Jira" },
+  }),
+  listTeams: async () => ({ ok: true, value: [{ id: 1, name: "Team A" }] }),
+  getTeam: async (id: number) => ({ ok: true, value: { id, name: "Team A" } }),
+  refreshTeam: async () => ({ ok: true, value: undefined }),
+  listPortfolios: async () => ({
+    ok: true,
+    value: [{ id: 7, name: "Portfolio A" }],
+  }),
+  getPortfolio: async (id: number) => ({
+    ok: true,
+    value: { id, name: "Portfolio A" },
+  }),
+  refreshPortfolio: async () => ({ ok: true, value: undefined }),
+  getTeamThroughput: async () => ({ ok: true, value: {} }),
+  getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+  getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+  getFeaturesByIds: async () => ({ ok: true, value: [] }),
+  getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+  getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+  listDeliveries: async () => ({ ok: true, value: [] }),
+  createDelivery: async () => ({ ok: true, value: {} }),
+  updateDelivery: async () => ({ ok: true, value: {} }),
+  deleteDelivery: async () => ({ ok: true, value: undefined }),
+  runManualForecast: async () => ({ ok: true, value: {} }),
+  runBacktest: async () => ({ ok: true, value: {} }),
+});
 
 const getDependencies = (overrides?: {
   readonly config?: CliRuntimeConfig | null;
@@ -80,42 +186,7 @@ const getDependencies = (overrides?: {
   let savedAuth: StoredLighthouseAuth | null = null;
   let lastAuth: LighthouseClientAuth | null = null;
 
-  const defaultClient: MockClient = {
-    checkConnectivity: async () => ({ category: "success" }),
-    getVersion: async () => ({ ok: true, value: "v1.2.3" }),
-    listWorkTrackingConnections: async () => ({
-      ok: true,
-      value: [{ id: 100, name: "Jira" }],
-    }),
-    getWorkTrackingConnection: async (id: number) => ({
-      ok: true,
-      value: { id, name: "Jira" },
-    }),
-    listTeams: async () => ({
-      ok: true,
-      value: [{ id: 1, name: "Team A" }],
-    }),
-    getTeam: async (id: number) => ({
-      ok: true,
-      value: { id, name: "Team A" },
-    }),
-    refreshTeam: async () => ({
-      ok: true,
-      value: undefined,
-    }),
-    listPortfolios: async () => ({
-      ok: true,
-      value: [{ id: 7, name: "Portfolio A" }],
-    }),
-    getPortfolio: async (id: number) => ({
-      ok: true,
-      value: { id, name: "Portfolio A" },
-    }),
-    refreshPortfolio: async () => ({
-      ok: true,
-      value: undefined,
-    }),
-  };
+  const defaultClient: MockClient = getDefaultMockClient();
 
   const authContext = createLighthouseAuthContext({
     load: async () => savedAuth,
@@ -263,7 +334,7 @@ describe("runCliCommand", () => {
   it("returns client errors for version get", async () => {
     const { dependencies } = getDependencies({
       client: {
-        checkConnectivity: async () => ({ category: "success" }),
+        ...getDefaultMockClient(),
         getVersion: async () => ({
           ok: false,
           error: {
@@ -271,14 +342,6 @@ describe("runCliCommand", () => {
             reason: "Access denied",
           },
         }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
       },
     });
 
@@ -386,5 +449,235 @@ describe("runCliCommand", () => {
 
     expect(refreshResult.exitCode).toBe(0);
     expect(refreshResult.stdout).toContain("Portfolio refreshed");
+  });
+
+  it("gets team throughput metrics with explicit dates", async () => {
+    const throughputData = { labels: ["2026-01-01"], data: [3] };
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamThroughput: async () => ({ ok: true, value: throughputData }),
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "team",
+        "metrics",
+        "throughput",
+        "--id",
+        "1",
+        "--start-date",
+        "2026-01-01",
+        "--end-date",
+        "2026-03-31",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(JSON.stringify(throughputData));
+  });
+
+  it("gets team cycle-time percentiles", async () => {
+    const percentiles = [{ percentile: 50, value: 4 }];
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamCycleTimePercentiles: async () => ({
+          ok: true,
+          value: percentiles,
+        }),
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "team",
+        "metrics",
+        "cycleTimePercentiles",
+        "--id",
+        "1",
+        "--start-date",
+        "2026-01-01",
+        "--end-date",
+        "2026-03-31",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(JSON.stringify(percentiles));
+  });
+
+  it("gets portfolio throughput metrics", async () => {
+    const throughputData = { labels: [], data: [] };
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        getPortfolioThroughput: async () => ({
+          ok: true,
+          value: throughputData,
+        }),
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "portfolio",
+        "metrics",
+        "throughput",
+        "--id",
+        "7",
+        "--start-date",
+        "2026-01-01",
+        "--end-date",
+        "2026-03-31",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(JSON.stringify(throughputData));
+  });
+
+  it("gets features by ids", async () => {
+    const features = [{ id: 1, name: "Feature A" }];
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        getFeaturesByIds: async () => ({ ok: true, value: features }),
+      },
+    });
+
+    const result = await runCliCommand(
+      ["feature", "get", "--ids", "1,2"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Feature A");
+  });
+
+  it("gets feature work items", async () => {
+    const workItems = [{ id: 10, title: "Task A" }];
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        getFeatureWorkItems: async () => ({ ok: true, value: workItems }),
+      },
+    });
+
+    const result = await runCliCommand(
+      ["feature", "workitems", "--id", "3"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Task A");
+  });
+
+  it("lists deliveries for a portfolio", async () => {
+    const deliveries = [{ id: 1, name: "Release 1" }];
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        listDeliveries: async () => ({ ok: true, value: deliveries }),
+      },
+    });
+
+    const result = await runCliCommand(
+      ["delivery", "list", "--portfolio-id", "4"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Release 1");
+  });
+
+  it("runs a manual forecast for a team", async () => {
+    const forecastResult = {
+      remainingItems: 5,
+      whenForecasts: [],
+      howManyForecasts: [],
+    };
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        runManualForecast: async () => ({ ok: true, value: forecastResult }),
+      },
+    });
+
+    const result = await runCliCommand(
+      ["forecast", "manual", "--team-id", "2", "--remaining", "5"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("whenForecasts");
+  });
+
+  it("runs a backtest for a team", async () => {
+    const backtestResult = { actualThroughput: 10, percentiles: [] };
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+      client: {
+        ...getDefaultMockClient(),
+        runBacktest: async () => ({ ok: true, value: backtestResult }),
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "forecast",
+        "backtest",
+        "--team-id",
+        "2",
+        "--start-date",
+        "2026-01-01",
+        "--end-date",
+        "2026-03-31",
+        "--hist-start-date",
+        "2025-10-01",
+        "--hist-end-date",
+        "2025-12-31",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("actualThroughput");
+  });
+
+  it("returns missing id error for team metrics commands", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(
+      ["team", "metrics", "throughput"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--id");
+  });
+
+  it("returns missing portfolio-id error for delivery list", async () => {
+    const { dependencies } = getDependencies({
+      config: { endpointUrl: "http://localhost:5000" },
+    });
+
+    const result = await runCliCommand(["delivery", "list"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--portfolio-id");
   });
 });

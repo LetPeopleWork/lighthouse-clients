@@ -31,6 +31,14 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse.portfolio.list",
       "lighthouse.portfolio.get",
       "lighthouse.portfolio.refresh",
+      "lighthouse.team.metrics.throughput",
+      "lighthouse.team.metrics.cycleTimePercentiles",
+      "lighthouse.portfolio.metrics.throughput",
+      "lighthouse.feature.get",
+      "lighthouse.feature.workitems",
+      "lighthouse.delivery.list",
+      "lighthouse.forecast.manual",
+      "lighthouse.forecast.backtest",
     ]);
   });
 
@@ -156,6 +164,18 @@ describe("createMcpCoreRuntime", () => {
           value: { id: 9, name: "Portfolio A" },
         }),
         refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: [] }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: {} }),
+        runBacktest: async () => ({ ok: true, value: {} }),
       }),
     });
 
@@ -176,5 +196,160 @@ describe("createMcpCoreRuntime", () => {
     );
     expect(portfolioRefresh.isError).toBe(false);
     expect(portfolioRefresh.content[0]?.text).toContain("portfolio refreshed");
+  });
+
+  it("lists metrics tools in the tool registry", () => {
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: [] }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: {} }),
+        runBacktest: async () => ({ ok: true, value: {} }),
+      }),
+    });
+
+    const toolNames = runtime.listTools().map((t) => t.name);
+
+    expect(toolNames).toContain("lighthouse.team.metrics.throughput");
+    expect(toolNames).toContain("lighthouse.portfolio.metrics.throughput");
+    expect(toolNames).toContain("lighthouse.feature.get");
+    expect(toolNames).toContain("lighthouse.delivery.list");
+    expect(toolNames).toContain("lighthouse.forecast.manual");
+    expect(toolNames).toContain("lighthouse.forecast.backtest");
+  });
+
+  it("calls team throughput metrics tool", async () => {
+    const throughputData = { labels: ["2026-01-01"], data: [3] };
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: throughputData }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: [] }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: {} }),
+        runBacktest: async () => ({ ok: true, value: {} }),
+      }),
+    });
+
+    const result = await runtime.callTool(
+      "lighthouse.team.metrics.throughput",
+      { id: 5 },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain(JSON.stringify(throughputData));
+  });
+
+  it("calls forecast manual tool", async () => {
+    const forecastResult = {
+      remainingItems: 3,
+      whenForecasts: [],
+      howManyForecasts: [],
+    };
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: [] }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: forecastResult }),
+        runBacktest: async () => ({ ok: true, value: {} }),
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse.forecast.manual", {
+      id: 2,
+      remainingItems: 3,
+    });
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain("whenForecasts");
+  });
+
+  it("calls delivery list tool", async () => {
+    const deliveries = [{ id: 1, name: "Release 1" }];
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: deliveries }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: {} }),
+        runBacktest: async () => ({ ok: true, value: {} }),
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse.delivery.list", {
+      id: 4,
+    });
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain("Release 1");
   });
 });

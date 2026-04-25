@@ -7,6 +7,7 @@ import {
   type StoredLighthouseAuth,
   createLighthouseAuthContext,
   createLighthouseClient,
+  getDefaultMetricsDateRange,
 } from "@letpeoplework/lighthouse-client";
 
 export type CliPackageContract = {
@@ -42,6 +43,18 @@ type CliDomainClientLike = Pick<
   | "listPortfolios"
   | "getPortfolio"
   | "refreshPortfolio"
+  | "getTeamThroughput"
+  | "getTeamCycleTimePercentiles"
+  | "getPortfolioThroughput"
+  | "getFeaturesByIds"
+  | "getFeaturesByReferences"
+  | "getFeatureWorkItems"
+  | "listDeliveries"
+  | "createDelivery"
+  | "updateDelivery"
+  | "deleteDelivery"
+  | "runManualForecast"
+  | "runBacktest"
 >;
 type CliClientOperations = CliClientLike & CliDomainClientLike;
 
@@ -81,9 +94,18 @@ const getUsageText = (): string =>
     "  lighthouse team list [--url <lighthouse-url>]",
     "  lighthouse team get --id <team-id> [--url <lighthouse-url>]",
     "  lighthouse team refresh --id <team-id> [--url <lighthouse-url>]",
+    "  lighthouse team metrics throughput --id <team-id> [--start-date <date>] [--end-date <date>] [--url <lighthouse-url>]",
+    "  lighthouse team metrics cycleTimePercentiles --id <team-id> [--start-date <date>] [--end-date <date>] [--url <lighthouse-url>]",
     "  lighthouse portfolio list [--url <lighthouse-url>]",
     "  lighthouse portfolio get --id <portfolio-id> [--url <lighthouse-url>]",
     "  lighthouse portfolio refresh --id <portfolio-id> [--url <lighthouse-url>]",
+    "  lighthouse portfolio metrics throughput --id <portfolio-id> [--start-date <date>] [--end-date <date>] [--url <lighthouse-url>]",
+    "  lighthouse feature get --ids <id1,id2,...> [--url <lighthouse-url>]",
+    "  lighthouse feature get --refs <ref1,ref2,...> [--url <lighthouse-url>]",
+    "  lighthouse feature workitems --id <feature-id> [--url <lighthouse-url>]",
+    "  lighthouse delivery list --portfolio-id <portfolio-id> [--url <lighthouse-url>]",
+    "  lighthouse forecast manual --team-id <team-id> [--remaining <n>] [--target-date <date>] [--url <lighthouse-url>]",
+    "  lighthouse forecast backtest --team-id <team-id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date> [--url <lighthouse-url>]",
     "  lighthouse health check [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
     "  lighthouse version get [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
   ].join("\n");
@@ -468,6 +490,296 @@ export const runCliCommand = async (
     }
 
     return getSuccessResult(`Portfolio refreshed: ${portfolioId}`);
+  }
+
+  // ── Metrics commands ──────────────────────────────────────────────────────
+
+  if (scope === "team" && action === "metrics") {
+    const teamId = getRequiredIdOption(args, "--id");
+    if (teamId === null) {
+      return getErrorResult("Missing required --id for team metrics.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const startDate = getOptionValue(args, "--start-date");
+    const endDate = getOptionValue(args, "--end-date");
+    const range =
+      startDate !== undefined && endDate !== undefined
+        ? { startDate, endDate }
+        : getDefaultMetricsDateRange();
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+
+    if (subject === "throughput") {
+      const result = await client.getTeamThroughput(teamId, range);
+      return mapApiResultToCliResult(result);
+    }
+
+    if (subject === "cycleTimePercentiles") {
+      const result = await client.getTeamCycleTimePercentiles(teamId, range);
+      return mapApiResultToCliResult(result);
+    }
+
+    return getErrorResult(
+      `Unknown team metrics subcommand: ${subject ?? "(none)"}`,
+    );
+  }
+
+  if (scope === "portfolio" && action === "metrics") {
+    const portfolioId = getRequiredIdOption(args, "--id");
+    if (portfolioId === null) {
+      return getErrorResult("Missing required --id for portfolio metrics.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const startDate = getOptionValue(args, "--start-date");
+    const endDate = getOptionValue(args, "--end-date");
+    const range =
+      startDate !== undefined && endDate !== undefined
+        ? { startDate, endDate }
+        : getDefaultMetricsDateRange();
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+
+    if (subject === "throughput") {
+      const result = await client.getPortfolioThroughput(portfolioId, range);
+      return mapApiResultToCliResult(result);
+    }
+
+    return getErrorResult(
+      `Unknown portfolio metrics subcommand: ${subject ?? "(none)"}`,
+    );
+  }
+
+  // ── Feature commands ──────────────────────────────────────────────────────
+
+  if (scope === "feature" && action === "get") {
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+
+    const idsRaw = getOptionValue(args, "--ids");
+    if (idsRaw !== undefined) {
+      const ids = idsRaw
+        .split(",")
+        .map((s) => Number.parseInt(s.trim(), 10))
+        .filter((n) => !Number.isNaN(n));
+      const result = await client.getFeaturesByIds(ids);
+      return mapApiResultToCliResult(result);
+    }
+
+    const refsRaw = getOptionValue(args, "--refs");
+    if (refsRaw !== undefined) {
+      const refs = refsRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const result = await client.getFeaturesByReferences(refs);
+      return mapApiResultToCliResult(result);
+    }
+
+    return getErrorResult("Missing required --ids or --refs for feature get.");
+  }
+
+  if (scope === "feature" && action === "workitems") {
+    const featureId = getRequiredIdOption(args, "--id");
+    if (featureId === null) {
+      return getErrorResult("Missing required --id for feature workitems.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.getFeatureWorkItems(featureId);
+    return mapApiResultToCliResult(result);
+  }
+
+  // ── Delivery commands ─────────────────────────────────────────────────────
+
+  if (scope === "delivery" && action === "list") {
+    const portfolioId = getRequiredIdOption(args, "--portfolio-id");
+    if (portfolioId === null) {
+      return getErrorResult(
+        "Missing required --portfolio-id for delivery list.",
+      );
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.listDeliveries(portfolioId);
+    return mapApiResultToCliResult(result);
+  }
+
+  // ── Forecast commands ─────────────────────────────────────────────────────
+
+  if (scope === "forecast" && action === "manual") {
+    const teamIdRaw = getOptionValue(args, "--team-id");
+    if (teamIdRaw === undefined) {
+      return getErrorResult("Missing required --team-id for forecast manual.");
+    }
+    const teamId = Number.parseInt(teamIdRaw, 10);
+    if (Number.isNaN(teamId)) {
+      return getErrorResult("Invalid --team-id for forecast manual.");
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const remainingRaw = getOptionValue(args, "--remaining");
+    const targetDate = getOptionValue(args, "--target-date");
+    const remaining =
+      remainingRaw !== undefined
+        ? Number.parseInt(remainingRaw, 10)
+        : undefined;
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.runManualForecast(teamId, {
+      remainingItems: remaining,
+      targetDate,
+    });
+    return mapApiResultToCliResult(result);
+  }
+
+  if (scope === "forecast" && action === "backtest") {
+    const teamIdRaw = getOptionValue(args, "--team-id");
+    if (teamIdRaw === undefined) {
+      return getErrorResult(
+        "Missing required --team-id for forecast backtest.",
+      );
+    }
+    const teamId = Number.parseInt(teamIdRaw, 10);
+    if (Number.isNaN(teamId)) {
+      return getErrorResult("Invalid --team-id for forecast backtest.");
+    }
+
+    const startDate = getOptionValue(args, "--start-date");
+    const endDate = getOptionValue(args, "--end-date");
+    const histStartDate = getOptionValue(args, "--hist-start-date");
+    const histEndDate = getOptionValue(args, "--hist-end-date");
+
+    if (!startDate || !endDate || !histStartDate || !histEndDate) {
+      return getErrorResult(
+        "Missing required --start-date, --end-date, --hist-start-date, or --hist-end-date for forecast backtest.",
+      );
+    }
+
+    const config = await dependencies.loadConfig();
+    const endpointUrl = getEndpointUrl(args, config);
+    if (endpointUrl === null) {
+      return getErrorResult(
+        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
+      );
+    }
+
+    let auth: LighthouseClientAuth;
+    try {
+      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to resolve auth.";
+      return getErrorResult(message);
+    }
+
+    const client = dependencies.createClient({ endpointUrl, auth });
+    const result = await client.runBacktest(teamId, {
+      startDate,
+      endDate,
+      historicalStartDate: histStartDate,
+      historicalEndDate: histEndDate,
+    });
+    return mapApiResultToCliResult(result);
   }
 
   if (scope === "health" && action === "check") {

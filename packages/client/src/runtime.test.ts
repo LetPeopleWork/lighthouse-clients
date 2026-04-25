@@ -537,4 +537,450 @@ describe("createLighthouseClient", () => {
       (await client.checkConnectivity()) as ConnectivityValidationResult;
     expect(result.category).toBe("misconfigured");
   });
+
+  it("gets team throughput metrics with an explicit date range", async () => {
+    const throughputData = { labels: ["2026-01-01"], data: [3] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(throughputData),
+        json: async () => throughputData,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamThroughput(5, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: throughputData });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/teams/5/metrics/throughput?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("gets team throughput with a default date range when none is supplied", async () => {
+    const throughputData = { labels: [], data: [] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(throughputData),
+        json: async () => throughputData,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamThroughput(5);
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock.calls[1]?.url).toMatch(
+      /api\/v1\/teams\/5\/metrics\/throughput\?startDate=\d{4}-\d{2}-\d{2}&endDate=\d{4}-\d{2}-\d{2}/,
+    );
+  });
+
+  it("gets team cycle-time percentiles with a date range", async () => {
+    const percentiles = [
+      { percentile: 50, value: 4 },
+      { percentile: 85, value: 8 },
+    ];
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(percentiles),
+        json: async () => percentiles,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamCycleTimePercentiles(3, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: percentiles });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/teams/3/metrics/cycleTimePercentiles?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("gets portfolio throughput metrics with a date range", async () => {
+    const throughputData = { labels: ["2026-01-01"], data: [2] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(throughputData),
+        json: async () => throughputData,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getPortfolioThroughput(7, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: throughputData });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/portfolios/7/metrics/throughput?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("gets features by ids", async () => {
+    const features = [
+      { id: 1, name: "Feature A" },
+      { id: 2, name: "Feature B" },
+    ];
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(features),
+        json: async () => features,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getFeaturesByIds([1, 2]);
+
+    expect(result).toEqual({ ok: true, value: features });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/features?ids=1&ids=2",
+    );
+  });
+
+  it("gets features by reference ids", async () => {
+    const features = [{ id: 3, name: "Feature C", referenceId: "FEAT-3" }];
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(features),
+        json: async () => features,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getFeaturesByReferences(["FEAT-3"]);
+
+    expect(result).toEqual({ ok: true, value: features });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/features/references?featureReferences=FEAT-3",
+    );
+  });
+
+  it("gets work items for a feature", async () => {
+    const workItems = [{ id: 10, title: "Task A" }];
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(workItems),
+        json: async () => workItems,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getFeatureWorkItems(3);
+
+    expect(result).toEqual({ ok: true, value: workItems });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/features/3/workitems",
+    );
+  });
+
+  it("lists deliveries for a portfolio", async () => {
+    const deliveries = [{ id: 1, name: "Release 1" }];
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(deliveries),
+        json: async () => deliveries,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.listDeliveries(4);
+
+    expect(result).toEqual({ ok: true, value: deliveries });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/deliveries/portfolio/4",
+    );
+  });
+
+  it("creates a delivery for a portfolio", async () => {
+    const delivery = { id: 2, name: "Release 2" };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(delivery),
+        json: async () => delivery,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.createDelivery(4, {
+      name: "Release 2",
+      date: "2026-12-01",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/deliveries/portfolio/4",
+    );
+    expect(fetchMock.calls[1]?.init?.method).toBe("POST");
+  });
+
+  it("deletes a delivery", async () => {
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      { ok: true, status: 204, text: async () => "", json: async () => ({}) },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.deleteDelivery(2);
+
+    expect(result).toEqual({ ok: true, value: undefined });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/deliveries/2",
+    );
+    expect(fetchMock.calls[1]?.init?.method).toBe("DELETE");
+  });
+
+  it("runs a manual forecast for a team", async () => {
+    const forecastResult = {
+      remainingItems: 5,
+      whenForecasts: [],
+      howManyForecasts: [],
+      likelihood: 0.7,
+    };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(forecastResult),
+        json: async () => forecastResult,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.runManualForecast(2, { remainingItems: 5 });
+
+    expect(result).toEqual({ ok: true, value: forecastResult });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/forecast/manual/2",
+    );
+    expect(fetchMock.calls[1]?.init?.method).toBe("POST");
+  });
+
+  it("runs a backtest forecast for a team", async () => {
+    const backtestResult = { actualThroughput: 10, percentiles: [] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(backtestResult),
+        json: async () => backtestResult,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.runBacktest(2, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+      historicalStartDate: "2025-10-01",
+      historicalEndDate: "2025-12-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: backtestResult });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/forecast/backtest/2",
+    );
+    expect(fetchMock.calls[1]?.init?.method).toBe("POST");
+  });
 });

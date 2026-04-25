@@ -123,6 +123,54 @@ const getCoreRuntime = (options: McpHttpServerOptions) =>
           const client = await getClient();
           return client.refreshPortfolio(id);
         },
+        getTeamThroughput: async (id: number, range?) => {
+          const client = await getClient();
+          return client.getTeamThroughput(id, range);
+        },
+        getTeamCycleTimePercentiles: async (id: number, range?) => {
+          const client = await getClient();
+          return client.getTeamCycleTimePercentiles(id, range);
+        },
+        getPortfolioThroughput: async (id: number, range?) => {
+          const client = await getClient();
+          return client.getPortfolioThroughput(id, range);
+        },
+        getFeaturesByIds: async (ids: readonly number[]) => {
+          const client = await getClient();
+          return client.getFeaturesByIds(ids);
+        },
+        getFeaturesByReferences: async (refs: readonly string[]) => {
+          const client = await getClient();
+          return client.getFeaturesByReferences(refs);
+        },
+        getFeatureWorkItems: async (featureId: number) => {
+          const client = await getClient();
+          return client.getFeatureWorkItems(featureId);
+        },
+        listDeliveries: async (portfolioId: number) => {
+          const client = await getClient();
+          return client.listDeliveries(portfolioId);
+        },
+        createDelivery: async (portfolioId: number, payload) => {
+          const client = await getClient();
+          return client.createDelivery(portfolioId, payload);
+        },
+        updateDelivery: async (deliveryId: number, payload) => {
+          const client = await getClient();
+          return client.updateDelivery(deliveryId, payload);
+        },
+        deleteDelivery: async (deliveryId: number) => {
+          const client = await getClient();
+          return client.deleteDelivery(deliveryId);
+        },
+        runManualForecast: async (teamId: number, payload) => {
+          const client = await getClient();
+          return client.runManualForecast(teamId, payload);
+        },
+        runBacktest: async (teamId: number, payload) => {
+          const client = await getClient();
+          return client.runBacktest(teamId, payload);
+        },
       };
     },
   });
