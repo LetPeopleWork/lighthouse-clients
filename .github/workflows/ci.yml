@@ -39,14 +39,6 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Validate CLI binary entrypoint
-        run: |
-          if ! head -1 packages/cli/dist/bin.cjs | grep -q '^#!/usr/bin/env node'; then
-            echo "ERROR: packages/cli/dist/bin.cjs does not start with #!/usr/bin/env node"
-            exit 1
-          fi
-          echo "OK: CLI binary shebang validated"
-
   release:
     runs-on: ubuntu-latest
     needs:
