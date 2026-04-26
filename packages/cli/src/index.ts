@@ -7,9 +7,9 @@ import {
   type ConnectivityValidationResult,
   type LighthouseApiResult,
   type LighthouseClient,
+  type MetricsDateRange,
   type ServerAuthModeResult,
   createLighthouseClient,
-  getDefaultMetricsDateRange,
 } from "@letpeoplework/lighthouse-client";
 import {
   DEFAULT_OUTPUT_FORMAT,
@@ -45,13 +45,34 @@ type CliDomainClientLike = Pick<
   | "getWorkTrackingConnection"
   | "listTeams"
   | "getTeam"
+  | "createTeam"
+  | "updateTeam"
+  | "deleteTeam"
   | "refreshTeam"
   | "listPortfolios"
   | "getPortfolio"
+  | "createPortfolio"
+  | "updatePortfolio"
+  | "deletePortfolio"
   | "refreshPortfolio"
   | "getTeamThroughput"
+  | "getTeamArrivals"
+  | "getTeamWipOverTime"
+  | "getTeamWip"
   | "getTeamCycleTimePercentiles"
+  | "getTeamCycleTimeData"
+  | "getTeamPredictabilityScore"
+  | "getTeamTotalWorkItemAge"
+  | "getTeamTotalWorkItemAgePbc"
   | "getPortfolioThroughput"
+  | "getPortfolioCycleTimePercentiles"
+  | "getPortfolioArrivals"
+  | "getPortfolioWipOverTime"
+  | "getPortfolioWip"
+  | "getPortfolioCycleTimeData"
+  | "getPortfolioPredictabilityScore"
+  | "getPortfolioTotalWorkItemAge"
+  | "getPortfolioTotalWorkItemAgePbc"
   | "getFeaturesByIds"
   | "getFeaturesByReferences"
   | "getFeatureWorkItems"
@@ -69,6 +90,7 @@ export type RunCliCommandDependencies = {
   readonly saveConnection: (connection: CliConnection | null) => Promise<void>;
   readonly loadOutputFormat: () => Promise<OutputFormat | null>;
   readonly saveOutputFormat: (outputFormat: OutputFormat) => Promise<void>;
+  readonly readTextFile: (filePath: string) => Promise<string>;
   readonly prompt: (question: string) => Promise<string>;
   readonly openBrowser: (url: string) => Promise<void>;
   readonly validateConnectivity: (
@@ -195,6 +217,275 @@ const getRequiredIdOption = (
   return parsed;
 };
 
+type CliPayload = Readonly<Record<string, unknown>>;
+
+type MetricErrorValue = {
+  readonly status: "error";
+  readonly category: string;
+  readonly reason: string;
+};
+
+type MetricUnavailableValue = {
+  readonly status: "unavailable";
+  readonly reason: string;
+};
+
+type DailyCountPoint = {
+  readonly date: string;
+  readonly count: number;
+  readonly isBlackout: boolean;
+};
+
+type DailyValuePoint = {
+  readonly date: string;
+  readonly value: number;
+  readonly isBlackout: boolean;
+  readonly workItemIds: readonly number[];
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getRequiredTextOption = (
+  args: readonly string[],
+  optionName: string,
+): string | null => {
+  const value = getOptionValue(args, optionName);
+  if (value === undefined || value.trim().length === 0) {
+    return null;
+  }
+
+  return value;
+};
+
+const toIsoDate = (value: Date): string => value.toISOString().split("T")[0];
+
+const addDaysToIsoDate = (isoDate: string, days: number): string => {
+  const next = new Date(`${isoDate}T00:00:00.000Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return toIsoDate(next);
+};
+
+const getLastDaysMetricsDateRange = (days: number): MetricsDateRange => {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setUTCDate(startDate.getUTCDate() - days);
+
+  return {
+    startDate: toIsoDate(startDate),
+    endDate: toIsoDate(endDate),
+  };
+};
+
+const getResolvedMetricsDateRange = (
+  args: readonly string[],
+  fallbackDays: number,
+): MetricsDateRange => {
+  const startDate = getOptionValue(args, "--start-date");
+  const endDate = getOptionValue(args, "--end-date");
+
+  if (startDate !== undefined && endDate !== undefined) {
+    return { startDate, endDate };
+  }
+
+  if (startDate !== undefined) {
+    return { startDate, endDate: startDate };
+  }
+
+  if (endDate !== undefined) {
+    return { startDate: endDate, endDate };
+  }
+
+  return getLastDaysMetricsDateRange(fallbackDays);
+};
+
+const getMetricErrorValue = (
+  category: string,
+  reason: string,
+): MetricErrorValue => ({
+  status: "error",
+  category,
+  reason,
+});
+
+const getMetricUnavailableValue = (reason: string): MetricUnavailableValue => ({
+  status: "unavailable",
+  reason,
+});
+
+const getMetricValueOrError = <TValue>(
+  result: PromiseSettledResult<LighthouseApiResult<TValue>>,
+): TValue | MetricErrorValue => {
+  if (result.status === "rejected") {
+    const reason =
+      result.reason instanceof Error
+        ? result.reason.message
+        : "Metric request failed unexpectedly.";
+    return getMetricErrorValue("unexpected", reason);
+  }
+
+  if (!result.value.ok) {
+    return getMetricErrorValue(
+      result.value.error.category,
+      result.value.error.reason,
+    );
+  }
+
+  return result.value.value;
+};
+
+const isMetricErrorValue = (
+  value: unknown,
+): value is MetricErrorValue | MetricUnavailableValue =>
+  isRecord(value) && typeof value.status === "string";
+
+const getJsonPayload = async (
+  args: readonly string[],
+  dependencies: RunCliCommandDependencies,
+  commandName: string,
+): Promise<CliPayload | CliCommandResult> => {
+  const payloadJson = getOptionValue(args, "--payload-json");
+  const payloadFile = getOptionValue(args, "--payload-file");
+
+  if (payloadJson === undefined && payloadFile === undefined) {
+    return getErrorResult(
+      `Missing payload for ${commandName}. Use exactly one of --payload-json or --payload-file.`,
+    );
+  }
+
+  if (payloadJson !== undefined && payloadFile !== undefined) {
+    return getErrorResult(
+      `Provide only one payload source for ${commandName}: --payload-json or --payload-file.`,
+    );
+  }
+
+  const rawPayload =
+    payloadJson ??
+    (await dependencies
+      .readTextFile(payloadFile as string)
+      .catch((error: unknown) => {
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : "Could not read payload file.",
+        );
+      }));
+
+  try {
+    const parsed = JSON.parse(rawPayload) as unknown;
+    if (!isRecord(parsed) || Array.isArray(parsed)) {
+      return getErrorResult(
+        `Invalid payload for ${commandName}. Expected a JSON object.`,
+      );
+    }
+
+    return parsed;
+  } catch (error: unknown) {
+    const reason =
+      error instanceof Error ? error.message : "Invalid JSON payload.";
+    return getErrorResult(`${commandName}: ${reason}`);
+  }
+};
+
+const getWorkItemList = (value: unknown): readonly Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => isRecord(item))
+    : [];
+
+const getDailyCountSeries = (
+  value: unknown,
+  startDate: string,
+): readonly DailyCountPoint[] => {
+  if (!isRecord(value) || !isRecord(value.workItemsPerUnitOfTime)) {
+    return [];
+  }
+
+  const blackoutIndices = new Set(
+    Array.isArray(value.blackoutDayIndices)
+      ? value.blackoutDayIndices.filter(
+          (entry): entry is number => typeof entry === "number",
+        )
+      : [],
+  );
+
+  return Object.entries(value.workItemsPerUnitOfTime)
+    .map(([offset, items]) => {
+      const dayOffset = Number.parseInt(offset, 10);
+      if (Number.isNaN(dayOffset)) {
+        return null;
+      }
+
+      return {
+        date: addDaysToIsoDate(startDate, dayOffset),
+        count: Array.isArray(items) ? items.length : 0,
+        isBlackout: blackoutIndices.has(dayOffset),
+      };
+    })
+    .filter((entry): entry is DailyCountPoint => entry !== null)
+    .sort((left, right) => left.date.localeCompare(right.date));
+};
+
+const getDailyValueSeries = (value: unknown): readonly DailyValuePoint[] => {
+  if (!isRecord(value) || !Array.isArray(value.dataPoints)) {
+    return [];
+  }
+
+  return value.dataPoints
+    .map((dataPoint) => {
+      if (!isRecord(dataPoint) || typeof dataPoint.xValue !== "string") {
+        return null;
+      }
+
+      const workItemIds: readonly number[] = Array.isArray(
+        dataPoint.workItemIds,
+      )
+        ? dataPoint.workItemIds.filter(
+            (entry): entry is number => typeof entry === "number",
+          )
+        : [];
+
+      const point: DailyValuePoint = {
+        date: dataPoint.xValue,
+        value: typeof dataPoint.yValue === "number" ? dataPoint.yValue : 0,
+        isBlackout: dataPoint.isBlackout === true,
+        workItemIds,
+      };
+
+      return point;
+    })
+    .filter((entry): entry is DailyValuePoint => entry !== null);
+};
+
+const getChartTotal = (
+  value: unknown,
+  dailyCounts: readonly DailyCountPoint[],
+): number => {
+  if (isRecord(value) && typeof value.total === "number") {
+    return value.total;
+  }
+
+  return dailyCounts.reduce((sum, entry) => sum + entry.count, 0);
+};
+
+const getPredictabilityScorePayload = (
+  value: unknown,
+): Record<string, unknown> => {
+  if (!isRecord(value)) {
+    return { score: null, percentiles: [], forecastResults: {} };
+  }
+
+  return {
+    score:
+      typeof value.predictabilityScore === "number"
+        ? value.predictabilityScore
+        : null,
+    percentiles: Array.isArray(value.percentiles) ? value.percentiles : [],
+    forecastResults: isRecord(value.forecastResults)
+      ? value.forecastResults
+      : {},
+  };
+};
+
 // ── requireConnection ─────────────────────────────────────────────────────────
 
 const requireConnection = async (
@@ -203,7 +494,7 @@ const requireConnection = async (
   const connection = await dependencies.loadConnection();
   if (connection === null) {
     return getErrorResult(
-      'Not connected. Run "lh connect" to connect to a Lighthouse server.',
+      'Not connected. Run "lh connection connect" to connect to a Lighthouse server.',
     );
   }
   return connection;
@@ -508,7 +799,7 @@ const runConnectionStatus = async (
   const connection = await dependencies.loadConnection();
   if (connection === null) {
     return getErrorResult(
-      'Not connected. Run "lh connect" to set up a connection.',
+      'Not connected. Run "lh connection connect" to set up a connection.',
     );
   }
 
@@ -538,72 +829,913 @@ const runDisconnect = async (
 
 // ── usage text ───────────────────────────────────────────────────────────────
 
+const getConnectionGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh connection connect",
+    "  lh connection disconnect",
+    "  lh connection status",
+  ].join("\n");
+
+const getTeamGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh team list",
+    "  lh team get --id <id>",
+    "  lh team create --payload-file <path> | --payload-json <json>",
+    "  lh team update --id <id> --payload-file <path> | --payload-json <json>",
+    "  lh team delete --id <id>",
+    "  lh team refresh --id <id>",
+  ].join("\n");
+
+const getPortfolioGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh portfolio list",
+    "  lh portfolio get --id <id>",
+    "  lh portfolio create --payload-file <path> | --payload-json <json>",
+    "  lh portfolio update --id <id> --payload-file <path> | --payload-json <json>",
+    "  lh portfolio delete --id <id>",
+    "  lh portfolio refresh --id <id>",
+  ].join("\n");
+
+const getMetricsGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh metrics team --id <id> [--start-date <date>] [--end-date <date>]",
+    "  lh metrics portfolio --id <id> [--start-date <date>] [--end-date <date>]",
+    "",
+    "Defaults:",
+    "  team: last 30 days",
+    "  portfolio: last 90 days",
+    "  if only one date is provided, it is reused for both start and end",
+  ].join("\n");
+
+const getDeliveryGroupHelpText = (): string =>
+  ["Usage:", "  lh delivery list --portfolio-id <id>"].join("\n");
+
+const getForecastGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh forecast manual --team-id <id> [--remaining <n>] [--target-date <date>]",
+    "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>",
+  ].join("\n");
+
+const getWorktrackingGroupHelpText = (): string =>
+  ["Usage:", "  lh worktracking list", "  lh worktracking get --id <id>"].join(
+    "\n",
+  );
+
+const getFeatureGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh feature get --ids <id,...>",
+    "  lh feature get --refs <ref,...>",
+    "  lh feature workitems --id <id>",
+  ].join("\n");
+
+const getConfigGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh config output",
+    "  lh config output set --format <pretty|toon|json>",
+  ].join("\n");
+
+const getHealthGroupHelpText = (): string =>
+  ["Usage:", "  lh health check"].join("\n");
+
+const getVersionGroupHelpText = (): string =>
+  ["Usage:", "  lh version get"].join("\n");
+
 const getUsageText = async (
   dependencies: RunCliCommandDependencies,
 ): Promise<string> => {
   const connection = await dependencies.loadConnection();
   const outputFormat =
     (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
-  const baseLines: string[] = [
+
+  const lines: string[] = [
     "Usage:",
-    "  lh connect",
-    "  lh connection",
-    "  lh disconnect",
-    "  lh config output",
-    "  lh config output set --format <pretty|toon|json>",
+    "  lh <group> <subcommand> [options]",
+    "",
+    "Top-level groups:",
+    "  connection",
+    "  team",
+    "  portfolio",
+    "  metrics",
+    "  delivery",
+    "  forecast",
+    "  worktracking",
+    "  feature",
+    "  config",
+    "  health",
+    "  version",
+    "  help",
+    "",
+    'Run "lh <group>" to see subcommands for that group.',
     "",
     "Global payload output flags: --pretty | --toon | --json",
+    `Default output: ${outputFormat}`,
   ];
 
   if (connection === null) {
     return [
-      ...baseLines,
+      ...lines,
       "",
-      `Default output: ${outputFormat}`,
-      "",
-      "You must be connected before running commands.",
-      "",
-      'Run "lh connect" to connect to a Lighthouse server.',
+      "Connection: not connected",
+      'Run "lh connection connect" to connect to a Lighthouse server.',
     ].join("\n");
   }
 
   return [
-    ...baseLines,
+    ...lines,
     "",
     "Connection:",
     ...getConnectionStatusLines(connection, outputFormat),
-    "",
-    "  lh health check",
-    "  lh version get",
-    "",
-    "  lh worktracking list",
-    "  lh worktracking get --id <id>",
-    "",
-    "  lh team list",
-    "  lh team get --id <id>",
-    "  lh team refresh --id <id>",
-    "",
-    "  lh portfolio list",
-    "  lh portfolio get --id <id>",
-    "  lh portfolio refresh --id <id>",
-    "",
-    "  lh throughput team --id <id> [--start-date <date> --end-date <date>]",
-    "  lh throughput portfolio --id <id> [--start-date <date> --end-date <date>]",
-    "",
-    "  lh cycletime team --id <id> [--start-date <date> --end-date <date>]",
-    "",
-    "  lh features get-by-ids --ids <id,...>",
-    "  lh features get-by-refs --refs <ref,...>",
-    "  lh features work-items --id <id>",
-    "",
-    "  lh delivery list",
-    "  lh delivery create --name <name> --start <date> --end <date> --feature-ids <id,...>",
-    "  lh delivery update --id <id> --name <name> --start <date> --end <date> --feature-ids <id,...>",
-    "  lh delivery delete --id <id>",
-    "",
-    "  lh forecast manual --remaining <n> --trials <n> [--target-date <date>]",
-    "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>",
   ].join("\n");
+};
+
+const getUnknownSubcommandResult = (
+  groupHelpText: string,
+  groupName: string,
+  subcommand: string | undefined,
+): CliCommandResult =>
+  getErrorResult(
+    [
+      `Unknown ${groupName} subcommand: ${subcommand ?? "(none)"}`,
+      "",
+      groupHelpText,
+    ].join("\n"),
+  );
+
+const buildMetricsPayload = async (
+  scope: "team" | "portfolio",
+  entityId: number,
+  range: MetricsDateRange,
+  client: CliDomainClientLike,
+): Promise<Record<string, unknown>> => {
+  const unavailableReason =
+    "No dedicated backend endpoint is available for this metric.";
+
+  const requests =
+    scope === "team"
+      ? [
+          client.getTeamThroughput(entityId, range),
+          client.getTeamArrivals(entityId, range),
+          client.getTeamWipOverTime(entityId, range),
+          client.getTeamWip(entityId, range.endDate),
+          client.getTeamCycleTimePercentiles(entityId, range),
+          client.getTeamCycleTimeData(entityId, range),
+          client.getTeamPredictabilityScore(entityId, range),
+          client.getTeamTotalWorkItemAge(entityId, range.endDate),
+          client.getTeamTotalWorkItemAgePbc(entityId, range),
+        ]
+      : [
+          client.getPortfolioThroughput(entityId, range),
+          client.getPortfolioArrivals(entityId, range),
+          client.getPortfolioWipOverTime(entityId, range),
+          client.getPortfolioWip(entityId, range.endDate),
+          client.getPortfolioCycleTimePercentiles(entityId, range),
+          client.getPortfolioCycleTimeData(entityId, range),
+          client.getPortfolioPredictabilityScore(entityId, range),
+          client.getPortfolioTotalWorkItemAge(entityId, range.endDate),
+          client.getPortfolioTotalWorkItemAgePbc(entityId, range),
+        ];
+
+  const [
+    throughputResult,
+    arrivalsResult,
+    wipOverTimeResult,
+    currentWipResult,
+    cycleTimePercentilesResult,
+    cycleTimeDataResult,
+    predictabilityScoreResult,
+    totalWorkItemAgeResult,
+    totalWorkItemAgePbcResult,
+  ] = await Promise.allSettled(requests);
+
+  const throughputValue = getMetricValueOrError(throughputResult);
+  const arrivalsValue = getMetricValueOrError(arrivalsResult);
+  const wipOverTimeValue = getMetricValueOrError(wipOverTimeResult);
+  const currentWipValue = getMetricValueOrError(currentWipResult);
+  const cycleTimePercentilesValue = getMetricValueOrError(
+    cycleTimePercentilesResult,
+  );
+  const cycleTimeDataValue = getMetricValueOrError(cycleTimeDataResult);
+  const predictabilityScoreValue = getMetricValueOrError(
+    predictabilityScoreResult,
+  );
+  const totalWorkItemAgeValue = getMetricValueOrError(totalWorkItemAgeResult);
+  const totalWorkItemAgePbcValue = getMetricValueOrError(
+    totalWorkItemAgePbcResult,
+  );
+
+  const currentItems = isMetricErrorValue(currentWipValue)
+    ? currentWipValue
+    : getWorkItemList(currentWipValue);
+
+  return {
+    schemaVersion: 1,
+    scope,
+    id: entityId,
+    dateRange: range,
+    blocked: getMetricUnavailableValue(unavailableReason),
+    wip: {
+      current: isMetricErrorValue(currentItems)
+        ? currentItems
+        : {
+            asOfDate: range.endDate,
+            count: currentItems.length,
+            items: currentItems,
+          },
+      overTime: isMetricErrorValue(wipOverTimeValue)
+        ? wipOverTimeValue
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            daily: getDailyCountSeries(wipOverTimeValue, range.startDate),
+          },
+    },
+    throughput: isMetricErrorValue(throughputValue)
+      ? throughputValue
+      : {
+          startDate: range.startDate,
+          endDate: range.endDate,
+          total: getChartTotal(
+            throughputValue,
+            getDailyCountSeries(throughputValue, range.startDate),
+          ),
+          daily: getDailyCountSeries(throughputValue, range.startDate),
+        },
+    cycleTime: {
+      percentiles: isMetricErrorValue(cycleTimePercentilesValue)
+        ? cycleTimePercentilesValue
+        : { values: cycleTimePercentilesValue },
+      closedItems: isMetricErrorValue(cycleTimeDataValue)
+        ? cycleTimeDataValue
+        : { items: getWorkItemList(cycleTimeDataValue) },
+    },
+    workItemAge: isMetricErrorValue(currentItems)
+      ? currentItems
+      : {
+          asOfDate: range.endDate,
+          itemsInProgress: currentItems,
+        },
+    totalWorkItemAge: {
+      current: isMetricErrorValue(totalWorkItemAgeValue)
+        ? totalWorkItemAgeValue
+        : {
+            asOfDate: range.endDate,
+            value: totalWorkItemAgeValue,
+          },
+      daily: isMetricErrorValue(totalWorkItemAgePbcValue)
+        ? totalWorkItemAgePbcValue
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            points: getDailyValueSeries(totalWorkItemAgePbcValue),
+          },
+    },
+    arrivals: isMetricErrorValue(arrivalsValue)
+      ? arrivalsValue
+      : {
+          startDate: range.startDate,
+          endDate: range.endDate,
+          total: getChartTotal(
+            arrivalsValue,
+            getDailyCountSeries(arrivalsValue, range.startDate),
+          ),
+          daily: getDailyCountSeries(arrivalsValue, range.startDate),
+        },
+    workDistribution: getMetricUnavailableValue(unavailableReason),
+    predictabilityScore: isMetricErrorValue(predictabilityScoreValue)
+      ? predictabilityScoreValue
+      : getPredictabilityScorePayload(predictabilityScoreValue),
+  };
+};
+
+const runConnectionGroup = async (
+  action: string | undefined,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getConnectionGroupHelpText());
+  }
+
+  if (action === "connect") {
+    return runConnect(dependencies);
+  }
+
+  if (action === "disconnect") {
+    return runDisconnect(dependencies);
+  }
+
+  if (action === "status") {
+    return runConnectionStatus(dependencies);
+  }
+
+  return getUnknownSubcommandResult(
+    getConnectionGroupHelpText(),
+    "connection",
+    action,
+  );
+};
+
+const runTeamGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getTeamGroupHelpText());
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+
+  const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
+    list: async () =>
+      mapApiResultToCliResult(await client.listTeams(), outputFormat),
+    get: async () => {
+      const teamId = getRequiredIdOption(args, "--id");
+      if (teamId === null) {
+        return getErrorResult("Missing required --id for team get.");
+      }
+
+      return mapApiResultToCliResult(
+        await client.getTeam(teamId),
+        outputFormat,
+      );
+    },
+    create: async () => {
+      const payloadOrError = await getJsonPayload(
+        args,
+        dependencies,
+        "team create",
+      );
+      if (isCliCommandResult(payloadOrError)) {
+        return payloadOrError;
+      }
+
+      return mapApiResultToCliResult(
+        await client.createTeam(payloadOrError),
+        outputFormat,
+      );
+    },
+    update: async () => {
+      const teamId = getRequiredIdOption(args, "--id");
+      if (teamId === null) {
+        return getErrorResult("Missing required --id for team update.");
+      }
+
+      const payloadOrError = await getJsonPayload(
+        args,
+        dependencies,
+        "team update",
+      );
+      if (isCliCommandResult(payloadOrError)) {
+        return payloadOrError;
+      }
+
+      return mapApiResultToCliResult(
+        await client.updateTeam(teamId, payloadOrError),
+        outputFormat,
+      );
+    },
+    delete: async () => {
+      const teamId = getRequiredIdOption(args, "--id");
+      if (teamId === null) {
+        return getErrorResult("Missing required --id for team delete.");
+      }
+
+      const result = await client.deleteTeam(teamId);
+      if (!result.ok) {
+        return getErrorResult(
+          `${result.error.category}: ${result.error.reason}`,
+        );
+      }
+
+      return getSuccessResult(`Team deleted: ${teamId}`);
+    },
+    refresh: async () => {
+      const teamId = getRequiredIdOption(args, "--id");
+      if (teamId === null) {
+        return getErrorResult("Missing required --id for team refresh.");
+      }
+
+      const result = await client.refreshTeam(teamId);
+      if (!result.ok) {
+        return getErrorResult(
+          `${result.error.category}: ${result.error.reason}`,
+        );
+      }
+
+      return getSuccessResult(`Team refreshed: ${teamId}`);
+    },
+  };
+
+  const selectedHandler = actionHandlers[action];
+  if (selectedHandler === undefined) {
+    return getUnknownSubcommandResult(getTeamGroupHelpText(), "team", action);
+  }
+
+  return selectedHandler();
+};
+
+const runPortfolioGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getPortfolioGroupHelpText());
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+
+  const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
+    list: async () =>
+      mapApiResultToCliResult(await client.listPortfolios(), outputFormat),
+    get: async () => {
+      const portfolioId = getRequiredIdOption(args, "--id");
+      if (portfolioId === null) {
+        return getErrorResult("Missing required --id for portfolio get.");
+      }
+
+      return mapApiResultToCliResult(
+        await client.getPortfolio(portfolioId),
+        outputFormat,
+      );
+    },
+    create: async () => {
+      const payloadOrError = await getJsonPayload(
+        args,
+        dependencies,
+        "portfolio create",
+      );
+      if (isCliCommandResult(payloadOrError)) {
+        return payloadOrError;
+      }
+
+      return mapApiResultToCliResult(
+        await client.createPortfolio(payloadOrError),
+        outputFormat,
+      );
+    },
+    update: async () => {
+      const portfolioId = getRequiredIdOption(args, "--id");
+      if (portfolioId === null) {
+        return getErrorResult("Missing required --id for portfolio update.");
+      }
+
+      const payloadOrError = await getJsonPayload(
+        args,
+        dependencies,
+        "portfolio update",
+      );
+      if (isCliCommandResult(payloadOrError)) {
+        return payloadOrError;
+      }
+
+      return mapApiResultToCliResult(
+        await client.updatePortfolio(portfolioId, payloadOrError),
+        outputFormat,
+      );
+    },
+    delete: async () => {
+      const portfolioId = getRequiredIdOption(args, "--id");
+      if (portfolioId === null) {
+        return getErrorResult("Missing required --id for portfolio delete.");
+      }
+
+      const result = await client.deletePortfolio(portfolioId);
+      if (!result.ok) {
+        return getErrorResult(
+          `${result.error.category}: ${result.error.reason}`,
+        );
+      }
+
+      return getSuccessResult(`Portfolio deleted: ${portfolioId}`);
+    },
+    refresh: async () => {
+      const portfolioId = getRequiredIdOption(args, "--id");
+      if (portfolioId === null) {
+        return getErrorResult("Missing required --id for portfolio refresh.");
+      }
+
+      const result = await client.refreshPortfolio(portfolioId);
+      if (!result.ok) {
+        return getErrorResult(
+          `${result.error.category}: ${result.error.reason}`,
+        );
+      }
+
+      return getSuccessResult(`Portfolio refreshed: ${portfolioId}`);
+    },
+  };
+
+  const selectedHandler = actionHandlers[action];
+  if (selectedHandler === undefined) {
+    return getUnknownSubcommandResult(
+      getPortfolioGroupHelpText(),
+      "portfolio",
+      action,
+    );
+  }
+
+  return selectedHandler();
+};
+
+const runManualForecastCommand = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const teamIdRaw = getRequiredTextOption(args, "--team-id");
+  if (teamIdRaw === null) {
+    return getErrorResult("Missing required --team-id for forecast manual.");
+  }
+
+  const teamId = Number.parseInt(teamIdRaw, 10);
+  if (Number.isNaN(teamId)) {
+    return getErrorResult("Invalid --team-id for forecast manual.");
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const remainingRaw = getOptionValue(args, "--remaining");
+  const remaining =
+    remainingRaw === undefined ? undefined : Number.parseInt(remainingRaw, 10);
+  const client = dependencies.createClient(connectionOrError);
+  return mapApiResultToCliResult(
+    await client.runManualForecast(teamId, {
+      remainingItems: remaining,
+      targetDate: getOptionValue(args, "--target-date"),
+    }),
+    outputFormat,
+  );
+};
+
+const runBacktestForecastCommand = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const teamIdRaw = getRequiredTextOption(args, "--team-id");
+  if (teamIdRaw === null) {
+    return getErrorResult("Missing required --team-id for forecast backtest.");
+  }
+
+  const teamId = Number.parseInt(teamIdRaw, 10);
+  if (Number.isNaN(teamId)) {
+    return getErrorResult("Invalid --team-id for forecast backtest.");
+  }
+
+  const startDate = getRequiredTextOption(args, "--start-date");
+  const endDate = getRequiredTextOption(args, "--end-date");
+  const histStartDate = getRequiredTextOption(args, "--hist-start-date");
+  const histEndDate = getRequiredTextOption(args, "--hist-end-date");
+  if (
+    startDate === null ||
+    endDate === null ||
+    histStartDate === null ||
+    histEndDate === null
+  ) {
+    return getErrorResult(
+      "Missing required --start-date, --end-date, --hist-start-date, or --hist-end-date for forecast backtest.",
+    );
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+  return mapApiResultToCliResult(
+    await client.runBacktest(teamId, {
+      startDate,
+      endDate,
+      historicalStartDate: histStartDate,
+      historicalEndDate: histEndDate,
+    }),
+    outputFormat,
+  );
+};
+
+const runMetricsGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getMetricsGroupHelpText());
+  }
+
+  if (action !== "team" && action !== "portfolio") {
+    return getUnknownSubcommandResult(
+      getMetricsGroupHelpText(),
+      "metrics",
+      action,
+    );
+  }
+
+  const entityId = getRequiredIdOption(args, "--id");
+  if (entityId === null) {
+    return getErrorResult(`Missing required --id for metrics ${action}.`);
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+  const range = getResolvedMetricsDateRange(args, action === "team" ? 30 : 90);
+  const payload = await buildMetricsPayload(action, entityId, range, client);
+  return mapApiResultToCliResult({ ok: true, value: payload }, outputFormat);
+};
+
+const runWorktrackingGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getWorktrackingGroupHelpText());
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+
+  if (action === "list") {
+    return mapApiResultToCliResult(
+      await client.listWorkTrackingConnections(),
+      outputFormat,
+    );
+  }
+
+  if (action === "get") {
+    const connectionId = getRequiredIdOption(args, "--id");
+    if (connectionId === null) {
+      return getErrorResult("Missing required --id for worktracking get.");
+    }
+
+    return mapApiResultToCliResult(
+      await client.getWorkTrackingConnection(connectionId),
+      outputFormat,
+    );
+  }
+
+  return getUnknownSubcommandResult(
+    getWorktrackingGroupHelpText(),
+    "worktracking",
+    action,
+  );
+};
+
+const runFeatureGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getFeatureGroupHelpText());
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+
+  if (action === "get") {
+    const idsRaw = getOptionValue(args, "--ids");
+    if (idsRaw !== undefined) {
+      const ids = idsRaw
+        .split(",")
+        .map((entry) => Number.parseInt(entry.trim(), 10))
+        .filter((entry) => !Number.isNaN(entry));
+      return mapApiResultToCliResult(
+        await client.getFeaturesByIds(ids),
+        outputFormat,
+      );
+    }
+
+    const refsRaw = getOptionValue(args, "--refs");
+    if (refsRaw !== undefined) {
+      const refs = refsRaw
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+      return mapApiResultToCliResult(
+        await client.getFeaturesByReferences(refs),
+        outputFormat,
+      );
+    }
+
+    return getErrorResult("Missing required --ids or --refs for feature get.");
+  }
+
+  if (action === "workitems") {
+    const featureId = getRequiredIdOption(args, "--id");
+    if (featureId === null) {
+      return getErrorResult("Missing required --id for feature workitems.");
+    }
+
+    return mapApiResultToCliResult(
+      await client.getFeatureWorkItems(featureId),
+      outputFormat,
+    );
+  }
+
+  return getUnknownSubcommandResult(
+    getFeatureGroupHelpText(),
+    "feature",
+    action,
+  );
+};
+
+const runDeliveryGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getDeliveryGroupHelpText());
+  }
+
+  if (action !== "list") {
+    return getUnknownSubcommandResult(
+      getDeliveryGroupHelpText(),
+      "delivery",
+      action,
+    );
+  }
+
+  const portfolioId = getRequiredIdOption(args, "--portfolio-id");
+  if (portfolioId === null) {
+    return getErrorResult("Missing required --portfolio-id for delivery list.");
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+  return mapApiResultToCliResult(
+    await client.listDeliveries(portfolioId),
+    outputFormat,
+  );
+};
+
+const runForecastGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getForecastGroupHelpText());
+  }
+
+  switch (action) {
+    case "manual":
+      return runManualForecastCommand(args, outputFormat, dependencies);
+    case "backtest":
+      return runBacktestForecastCommand(args, outputFormat, dependencies);
+    default:
+      return getUnknownSubcommandResult(
+        getForecastGroupHelpText(),
+        "forecast",
+        action,
+      );
+  }
+};
+
+const runConfigGroup = async (
+  action: string | undefined,
+  subject: string | undefined,
+  args: readonly string[],
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getConfigGroupHelpText());
+  }
+
+  if (action !== "output") {
+    return getUnknownSubcommandResult(
+      getConfigGroupHelpText(),
+      "config",
+      action,
+    );
+  }
+
+  if (subject === undefined || subject === "get") {
+    const currentOutputFormat =
+      (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
+    return getSuccessResult(`Default output format: ${currentOutputFormat}`);
+  }
+
+  if (subject === "set") {
+    const configuredFormat = getOptionValue(args, "--format");
+    if (!isOutputFormat(configuredFormat)) {
+      return getErrorResult(
+        "Missing or invalid --format. Use one of: pretty, toon, json.",
+      );
+    }
+
+    await dependencies.saveOutputFormat(configuredFormat);
+    return getSuccessResult(
+      `Default output format set to ${configuredFormat}.`,
+    );
+  }
+
+  return getUnknownSubcommandResult(
+    getConfigGroupHelpText(),
+    "config output",
+    subject,
+  );
+};
+
+const runHealthGroup = async (
+  action: string | undefined,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getHealthGroupHelpText());
+  }
+
+  if (action !== "check") {
+    return getUnknownSubcommandResult(
+      getHealthGroupHelpText(),
+      "health",
+      action,
+    );
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+  const health = await client.checkConnectivity();
+  if (health.category === "success") {
+    return getSuccessResult("success");
+  }
+
+  return getErrorResult(`${health.category}: ${health.reason}`);
+};
+
+const runVersionGroup = async (
+  action: string | undefined,
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getVersionGroupHelpText());
+  }
+
+  if (action !== "get") {
+    return getUnknownSubcommandResult(
+      getVersionGroupHelpText(),
+      "version",
+      action,
+    );
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+  return mapApiResultToCliResult(await client.getVersion(), outputFormat);
 };
 
 // ── main command router ───────────────────────────────────────────────────────
@@ -625,359 +1757,48 @@ export const runCliCommand = async (
   const positionalArgs = stripOutputFormatFlags(args);
   const [scope, action, subject] = positionalArgs;
 
-  // ── Connection management ─────────────────────────────────────────────────
-
-  if (scope === "connect") {
-    return runConnect(dependencies);
-  }
-
   if (scope === "connection") {
-    return runConnectionStatus(dependencies);
+    return runConnectionGroup(action, dependencies);
   }
 
-  if (scope === "disconnect") {
-    return runDisconnect(dependencies);
+  if (scope === "team") {
+    return runTeamGroup(action, args, outputFormat, dependencies);
   }
 
-  if (scope === "config" && action === "output") {
-    if (subject === undefined || subject === "get") {
-      const currentOutputFormat =
-        (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
-      return getSuccessResult(`Default output format: ${currentOutputFormat}`);
-    }
-
-    if (subject === "set") {
-      const configuredFormat = getOptionValue(args, "--format");
-      if (!isOutputFormat(configuredFormat)) {
-        return getErrorResult(
-          "Missing or invalid --format. Use one of: pretty, toon, json.",
-        );
-      }
-
-      await dependencies.saveOutputFormat(configuredFormat);
-      return getSuccessResult(
-        `Default output format set to ${configuredFormat}.`,
-      );
-    }
-
-    return getErrorResult(
-      `Unknown config output subcommand: ${subject ?? "(none)"}`,
-    );
+  if (scope === "portfolio") {
+    return runPortfolioGroup(action, args, outputFormat, dependencies);
   }
 
-  // ── Health & version ──────────────────────────────────────────────────────
-
-  if (scope === "health" && action === "check") {
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const health = await client.checkConnectivity();
-    if (health.category === "success") {
-      return getSuccessResult("success");
-    }
-    return getErrorResult(`${health.category}: ${health.reason}`);
+  if (scope === "metrics") {
+    return runMetricsGroup(action, args, outputFormat, dependencies);
   }
 
-  if (scope === "version" && action === "get") {
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const versionResult = await client.getVersion();
-    return mapApiResultToCliResult(versionResult, outputFormat);
+  if (scope === "delivery") {
+    return runDeliveryGroup(action, args, outputFormat, dependencies);
   }
 
-  // ── Work tracking ─────────────────────────────────────────────────────────
-
-  if (scope === "worktracking" && action === "list") {
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.listWorkTrackingConnections();
-    return mapApiResultToCliResult(result, outputFormat);
+  if (scope === "forecast") {
+    return runForecastGroup(action, args, outputFormat, dependencies);
   }
 
-  if (scope === "worktracking" && action === "get") {
-    const connectionId = getRequiredIdOption(args, "--id");
-    if (connectionId === null) {
-      return getErrorResult("Missing required --id for worktracking get.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.getWorkTrackingConnection(connectionId);
-    return mapApiResultToCliResult(result, outputFormat);
+  if (scope === "worktracking") {
+    return runWorktrackingGroup(action, args, outputFormat, dependencies);
   }
 
-  // ── Teams ─────────────────────────────────────────────────────────────────
-
-  if (scope === "team" && action === "list") {
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.listTeams();
-    return mapApiResultToCliResult(result, outputFormat);
+  if (scope === "feature") {
+    return runFeatureGroup(action, args, outputFormat, dependencies);
   }
 
-  if (scope === "team" && action === "get") {
-    const teamId = getRequiredIdOption(args, "--id");
-    if (teamId === null) {
-      return getErrorResult("Missing required --id for team get.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.getTeam(teamId);
-    return mapApiResultToCliResult(result, outputFormat);
+  if (scope === "config") {
+    return runConfigGroup(action, subject, args, dependencies);
   }
 
-  if (scope === "team" && action === "refresh") {
-    const teamId = getRequiredIdOption(args, "--id");
-    if (teamId === null) {
-      return getErrorResult("Missing required --id for team refresh.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.refreshTeam(teamId);
-    if (!result.ok) {
-      return getErrorResult(`${result.error.category}: ${result.error.reason}`);
-    }
-    return getSuccessResult(`Team refreshed: ${teamId}`);
+  if (scope === "health") {
+    return runHealthGroup(action, dependencies);
   }
 
-  if (scope === "team" && action === "metrics") {
-    const teamId = getRequiredIdOption(args, "--id");
-    if (teamId === null) {
-      return getErrorResult("Missing required --id for team metrics.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const startDate = getOptionValue(args, "--start-date");
-    const endDate = getOptionValue(args, "--end-date");
-    const range =
-      startDate !== undefined && endDate !== undefined
-        ? { startDate, endDate }
-        : getDefaultMetricsDateRange();
-    const client = dependencies.createClient(connectionOrError);
-    if (subject === "throughput") {
-      const result = await client.getTeamThroughput(teamId, range);
-      return mapApiResultToCliResult(result, outputFormat);
-    }
-    if (subject === "cycleTimePercentiles") {
-      const result = await client.getTeamCycleTimePercentiles(teamId, range);
-      return mapApiResultToCliResult(result, outputFormat);
-    }
-    return getErrorResult(
-      `Unknown team metrics subcommand: ${subject ?? "(none)"}`,
-    );
-  }
-
-  // ── Portfolios ────────────────────────────────────────────────────────────
-
-  if (scope === "portfolio" && action === "list") {
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.listPortfolios();
-    return mapApiResultToCliResult(result, outputFormat);
-  }
-
-  if (scope === "portfolio" && action === "get") {
-    const portfolioId = getRequiredIdOption(args, "--id");
-    if (portfolioId === null) {
-      return getErrorResult("Missing required --id for portfolio get.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.getPortfolio(portfolioId);
-    return mapApiResultToCliResult(result, outputFormat);
-  }
-
-  if (scope === "portfolio" && action === "refresh") {
-    const portfolioId = getRequiredIdOption(args, "--id");
-    if (portfolioId === null) {
-      return getErrorResult("Missing required --id for portfolio refresh.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.refreshPortfolio(portfolioId);
-    if (!result.ok) {
-      return getErrorResult(`${result.error.category}: ${result.error.reason}`);
-    }
-    return getSuccessResult(`Portfolio refreshed: ${portfolioId}`);
-  }
-
-  if (scope === "portfolio" && action === "metrics") {
-    const portfolioId = getRequiredIdOption(args, "--id");
-    if (portfolioId === null) {
-      return getErrorResult("Missing required --id for portfolio metrics.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const startDate = getOptionValue(args, "--start-date");
-    const endDate = getOptionValue(args, "--end-date");
-    const range =
-      startDate !== undefined && endDate !== undefined
-        ? { startDate, endDate }
-        : getDefaultMetricsDateRange();
-    const client = dependencies.createClient(connectionOrError);
-    if (subject === "throughput") {
-      const result = await client.getPortfolioThroughput(portfolioId, range);
-      return mapApiResultToCliResult(result, outputFormat);
-    }
-    return getErrorResult(
-      `Unknown portfolio metrics subcommand: ${subject ?? "(none)"}`,
-    );
-  }
-
-  // ── Features ──────────────────────────────────────────────────────────────
-
-  if (scope === "feature" && action === "get") {
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const idsRaw = getOptionValue(args, "--ids");
-    if (idsRaw !== undefined) {
-      const ids = idsRaw
-        .split(",")
-        .map((s) => Number.parseInt(s.trim(), 10))
-        .filter((n) => !Number.isNaN(n));
-      const result = await client.getFeaturesByIds(ids);
-      return mapApiResultToCliResult(result, outputFormat);
-    }
-    const refsRaw = getOptionValue(args, "--refs");
-    if (refsRaw !== undefined) {
-      const refs = refsRaw
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      const result = await client.getFeaturesByReferences(refs);
-      return mapApiResultToCliResult(result, outputFormat);
-    }
-    return getErrorResult("Missing required --ids or --refs for feature get.");
-  }
-
-  if (scope === "feature" && action === "workitems") {
-    const featureId = getRequiredIdOption(args, "--id");
-    if (featureId === null) {
-      return getErrorResult("Missing required --id for feature workitems.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.getFeatureWorkItems(featureId);
-    return mapApiResultToCliResult(result, outputFormat);
-  }
-
-  // ── Deliveries ────────────────────────────────────────────────────────────
-
-  if (scope === "delivery" && action === "list") {
-    const portfolioId = getRequiredIdOption(args, "--portfolio-id");
-    if (portfolioId === null) {
-      return getErrorResult(
-        "Missing required --portfolio-id for delivery list.",
-      );
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.listDeliveries(portfolioId);
-    return mapApiResultToCliResult(result, outputFormat);
-  }
-
-  // ── Forecasts ─────────────────────────────────────────────────────────────
-
-  if (scope === "forecast" && action === "manual") {
-    const teamIdRaw = getOptionValue(args, "--team-id");
-    if (teamIdRaw === undefined) {
-      return getErrorResult("Missing required --team-id for forecast manual.");
-    }
-    const teamId = Number.parseInt(teamIdRaw, 10);
-    if (Number.isNaN(teamId)) {
-      return getErrorResult("Invalid --team-id for forecast manual.");
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const remainingRaw = getOptionValue(args, "--remaining");
-    const targetDate = getOptionValue(args, "--target-date");
-    const remaining =
-      remainingRaw === undefined
-        ? undefined
-        : Number.parseInt(remainingRaw, 10);
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.runManualForecast(teamId, {
-      remainingItems: remaining,
-      targetDate,
-    });
-    return mapApiResultToCliResult(result, outputFormat);
-  }
-
-  if (scope === "forecast" && action === "backtest") {
-    const teamIdRaw = getOptionValue(args, "--team-id");
-    if (teamIdRaw === undefined) {
-      return getErrorResult(
-        "Missing required --team-id for forecast backtest.",
-      );
-    }
-    const teamId = Number.parseInt(teamIdRaw, 10);
-    if (Number.isNaN(teamId)) {
-      return getErrorResult("Invalid --team-id for forecast backtest.");
-    }
-    const startDate = getOptionValue(args, "--start-date");
-    const endDate = getOptionValue(args, "--end-date");
-    const histStartDate = getOptionValue(args, "--hist-start-date");
-    const histEndDate = getOptionValue(args, "--hist-end-date");
-    if (!startDate || !endDate || !histStartDate || !histEndDate) {
-      return getErrorResult(
-        "Missing required --start-date, --end-date, --hist-start-date, or --hist-end-date for forecast backtest.",
-      );
-    }
-    const connectionOrError = await requireConnection(dependencies);
-    if (isCliCommandResult(connectionOrError)) {
-      return connectionOrError;
-    }
-    const client = dependencies.createClient(connectionOrError);
-    const result = await client.runBacktest(teamId, {
-      startDate,
-      endDate,
-      historicalStartDate: histStartDate,
-      historicalEndDate: histEndDate,
-    });
-    return mapApiResultToCliResult(result, outputFormat);
+  if (scope === "version") {
+    return runVersionGroup(action, outputFormat, dependencies);
   }
 
   if (scope === "help") {
@@ -993,6 +1814,9 @@ export const getDefaultDependencies = (): RunCliCommandDependencies => ({
   saveConnection: async () => undefined,
   loadOutputFormat: async () => null,
   saveOutputFormat: async () => undefined,
+  readTextFile: async () => {
+    throw new Error("No file reader configured.");
+  },
   prompt: async () => "",
   openBrowser: async () => undefined,
   validateConnectivity: async () => ({

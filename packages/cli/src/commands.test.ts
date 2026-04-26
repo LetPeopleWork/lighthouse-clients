@@ -6,7 +6,7 @@ import type {
   ConnectivityValidationResult,
   ServerAuthModeResult,
 } from "@letpeoplework/lighthouse-client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
 import type { OutputFormat } from "./output";
 
@@ -50,6 +50,21 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
+  readonly createTeam: (payload: unknown) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly updateTeam: (
+    id: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly deleteTeam: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: undefined;
+  }>;
   readonly refreshTeam: (id: number) => Promise<{
     readonly ok: true;
     readonly value: undefined;
@@ -62,6 +77,21 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
+  readonly createPortfolio: (payload: unknown) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly updatePortfolio: (
+    id: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly deletePortfolio: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: undefined;
+  }>;
   readonly refreshPortfolio: (id: number) => Promise<{
     readonly ok: true;
     readonly value: undefined;
@@ -73,6 +103,27 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
+  readonly getTeamArrivals: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getTeamWipOverTime: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getTeamWip: (
+    id: number,
+    asOfDate: string,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
   readonly getTeamCycleTimePercentiles: (
     id: number,
     range?: unknown,
@@ -80,7 +131,91 @@ type MockClient = {
     readonly ok: true;
     readonly value: readonly unknown[];
   }>;
+  readonly getTeamCycleTimeData: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getTeamPredictabilityScore: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getTeamTotalWorkItemAge: (
+    id: number,
+    asOfDate: string,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: number;
+  }>;
+  readonly getTeamTotalWorkItemAgePbc: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
   readonly getPortfolioThroughput: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getPortfolioCycleTimePercentiles: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getPortfolioArrivals: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getPortfolioWipOverTime: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getPortfolioWip: (
+    id: number,
+    asOfDate: string,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getPortfolioCycleTimeData: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly getPortfolioPredictabilityScore: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly getPortfolioTotalWorkItemAge: (
+    id: number,
+    asOfDate: string,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: number;
+  }>;
+  readonly getPortfolioTotalWorkItemAgePbc: (
     id: number,
     range?: unknown,
   ) => Promise<{
@@ -150,6 +285,12 @@ const getDefaultMockClient = (): MockClient => ({
   }),
   listTeams: async () => ({ ok: true, value: [{ id: 1, name: "Team A" }] }),
   getTeam: async (id: number) => ({ ok: true, value: { id, name: "Team A" } }),
+  createTeam: async (payload: unknown) => ({ ok: true, value: payload }),
+  updateTeam: async (id: number, payload: unknown) => ({
+    ok: true,
+    value: { id, ...((payload as Record<string, unknown>) ?? {}) },
+  }),
+  deleteTeam: async () => ({ ok: true, value: undefined }),
   refreshTeam: async () => ({ ok: true, value: undefined }),
   listPortfolios: async () => ({
     ok: true,
@@ -159,10 +300,61 @@ const getDefaultMockClient = (): MockClient => ({
     ok: true,
     value: { id, name: "Portfolio A" },
   }),
+  createPortfolio: async (payload: unknown) => ({ ok: true, value: payload }),
+  updatePortfolio: async (id: number, payload: unknown) => ({
+    ok: true,
+    value: { id, ...((payload as Record<string, unknown>) ?? {}) },
+  }),
+  deletePortfolio: async () => ({ ok: true, value: undefined }),
   refreshPortfolio: async () => ({ ok: true, value: undefined }),
-  getTeamThroughput: async () => ({ ok: true, value: {} }),
+  getTeamThroughput: async () => ({
+    ok: true,
+    value: { total: 0, workItemsPerUnitOfTime: {} },
+  }),
+  getTeamArrivals: async () => ({
+    ok: true,
+    value: { total: 0, workItemsPerUnitOfTime: {} },
+  }),
+  getTeamWipOverTime: async () => ({
+    ok: true,
+    value: { total: 0, workItemsPerUnitOfTime: {} },
+  }),
+  getTeamWip: async () => ({ ok: true, value: [] }),
   getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-  getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+  getTeamCycleTimeData: async () => ({ ok: true, value: [] }),
+  getTeamPredictabilityScore: async () => ({
+    ok: true,
+    value: { predictabilityScore: 1 },
+  }),
+  getTeamTotalWorkItemAge: async () => ({ ok: true, value: 0 }),
+  getTeamTotalWorkItemAgePbc: async () => ({
+    ok: true,
+    value: { dataPoints: [] },
+  }),
+  getPortfolioThroughput: async () => ({
+    ok: true,
+    value: { total: 0, workItemsPerUnitOfTime: {} },
+  }),
+  getPortfolioCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+  getPortfolioArrivals: async () => ({
+    ok: true,
+    value: { total: 0, workItemsPerUnitOfTime: {} },
+  }),
+  getPortfolioWipOverTime: async () => ({
+    ok: true,
+    value: { total: 0, workItemsPerUnitOfTime: {} },
+  }),
+  getPortfolioWip: async () => ({ ok: true, value: [] }),
+  getPortfolioCycleTimeData: async () => ({ ok: true, value: [] }),
+  getPortfolioPredictabilityScore: async () => ({
+    ok: true,
+    value: { predictabilityScore: 1 },
+  }),
+  getPortfolioTotalWorkItemAge: async () => ({ ok: true, value: 0 }),
+  getPortfolioTotalWorkItemAgePbc: async () => ({
+    ok: true,
+    value: { dataPoints: [] },
+  }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),
@@ -197,6 +389,7 @@ const getDependencies = (overrides?: {
     sessionId: string,
     insecure?: boolean,
   ) => Promise<CliAuthSessionPollResult>;
+  readonly readTextFile?: (filePath: string) => Promise<string>;
 }): {
   readonly dependencies: RunCliCommandDependencies;
   readonly getSavedConnection: () => CliConnection | null;
@@ -218,6 +411,11 @@ const getDependencies = (overrides?: {
       saveOutputFormat: async (outputFormat: OutputFormat) => {
         savedOutputFormat = outputFormat;
       },
+      readTextFile:
+        overrides?.readTextFile ??
+        (async (filePath: string) => {
+          throw new Error(`File not mocked: ${filePath}`);
+        }),
       prompt: async () => promptQueue.shift() ?? "",
       openBrowser: async () => undefined,
       validateConnectivity:
@@ -271,7 +469,7 @@ describe("runCliCommand", () => {
       promptResponses: ["1", "http://localhost:5000"],
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("http://localhost:5000");
@@ -299,7 +497,7 @@ describe("runCliCommand", () => {
       }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("alice");
@@ -334,7 +532,7 @@ describe("runCliCommand", () => {
       }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("bob");
@@ -355,7 +553,7 @@ describe("runCliCommand", () => {
       }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Cannot reach server");
@@ -366,7 +564,7 @@ describe("runCliCommand", () => {
       promptResponses: ["2"],
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("standalone Lighthouse");
@@ -385,7 +583,7 @@ describe("runCliCommand", () => {
       }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Cannot reach standalone Lighthouse");
@@ -402,7 +600,7 @@ describe("runCliCommand", () => {
       }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain(
@@ -440,7 +638,7 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(connectivityAttempts).toEqual([undefined, true]);
@@ -457,7 +655,7 @@ describe("runCliCommand", () => {
       }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Premium license required");
@@ -476,7 +674,7 @@ describe("runCliCommand", () => {
       pollCliAuthSession: async () => ({ status: "denied" as const }),
     });
 
-    const result = await runCliCommand(["connect"], dependencies);
+    const result = await runCliCommand(["connection", "connect"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("timed out or was denied");
@@ -493,7 +691,7 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["connection"], dependencies);
+    const result = await runCliCommand(["connection", "status"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("http://localhost:5000");
@@ -511,7 +709,7 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["connection"], dependencies);
+    const result = await runCliCommand(["connection", "status"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("token stored");
@@ -525,7 +723,7 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["connection"], dependencies);
+    const result = await runCliCommand(["connection", "status"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Connected to: standalone Lighthouse");
@@ -542,7 +740,10 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["disconnect"], dependencies);
+    const result = await runCliCommand(
+      ["connection", "disconnect"],
+      dependencies,
+    );
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Disconnected from standalone Lighthouse.");
@@ -558,7 +759,10 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["disconnect"], dependencies);
+    const result = await runCliCommand(
+      ["connection", "disconnect"],
+      dependencies,
+    );
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Disconnected");
@@ -568,7 +772,10 @@ describe("runCliCommand", () => {
   it("disconnect returns not-connected error when no connection is saved", async () => {
     const { dependencies } = getDependencies();
 
-    const result = await runCliCommand(["disconnect"], dependencies);
+    const result = await runCliCommand(
+      ["connection", "disconnect"],
+      dependencies,
+    );
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Not connected");
@@ -580,11 +787,9 @@ describe("runCliCommand", () => {
     const result = await runCliCommand([], dependencies);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(
-      "You must be connected before running commands",
-    );
+    expect(result.stdout).toContain("Connection: not connected");
     expect(result.stdout).toContain("Default output: pretty");
-    expect(result.stdout).toContain("lh connect");
+    expect(result.stdout).toContain("lh connection connect");
   });
 
   it("bare usage shows connection summary and commands when connected", async () => {
@@ -607,7 +812,7 @@ describe("runCliCommand", () => {
     expect(result.stdout).toContain(
       "TLS: insecure certificate verification enabled",
     );
-    expect(result.stdout).toContain("lh health check");
+    expect(result.stdout).toContain("Top-level groups:");
   });
 
   it("shows configured output format in bare usage when connected", async () => {
@@ -629,7 +834,7 @@ describe("runCliCommand", () => {
   it("connection shows not-connected when no connection is saved", async () => {
     const { dependencies } = getDependencies();
 
-    const result = await runCliCommand(["connection"], dependencies);
+    const result = await runCliCommand(["connection", "status"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Not connected");
@@ -792,6 +997,30 @@ describe("runCliCommand", () => {
     expect(result.stdout).toContain("Team refreshed");
   });
 
+  it("creates a team from payload json", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "team",
+        "create",
+        "--json",
+        "--payload-json",
+        '{"name":"Team B","workTrackingSystemId":100}',
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('"name":"Team B"');
+  });
+
   it("lists portfolios", async () => {
     const { dependencies } = getDependencies({
       connection: {
@@ -833,8 +1062,66 @@ describe("runCliCommand", () => {
     expect(refreshResult.stdout).toContain("Portfolio refreshed");
   });
 
-  it("gets team throughput metrics with explicit dates", async () => {
-    const throughputData = { labels: ["2026-01-01"], data: [3] };
+  it("updates a portfolio from payload file", async () => {
+    const updatePortfolio = vi.fn(async () => ({
+      ok: true as const,
+      value: { id: 7, name: "Portfolio B" },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        updatePortfolio,
+      },
+      readTextFile: async () => '{"name":"Portfolio B"}',
+    });
+
+    const result = await runCliCommand(
+      ["portfolio", "update", "--id", "7", "--payload-file", "payload.json"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(updatePortfolio).toHaveBeenCalledWith(7, { name: "Portfolio B" });
+  });
+
+  it("gets bundled team metrics with explicit dates", async () => {
+    const throughputData = {
+      total: 3,
+      workItemsPerUnitOfTime: {
+        0: [{ id: 1 }],
+        1: [{ id: 2 }, { id: 3 }],
+      },
+    };
+    const arrivalsData = {
+      total: 2,
+      workItemsPerUnitOfTime: {
+        0: [{ id: 4 }],
+        1: [{ id: 5 }],
+      },
+    };
+    const wipOverTime = {
+      total: 3,
+      workItemsPerUnitOfTime: {
+        0: [{ id: 1 }],
+        1: [{ id: 1 }, { id: 2 }],
+      },
+    };
+    const currentItems = [{ id: 10, workItemAge: 4 }];
+    const percentiles = [{ percentile: 50, value: 4 }];
+    const closedItems = [{ id: 11, cycleTime: 7 }];
+    const predictability = {
+      predictabilityScore: 1.25,
+      percentiles,
+      forecastResults: { 5: 2 },
+    };
+    const totalWorkItemAgePbc = {
+      dataPoints: [{ xValue: "2026-01-01", yValue: 4, workItemIds: [10] }],
+    };
     const { dependencies } = getDependencies({
       connection: {
         mode: "server",
@@ -844,51 +1131,30 @@ describe("runCliCommand", () => {
       client: {
         ...getDefaultMockClient(),
         getTeamThroughput: async () => ({ ok: true, value: throughputData }),
-      },
-    });
-
-    const result = await runCliCommand(
-      [
-        "team",
-        "metrics",
-        "throughput",
-        "--id",
-        "1",
-        "--json",
-        "--start-date",
-        "2026-01-01",
-        "--end-date",
-        "2026-03-31",
-      ],
-      dependencies,
-    );
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(JSON.stringify(throughputData));
-  });
-
-  it("gets team cycle-time percentiles", async () => {
-    const percentiles = [{ percentile: 50, value: 4 }];
-    const { dependencies } = getDependencies({
-      connection: {
-        mode: "server",
-        endpointUrl: "http://localhost:5000",
-        authMode: "disabled",
-      },
-      client: {
-        ...getDefaultMockClient(),
+        getTeamArrivals: async () => ({ ok: true, value: arrivalsData }),
+        getTeamWipOverTime: async () => ({ ok: true, value: wipOverTime }),
+        getTeamWip: async () => ({ ok: true, value: currentItems }),
         getTeamCycleTimePercentiles: async () => ({
           ok: true,
           value: percentiles,
         }),
+        getTeamCycleTimeData: async () => ({ ok: true, value: closedItems }),
+        getTeamPredictabilityScore: async () => ({
+          ok: true,
+          value: predictability,
+        }),
+        getTeamTotalWorkItemAge: async () => ({ ok: true, value: 4 }),
+        getTeamTotalWorkItemAgePbc: async () => ({
+          ok: true,
+          value: totalWorkItemAgePbc,
+        }),
       },
     });
 
     const result = await runCliCommand(
       [
-        "team",
         "metrics",
-        "cycleTimePercentiles",
+        "team",
         "--id",
         "1",
         "--json",
@@ -901,11 +1167,31 @@ describe("runCliCommand", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(JSON.stringify(percentiles));
+    const payload = JSON.parse(result.stdout) as Record<string, unknown> & {
+      readonly throughput: Record<string, unknown>;
+      readonly wip: Record<string, unknown>;
+      readonly cycleTime: Record<string, unknown>;
+      readonly blocked: Record<string, unknown>;
+    };
+    expect(payload.scope).toBe("team");
+    expect(payload.id).toBe(1);
+    expect((payload.throughput.total as number) ?? 0).toBe(3);
+    expect(payload.blocked.status).toBe("unavailable");
+    expect((payload.wip.current as Record<string, unknown>).count).toBe(1);
+    expect(
+      (
+        (payload.cycleTime.percentiles as Record<string, unknown>)
+          .values as unknown[]
+      ).length,
+    ).toBe(1);
   });
 
-  it("gets portfolio throughput metrics", async () => {
-    const throughputData = { labels: [], data: [] };
+  it("reuses a single team metrics date for start and end", async () => {
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const getTeamWip = vi.fn(async () => ({ ok: true as const, value: [] }));
     const { dependencies } = getDependencies({
       connection: {
         mode: "server",
@@ -914,31 +1200,57 @@ describe("runCliCommand", () => {
       },
       client: {
         ...getDefaultMockClient(),
-        getPortfolioThroughput: async () => ({
-          ok: true,
-          value: throughputData,
-        }),
+        getTeamThroughput,
+        getTeamWip,
       },
     });
 
     const result = await runCliCommand(
-      [
-        "portfolio",
-        "metrics",
-        "throughput",
-        "--id",
-        "7",
-        "--json",
-        "--start-date",
-        "2026-01-01",
-        "--end-date",
-        "2026-03-31",
-      ],
+      ["metrics", "team", "--id", "1", "--json", "--start-date", "2026-01-01"],
       dependencies,
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(JSON.stringify(throughputData));
+    expect(getTeamThroughput).toHaveBeenCalledWith(1, {
+      startDate: "2026-01-01",
+      endDate: "2026-01-01",
+    });
+    expect(getTeamWip).toHaveBeenCalledWith(1, "2026-01-01");
+  });
+
+  it("uses a 90 day default range for bundled portfolio metrics", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-26T00:00:00.000Z"));
+    const getPortfolioThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getPortfolioThroughput,
+      },
+    });
+
+    try {
+      const result = await runCliCommand(
+        ["metrics", "portfolio", "--id", "7", "--json"],
+        dependencies,
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(getPortfolioThroughput).toHaveBeenCalledWith(7, {
+        startDate: "2026-01-26",
+        endDate: "2026-04-26",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("gets features by ids", async () => {
@@ -1218,7 +1530,10 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["connection", "--json"], dependencies);
+    const result = await runCliCommand(
+      ["connection", "status", "--json"],
+      dependencies,
+    );
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Connected to: http://localhost:5000");
@@ -1234,10 +1549,7 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(
-      ["team", "metrics", "throughput"],
-      dependencies,
-    );
+    const result = await runCliCommand(["metrics", "team"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("--id");

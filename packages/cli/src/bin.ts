@@ -252,6 +252,7 @@ export const runCli = async (
         outputFormat,
       });
     },
+    readTextFile: async (filePath) => readFile(filePath, "utf8"),
     prompt,
     openBrowser,
     validateConnectivity: async (url, insecure) =>

@@ -619,24 +619,6 @@ const mapAuthMode = (serverMode: string): CliServerAuthMode => {
   }
 };
 
-const getAuthStartFailureCategory = (
-  statusCode: number,
-): Exclude<ConnectivityCategory, "success" | "unreachable"> => {
-  if (statusCode === 401 || statusCode === 403) {
-    return "unauthorized";
-  }
-
-  if (statusCode === 404) {
-    return "misconfigured";
-  }
-
-  if (statusCode >= 500 && statusCode <= 599) {
-    return "dependency-failure";
-  }
-
-  return "unexpected";
-};
-
 const getErrorReasonFromResponse = async (
   response: ConnectivityFetchResponse,
   fallback: string,
@@ -717,7 +699,7 @@ export const startCliAuthSession = async (
     if (!response.ok) {
       return {
         status: "error",
-        category: getAuthStartFailureCategory(response.status),
+        category: getFailureCategoryForStatus(response.status),
         reason: await getErrorReasonFromResponse(
           response,
           `HTTP ${response.status}`,
@@ -815,8 +797,7 @@ export const getDefaultMetricsDateRange = (): MetricsDateRange => {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 90);
-  const toIsoDate = (d: Date): string =>
-    d.toISOString().split("T")[0] as string;
+  const toIsoDate = (d: Date): string => d.toISOString().split("T")[0];
   return {
     startDate: toIsoDate(start),
     endDate: toIsoDate(end),
@@ -893,11 +874,71 @@ export type LighthouseClient = {
     teamId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamArrivals: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamWipOverTime: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamWip: (
+    teamId: number,
+    asOfDate: string,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
   readonly getTeamCycleTimePercentiles: (
     teamId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getTeamCycleTimeData: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getTeamPredictabilityScore: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamTotalWorkItemAge: (
+    teamId: number,
+    asOfDate: string,
+  ) => Promise<LighthouseApiResult<number>>;
+  readonly getTeamTotalWorkItemAgePbc: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
   readonly getPortfolioThroughput: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioCycleTimePercentiles: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getPortfolioArrivals: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioWipOverTime: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioWip: (
+    portfolioId: number,
+    asOfDate: string,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getPortfolioCycleTimeData: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getPortfolioPredictabilityScore: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioTotalWorkItemAge: (
+    portfolioId: number,
+    asOfDate: string,
+  ) => Promise<LighthouseApiResult<number>>;
+  readonly getPortfolioTotalWorkItemAgePbc: (
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<unknown>>;
@@ -1113,10 +1154,14 @@ const requestJson = async <TValue>(
       );
     }
 
-    const value =
-      response.json !== undefined
-        ? ((await response.json()) as TValue)
-        : (JSON.parse(await response.text()) as TValue);
+    if (response.json === undefined) {
+      return {
+        ok: true,
+        value: JSON.parse(await response.text()) as TValue,
+      };
+    }
+
+    const value = (await response.json()) as TValue;
 
     return {
       ok: true,
@@ -1184,6 +1229,16 @@ const requestNoContent = async (
     });
   }
 };
+
+const getResolvedMetricsDateRange = (
+  range?: MetricsDateRange,
+): MetricsDateRange => range ?? getDefaultMetricsDateRange();
+
+const getMetricsDateRangeQuery = (range: MetricsDateRange): string =>
+  `startDate=${encodeURIComponent(range.startDate)}&endDate=${encodeURIComponent(range.endDate)}`;
+
+const getMetricsAsOfDateQuery = (asOfDate: string): string =>
+  `asOfDate=${encodeURIComponent(asOfDate)}`;
 
 export const createLighthouseClient = (
   configuration: LighthouseClientConfiguration,
@@ -1333,23 +1388,88 @@ export const createLighthouseClient = (
       },
     ),
   getTeamThroughput: async (teamId: number, range?: MetricsDateRange) => {
-    const r = range ?? getDefaultMetricsDateRange();
+    const r = getResolvedMetricsDateRange(range);
     return requestJson<unknown>(
       configuration,
       dependencies,
-      `/v1/teams/${teamId}/metrics/throughput?startDate=${r.startDate}&endDate=${r.endDate}`,
+      `/v1/teams/${teamId}/metrics/throughput?${getMetricsDateRangeQuery(r)}`,
       { method: "GET" },
     );
   },
+  getTeamArrivals: async (teamId: number, range?: MetricsDateRange) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/arrivals?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamWipOverTime: async (teamId: number, range?: MetricsDateRange) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamWip: async (teamId: number, asOfDate: string) =>
+    requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/wip?${getMetricsAsOfDateQuery(asOfDate)}`,
+      { method: "GET" },
+    ),
   getTeamCycleTimePercentiles: async (
     teamId: number,
     range?: MetricsDateRange,
   ) => {
-    const r = range ?? getDefaultMetricsDateRange();
+    const r = getResolvedMetricsDateRange(range);
     return requestJson<readonly unknown[]>(
       configuration,
       dependencies,
-      `/v1/teams/${teamId}/metrics/cycleTimePercentiles?startDate=${r.startDate}&endDate=${r.endDate}`,
+      `/v1/teams/${teamId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamCycleTimeData: async (teamId: number, range?: MetricsDateRange) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/cycleTimeData?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamPredictabilityScore: async (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamTotalWorkItemAge: async (teamId: number, asOfDate: string) =>
+    requestJson<number>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
+      { method: "GET" },
+    ),
+  getTeamTotalWorkItemAgePbc: async (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/totalWorkItemAge/pbc?${getMetricsDateRangeQuery(r)}`,
       { method: "GET" },
     );
   },
@@ -1357,11 +1477,97 @@ export const createLighthouseClient = (
     portfolioId: number,
     range?: MetricsDateRange,
   ) => {
-    const r = range ?? getDefaultMetricsDateRange();
+    const r = getResolvedMetricsDateRange(range);
     return requestJson<unknown>(
       configuration,
       dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/throughput?startDate=${r.startDate}&endDate=${r.endDate}`,
+      `/v1/portfolios/${portfolioId}/metrics/throughput?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioCycleTimePercentiles: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioArrivals: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/arrivals?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioWipOverTime: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioWip: async (portfolioId: number, asOfDate: string) =>
+    requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/wip?${getMetricsAsOfDateQuery(asOfDate)}`,
+      { method: "GET" },
+    ),
+  getPortfolioCycleTimeData: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<readonly unknown[]>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/cycleTimeData?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioPredictabilityScore: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioTotalWorkItemAge: async (portfolioId: number, asOfDate: string) =>
+    requestJson<number>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
+      { method: "GET" },
+    ),
+  getPortfolioTotalWorkItemAgePbc: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<unknown>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAge/pbc?${getMetricsDateRangeQuery(r)}`,
       { method: "GET" },
     );
   },

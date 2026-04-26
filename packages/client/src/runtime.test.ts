@@ -59,6 +59,41 @@ const getStandaloneContract = (
   ...overrides,
 });
 
+const expectMetricRequest = async (
+  run: (client: ReturnType<typeof createLighthouseClient>) => Promise<unknown>,
+  expectedUrl: string,
+  payload: unknown,
+): Promise<void> => {
+  const fetchMock = getFetchSequenceMock([
+    {
+      ok: true,
+      status: 200,
+      text: async () => "v1.0.0",
+      json: async () => "v1.0.0",
+    },
+    {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(payload),
+      json: async () => payload,
+    },
+  ]);
+
+  const client = createLighthouseClient(
+    {
+      connection: {
+        kind: "explicit",
+        lighthouseUrl: "http://localhost:5000",
+      },
+    },
+    { fetch: fetchMock.fetch },
+  );
+
+  await run(client);
+
+  expect(fetchMock.calls[1]?.url).toBe(expectedUrl);
+};
+
 describe("createLighthouseClient", () => {
   it("checks connectivity using explicit mode", async () => {
     const fetchMock = getFetchMock({
@@ -742,6 +777,144 @@ describe("createLighthouseClient", () => {
     expect(result).toEqual({ ok: true, value: throughputData });
     expect(fetchMock.calls[1]?.url).toBe(
       "http://localhost:5000/api/v1/portfolios/7/metrics/throughput?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("routes additional team metrics endpoints through the versioned API contract", async () => {
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamArrivals(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/arrivals?startDate=2026-01-01&endDate=2026-03-31",
+      { total: 0 },
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamWipOverTime(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/wipOverTime?startDate=2026-01-01&endDate=2026-03-31",
+      { total: 0 },
+    );
+
+    await expectMetricRequest(
+      (client) => client.getTeamWip(5, "2026-03-31"),
+      "http://localhost:5000/api/v1/teams/5/metrics/wip?asOfDate=2026-03-31",
+      [],
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamCycleTimeData(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/cycleTimeData?startDate=2026-01-01&endDate=2026-03-31",
+      [],
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamPredictabilityScore(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/multiitemforecastpredictabilityscore?startDate=2026-01-01&endDate=2026-03-31",
+      { predictabilityScore: 1.2 },
+    );
+
+    await expectMetricRequest(
+      (client) => client.getTeamTotalWorkItemAge(5, "2026-03-31"),
+      "http://localhost:5000/api/v1/teams/5/metrics/totalWorkItemAge?asOfDate=2026-03-31",
+      3,
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamTotalWorkItemAgePbc(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/totalWorkItemAge/pbc?startDate=2026-01-01&endDate=2026-03-31",
+      { dataPoints: [] },
+    );
+  });
+
+  it("routes additional portfolio metrics endpoints through the versioned API contract", async () => {
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioCycleTimePercentiles(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/cycleTimePercentiles?startDate=2026-01-01&endDate=2026-03-31",
+      [],
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioArrivals(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/arrivals?startDate=2026-01-01&endDate=2026-03-31",
+      { total: 0 },
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioWipOverTime(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/wipOverTime?startDate=2026-01-01&endDate=2026-03-31",
+      { total: 0 },
+    );
+
+    await expectMetricRequest(
+      (client) => client.getPortfolioWip(7, "2026-03-31"),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/wip?asOfDate=2026-03-31",
+      [],
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioCycleTimeData(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/cycleTimeData?startDate=2026-01-01&endDate=2026-03-31",
+      [],
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioPredictabilityScore(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/multiitemforecastpredictabilityscore?startDate=2026-01-01&endDate=2026-03-31",
+      { predictabilityScore: 1.2 },
+    );
+
+    await expectMetricRequest(
+      (client) => client.getPortfolioTotalWorkItemAge(7, "2026-03-31"),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/totalWorkItemAge?asOfDate=2026-03-31",
+      3,
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioTotalWorkItemAgePbc(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/totalWorkItemAge/pbc?startDate=2026-01-01&endDate=2026-03-31",
+      { dataPoints: [] },
     );
   });
 

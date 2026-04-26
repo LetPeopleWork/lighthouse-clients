@@ -113,11 +113,9 @@ describe("cli binary entrypoint", () => {
       expect(stderr).not.toHaveBeenCalled();
       expect(stdout).toHaveBeenCalledOnce();
       const helpText = stdout.mock.calls[0]?.[0] ?? "";
-      expect(helpText).toContain("lh connect");
-      expect(helpText).toContain("lh connection");
-      expect(helpText).toContain(
-        "You must be connected before running commands",
-      );
+      expect(helpText).toContain("lh connection connect");
+      expect(helpText).toContain("Top-level groups:");
+      expect(helpText).toContain("Connection: not connected");
       expect(helpText).not.toContain("  lighthouse ");
     } finally {
       if (previousConfigPath === undefined) {
@@ -140,10 +138,11 @@ describe("cli binary entrypoint", () => {
     try {
       const exitCode = await runCli(["team"], { stdout, stderr });
 
-      expect(exitCode).toBe(1);
-      expect(stderr).toHaveBeenCalledOnce();
-      const helpText = stderr.mock.calls[0]?.[0] ?? "";
-      expect(helpText).toContain("lh connect");
+      expect(exitCode).toBe(0);
+      expect(stderr).not.toHaveBeenCalled();
+      expect(stdout).toHaveBeenCalledOnce();
+      const helpText = stdout.mock.calls[0]?.[0] ?? "";
+      expect(helpText).toContain("lh team list");
     } finally {
       if (previousConfigPath === undefined) {
         process.env.LIGHTHOUSE_CLI_CONFIG_PATH = undefined;
@@ -213,7 +212,10 @@ describe("cli binary entrypoint", () => {
     );
 
     try {
-      const exitCode = await runCli(["disconnect"], { stdout, stderr });
+      const exitCode = await runCli(["connection", "disconnect"], {
+        stdout,
+        stderr,
+      });
 
       expect(exitCode).toBe(0);
       expect(stderr).not.toHaveBeenCalled();
