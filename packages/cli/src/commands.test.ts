@@ -8,6 +8,7 @@ import type {
 } from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
+import type { OutputFormat } from "./output";
 
 type MockClient = {
   readonly checkConnectivity: () => Promise<{
@@ -175,6 +176,7 @@ const getDefaultMockClient = (): MockClient => ({
 
 const getDependencies = (overrides?: {
   readonly connection?: CliConnection | null;
+  readonly outputFormat?: OutputFormat | null;
   readonly client?: MockClient;
   readonly promptResponses?: readonly string[];
   readonly validateConnectivity?: (
@@ -197,8 +199,10 @@ const getDependencies = (overrides?: {
 }): {
   readonly dependencies: RunCliCommandDependencies;
   readonly getSavedConnection: () => CliConnection | null;
+  readonly getSavedOutputFormat: () => OutputFormat | null;
 } => {
   let savedConnection: CliConnection | null = overrides?.connection ?? null;
+  let savedOutputFormat: OutputFormat | null = overrides?.outputFormat ?? null;
   const promptQueue = (overrides?.promptResponses ?? []).slice();
 
   const defaultClient = getDefaultMockClient();
@@ -208,6 +212,10 @@ const getDependencies = (overrides?: {
       loadConnection: async () => savedConnection,
       saveConnection: async (conn: CliConnection | null) => {
         savedConnection = conn;
+      },
+      loadOutputFormat: async () => savedOutputFormat,
+      saveOutputFormat: async (outputFormat: OutputFormat) => {
+        savedOutputFormat = outputFormat;
       },
       prompt: async () => promptQueue.shift() ?? "",
       openBrowser: async () => undefined,
@@ -236,6 +244,7 @@ const getDependencies = (overrides?: {
       createClient: () => overrides?.client ?? defaultClient,
     },
     getSavedConnection: () => savedConnection,
+    getSavedOutputFormat: () => savedOutputFormat,
   };
 };
 
@@ -455,6 +464,7 @@ describe("runCliCommand", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("http://localhost:5000");
     expect(result.stdout).toContain("disabled");
+    expect(result.stdout).toContain("Output: pretty");
   });
 
   it("connection shows auth token stored when auth is required", async () => {
@@ -507,6 +517,7 @@ describe("runCliCommand", () => {
     expect(result.stdout).toContain(
       "You must be connected before running commands",
     );
+    expect(result.stdout).toContain("Default output: pretty");
     expect(result.stdout).toContain("lh connect");
   });
 
@@ -526,10 +537,27 @@ describe("runCliCommand", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Connection:");
     expect(result.stdout).toContain("Connected to: https://localhost:48332");
+    expect(result.stdout).toContain("Output: pretty");
     expect(result.stdout).toContain(
       "TLS: insecure certificate verification enabled",
     );
     expect(result.stdout).toContain("lh health check");
+  });
+
+  it("shows configured output format in bare usage when connected", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      outputFormat: "json",
+    });
+
+    const result = await runCliCommand([], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Output: json");
   });
 
   it("connection shows not-connected when no connection is saved", async () => {
@@ -644,7 +672,7 @@ describe("runCliCommand", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('"id":100');
+    expect(result.stdout).toContain("Jira [id: 100]");
   });
 
   it("lists teams", async () => {
@@ -677,7 +705,7 @@ describe("runCliCommand", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('"id":1');
+    expect(result.stdout).toContain("Team A [id: 1]");
   });
 
   it("refreshes one team by id", async () => {
@@ -728,7 +756,7 @@ describe("runCliCommand", () => {
     );
 
     expect(getResult.exitCode).toBe(0);
-    expect(getResult.stdout).toContain('"id":7');
+    expect(getResult.stdout).toContain("Portfolio A [id: 7]");
 
     const refreshResult = await runCliCommand(
       ["portfolio", "refresh", "--id", "7"],
@@ -760,6 +788,7 @@ describe("runCliCommand", () => {
         "throughput",
         "--id",
         "1",
+        "--json",
         "--start-date",
         "2026-01-01",
         "--end-date",
@@ -796,6 +825,7 @@ describe("runCliCommand", () => {
         "cycleTimePercentiles",
         "--id",
         "1",
+        "--json",
         "--start-date",
         "2026-01-01",
         "--end-date",
@@ -832,6 +862,7 @@ describe("runCliCommand", () => {
         "throughput",
         "--id",
         "7",
+        "--json",
         "--start-date",
         "2026-01-01",
         "--end-date",
@@ -974,6 +1005,158 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("actualThroughput");
+  });
+
+  it("uses pretty output by default for payloads", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["team", "get", "--id", "1"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Team A [id: 1]");
+    expect(result.stdout).not.toContain('{"id":1');
+  });
+
+  it("returns raw endpoint json when --json is provided", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["team", "get", "--id", "1", "--json"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{"id":1,"name":"Team A"}');
+  });
+
+  it("formats payloads as toon when --toon is provided", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["team", "list", "--toon"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Team A");
+    expect(result.stdout).not.toContain('{"id":1');
+  });
+
+  it("uses the saved default output format when no explicit flag is provided", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      outputFormat: "json",
+    });
+
+    const result = await runCliCommand(
+      ["team", "get", "--id", "1"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{"id":1,"name":"Team A"}');
+  });
+
+  it("lets explicit format flags override the saved default", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      outputFormat: "json",
+    });
+
+    const result = await runCliCommand(
+      ["team", "get", "--id", "1", "--pretty"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Team A [id: 1]");
+  });
+
+  it("rejects multiple output format flags in the same command", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["team", "get", "--id", "1", "--json", "--pretty"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Multiple output format flags");
+  });
+
+  it("shows the current default output format", async () => {
+    const { dependencies } = getDependencies({
+      outputFormat: "toon",
+    });
+
+    const result = await runCliCommand(["config", "output"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("toon");
+  });
+
+  it("saves the configured default output format", async () => {
+    const { dependencies, getSavedOutputFormat } = getDependencies();
+
+    const result = await runCliCommand(
+      ["config", "output", "set", "--format", "json"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("json");
+    expect(getSavedOutputFormat()).toBe("json");
+  });
+
+  it("keeps status output as plain text even when a format flag is provided", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(["connection", "--json"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Connected to: http://localhost:5000");
+    expect(result.stdout).not.toContain('{"');
   });
 
   it("returns missing id error for team metrics commands", async () => {

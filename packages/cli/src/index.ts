@@ -10,6 +10,14 @@ import {
   createLighthouseClient,
   getDefaultMetricsDateRange,
 } from "@letpeoplework/lighthouse-client";
+import {
+  DEFAULT_OUTPUT_FORMAT,
+  OUTPUT_FORMAT_FLAGS,
+  type OutputFormat,
+  formatPayload,
+  isOutputFormat,
+  isOutputFormatFlag,
+} from "./output";
 
 export type CliPackageContract = {
   readonly name: "@letpeoplework/lighthouse-cli";
@@ -58,6 +66,8 @@ type CliClientOperations = CliClientLike & CliDomainClientLike;
 export type RunCliCommandDependencies = {
   readonly loadConnection: () => Promise<CliConnection | null>;
   readonly saveConnection: (connection: CliConnection | null) => Promise<void>;
+  readonly loadOutputFormat: () => Promise<OutputFormat | null>;
+  readonly saveOutputFormat: (outputFormat: OutputFormat) => Promise<void>;
   readonly prompt: (question: string) => Promise<string>;
   readonly openBrowser: (url: string) => Promise<void>;
   readonly validateConnectivity: (
@@ -107,14 +117,65 @@ const getErrorResult = (stderr: string): CliCommandResult => ({
   stderr,
 });
 
+const getRequestedOutputFormat = (
+  args: readonly string[],
+): { readonly format: OutputFormat | null; readonly error: string | null } => {
+  const requestedFlags = Array.from(
+    new Set(args.filter((argument) => isOutputFormatFlag(argument))),
+  );
+
+  if (requestedFlags.length > 1) {
+    return {
+      format: null,
+      error:
+        "Multiple output format flags provided. Use only one of --pretty, --toon, or --json.",
+    };
+  }
+
+  if (requestedFlags.length === 0) {
+    return { format: null, error: null };
+  }
+
+  return {
+    format: OUTPUT_FORMAT_FLAGS[requestedFlags[0]],
+    error: null,
+  };
+};
+
+const getResolvedOutputFormat = async (
+  args: readonly string[],
+  dependencies: RunCliCommandDependencies,
+): Promise<OutputFormat | CliCommandResult> => {
+  const requestedOutputFormat = getRequestedOutputFormat(args);
+  if (requestedOutputFormat.error !== null) {
+    return getErrorResult(requestedOutputFormat.error);
+  }
+
+  if (requestedOutputFormat.format !== null) {
+    return requestedOutputFormat.format;
+  }
+
+  return (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
+};
+
+const stripOutputFormatFlags = (args: readonly string[]): string[] =>
+  args.filter((argument) => !isOutputFormatFlag(argument));
+
 const mapApiResultToCliResult = <TValue>(
   result: LighthouseApiResult<TValue>,
+  outputFormat: OutputFormat,
 ): CliCommandResult => {
   if (result.ok) {
     if (result.value === undefined) {
       return getSuccessResult("ok");
     }
-    return getSuccessResult(JSON.stringify(result.value));
+
+    const formattedPayload = formatPayload(result.value, outputFormat);
+    if (!formattedPayload.ok) {
+      return getErrorResult(formattedPayload.error);
+    }
+
+    return getSuccessResult(formattedPayload.value);
   }
   return getErrorResult(`${result.error.category}: ${result.error.reason}`);
 };
@@ -164,10 +225,12 @@ const isServerReachable = (
 
 const getConnectionStatusLines = (
   connection: CliServerConnection,
+  outputFormat: OutputFormat,
 ): string[] => {
   const lines: string[] = [
     `Connected to: ${connection.endpointUrl}`,
     `Auth: ${connection.authMode}`,
+    `Output: ${outputFormat}`,
   ];
 
   if (connection.insecure) {
@@ -338,7 +401,12 @@ const runConnectionStatus = async (
     );
   }
 
-  return getSuccessResult(getConnectionStatusLines(connection).join("\n"));
+  const outputFormat =
+    (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
+
+  return getSuccessResult(
+    getConnectionStatusLines(connection, outputFormat).join("\n"),
+  );
 };
 
 const runDisconnect = async (
@@ -361,56 +429,68 @@ const getUsageText = async (
   dependencies: RunCliCommandDependencies,
 ): Promise<string> => {
   const connection = await dependencies.loadConnection();
-  const lines: string[] = [
+  const outputFormat =
+    (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
+  const baseLines: string[] = [
     "Usage:",
     "  lh connect",
     "  lh connection",
     "  lh disconnect",
+    "  lh config output",
+    "  lh config output set --format <pretty|toon|json>",
+    "",
+    "Global payload output flags: --pretty | --toon | --json",
   ];
+
   if (connection === null) {
-    lines.push(
+    return [
+      ...baseLines,
+      "",
+      `Default output: ${outputFormat}`,
       "",
       "You must be connected before running commands.",
       "",
       'Run "lh connect" to connect to a Lighthouse server.',
-    );
-  } else {
-    lines.push("", "Connection:", ...getConnectionStatusLines(connection));
-    lines.push("");
-    lines.push(
-      "  lh health check",
-      "  lh version get",
-      "",
-      "  lh worktracking list",
-      "  lh worktracking get --id <id>",
-      "",
-      "  lh team list",
-      "  lh team get --id <id>",
-      "  lh team refresh --id <id>",
-      "",
-      "  lh portfolio list",
-      "  lh portfolio get --id <id>",
-      "  lh portfolio refresh --id <id>",
-      "",
-      "  lh throughput team --id <id> [--start-date <date> --end-date <date>]",
-      "  lh throughput portfolio --id <id> [--start-date <date> --end-date <date>]",
-      "",
-      "  lh cycletime team --id <id> [--start-date <date> --end-date <date>]",
-      "",
-      "  lh features get-by-ids --ids <id,...>",
-      "  lh features get-by-refs --refs <ref,...>",
-      "  lh features work-items --id <id>",
-      "",
-      "  lh delivery list",
-      "  lh delivery create --name <name> --start <date> --end <date> --feature-ids <id,...>",
-      "  lh delivery update --id <id> --name <name> --start <date> --end <date> --feature-ids <id,...>",
-      "  lh delivery delete --id <id>",
-      "",
-      "  lh forecast manual --remaining <n> --trials <n> [--target-date <date>]",
-      "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>",
-    );
+    ].join("\n");
   }
-  return lines.join("\n");
+
+  return [
+    ...baseLines,
+    "",
+    "Connection:",
+    ...getConnectionStatusLines(connection, outputFormat),
+    "",
+    "  lh health check",
+    "  lh version get",
+    "",
+    "  lh worktracking list",
+    "  lh worktracking get --id <id>",
+    "",
+    "  lh team list",
+    "  lh team get --id <id>",
+    "  lh team refresh --id <id>",
+    "",
+    "  lh portfolio list",
+    "  lh portfolio get --id <id>",
+    "  lh portfolio refresh --id <id>",
+    "",
+    "  lh throughput team --id <id> [--start-date <date> --end-date <date>]",
+    "  lh throughput portfolio --id <id> [--start-date <date> --end-date <date>]",
+    "",
+    "  lh cycletime team --id <id> [--start-date <date> --end-date <date>]",
+    "",
+    "  lh features get-by-ids --ids <id,...>",
+    "  lh features get-by-refs --refs <ref,...>",
+    "  lh features work-items --id <id>",
+    "",
+    "  lh delivery list",
+    "  lh delivery create --name <name> --start <date> --end <date> --feature-ids <id,...>",
+    "  lh delivery update --id <id> --name <name> --start <date> --end <date> --feature-ids <id,...>",
+    "  lh delivery delete --id <id>",
+    "",
+    "  lh forecast manual --remaining <n> --trials <n> [--target-date <date>]",
+    "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>",
+  ].join("\n");
 };
 
 // ── main command router ───────────────────────────────────────────────────────
@@ -423,7 +503,14 @@ export const runCliCommand = async (
     return getSuccessResult(await getUsageText(dependencies));
   }
 
-  const [scope, action, subject] = args;
+  const outputFormatOrError = await getResolvedOutputFormat(args, dependencies);
+  if (isCliCommandResult(outputFormatOrError)) {
+    return outputFormatOrError;
+  }
+
+  const outputFormat = outputFormatOrError;
+  const positionalArgs = stripOutputFormatFlags(args);
+  const [scope, action, subject] = positionalArgs;
 
   // ── Connection management ─────────────────────────────────────────────────
 
@@ -437,6 +524,32 @@ export const runCliCommand = async (
 
   if (scope === "disconnect") {
     return runDisconnect(dependencies);
+  }
+
+  if (scope === "config" && action === "output") {
+    if (subject === undefined || subject === "get") {
+      const currentOutputFormat =
+        (await dependencies.loadOutputFormat()) ?? DEFAULT_OUTPUT_FORMAT;
+      return getSuccessResult(`Default output format: ${currentOutputFormat}`);
+    }
+
+    if (subject === "set") {
+      const configuredFormat = getOptionValue(args, "--format");
+      if (!isOutputFormat(configuredFormat)) {
+        return getErrorResult(
+          "Missing or invalid --format. Use one of: pretty, toon, json.",
+        );
+      }
+
+      await dependencies.saveOutputFormat(configuredFormat);
+      return getSuccessResult(
+        `Default output format set to ${configuredFormat}.`,
+      );
+    }
+
+    return getErrorResult(
+      `Unknown config output subcommand: ${subject ?? "(none)"}`,
+    );
   }
 
   // ── Health & version ──────────────────────────────────────────────────────
@@ -461,7 +574,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const versionResult = await client.getVersion();
-    return mapApiResultToCliResult(versionResult);
+    return mapApiResultToCliResult(versionResult, outputFormat);
   }
 
   // ── Work tracking ─────────────────────────────────────────────────────────
@@ -473,7 +586,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.listWorkTrackingConnections();
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "worktracking" && action === "get") {
@@ -487,7 +600,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.getWorkTrackingConnection(connectionId);
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   // ── Teams ─────────────────────────────────────────────────────────────────
@@ -499,7 +612,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.listTeams();
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "team" && action === "get") {
@@ -513,7 +626,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.getTeam(teamId);
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "team" && action === "refresh") {
@@ -551,11 +664,11 @@ export const runCliCommand = async (
     const client = dependencies.createClient(connectionOrError);
     if (subject === "throughput") {
       const result = await client.getTeamThroughput(teamId, range);
-      return mapApiResultToCliResult(result);
+      return mapApiResultToCliResult(result, outputFormat);
     }
     if (subject === "cycleTimePercentiles") {
       const result = await client.getTeamCycleTimePercentiles(teamId, range);
-      return mapApiResultToCliResult(result);
+      return mapApiResultToCliResult(result, outputFormat);
     }
     return getErrorResult(
       `Unknown team metrics subcommand: ${subject ?? "(none)"}`,
@@ -571,7 +684,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.listPortfolios();
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "portfolio" && action === "get") {
@@ -585,7 +698,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.getPortfolio(portfolioId);
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "portfolio" && action === "refresh") {
@@ -623,7 +736,7 @@ export const runCliCommand = async (
     const client = dependencies.createClient(connectionOrError);
     if (subject === "throughput") {
       const result = await client.getPortfolioThroughput(portfolioId, range);
-      return mapApiResultToCliResult(result);
+      return mapApiResultToCliResult(result, outputFormat);
     }
     return getErrorResult(
       `Unknown portfolio metrics subcommand: ${subject ?? "(none)"}`,
@@ -645,7 +758,7 @@ export const runCliCommand = async (
         .map((s) => Number.parseInt(s.trim(), 10))
         .filter((n) => !Number.isNaN(n));
       const result = await client.getFeaturesByIds(ids);
-      return mapApiResultToCliResult(result);
+      return mapApiResultToCliResult(result, outputFormat);
     }
     const refsRaw = getOptionValue(args, "--refs");
     if (refsRaw !== undefined) {
@@ -654,7 +767,7 @@ export const runCliCommand = async (
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
       const result = await client.getFeaturesByReferences(refs);
-      return mapApiResultToCliResult(result);
+      return mapApiResultToCliResult(result, outputFormat);
     }
     return getErrorResult("Missing required --ids or --refs for feature get.");
   }
@@ -670,7 +783,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.getFeatureWorkItems(featureId);
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   // ── Deliveries ────────────────────────────────────────────────────────────
@@ -688,7 +801,7 @@ export const runCliCommand = async (
     }
     const client = dependencies.createClient(connectionOrError);
     const result = await client.listDeliveries(portfolioId);
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   // ── Forecasts ─────────────────────────────────────────────────────────────
@@ -717,7 +830,7 @@ export const runCliCommand = async (
       remainingItems: remaining,
       targetDate,
     });
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "forecast" && action === "backtest") {
@@ -751,7 +864,7 @@ export const runCliCommand = async (
       historicalStartDate: histStartDate,
       historicalEndDate: histEndDate,
     });
-    return mapApiResultToCliResult(result);
+    return mapApiResultToCliResult(result, outputFormat);
   }
 
   if (scope === "help") {
@@ -765,6 +878,8 @@ export const runCliCommand = async (
 export const getDefaultDependencies = (): RunCliCommandDependencies => ({
   loadConnection: async () => null,
   saveConnection: async () => undefined,
+  loadOutputFormat: async () => null,
+  saveOutputFormat: async () => undefined,
   prompt: async () => "",
   openBrowser: async () => undefined,
   validateConnectivity: async () => ({

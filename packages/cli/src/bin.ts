@@ -15,6 +15,7 @@ import {
 } from "@letpeoplework/lighthouse-client";
 import { Agent, fetch as undiciFetch } from "undici";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
+import { type OutputFormat, isOutputFormat } from "./output";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";
 
@@ -31,6 +32,7 @@ type PersistedConfigV1 = {
 type PersistedConfigV2 = {
   readonly version: 2;
   readonly connection?: CliConnection;
+  readonly outputFormat?: OutputFormat;
 };
 
 const getConfigPath = (): string =>
@@ -42,7 +44,13 @@ const loadPersistedStorage = async (): Promise<PersistedConfigV2> => {
     const raw = await readFile(getConfigPath(), "utf8");
     const parsed = JSON.parse(raw) as PersistedConfigV1 | PersistedConfigV2;
     if ("version" in parsed && parsed.version === 2) {
-      return parsed;
+      return {
+        version: 2,
+        connection: parsed.connection,
+        outputFormat: isOutputFormat(parsed.outputFormat)
+          ? parsed.outputFormat
+          : undefined,
+      };
     }
     // Migrate v1 → v2
     const v1 = parsed as PersistedConfigV1;
@@ -157,12 +165,32 @@ export const runCli = async (
       return storage.connection ?? null;
     },
     saveConnection: async (connection) => {
+      const storage = await loadPersistedStorage();
       if (connection === null) {
-        await savePersistedStorage({ version: 2 });
+        await savePersistedStorage({
+          version: 2,
+          outputFormat: storage.outputFormat,
+        });
         return;
       }
 
-      await savePersistedStorage({ version: 2, connection });
+      await savePersistedStorage({
+        version: 2,
+        connection,
+        outputFormat: storage.outputFormat,
+      });
+    },
+    loadOutputFormat: async () => {
+      const storage = await loadPersistedStorage();
+      return storage.outputFormat ?? null;
+    },
+    saveOutputFormat: async (outputFormat) => {
+      const storage = await loadPersistedStorage();
+      await savePersistedStorage({
+        version: 2,
+        connection: storage.connection,
+        outputFormat,
+      });
     },
     prompt,
     openBrowser,

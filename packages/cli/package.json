@@ -35,6 +35,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "@toon-format/toon": "^2.1.0",
     "@letpeoplework/lighthouse-client": "workspace:*",
     "undici": "^8.1.0"
   }

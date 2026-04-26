@@ -18,23 +18,59 @@ After installation, the `lh` command is available globally.
 # Connect to your Lighthouse instance (interactive wizard)
 lh connect
 
+# Set your preferred payload output format
+lh config output set --format pretty
+
 # Check current connection status
 lh connection
 
 # List teams
 lh team list
 
+# Override the saved default for a single command
+lh team get --id 1 --json
+
 # Run a forecast for a team
 lh forecast manual --team-id 1 --remaining 10
 ```
 
-`lh connect` walks you through server URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. The resulting connection and token are stored in `~/.config/lighthouse-clients/cli-config.json`.
+`lh connect` walks you through server URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. The resulting connection, token, and default output format are stored in `~/.config/lighthouse-clients/cli-config.json`.
+
+## Output Formats
+
+Payload-producing commands support three output modes:
+
+- `pretty` renders a human-readable view and surfaces `name` / `id` prominently when available. This is the default.
+- `json` returns the raw endpoint payload JSON.
+- `toon` converts the endpoint payload to [TOON](https://github.com/toon-format/toon), which is often easier to feed into LLM prompts.
+
+You can override the saved default on any payload command with one of these global flags:
+
+```bash
+--pretty
+--json
+--toon
+```
+
+Use the config command to change the persisted default:
+
+```bash
+lh config output
+lh config output set --format pretty
+lh config output set --format json
+lh config output set --format toon
+```
+
+Explicit flags take precedence over the saved default. Status and error output remain plain text in all modes.
 
 ## Commands
 
 ```
 lh connect                                    Connect to a Lighthouse server (interactive)
 lh connection                                 Show current connection status
+lh config output                              Show the current default payload output format
+lh config output set --format <pretty|toon|json>
+											  Persist the default payload output format
 lh health check                               Check server connectivity
 lh version get                                Get server version
 lh worktracking list                          List work tracking connections
@@ -55,6 +91,8 @@ lh delivery list --portfolio-id <portfolio-id>
 lh forecast manual --team-id <team-id> [--remaining <n>] [--target-date <date>]
 lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>
 ```
+
+Global payload output override flags: `--pretty`, `--json`, `--toon`
 
 All operational commands require an active connection. Run `lh connect` first.
 
