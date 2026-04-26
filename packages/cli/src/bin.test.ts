@@ -39,27 +39,56 @@ describe("cli binary entrypoint", () => {
   it("prints lh-prefixed usage text when no command is given", async () => {
     const stdout = vi.fn<(message: string) => void>();
     const stderr = vi.fn<(message: string) => void>();
+    const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
+    process.env.LIGHTHOUSE_CLI_CONFIG_PATH = join(
+      tmpdir(),
+      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+    );
 
-    const exitCode = await runCli([], { stdout, stderr });
+    try {
+      const exitCode = await runCli([], { stdout, stderr });
 
-    expect(exitCode).toBe(1);
-    expect(stdout).not.toHaveBeenCalled();
-    expect(stderr).toHaveBeenCalledOnce();
-    const helpText = stderr.mock.calls[0]?.[0] ?? "";
-    expect(helpText).toContain("lh connect");
-    expect(helpText).toContain("lh connection");
-    expect(helpText).not.toContain("  lighthouse ");
+      expect(exitCode).toBe(0);
+      expect(stderr).not.toHaveBeenCalled();
+      expect(stdout).toHaveBeenCalledOnce();
+      const helpText = stdout.mock.calls[0]?.[0] ?? "";
+      expect(helpText).toContain("lh connect");
+      expect(helpText).toContain("lh connection");
+      expect(helpText).toContain(
+        "You must be connected before running commands",
+      );
+      expect(helpText).not.toContain("  lighthouse ");
+    } finally {
+      if (previousConfigPath === undefined) {
+        process.env.LIGHTHOUSE_CLI_CONFIG_PATH = undefined;
+      } else {
+        process.env.LIGHTHOUSE_CLI_CONFIG_PATH = previousConfigPath;
+      }
+    }
   });
 
   it("prints lh-prefixed usage text when only one argument is given", async () => {
     const stdout = vi.fn<(message: string) => void>();
     const stderr = vi.fn<(message: string) => void>();
+    const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
+    process.env.LIGHTHOUSE_CLI_CONFIG_PATH = join(
+      tmpdir(),
+      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+    );
 
-    const exitCode = await runCli(["team"], { stdout, stderr });
+    try {
+      const exitCode = await runCli(["team"], { stdout, stderr });
 
-    expect(exitCode).toBe(1);
-    expect(stderr).toHaveBeenCalledOnce();
-    const helpText = stderr.mock.calls[0]?.[0] ?? "";
-    expect(helpText).toContain("lh connect");
+      expect(exitCode).toBe(1);
+      expect(stderr).toHaveBeenCalledOnce();
+      const helpText = stderr.mock.calls[0]?.[0] ?? "";
+      expect(helpText).toContain("lh connect");
+    } finally {
+      if (previousConfigPath === undefined) {
+        process.env.LIGHTHOUSE_CLI_CONFIG_PATH = undefined;
+      } else {
+        process.env.LIGHTHOUSE_CLI_CONFIG_PATH = previousConfigPath;
+      }
+    }
   });
 });

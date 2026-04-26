@@ -1,6 +1,6 @@
 import type {
   CliAuthSessionPollResult,
-  CliAuthSessionStartResult,
+  CliAuthSessionStartOutcome,
   CliConnection,
   CliServerConnection,
   ConnectivityValidationResult,
@@ -179,14 +179,20 @@ const getDependencies = (overrides?: {
   readonly promptResponses?: readonly string[];
   readonly validateConnectivity?: (
     url: string,
+    insecure?: boolean,
   ) => Promise<ConnectivityValidationResult>;
-  readonly queryAuthMode?: (url: string) => Promise<ServerAuthModeResult>;
+  readonly queryAuthMode?: (
+    url: string,
+    insecure?: boolean,
+  ) => Promise<ServerAuthModeResult>;
   readonly startAuthSession?: (
     url: string,
-  ) => Promise<CliAuthSessionStartResult | null>;
+    insecure?: boolean,
+  ) => Promise<CliAuthSessionStartOutcome>;
   readonly pollCliAuthSession?: (
     url: string,
     sessionId: string,
+    insecure?: boolean,
   ) => Promise<CliAuthSessionPollResult>;
 }): {
   readonly dependencies: RunCliCommandDependencies;
@@ -200,7 +206,7 @@ const getDependencies = (overrides?: {
   return {
     dependencies: {
       loadConnection: async () => savedConnection,
-      saveConnection: async (conn: CliConnection) => {
+      saveConnection: async (conn: CliConnection | null) => {
         savedConnection = conn;
       },
       prompt: async () => promptQueue.shift() ?? "",
@@ -217,7 +223,13 @@ const getDependencies = (overrides?: {
         })),
       queryAuthMode:
         overrides?.queryAuthMode ?? (async () => ({ mode: "disabled" })),
-      startAuthSession: overrides?.startAuthSession ?? (async () => null),
+      startAuthSession:
+        overrides?.startAuthSession ??
+        (async () => ({
+          status: "error" as const,
+          category: "unreachable" as const,
+          reason: "Auth session starter not mocked.",
+        })),
       pollCliAuthSession:
         overrides?.pollCliAuthSession ??
         (async () => ({ status: "pending" as const })),
@@ -251,6 +263,7 @@ describe("runCliCommand", () => {
       promptResponses: ["1", "http://localhost:5000"],
       queryAuthMode: async () => ({ mode: "required" }),
       startAuthSession: async (url) => ({
+        status: "started",
         sessionId: "sess-123",
         verificationUrl: `${url}/verify/sess-123`,
         expiresAt: new Date(Date.now() + 60000).toISOString(),
@@ -269,6 +282,40 @@ describe("runCliCommand", () => {
     const conn = getSavedConnection() as CliServerConnection;
     expect(conn.authMode).toBe("required");
     expect(conn.auth).toEqual({ kind: "bearer-token", token: "tok-abc" });
+  });
+
+  it("connect treats 401 as reachable (auth-enabled server)", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+      validateConnectivity: async () => ({
+        category: "unauthorized",
+        reason: "Connectivity check failed with status 401.",
+        statusCode: 401,
+        endpoint: {
+          lighthouseUrl: "http://localhost:5000",
+          healthCheckUrl: "http://localhost:5000/api/v1/healthcheck",
+        },
+      }),
+      queryAuthMode: async () => ({ mode: "required" }),
+      startAuthSession: async (url) => ({
+        status: "started",
+        sessionId: "sess-401",
+        verificationUrl: `${url}/verify/sess-401`,
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+      }),
+      pollCliAuthSession: async () => ({
+        status: "approved" as const,
+        token: "tok-401",
+        userName: "bob",
+      }),
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("bob");
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.authMode).toBe("required");
   });
 
   it("connect fails when server is unreachable", async () => {
@@ -305,7 +352,11 @@ describe("runCliCommand", () => {
     const { dependencies } = getDependencies({
       promptResponses: ["1", "http://localhost:5000"],
       queryAuthMode: async () => ({ mode: "required" }),
-      startAuthSession: async () => null,
+      startAuthSession: async () => ({
+        status: "error",
+        category: "unreachable",
+        reason: "socket hang up",
+      }),
     });
 
     const result = await runCliCommand(["connect"], dependencies);
@@ -316,11 +367,65 @@ describe("runCliCommand", () => {
     );
   });
 
+  it("connect retries https connectivity with insecure mode when accepted", async () => {
+    const connectivityAttempts: Array<boolean | undefined> = [];
+    const { dependencies, getSavedConnection } = getDependencies({
+      promptResponses: ["1", "https://localhost:48332/", "y"],
+      validateConnectivity: async (_url, insecure) => {
+        connectivityAttempts.push(insecure);
+        if (!insecure) {
+          return {
+            category: "unreachable",
+            reason: "fetch failed",
+            endpoint: {
+              lighthouseUrl: "https://localhost:48332",
+              healthCheckUrl: "https://localhost:48332/api/v1/version",
+            },
+          };
+        }
+
+        return {
+          category: "success",
+          endpoint: {
+            lighthouseUrl: "https://localhost:48332",
+            healthCheckUrl: "https://localhost:48332/api/v1/version",
+            apiBaseUrl: "https://localhost:48332/api",
+            mode: "explicit",
+          },
+          serverVersion: "1.0.0",
+        };
+      },
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(connectivityAttempts).toEqual([undefined, true]);
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.insecure).toBe(true);
+  });
+
+  it("connect fails fast when auth mode is blocked", async () => {
+    const { dependencies } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+      queryAuthMode: async () => ({
+        mode: "blocked",
+        misconfigurationMessage: "Premium license required.",
+      }),
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Premium license required");
+  });
+
   it("connect fails when authorization is denied", async () => {
     const { dependencies } = getDependencies({
       promptResponses: ["1", "http://localhost:5000"],
       queryAuthMode: async () => ({ mode: "required" }),
       startAuthSession: async (url) => ({
+        status: "started",
         sessionId: "sess-xyz",
         verificationUrl: `${url}/verify/sess-xyz`,
         expiresAt: new Date(Date.now() + 60000).toISOString(),
@@ -366,6 +471,65 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("token stored");
+  });
+
+  it("disconnect clears saved connection", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(["disconnect"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Disconnected");
+    expect(getSavedConnection()).toBeNull();
+  });
+
+  it("disconnect returns not-connected error when no connection is saved", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(["disconnect"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Not connected");
+  });
+
+  it("bare usage shows connect-first message when disconnected", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand([], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(
+      "You must be connected before running commands",
+    );
+    expect(result.stdout).toContain("lh connect");
+  });
+
+  it("bare usage shows connection summary and commands when connected", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "https://localhost:48332",
+        authMode: "required",
+        insecure: true,
+        auth: { kind: "bearer-token", token: "token" },
+      },
+    });
+
+    const result = await runCliCommand([], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Connection:");
+    expect(result.stdout).toContain("Connected to: https://localhost:48332");
+    expect(result.stdout).toContain(
+      "TLS: insecure certificate verification enabled",
+    );
+    expect(result.stdout).toContain("lh health check");
   });
 
   it("connection shows not-connected when no connection is saved", async () => {

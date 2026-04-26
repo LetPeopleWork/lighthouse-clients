@@ -13,6 +13,7 @@ import {
   createLighthouseClient,
   validateLighthouseConnectivity,
 } from "@letpeoplework/lighthouse-client";
+import { Agent, fetch as undiciFetch } from "undici";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";
@@ -79,6 +80,32 @@ const savePersistedStorage = async (
 
 // ── IO helpers ────────────────────────────────────────────────────────────────
 
+const insecureHttpsDispatcher = new Agent({
+  connect: {
+    rejectUnauthorized: false,
+  },
+});
+
+const createFetch = (insecure?: boolean): typeof globalThis.fetch => {
+  if (!insecure) {
+    return undiciFetch as unknown as typeof globalThis.fetch;
+  }
+
+  return async (input, init) => {
+    const requestInit = {
+      ...(init ?? {}),
+      dispatcher: insecureHttpsDispatcher,
+    } as RequestInit & {
+      dispatcher: Agent;
+    };
+
+    return undiciFetch(
+      input as never,
+      requestInit as never,
+    ) as unknown as Promise<Response>;
+  };
+};
+
 const openBrowser = async (url: string): Promise<void> => {
   let cmd: string;
   let openArgs: string[];
@@ -130,29 +157,39 @@ export const runCli = async (
       return storage.connection ?? null;
     },
     saveConnection: async (connection) => {
+      if (connection === null) {
+        await savePersistedStorage({ version: 2 });
+        return;
+      }
+
       await savePersistedStorage({ version: 2, connection });
     },
     prompt,
     openBrowser,
-    validateConnectivity: async (url) =>
+    validateConnectivity: async (url, insecure) =>
       validateLighthouseConnectivity(
         { kind: "explicit", lighthouseUrl: url },
-        { fetch: globalThis.fetch },
+        { fetch: createFetch(insecure) },
       ),
-    queryAuthMode: async (url) =>
-      clientQueryServerAuthMode(url, { fetch: globalThis.fetch }),
-    startAuthSession: async (url) =>
-      clientStartCliAuthSession(url, { fetch: globalThis.fetch }),
-    pollCliAuthSession: async (url, sessionId) =>
-      clientPollCliAuthSession(url, sessionId, { fetch: globalThis.fetch }),
-    createClient: (connection) =>
-      createLighthouseClient({
-        connection: {
-          kind: "explicit",
-          lighthouseUrl: connection.endpointUrl,
-        },
-        auth: connection.auth,
+    queryAuthMode: async (url, insecure) =>
+      clientQueryServerAuthMode(url, { fetch: createFetch(insecure) }),
+    startAuthSession: async (url, insecure) =>
+      clientStartCliAuthSession(url, { fetch: createFetch(insecure) }),
+    pollCliAuthSession: async (url, sessionId, insecure) =>
+      clientPollCliAuthSession(url, sessionId, {
+        fetch: createFetch(insecure),
       }),
+    createClient: (connection) =>
+      createLighthouseClient(
+        {
+          connection: {
+            kind: "explicit",
+            lighthouseUrl: connection.endpointUrl,
+          },
+          auth: connection.auth,
+        },
+        { fetch: createFetch(connection.insecure) },
+      ),
   };
 
   const result = await runCliCommand(args, dependencies);

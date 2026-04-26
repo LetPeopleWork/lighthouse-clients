@@ -93,6 +93,31 @@ const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 };
 
+const getErrorMessageWithCause = (error: unknown, fallback: string): string => {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const cause = error.cause;
+  if (cause instanceof Error && cause.message.trim().length > 0) {
+    if (cause.message === error.message) {
+      return error.message;
+    }
+
+    return `${error.message} (${cause.message})`;
+  }
+
+  if (typeof cause === "string" && cause.trim().length > 0) {
+    if (cause === error.message) {
+      return error.message;
+    }
+
+    return `${error.message} (${cause})`;
+  }
+
+  return error.message;
+};
+
 const getNormalizedLighthouseUrl = (value: string): string | null => {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -339,8 +364,10 @@ export const validateLighthouseConnectivity = async (
       endpoint,
     };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Connectivity request failed.";
+    const message = getErrorMessageWithCause(
+      error,
+      "Connectivity request failed.",
+    );
 
     return {
       category: "unreachable",
@@ -515,10 +542,22 @@ export type ServerAuthModeResult = {
 };
 
 export type CliAuthSessionStartResult = {
+  readonly status: "started";
   readonly sessionId: string;
   readonly verificationUrl: string;
   readonly expiresAt: string;
 };
+
+export type CliAuthSessionStartError = {
+  readonly status: "error";
+  readonly category: Exclude<ConnectivityCategory, "success">;
+  readonly reason: string;
+  readonly statusCode?: number;
+};
+
+export type CliAuthSessionStartOutcome =
+  | CliAuthSessionStartResult
+  | CliAuthSessionStartError;
 
 export type CliAuthSessionPollResult =
   | { readonly status: "pending" }
@@ -535,6 +574,7 @@ export type CliServerConnection = {
   readonly mode: "server";
   readonly endpointUrl: string;
   readonly authMode: "disabled" | "required";
+  readonly insecure?: boolean;
   readonly auth?: StoredLighthouseAuth;
 };
 
@@ -574,17 +614,62 @@ const mapAuthMode = (serverMode: string): CliServerAuthMode => {
   }
 };
 
+const getAuthStartFailureCategory = (
+  statusCode: number,
+): Exclude<ConnectivityCategory, "success" | "unreachable"> => {
+  if (statusCode === 401 || statusCode === 403) {
+    return "unauthorized";
+  }
+
+  if (statusCode === 404) {
+    return "misconfigured";
+  }
+
+  if (statusCode >= 500 && statusCode <= 599) {
+    return "dependency-failure";
+  }
+
+  return "unexpected";
+};
+
+const getErrorReasonFromResponse = async (
+  response: ConnectivityFetchResponse,
+  fallback: string,
+): Promise<string> => {
+  try {
+    const body = (await response.text()).trim();
+    if (body.length > 0) {
+      return body;
+    }
+  } catch {
+    // Ignore body parsing failures and return the fallback message.
+  }
+
+  return fallback;
+};
+
 export const queryServerAuthMode = async (
   endpointUrl: string,
   dependencies: CliAuthDependencies,
 ): Promise<ServerAuthModeResult> => {
-  const apiBase = getApiBaseUrl(endpointUrl);
+  const normalizedEndpointUrl = getNormalizedLighthouseUrl(endpointUrl);
+  if (normalizedEndpointUrl === null) {
+    return {
+      mode: "misconfigured",
+      misconfigurationMessage: "Server URL is invalid.",
+    };
+  }
+
+  const apiBase = getApiBaseUrl(normalizedEndpointUrl);
   try {
     const response = await dependencies.fetch(`${apiBase}/v1/auth/mode`);
     if (!response.ok) {
       return {
         mode: "misconfigured",
-        misconfigurationMessage: `HTTP ${response.status}`,
+        misconfigurationMessage: await getErrorReasonFromResponse(
+          response,
+          `HTTP ${response.status}`,
+        ),
       };
     }
     const json = (await response.json()) as AuthModeApiResponse;
@@ -592,10 +677,13 @@ export const queryServerAuthMode = async (
       mode: mapAuthMode(json.mode),
       misconfigurationMessage: json.misconfigurationMessage,
     };
-  } catch {
+  } catch (error: unknown) {
     return {
       mode: "misconfigured",
-      misconfigurationMessage: "Could not reach auth mode endpoint.",
+      misconfigurationMessage: getErrorMessageWithCause(
+        error,
+        "Could not reach auth mode endpoint.",
+      ),
     };
   }
 };
@@ -603,8 +691,17 @@ export const queryServerAuthMode = async (
 export const startCliAuthSession = async (
   endpointUrl: string,
   dependencies: CliAuthDependencies,
-): Promise<CliAuthSessionStartResult | null> => {
-  const apiBase = getApiBaseUrl(endpointUrl);
+): Promise<CliAuthSessionStartOutcome> => {
+  const normalizedEndpointUrl = getNormalizedLighthouseUrl(endpointUrl);
+  if (normalizedEndpointUrl === null) {
+    return {
+      status: "error",
+      category: "misconfigured",
+      reason: "Server URL is invalid.",
+    };
+  }
+
+  const apiBase = getApiBaseUrl(normalizedEndpointUrl);
   try {
     const response = await dependencies.fetch(
       `${apiBase}/v1/auth/cli/session`,
@@ -613,11 +710,32 @@ export const startCliAuthSession = async (
       },
     );
     if (!response.ok) {
-      return null;
+      return {
+        status: "error",
+        category: getAuthStartFailureCategory(response.status),
+        reason: await getErrorReasonFromResponse(
+          response,
+          `HTTP ${response.status}`,
+        ),
+        statusCode: response.status,
+      };
     }
-    return (await response.json()) as CliSessionApiResponse;
-  } catch {
-    return null;
+    const json = (await response.json()) as CliSessionApiResponse;
+    return {
+      status: "started",
+      sessionId: json.sessionId,
+      verificationUrl: json.verificationUrl,
+      expiresAt: json.expiresAt,
+    };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      category: "unreachable",
+      reason: getErrorMessageWithCause(
+        error,
+        "Could not reach auth session endpoint.",
+      ),
+    };
   }
 };
 
@@ -626,7 +744,12 @@ export const pollCliAuthSession = async (
   sessionId: string,
   dependencies: CliAuthDependencies,
 ): Promise<CliAuthSessionPollResult> => {
-  const apiBase = getApiBaseUrl(endpointUrl);
+  const normalizedEndpointUrl = getNormalizedLighthouseUrl(endpointUrl);
+  if (normalizedEndpointUrl === null) {
+    return { status: "expired" };
+  }
+
+  const apiBase = getApiBaseUrl(normalizedEndpointUrl);
   try {
     const response = await dependencies.fetch(
       `${apiBase}/v1/auth/cli/poll/${encodeURIComponent(sessionId)}`,

@@ -1,6 +1,6 @@
 import {
   type CliAuthSessionPollResult,
-  type CliAuthSessionStartResult,
+  type CliAuthSessionStartOutcome,
   type CliConnection,
   type CliServerConnection,
   type ConnectivityValidationResult,
@@ -57,19 +57,25 @@ type CliClientOperations = CliClientLike & CliDomainClientLike;
 
 export type RunCliCommandDependencies = {
   readonly loadConnection: () => Promise<CliConnection | null>;
-  readonly saveConnection: (connection: CliConnection) => Promise<void>;
+  readonly saveConnection: (connection: CliConnection | null) => Promise<void>;
   readonly prompt: (question: string) => Promise<string>;
   readonly openBrowser: (url: string) => Promise<void>;
   readonly validateConnectivity: (
     url: string,
+    insecure?: boolean,
   ) => Promise<ConnectivityValidationResult>;
-  readonly queryAuthMode: (url: string) => Promise<ServerAuthModeResult>;
+  readonly queryAuthMode: (
+    url: string,
+    insecure?: boolean,
+  ) => Promise<ServerAuthModeResult>;
   readonly startAuthSession: (
     url: string,
-  ) => Promise<CliAuthSessionStartResult | null>;
+    insecure?: boolean,
+  ) => Promise<CliAuthSessionStartOutcome>;
   readonly pollCliAuthSession: (
     url: string,
     sessionId: string,
+    insecure?: boolean,
   ) => Promise<CliAuthSessionPollResult>;
   readonly createClient: (
     connection: CliServerConnection,
@@ -149,6 +155,55 @@ const isCliCommandResult = (value: unknown): value is CliCommandResult =>
   "stdout" in value &&
   "stderr" in value;
 
+const isServerReachable = (
+  result: ConnectivityValidationResult,
+): result is Extract<
+  ConnectivityValidationResult,
+  { readonly category: "success" | "unauthorized" }
+> => result.category === "success" || result.category === "unauthorized";
+
+const getConnectionStatusLines = (
+  connection: CliServerConnection,
+): string[] => {
+  const lines: string[] = [
+    `Connected to: ${connection.endpointUrl}`,
+    `Auth: ${connection.authMode}`,
+  ];
+
+  if (connection.insecure) {
+    lines.push("TLS: insecure certificate verification enabled");
+  }
+
+  if (connection.authMode === "required") {
+    if (connection.auth === undefined) {
+      lines.push("Token: none - re-run lh connect to authenticate");
+    } else {
+      lines.push("Token: token stored");
+    }
+  }
+
+  return lines;
+};
+
+const getAuthSessionStartErrorMessage = (
+  url: string,
+  outcome: Exclude<CliAuthSessionStartOutcome, { status: "started" }>,
+): string => {
+  const defaultReason = `Failed to start authentication session (${outcome.category}).`;
+  const reason =
+    outcome.reason.trim().length > 0 ? outcome.reason : defaultReason;
+
+  if (outcome.category === "unauthorized") {
+    return `Authentication session request was rejected by ${url}: ${reason}`;
+  }
+
+  if (outcome.category === "misconfigured") {
+    return `Authentication session endpoint is unavailable at ${url}: ${reason}`;
+  }
+
+  return `Failed to start an authentication session at ${url}: ${reason}`;
+};
+
 // ── connect wizard ─────────────────────────────────────────────────────────────
 
 const runConnect = async (
@@ -166,31 +221,70 @@ const runConnect = async (
 
   const url = await dependencies.prompt("Lighthouse server URL: ");
 
+  let insecure = false;
+
   const validationResult = await dependencies.validateConnectivity(url);
-  if (validationResult.category !== "success") {
+  if (!isServerReachable(validationResult)) {
+    if (url.toLowerCase().startsWith("https://")) {
+      const retry = await dependencies.prompt(
+        `\nCannot reach server (${validationResult.reason}).\nThis may be a TLS certificate issue (e.g. self-signed cert).\nSkip TLS certificate verification? [y/N] `,
+      );
+      if (retry.trim().toLowerCase() !== "y") {
+        return getErrorResult(
+          `Cannot reach server at ${url}: ${validationResult.reason}`,
+        );
+      }
+      const insecureResult = await dependencies.validateConnectivity(url, true);
+      if (!isServerReachable(insecureResult)) {
+        return getErrorResult(
+          `Cannot reach server at ${url}: ${insecureResult.reason}`,
+        );
+      }
+      insecure = true;
+    } else {
+      return getErrorResult(
+        `Cannot reach server at ${url}: ${validationResult.reason}`,
+      );
+    }
+  }
+
+  const authModeResult = await dependencies.queryAuthMode(
+    url,
+    insecure || undefined,
+  );
+
+  if (authModeResult.mode === "blocked") {
     return getErrorResult(
-      `Cannot reach server at ${url}: ${validationResult.reason}`,
+      authModeResult.misconfigurationMessage ??
+        "Authentication is blocked by server configuration.",
     );
   }
 
-  const authModeResult = await dependencies.queryAuthMode(url);
+  if (authModeResult.mode === "misconfigured") {
+    return getErrorResult(
+      authModeResult.misconfigurationMessage ??
+        "Authentication appears to be misconfigured on the server.",
+    );
+  }
 
   if (authModeResult.mode === "disabled") {
     const connection: CliServerConnection = {
       mode: "server",
       endpointUrl: url,
       authMode: "disabled",
+      ...(insecure ? { insecure: true } : {}),
     };
     await dependencies.saveConnection(connection);
     return getSuccessResult(`Connected to ${url} (auth: disabled)`);
   }
 
   // Auth required — start device-authorization flow
-  const session = await dependencies.startAuthSession(url);
-  if (session === null) {
-    return getErrorResult(
-      "Failed to start an authentication session. Check that the server is reachable.",
-    );
+  const session = await dependencies.startAuthSession(
+    url,
+    insecure || undefined,
+  );
+  if (session.status === "error") {
+    return getErrorResult(getAuthSessionStartErrorMessage(url, session));
   }
 
   await dependencies.openBrowser(session.verificationUrl);
@@ -200,6 +294,7 @@ const runConnect = async (
     const pollResult = await dependencies.pollCliAuthSession(
       url,
       session.sessionId,
+      insecure || undefined,
     );
 
     if (pollResult.status === "approved") {
@@ -207,6 +302,7 @@ const runConnect = async (
         mode: "server",
         endpointUrl: url,
         authMode: "required",
+        ...(insecure ? { insecure: true } : {}),
         auth: { kind: "bearer-token", token: pollResult.token },
       };
       await dependencies.saveConnection(connection);
@@ -242,20 +338,21 @@ const runConnectionStatus = async (
     );
   }
 
-  const lines: string[] = [
-    `Connected to: ${connection.endpointUrl}`,
-    `Auth: ${connection.authMode}`,
-  ];
+  return getSuccessResult(getConnectionStatusLines(connection).join("\n"));
+};
 
-  if (connection.authMode === "required") {
-    if (connection.auth === undefined) {
-      lines.push("Token: none — re-run lh connect to authenticate");
-    } else {
-      lines.push("Token: token stored");
-    }
+const runDisconnect = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const connection = await dependencies.loadConnection();
+  if (connection === null) {
+    return getErrorResult(
+      "Not connected. There is no saved connection to disconnect.",
+    );
   }
 
-  return getSuccessResult(lines.join("\n"));
+  await dependencies.saveConnection(null);
+  return getSuccessResult(`Disconnected from ${connection.endpointUrl}.`);
 };
 
 // ── usage text ───────────────────────────────────────────────────────────────
@@ -264,14 +361,22 @@ const getUsageText = async (
   dependencies: RunCliCommandDependencies,
 ): Promise<string> => {
   const connection = await dependencies.loadConnection();
-  const lines: string[] = ["Usage:", "  lh connect", "  lh connection"];
+  const lines: string[] = [
+    "Usage:",
+    "  lh connect",
+    "  lh connection",
+    "  lh disconnect",
+  ];
   if (connection === null) {
     lines.push(
-      "  lh <command> <subcommand> [options]",
       "",
-      'Run "lh connect" first to see all available commands.',
+      "You must be connected before running commands.",
+      "",
+      'Run "lh connect" to connect to a Lighthouse server.',
     );
   } else {
+    lines.push("", "Connection:", ...getConnectionStatusLines(connection));
+    lines.push("");
     lines.push(
       "  lh health check",
       "  lh version get",
@@ -315,7 +420,7 @@ export const runCliCommand = async (
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
   if (args.length === 0) {
-    return getErrorResult(await getUsageText(dependencies));
+    return getSuccessResult(await getUsageText(dependencies));
   }
 
   const [scope, action, subject] = args;
@@ -328,6 +433,10 @@ export const runCliCommand = async (
 
   if (scope === "connection") {
     return runConnectionStatus(dependencies);
+  }
+
+  if (scope === "disconnect") {
+    return runDisconnect(dependencies);
   }
 
   // ── Health & version ──────────────────────────────────────────────────────
@@ -646,7 +755,7 @@ export const runCliCommand = async (
   }
 
   if (scope === "help") {
-    return getErrorResult(await getUsageText(dependencies));
+    return getSuccessResult(await getUsageText(dependencies));
   }
 
   return getErrorResult(await getUsageText(dependencies));
@@ -663,7 +772,11 @@ export const getDefaultDependencies = (): RunCliCommandDependencies => ({
     reason: "No connectivity validator configured.",
   }),
   queryAuthMode: async () => ({ mode: "disabled" }),
-  startAuthSession: async () => null,
+  startAuthSession: async () => ({
+    status: "error" as const,
+    category: "unreachable" as const,
+    reason: "No auth session starter configured.",
+  }),
   pollCliAuthSession: async () => ({ status: "pending" as const }),
   createClient: ({ endpointUrl, auth }) =>
     createLighthouseClient({
