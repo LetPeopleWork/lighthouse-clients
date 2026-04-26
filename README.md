@@ -10,6 +10,17 @@ Workspace for Lighthouse external client packages.
 - `@letpeoplework/lighthouse-mcp-stdio`: stdio transport adapter.
 - `@letpeoplework/lighthouse-mcp-http`: Streamable HTTP transport/runtime adapter.
 
+## Installation
+# Install
+```
+	curl -fsSL https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/install.sh | bash
+```
+
+# Uninstall
+```
+	curl -fsSL https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/uninstall.sh | bash
+```
+
 ## Local Development
 
 - Install dependencies: `pnpm install`

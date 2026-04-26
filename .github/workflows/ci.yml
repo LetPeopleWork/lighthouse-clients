@@ -108,6 +108,11 @@ jobs:
           bun build ./packages/cli/src/bin.ts --compile --target bun-windows-x64-modern --outfile ./release-assets/lh.exe
           cd release-assets && zip -q lh-windows-x64.zip lh.exe
 
+      - name: Copy install/uninstall scripts to release assets
+        run: |
+          cp scripts/install.sh release-assets/install.sh
+          cp scripts/uninstall.sh release-assets/uninstall.sh
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -118,6 +123,8 @@ jobs:
             release-assets/lh-linux-x64.tar.gz
             release-assets/lh-darwin-x64.tar.gz
             release-assets/lh-windows-x64.zip
+            release-assets/install.sh
+            release-assets/uninstall.sh
 
       - name: Login to GHCR
         uses: docker/login-action@v3
