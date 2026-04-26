@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "Shared Lighthouse API client contracts",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
+  "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
