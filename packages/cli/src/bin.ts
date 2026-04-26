@@ -1,12 +1,19 @@
+import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { createInterface } from "node:readline/promises";
 import {
+  type CliConnection,
+  type CliServerConnection,
   type StoredLighthouseAuth,
-  createLighthouseAuthContext,
+  pollCliAuthSession as clientPollCliAuthSession,
+  queryServerAuthMode as clientQueryServerAuthMode,
+  startCliAuthSession as clientStartCliAuthSession,
   createLighthouseClient,
+  validateLighthouseConnectivity,
 } from "@letpeoplework/lighthouse-client";
-import { type CliRuntimeConfig, runCliCommand } from "./index";
+import { type RunCliCommandDependencies, runCliCommand } from "./index";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";
 
@@ -15,104 +22,140 @@ type RunCliIo = {
   readonly stderr: (message: string) => void;
 };
 
-type PersistedCliConfig = {
+type PersistedConfigV1 = {
   readonly endpointUrl?: string;
   readonly auth?: StoredLighthouseAuth;
+};
+
+type PersistedConfigV2 = {
+  readonly version: 2;
+  readonly connection?: CliConnection;
 };
 
 const getConfigPath = (): string =>
   process.env.LIGHTHOUSE_CLI_CONFIG_PATH ??
   join(homedir(), ".config", "lighthouse-clients", "cli-config.json");
 
-const loadPersistedConfig = async (): Promise<PersistedCliConfig> => {
+const loadPersistedStorage = async (): Promise<PersistedConfigV2> => {
   try {
     const raw = await readFile(getConfigPath(), "utf8");
-    const parsed = JSON.parse(raw) as PersistedCliConfig;
-    return parsed;
+    const parsed = JSON.parse(raw) as PersistedConfigV1 | PersistedConfigV2;
+    if ("version" in parsed && parsed.version === 2) {
+      return parsed;
+    }
+    // Migrate v1 → v2
+    const v1 = parsed as PersistedConfigV1;
+    if (
+      typeof v1.endpointUrl === "string" &&
+      v1.endpointUrl.trim().length > 0
+    ) {
+      const authMode =
+        v1.auth === undefined ? ("disabled" as const) : ("required" as const);
+      const connection: CliServerConnection = {
+        mode: "server",
+        endpointUrl: v1.endpointUrl,
+        authMode,
+        auth: v1.auth,
+      };
+      return { version: 2, connection };
+    }
+    return { version: 2 };
   } catch {
-    return {};
+    return { version: 2 };
   }
 };
 
-const savePersistedConfig = async (
-  config: PersistedCliConfig,
+const savePersistedStorage = async (
+  storage: PersistedConfigV2,
 ): Promise<void> => {
   const configPath = getConfigPath();
   await mkdir(dirname(configPath), { recursive: true });
-  await writeFile(configPath, JSON.stringify(config, null, 2), {
+  await writeFile(configPath, JSON.stringify(storage, null, 2), {
     encoding: "utf8",
     mode: 0o600,
   });
   await chmod(configPath, 0o600);
 };
 
-const loadRuntimeConfig = async (): Promise<CliRuntimeConfig | null> => {
-  const persisted = await loadPersistedConfig();
-  if (
-    typeof persisted.endpointUrl !== "string" ||
-    persisted.endpointUrl.length === 0
-  ) {
-    return null;
-  }
+// ── IO helpers ────────────────────────────────────────────────────────────────
 
-  return {
-    endpointUrl: persisted.endpointUrl,
-  };
+const openBrowser = async (url: string): Promise<void> => {
+  let cmd: string;
+  let openArgs: string[];
+  if (process.platform === "win32") {
+    cmd = "cmd";
+    openArgs = ["/c", "start", "", url];
+  } else if (process.platform === "darwin") {
+    cmd = "open";
+    openArgs = [url];
+  } else {
+    cmd = "xdg-open";
+    openArgs = [url];
+  }
+  return new Promise<void>((resolve) => {
+    const child = spawn(cmd, openArgs, { detached: true, stdio: "ignore" });
+    child.unref();
+    resolve();
+  });
 };
 
-const saveRuntimeConfig = async (config: CliRuntimeConfig): Promise<void> => {
-  const persisted = await loadPersistedConfig();
-  await savePersistedConfig({
-    ...persisted,
-    endpointUrl: config.endpointUrl,
+const prompt = async (question: string): Promise<string> => {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
   });
+  const answer = await rl.question(question);
+  rl.close();
+  return answer;
+};
+
+// ── Main entry ────────────────────────────────────────────────────────────────
+
+const defaultIo: RunCliIo = {
+  stdout: (message) => {
+    process.stdout.write(`${message}\n`);
+  },
+  stderr: (message) => {
+    process.stderr.write(`${message}\n`);
+  },
 };
 
 export const runCli = async (
   args: readonly string[] = process.argv.slice(2),
-  io: RunCliIo = {
-    stdout: (message) => {
-      process.stdout.write(`${message}\n`);
-    },
-    stderr: (message) => {
-      process.stderr.write(`${message}\n`);
-    },
-  },
+  io: RunCliIo = defaultIo,
 ): Promise<number> => {
-  const authContext = createLighthouseAuthContext({
-    load: async () => {
-      const persisted = await loadPersistedConfig();
-      return persisted.auth ?? null;
+  const dependencies: RunCliCommandDependencies = {
+    loadConnection: async () => {
+      const storage = await loadPersistedStorage();
+      return storage.connection ?? null;
     },
-    save: async (auth) => {
-      const persisted = await loadPersistedConfig();
-      await savePersistedConfig({
-        ...persisted,
-        auth,
-      });
+    saveConnection: async (connection) => {
+      await savePersistedStorage({ version: 2, connection });
     },
-    clear: async () => {
-      const persisted = await loadPersistedConfig();
-      await savePersistedConfig({
-        endpointUrl: persisted.endpointUrl,
-      });
-    },
-  });
-
-  const result = await runCliCommand(args, {
-    loadConfig: loadRuntimeConfig,
-    saveConfig: saveRuntimeConfig,
-    authContext,
-    createClient: ({ endpointUrl, auth }) => {
-      return createLighthouseClient({
+    prompt,
+    openBrowser,
+    validateConnectivity: async (url) =>
+      validateLighthouseConnectivity(
+        { kind: "explicit", lighthouseUrl: url },
+        { fetch: globalThis.fetch },
+      ),
+    queryAuthMode: async (url) =>
+      clientQueryServerAuthMode(url, { fetch: globalThis.fetch }),
+    startAuthSession: async (url) =>
+      clientStartCliAuthSession(url, { fetch: globalThis.fetch }),
+    pollCliAuthSession: async (url, sessionId) =>
+      clientPollCliAuthSession(url, sessionId, { fetch: globalThis.fetch }),
+    createClient: (connection) =>
+      createLighthouseClient({
         connection: {
           kind: "explicit",
-          lighthouseUrl: endpointUrl,
+          lighthouseUrl: connection.endpointUrl,
         },
-        auth,
-      });
-    },
-  });
+        auth: connection.auth,
+      }),
+  };
+
+  const result = await runCliCommand(args, dependencies);
 
   if (result.stdout.length > 0) {
     io.stdout(result.stdout);
@@ -126,7 +169,5 @@ export const runCli = async (
 };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  void runCli().then((code) => {
-    process.exitCode = code;
-  });
+  process.exitCode = await runCli();
 }

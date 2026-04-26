@@ -501,6 +501,160 @@ export const createLighthouseAuthContext = (
   },
 });
 
+// ── CLI connection types ──────────────────────────────────────────────────────
+
+export type CliServerAuthMode =
+  | "disabled"
+  | "required"
+  | "blocked"
+  | "misconfigured";
+
+export type ServerAuthModeResult = {
+  readonly mode: CliServerAuthMode;
+  readonly misconfigurationMessage?: string;
+};
+
+export type CliAuthSessionStartResult = {
+  readonly sessionId: string;
+  readonly verificationUrl: string;
+  readonly expiresAt: string;
+};
+
+export type CliAuthSessionPollResult =
+  | { readonly status: "pending" }
+  | {
+      readonly status: "approved";
+      readonly token: string;
+      readonly userName: string;
+    }
+  | { readonly status: "expired" }
+  | { readonly status: "denied" }
+  | { readonly status: "not-found" };
+
+export type CliServerConnection = {
+  readonly mode: "server";
+  readonly endpointUrl: string;
+  readonly authMode: "disabled" | "required";
+  readonly auth?: StoredLighthouseAuth;
+};
+
+export type CliConnection = CliServerConnection;
+
+type AuthModeApiResponse = {
+  readonly mode: string;
+  readonly misconfigurationMessage?: string;
+};
+
+type CliSessionApiResponse = {
+  readonly sessionId: string;
+  readonly verificationUrl: string;
+  readonly expiresAt: string;
+};
+
+type CliPollApiResponse = {
+  readonly status: string;
+  readonly token?: string;
+  readonly userName?: string;
+};
+
+type CliAuthDependencies = {
+  readonly fetch: typeof globalThis.fetch;
+};
+
+const mapAuthMode = (serverMode: string): CliServerAuthMode => {
+  switch (serverMode.toLowerCase()) {
+    case "enabled":
+      return "required";
+    case "disabled":
+      return "disabled";
+    case "blocked":
+      return "blocked";
+    default:
+      return "misconfigured";
+  }
+};
+
+export const queryServerAuthMode = async (
+  endpointUrl: string,
+  dependencies: CliAuthDependencies,
+): Promise<ServerAuthModeResult> => {
+  const apiBase = getApiBaseUrl(endpointUrl);
+  try {
+    const response = await dependencies.fetch(`${apiBase}/v1/auth/mode`);
+    if (!response.ok) {
+      return {
+        mode: "misconfigured",
+        misconfigurationMessage: `HTTP ${response.status}`,
+      };
+    }
+    const json = (await response.json()) as AuthModeApiResponse;
+    return {
+      mode: mapAuthMode(json.mode),
+      misconfigurationMessage: json.misconfigurationMessage,
+    };
+  } catch {
+    return {
+      mode: "misconfigured",
+      misconfigurationMessage: "Could not reach auth mode endpoint.",
+    };
+  }
+};
+
+export const startCliAuthSession = async (
+  endpointUrl: string,
+  dependencies: CliAuthDependencies,
+): Promise<CliAuthSessionStartResult | null> => {
+  const apiBase = getApiBaseUrl(endpointUrl);
+  try {
+    const response = await dependencies.fetch(
+      `${apiBase}/v1/auth/cli/session`,
+      {
+        method: "POST",
+      },
+    );
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as CliSessionApiResponse;
+  } catch {
+    return null;
+  }
+};
+
+export const pollCliAuthSession = async (
+  endpointUrl: string,
+  sessionId: string,
+  dependencies: CliAuthDependencies,
+): Promise<CliAuthSessionPollResult> => {
+  const apiBase = getApiBaseUrl(endpointUrl);
+  try {
+    const response = await dependencies.fetch(
+      `${apiBase}/v1/auth/cli/poll/${encodeURIComponent(sessionId)}`,
+    );
+    if (response.status === 404) {
+      return { status: "not-found" };
+    }
+    if (!response.ok) {
+      return { status: "expired" };
+    }
+    const json = (await response.json()) as CliPollApiResponse;
+    if (json.status === "approved" && json.token && json.userName) {
+      return { status: "approved", token: json.token, userName: json.userName };
+    }
+    if (json.status === "expired") {
+      return { status: "expired" };
+    }
+    if (json.status === "denied") {
+      return { status: "denied" };
+    }
+    return { status: "pending" };
+  } catch {
+    return { status: "expired" };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type LighthouseClientConfiguration = {
   readonly connection: LighthouseConnectionConfiguration;
   readonly auth?: LighthouseClientAuth;

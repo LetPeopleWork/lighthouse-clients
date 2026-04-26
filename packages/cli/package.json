@@ -18,8 +18,7 @@
     },
     "./bin": {
       "types": "./dist/bin.d.ts",
-      "import": "./dist/bin.js",
-      "require": "./dist/bin.cjs"
+      "import": "./dist/bin.js"
     }
   },
   "files": [

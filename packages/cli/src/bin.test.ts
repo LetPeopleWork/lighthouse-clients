@@ -26,7 +26,7 @@ describe("cli binary entrypoint", () => {
       expect(exitCode).toBe(1);
       expect(stdout).not.toHaveBeenCalled();
       expect(stderr).toHaveBeenCalledOnce();
-      expect(stderr.mock.calls[0]?.[0]).toContain("No endpoint configured");
+      expect(stderr.mock.calls[0]?.[0]).toContain("Not connected");
     } finally {
       if (previousConfigPath === undefined) {
         process.env.LIGHTHOUSE_CLI_CONFIG_PATH = undefined;
@@ -46,8 +46,8 @@ describe("cli binary entrypoint", () => {
     expect(stdout).not.toHaveBeenCalled();
     expect(stderr).toHaveBeenCalledOnce();
     const helpText = stderr.mock.calls[0]?.[0] ?? "";
-    expect(helpText).toContain("lh config endpoint set");
-    expect(helpText).toContain("lh health check");
+    expect(helpText).toContain("lh connect");
+    expect(helpText).toContain("lh connection");
     expect(helpText).not.toContain("  lighthouse ");
   });
 
@@ -60,6 +60,6 @@ describe("cli binary entrypoint", () => {
     expect(exitCode).toBe(1);
     expect(stderr).toHaveBeenCalledOnce();
     const helpText = stderr.mock.calls[0]?.[0] ?? "";
-    expect(helpText).toContain("lh team list");
+    expect(helpText).toContain("lh connect");
   });
 });

@@ -10,7 +10,7 @@ export default defineConfig([
   },
   {
     entry: { bin: "src/bin.ts" },
-    format: ["esm", "cjs"],
+    format: ["esm"],
     dts: true,
     tsconfig: "tsconfig.build.json",
     banner: {

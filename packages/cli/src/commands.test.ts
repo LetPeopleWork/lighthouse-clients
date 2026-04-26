@@ -1,14 +1,13 @@
-import {
-  type LighthouseClientAuth,
-  type StoredLighthouseAuth,
-  createLighthouseAuthContext,
+import type {
+  CliAuthSessionPollResult,
+  CliAuthSessionStartResult,
+  CliConnection,
+  CliServerConnection,
+  ConnectivityValidationResult,
+  ServerAuthModeResult,
 } from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
-import {
-  type CliRuntimeConfig,
-  type RunCliCommandDependencies,
-  runCliCommand,
-} from "./index";
+import { type RunCliCommandDependencies, runCliCommand } from "./index";
 
 type MockClient = {
   readonly checkConnectivity: () => Promise<{
@@ -175,157 +174,252 @@ const getDefaultMockClient = (): MockClient => ({
 });
 
 const getDependencies = (overrides?: {
-  readonly config?: CliRuntimeConfig | null;
+  readonly connection?: CliConnection | null;
   readonly client?: MockClient;
+  readonly promptResponses?: readonly string[];
+  readonly validateConnectivity?: (
+    url: string,
+  ) => Promise<ConnectivityValidationResult>;
+  readonly queryAuthMode?: (url: string) => Promise<ServerAuthModeResult>;
+  readonly startAuthSession?: (
+    url: string,
+  ) => Promise<CliAuthSessionStartResult | null>;
+  readonly pollCliAuthSession?: (
+    url: string,
+    sessionId: string,
+  ) => Promise<CliAuthSessionPollResult>;
 }): {
   readonly dependencies: RunCliCommandDependencies;
-  readonly getSavedConfig: () => CliRuntimeConfig | null;
-  readonly getLastAuth: () => LighthouseClientAuth | null;
+  readonly getSavedConnection: () => CliConnection | null;
 } => {
-  let savedConfig = overrides?.config ?? null;
-  let savedAuth: StoredLighthouseAuth | null = null;
-  let lastAuth: LighthouseClientAuth | null = null;
+  let savedConnection: CliConnection | null = overrides?.connection ?? null;
+  const promptQueue = (overrides?.promptResponses ?? []).slice();
 
-  const defaultClient: MockClient = getDefaultMockClient();
-
-  const authContext = createLighthouseAuthContext({
-    load: async () => savedAuth,
-    save: async (auth: StoredLighthouseAuth) => {
-      savedAuth = auth;
-    },
-    clear: async () => {
-      savedAuth = null;
-    },
-  });
+  const defaultClient = getDefaultMockClient();
 
   return {
     dependencies: {
-      loadConfig: async () => savedConfig,
-      saveConfig: async (config: CliRuntimeConfig) => {
-        savedConfig = config;
+      loadConnection: async () => savedConnection,
+      saveConnection: async (conn: CliConnection) => {
+        savedConnection = conn;
       },
-      authContext,
-      createClient: ({ auth }) => {
-        lastAuth = auth;
-        return overrides?.client ?? defaultClient;
-      },
+      prompt: async () => promptQueue.shift() ?? "",
+      openBrowser: async () => undefined,
+      validateConnectivity:
+        overrides?.validateConnectivity ??
+        (async (url) => ({
+          category: "success",
+          endpoint: {
+            lighthouseUrl: url,
+            healthCheckUrl: `${url}/api/v1/healthcheck`,
+          },
+          serverVersion: "1.0.0",
+        })),
+      queryAuthMode:
+        overrides?.queryAuthMode ?? (async () => ({ mode: "disabled" })),
+      startAuthSession: overrides?.startAuthSession ?? (async () => null),
+      pollCliAuthSession:
+        overrides?.pollCliAuthSession ??
+        (async () => ({ status: "pending" as const })),
+      createClient: () => overrides?.client ?? defaultClient,
     },
-    getSavedConfig: () => savedConfig,
-    getLastAuth: () => lastAuth,
+    getSavedConnection: () => savedConnection,
   };
 };
 
 describe("runCliCommand", () => {
-  it("sets and persists endpoint config", async () => {
-    const { dependencies, getSavedConfig } = getDependencies();
+  // ── connect ────────────────────────────────────────────────────────────────
 
-    const result = await runCliCommand(
-      ["config", "endpoint", "set", "--url", "http://localhost:5000"],
-      dependencies,
-    );
+  it("connect saves connection without auth", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("http://localhost:5000");
-    expect(getSavedConfig()).toEqual({ endpointUrl: "http://localhost:5000" });
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.mode).toBe("server");
+    expect(conn.endpointUrl).toBe("http://localhost:5000");
+    expect(conn.authMode).toBe("disabled");
+    expect(conn.auth).toBeUndefined();
   });
 
-  it("shows endpoint config", async () => {
-    const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+  it("connect saves connection with auth flow", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+      queryAuthMode: async () => ({ mode: "required" }),
+      startAuthSession: async (url) => ({
+        sessionId: "sess-123",
+        verificationUrl: `${url}/verify/sess-123`,
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+      }),
+      pollCliAuthSession: async () => ({
+        status: "approved" as const,
+        token: "tok-abc",
+        userName: "alice",
+      }),
     });
 
-    const result = await runCliCommand(
-      ["config", "endpoint", "show"],
-      dependencies,
-    );
+    const result = await runCliCommand(["connect"], dependencies);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("http://localhost:5000");
+    expect(result.stdout).toContain("alice");
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.authMode).toBe("required");
+    expect(conn.auth).toEqual({ kind: "bearer-token", token: "tok-abc" });
   });
 
-  it("runs health check using explicit url argument", async () => {
-    const { dependencies } = getDependencies();
-
-    const result = await runCliCommand(
-      ["health", "check", "--url", "http://localhost:5000"],
-      dependencies,
-    );
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("success");
-  });
-
-  it("runs health check using configured endpoint when url is omitted", async () => {
+  it("connect fails when server is unreachable", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      promptResponses: ["1", "http://bad-host"],
+      validateConnectivity: async () => ({
+        category: "unreachable",
+        reason: "Connection refused",
+        endpoint: {
+          lighthouseUrl: "http://bad-host",
+          healthCheckUrl: "http://bad-host/api/v1/healthcheck",
+        },
+      }),
     });
 
-    const result = await runCliCommand(["health", "check"], dependencies);
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("success");
-  });
-
-  it("returns usage error when health check has no endpoint", async () => {
-    const { dependencies } = getDependencies();
-
-    const result = await runCliCommand(["health", "check"], dependencies);
+    const result = await runCliCommand(["connect"], dependencies);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("No endpoint configured");
+    expect(result.stderr).toContain("Cannot reach server");
   });
 
-  it("reports auth status when no credentials are configured", async () => {
-    const { dependencies } = getDependencies();
-
-    const result = await runCliCommand(["auth", "status"], dependencies);
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("not configured");
-  });
-
-  it("logs in with api key through a non-interactive command", async () => {
-    const { dependencies } = getDependencies();
-
-    const loginResult = await runCliCommand(
-      ["auth", "login", "--api-key", "secret-key"],
-      dependencies,
-    );
-
-    expect(loginResult.exitCode).toBe(0);
-    expect(loginResult.stdout).toContain("Authenticated");
-
-    const statusResult = await runCliCommand(["auth", "status"], dependencies);
-    expect(statusResult.exitCode).toBe(0);
-    expect(statusResult.stdout).toContain("api-key");
-  });
-
-  it("reuses stored auth credentials on API commands", async () => {
-    const { dependencies, getLastAuth } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+  it("connect fails for standalone mode selection", async () => {
+    const { dependencies } = getDependencies({
+      promptResponses: ["2"],
     });
 
-    await runCliCommand(
-      ["auth", "login", "--bearer-token", "stored-token"],
-      dependencies,
-    );
+    const result = await runCliCommand(["connect"], dependencies);
 
-    const result = await runCliCommand(["version", "get"], dependencies);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("not yet supported");
+  });
+
+  it("connect fails when auth session cannot be started", async () => {
+    const { dependencies } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+      queryAuthMode: async () => ({ mode: "required" }),
+      startAuthSession: async () => null,
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "Failed to start an authentication session",
+    );
+  });
+
+  it("connect fails when authorization is denied", async () => {
+    const { dependencies } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+      queryAuthMode: async () => ({ mode: "required" }),
+      startAuthSession: async (url) => ({
+        sessionId: "sess-xyz",
+        verificationUrl: `${url}/verify/sess-xyz`,
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+      }),
+      pollCliAuthSession: async () => ({ status: "denied" as const }),
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("timed out or was denied");
+  });
+
+  // ── connection ─────────────────────────────────────────────────────────────
+
+  it("connection shows server connection status", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(["connection"], dependencies);
 
     expect(result.exitCode).toBe(0);
-    expect(getLastAuth()).toEqual({
-      kind: "bearer-token",
-      token: "stored-token",
+    expect(result.stdout).toContain("http://localhost:5000");
+    expect(result.stdout).toContain("disabled");
+  });
+
+  it("connection shows auth token stored when auth is required", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "required",
+        auth: { kind: "bearer-token", token: "tok" },
+      },
     });
+
+    const result = await runCliCommand(["connection"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("token stored");
+  });
+
+  it("connection shows not-connected when no connection is saved", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(["connection"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Not connected");
+  });
+
+  // ── operational commands fail when not connected ───────────────────────────
+
+  it("returns not-connected error for all operational commands when no connection", async () => {
+    const { dependencies } = getDependencies();
+    const commands: readonly string[][] = [
+      ["health", "check"],
+      ["version", "get"],
+      ["worktracking", "list"],
+      ["team", "list"],
+      ["portfolio", "list"],
+    ];
+    for (const cmd of commands) {
+      const result = await runCliCommand(cmd, dependencies);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Not connected");
+    }
+  });
+
+  it("runs health check when connected", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(["health", "check"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("success");
   });
 
   it("gets version from Lighthouse", async () => {
-    const { dependencies } = getDependencies();
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
 
-    const result = await runCliCommand(
-      ["version", "get", "--url", "http://localhost:5000"],
-      dependencies,
-    );
+    const result = await runCliCommand(["version", "get"], dependencies);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("v1.2.3");
@@ -333,6 +427,11 @@ describe("runCliCommand", () => {
 
   it("returns client errors for version get", async () => {
     const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         getVersion: async () => ({
@@ -345,10 +444,7 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(
-      ["version", "get", "--url", "http://localhost:5000"],
-      dependencies,
-    );
+    const result = await runCliCommand(["version", "get"], dependencies);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("unauthorized");
@@ -356,7 +452,11 @@ describe("runCliCommand", () => {
 
   it("lists work-tracking connections", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(["worktracking", "list"], dependencies);
@@ -367,7 +467,11 @@ describe("runCliCommand", () => {
 
   it("gets one work-tracking connection by id", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(
@@ -381,7 +485,11 @@ describe("runCliCommand", () => {
 
   it("lists teams", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(["team", "list"], dependencies);
@@ -392,7 +500,11 @@ describe("runCliCommand", () => {
 
   it("gets one team by id", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(
@@ -406,7 +518,11 @@ describe("runCliCommand", () => {
 
   it("refreshes one team by id", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(
@@ -420,7 +536,11 @@ describe("runCliCommand", () => {
 
   it("lists portfolios", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(["portfolio", "list"], dependencies);
@@ -431,7 +551,11 @@ describe("runCliCommand", () => {
 
   it("gets and refreshes one portfolio by id", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const getResult = await runCliCommand(
@@ -454,7 +578,11 @@ describe("runCliCommand", () => {
   it("gets team throughput metrics with explicit dates", async () => {
     const throughputData = { labels: ["2026-01-01"], data: [3] };
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         getTeamThroughput: async () => ({ ok: true, value: throughputData }),
@@ -483,7 +611,11 @@ describe("runCliCommand", () => {
   it("gets team cycle-time percentiles", async () => {
     const percentiles = [{ percentile: 50, value: 4 }];
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         getTeamCycleTimePercentiles: async () => ({
@@ -515,7 +647,11 @@ describe("runCliCommand", () => {
   it("gets portfolio throughput metrics", async () => {
     const throughputData = { labels: [], data: [] };
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         getPortfolioThroughput: async () => ({
@@ -547,7 +683,11 @@ describe("runCliCommand", () => {
   it("gets features by ids", async () => {
     const features = [{ id: 1, name: "Feature A" }];
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         getFeaturesByIds: async () => ({ ok: true, value: features }),
@@ -566,7 +706,11 @@ describe("runCliCommand", () => {
   it("gets feature work items", async () => {
     const workItems = [{ id: 10, title: "Task A" }];
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         getFeatureWorkItems: async () => ({ ok: true, value: workItems }),
@@ -585,7 +729,11 @@ describe("runCliCommand", () => {
   it("lists deliveries for a portfolio", async () => {
     const deliveries = [{ id: 1, name: "Release 1" }];
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         listDeliveries: async () => ({ ok: true, value: deliveries }),
@@ -608,7 +756,11 @@ describe("runCliCommand", () => {
       howManyForecasts: [],
     };
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         runManualForecast: async () => ({ ok: true, value: forecastResult }),
@@ -627,7 +779,11 @@ describe("runCliCommand", () => {
   it("runs a backtest for a team", async () => {
     const backtestResult = { actualThroughput: 10, percentiles: [] };
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
       client: {
         ...getDefaultMockClient(),
         runBacktest: async () => ({ ok: true, value: backtestResult }),
@@ -658,7 +814,11 @@ describe("runCliCommand", () => {
 
   it("returns missing id error for team metrics commands", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(
@@ -672,7 +832,11 @@ describe("runCliCommand", () => {
 
   it("returns missing portfolio-id error for delivery list", async () => {
     const { dependencies } = getDependencies({
-      config: { endpointUrl: "http://localhost:5000" },
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
     });
 
     const result = await runCliCommand(["delivery", "list"], dependencies);

@@ -1,11 +1,12 @@
 import {
+  type CliAuthSessionPollResult,
+  type CliAuthSessionStartResult,
+  type CliConnection,
+  type CliServerConnection,
+  type ConnectivityValidationResult,
   type LighthouseApiResult,
-  type LighthouseAuthContext,
-  type LighthouseAuthOverrides,
   type LighthouseClient,
-  type LighthouseClientAuth,
-  type StoredLighthouseAuth,
-  createLighthouseAuthContext,
+  type ServerAuthModeResult,
   createLighthouseClient,
   getDefaultMetricsDateRange,
 } from "@letpeoplework/lighthouse-client";
@@ -21,10 +22,6 @@ export const getCliPackageContract = (): CliPackageContract => ({
   dependsOn: "@letpeoplework/lighthouse-client",
   runtime: "command-line",
 });
-
-export type CliRuntimeConfig = {
-  readonly endpointUrl: string;
-};
 
 export type CliCommandResult = {
   readonly exitCode: number;
@@ -59,56 +56,38 @@ type CliDomainClientLike = Pick<
 type CliClientOperations = CliClientLike & CliDomainClientLike;
 
 export type RunCliCommandDependencies = {
-  readonly loadConfig: () => Promise<CliRuntimeConfig | null>;
-  readonly saveConfig: (config: CliRuntimeConfig) => Promise<void>;
-  readonly authContext: LighthouseAuthContext;
-  readonly createClient: (options: {
-    readonly endpointUrl: string;
-    readonly auth: LighthouseClientAuth;
-  }) => CliClientOperations;
+  readonly loadConnection: () => Promise<CliConnection | null>;
+  readonly saveConnection: (connection: CliConnection) => Promise<void>;
+  readonly prompt: (question: string) => Promise<string>;
+  readonly openBrowser: (url: string) => Promise<void>;
+  readonly validateConnectivity: (
+    url: string,
+  ) => Promise<ConnectivityValidationResult>;
+  readonly queryAuthMode: (url: string) => Promise<ServerAuthModeResult>;
+  readonly startAuthSession: (
+    url: string,
+  ) => Promise<CliAuthSessionStartResult | null>;
+  readonly pollCliAuthSession: (
+    url: string,
+    sessionId: string,
+  ) => Promise<CliAuthSessionPollResult>;
+  readonly createClient: (
+    connection: CliServerConnection,
+  ) => CliClientOperations;
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const getOptionValue = (
   args: readonly string[],
   optionName: string,
 ): string | undefined => {
-  const index = args.findIndex((arg) => arg === optionName);
+  const index = args.indexOf(optionName);
   if (index < 0) {
     return undefined;
   }
-
   return args[index + 1];
 };
-
-const getUsageText = (): string =>
-  [
-    "Usage:",
-    "  lh config endpoint set --url <lighthouse-url>",
-    "  lh config endpoint show",
-    "  lh auth status [--api-key <key>] [--bearer-token <token>]",
-    "  lh auth login --api-key <key> [--api-key-header <header-name>]",
-    "  lh auth login --bearer-token <token>",
-    "  lh auth logout",
-    "  lh worktracking list [--url <lighthouse-url>]",
-    "  lh worktracking get --id <connection-id> [--url <lighthouse-url>]",
-    "  lh team list [--url <lighthouse-url>]",
-    "  lh team get --id <team-id> [--url <lighthouse-url>]",
-    "  lh team refresh --id <team-id> [--url <lighthouse-url>]",
-    "  lh team metrics throughput --id <team-id> [--start-date <date>] [--end-date <date>] [--url <lighthouse-url>]",
-    "  lh team metrics cycleTimePercentiles --id <team-id> [--start-date <date>] [--end-date <date>] [--url <lighthouse-url>]",
-    "  lh portfolio list [--url <lighthouse-url>]",
-    "  lh portfolio get --id <portfolio-id> [--url <lighthouse-url>]",
-    "  lh portfolio refresh --id <portfolio-id> [--url <lighthouse-url>]",
-    "  lh portfolio metrics throughput --id <portfolio-id> [--start-date <date>] [--end-date <date>] [--url <lighthouse-url>]",
-    "  lh feature get --ids <id1,id2,...> [--url <lighthouse-url>]",
-    "  lh feature get --refs <ref1,ref2,...> [--url <lighthouse-url>]",
-    "  lh feature workitems --id <feature-id> [--url <lighthouse-url>]",
-    "  lh delivery list --portfolio-id <portfolio-id> [--url <lighthouse-url>]",
-    "  lh forecast manual --team-id <team-id> [--remaining <n>] [--target-date <date>] [--url <lighthouse-url>]",
-    "  lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date> [--url <lighthouse-url>]",
-    "  lh health check [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
-    "  lh version get [--url <lighthouse-url>] [--api-key <key>] [--bearer-token <token>]",
-  ].join("\n");
 
 const getSuccessResult = (stdout: string): CliCommandResult => ({
   exitCode: 0,
@@ -122,22 +101,6 @@ const getErrorResult = (stderr: string): CliCommandResult => ({
   stderr,
 });
 
-const getEndpointUrl = (
-  args: readonly string[],
-  config: CliRuntimeConfig | null,
-): string | null => {
-  const explicitUrl = getOptionValue(args, "--url");
-  if (explicitUrl !== undefined && explicitUrl.trim().length > 0) {
-    return explicitUrl;
-  }
-
-  if (config === null) {
-    return null;
-  }
-
-  return config.endpointUrl;
-};
-
 const mapApiResultToCliResult = <TValue>(
   result: LighthouseApiResult<TValue>,
 ): CliCommandResult => {
@@ -145,29 +108,9 @@ const mapApiResultToCliResult = <TValue>(
     if (result.value === undefined) {
       return getSuccessResult("ok");
     }
-
     return getSuccessResult(JSON.stringify(result.value));
   }
-
   return getErrorResult(`${result.error.category}: ${result.error.reason}`);
-};
-
-const getAuthOverrides = (
-  args: readonly string[],
-): LighthouseAuthOverrides => ({
-  apiKey: getOptionValue(args, "--api-key"),
-  bearerToken: getOptionValue(args, "--bearer-token"),
-  apiKeyHeaderName: getOptionValue(args, "--api-key-header"),
-});
-
-const mapStatusToMessage = (
-  status: Awaited<ReturnType<LighthouseAuthContext["getStatus"]>>,
-): string => {
-  if (!status.isAuthenticated) {
-    return "Auth status: not configured";
-  }
-
-  return `Auth status: ${status.kind} (${status.source})`;
 };
 
 const getRequiredIdOption = (
@@ -178,122 +121,248 @@ const getRequiredIdOption = (
   if (value === undefined) {
     return null;
   }
-
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) {
     return null;
   }
-
   return parsed;
 };
 
-const getDefaultDependencies = (): RunCliCommandDependencies => ({
-  loadConfig: async () => null,
-  saveConfig: async () => undefined,
-  authContext: createLighthouseAuthContext({
-    load: async () => null,
-    save: async (_auth: StoredLighthouseAuth) => undefined,
-    clear: async () => undefined,
-  }),
-  createClient: ({ endpointUrl, auth }) => {
-    return createLighthouseClient({
-      connection: {
-        kind: "explicit",
-        lighthouseUrl: endpointUrl,
-      },
-      auth,
+// ── requireConnection ─────────────────────────────────────────────────────────
+
+const requireConnection = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<CliServerConnection | CliCommandResult> => {
+  const connection = await dependencies.loadConnection();
+  if (connection === null) {
+    return getErrorResult(
+      'Not connected. Run "lh connect" to connect to a Lighthouse server.',
+    );
+  }
+  return connection;
+};
+
+const isCliCommandResult = (value: unknown): value is CliCommandResult =>
+  typeof value === "object" &&
+  value !== null &&
+  "exitCode" in value &&
+  "stdout" in value &&
+  "stderr" in value;
+
+// ── connect wizard ─────────────────────────────────────────────────────────────
+
+const runConnect = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const modeInput = await dependencies.prompt(
+    "Select connection mode:\n  1) Server (connect to a Lighthouse instance)\n  2) Standalone (local embedded mode)\n> ",
+  );
+
+  if (modeInput.trim() !== "1") {
+    return getErrorResult(
+      "Standalone mode is not yet supported. Please choose server mode (1).",
+    );
+  }
+
+  const url = await dependencies.prompt("Lighthouse server URL: ");
+
+  const validationResult = await dependencies.validateConnectivity(url);
+  if (validationResult.category !== "success") {
+    return getErrorResult(
+      `Cannot reach server at ${url}: ${validationResult.reason}`,
+    );
+  }
+
+  const authModeResult = await dependencies.queryAuthMode(url);
+
+  if (authModeResult.mode === "disabled") {
+    const connection: CliServerConnection = {
+      mode: "server",
+      endpointUrl: url,
+      authMode: "disabled",
+    };
+    await dependencies.saveConnection(connection);
+    return getSuccessResult(`Connected to ${url} (auth: disabled)`);
+  }
+
+  // Auth required — start device-authorization flow
+  const session = await dependencies.startAuthSession(url);
+  if (session === null) {
+    return getErrorResult(
+      "Failed to start an authentication session. Check that the server is reachable.",
+    );
+  }
+
+  await dependencies.openBrowser(session.verificationUrl);
+
+  const maxTries = 60; // 2 minutes at ~2s per poll
+  for (let tries = 0; tries < maxTries; tries++) {
+    const pollResult = await dependencies.pollCliAuthSession(
+      url,
+      session.sessionId,
+    );
+
+    if (pollResult.status === "approved") {
+      const connection: CliServerConnection = {
+        mode: "server",
+        endpointUrl: url,
+        authMode: "required",
+        auth: { kind: "bearer-token", token: pollResult.token },
+      };
+      await dependencies.saveConnection(connection);
+      return getSuccessResult(`Connected to ${url} as ${pollResult.userName}`);
+    }
+
+    if (
+      pollResult.status === "denied" ||
+      pollResult.status === "expired" ||
+      pollResult.status === "not-found"
+    ) {
+      return getErrorResult("Authorization timed out or was denied.");
+    }
+
+    // status === "pending" — wait before polling again
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 2000);
     });
-  },
-});
+  }
+
+  return getErrorResult("Authorization timed out or was denied.");
+};
+
+// ── connection status ──────────────────────────────────────────────────────────
+
+const runConnectionStatus = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const connection = await dependencies.loadConnection();
+  if (connection === null) {
+    return getErrorResult(
+      'Not connected. Run "lh connect" to set up a connection.',
+    );
+  }
+
+  const lines: string[] = [
+    `Connected to: ${connection.endpointUrl}`,
+    `Auth: ${connection.authMode}`,
+  ];
+
+  if (connection.authMode === "required") {
+    if (connection.auth === undefined) {
+      lines.push("Token: none — re-run lh connect to authenticate");
+    } else {
+      lines.push("Token: token stored");
+    }
+  }
+
+  return getSuccessResult(lines.join("\n"));
+};
+
+// ── usage text ───────────────────────────────────────────────────────────────
+
+const getUsageText = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<string> => {
+  const connection = await dependencies.loadConnection();
+  const lines: string[] = ["Usage:", "  lh connect", "  lh connection"];
+  if (connection === null) {
+    lines.push(
+      "  lh <command> <subcommand> [options]",
+      "",
+      'Run "lh connect" first to see all available commands.',
+    );
+  } else {
+    lines.push(
+      "  lh health check",
+      "  lh version get",
+      "",
+      "  lh worktracking list",
+      "  lh worktracking get --id <id>",
+      "",
+      "  lh team list",
+      "  lh team get --id <id>",
+      "  lh team refresh --id <id>",
+      "",
+      "  lh portfolio list",
+      "  lh portfolio get --id <id>",
+      "  lh portfolio refresh --id <id>",
+      "",
+      "  lh throughput team --id <id> [--start-date <date> --end-date <date>]",
+      "  lh throughput portfolio --id <id> [--start-date <date> --end-date <date>]",
+      "",
+      "  lh cycletime team --id <id> [--start-date <date> --end-date <date>]",
+      "",
+      "  lh features get-by-ids --ids <id,...>",
+      "  lh features get-by-refs --refs <ref,...>",
+      "  lh features work-items --id <id>",
+      "",
+      "  lh delivery list",
+      "  lh delivery create --name <name> --start <date> --end <date> --feature-ids <id,...>",
+      "  lh delivery update --id <id> --name <name> --start <date> --end <date> --feature-ids <id,...>",
+      "  lh delivery delete --id <id>",
+      "",
+      "  lh forecast manual --remaining <n> --trials <n> [--target-date <date>]",
+      "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>",
+    );
+  }
+  return lines.join("\n");
+};
+
+// ── main command router ───────────────────────────────────────────────────────
 
 export const runCliCommand = async (
   args: readonly string[],
-  inputDependencies?: RunCliCommandDependencies,
+  dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
-  const dependencies = inputDependencies ?? getDefaultDependencies();
-
-  if (args.length < 2) {
-    return getErrorResult(getUsageText());
+  if (args.length === 0) {
+    return getErrorResult(await getUsageText(dependencies));
   }
 
   const [scope, action, subject] = args;
 
-  if (scope === "config" && action === "endpoint" && subject === "set") {
-    const endpointUrl = getOptionValue(args, "--url");
-    if (endpointUrl === undefined || endpointUrl.trim().length === 0) {
-      return getErrorResult("Missing required --url for endpoint set.");
+  // ── Connection management ─────────────────────────────────────────────────
+
+  if (scope === "connect") {
+    return runConnect(dependencies);
+  }
+
+  if (scope === "connection") {
+    return runConnectionStatus(dependencies);
+  }
+
+  // ── Health & version ──────────────────────────────────────────────────────
+
+  if (scope === "health" && action === "check") {
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    await dependencies.saveConfig({ endpointUrl });
-
-    return getSuccessResult(`Endpoint saved: ${endpointUrl}`);
-  }
-
-  if (scope === "config" && action === "endpoint" && subject === "show") {
-    const config = await dependencies.loadConfig();
-    if (config === null) {
-      return getErrorResult("No endpoint configured.");
+    const client = dependencies.createClient(connectionOrError);
+    const health = await client.checkConnectivity();
+    if (health.category === "success") {
+      return getSuccessResult("success");
     }
-
-    return getSuccessResult(`Configured endpoint: ${config.endpointUrl}`);
+    return getErrorResult(`${health.category}: ${health.reason}`);
   }
 
-  if (scope === "auth" && action === "status") {
-    try {
-      const status = await dependencies.authContext.getStatus(
-        getAuthOverrides(args),
-      );
-      return getSuccessResult(mapStatusToMessage(status));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to resolve auth status.";
-      return getErrorResult(message);
+  if (scope === "version" && action === "get") {
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
+    const client = dependencies.createClient(connectionOrError);
+    const versionResult = await client.getVersion();
+    return mapApiResultToCliResult(versionResult);
   }
 
-  if (scope === "auth" && action === "login") {
-    try {
-      const overrides = getAuthOverrides(args);
-      await dependencies.authContext.login(overrides);
-      const status = await dependencies.authContext.getStatus();
-      if (!status.isAuthenticated) {
-        return getErrorResult("Auth login failed.");
-      }
-
-      return getSuccessResult(`Authenticated with ${status.kind}.`);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Auth login failed.";
-      return getErrorResult(message);
-    }
-  }
-
-  if (scope === "auth" && action === "logout") {
-    await dependencies.authContext.logout();
-    return getSuccessResult("Authentication cleared.");
-  }
+  // ── Work tracking ─────────────────────────────────────────────────────────
 
   if (scope === "worktracking" && action === "list") {
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.listWorkTrackingConnections();
     return mapApiResultToCliResult(result);
   }
@@ -303,48 +372,23 @@ export const runCliCommand = async (
     if (connectionId === null) {
       return getErrorResult("Missing required --id for worktracking get.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.getWorkTrackingConnection(connectionId);
     return mapApiResultToCliResult(result);
   }
 
+  // ── Teams ─────────────────────────────────────────────────────────────────
+
   if (scope === "team" && action === "list") {
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.listTeams();
     return mapApiResultToCliResult(result);
   }
@@ -354,25 +398,11 @@ export const runCliCommand = async (
     if (teamId === null) {
       return getErrorResult("Missing required --id for team get.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.getTeam(teamId);
     return mapApiResultToCliResult(result);
   }
@@ -382,52 +412,55 @@ export const runCliCommand = async (
     if (teamId === null) {
       return getErrorResult("Missing required --id for team refresh.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.refreshTeam(teamId);
     if (!result.ok) {
       return getErrorResult(`${result.error.category}: ${result.error.reason}`);
     }
-
     return getSuccessResult(`Team refreshed: ${teamId}`);
   }
 
+  if (scope === "team" && action === "metrics") {
+    const teamId = getRequiredIdOption(args, "--id");
+    if (teamId === null) {
+      return getErrorResult("Missing required --id for team metrics.");
+    }
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
+    }
+    const startDate = getOptionValue(args, "--start-date");
+    const endDate = getOptionValue(args, "--end-date");
+    const range =
+      startDate !== undefined && endDate !== undefined
+        ? { startDate, endDate }
+        : getDefaultMetricsDateRange();
+    const client = dependencies.createClient(connectionOrError);
+    if (subject === "throughput") {
+      const result = await client.getTeamThroughput(teamId, range);
+      return mapApiResultToCliResult(result);
+    }
+    if (subject === "cycleTimePercentiles") {
+      const result = await client.getTeamCycleTimePercentiles(teamId, range);
+      return mapApiResultToCliResult(result);
+    }
+    return getErrorResult(
+      `Unknown team metrics subcommand: ${subject ?? "(none)"}`,
+    );
+  }
+
+  // ── Portfolios ────────────────────────────────────────────────────────────
+
   if (scope === "portfolio" && action === "list") {
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.listPortfolios();
     return mapApiResultToCliResult(result);
   }
@@ -437,25 +470,11 @@ export const runCliCommand = async (
     if (portfolioId === null) {
       return getErrorResult("Missing required --id for portfolio get.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.getPortfolio(portfolioId);
     return mapApiResultToCliResult(result);
   }
@@ -465,80 +484,16 @@ export const runCliCommand = async (
     if (portfolioId === null) {
       return getErrorResult("Missing required --id for portfolio refresh.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.refreshPortfolio(portfolioId);
     if (!result.ok) {
       return getErrorResult(`${result.error.category}: ${result.error.reason}`);
     }
-
     return getSuccessResult(`Portfolio refreshed: ${portfolioId}`);
-  }
-
-  // ── Metrics commands ──────────────────────────────────────────────────────
-
-  if (scope === "team" && action === "metrics") {
-    const teamId = getRequiredIdOption(args, "--id");
-    if (teamId === null) {
-      return getErrorResult("Missing required --id for team metrics.");
-    }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
-    }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const startDate = getOptionValue(args, "--start-date");
-    const endDate = getOptionValue(args, "--end-date");
-    const range =
-      startDate !== undefined && endDate !== undefined
-        ? { startDate, endDate }
-        : getDefaultMetricsDateRange();
-
-    const client = dependencies.createClient({ endpointUrl, auth });
-
-    if (subject === "throughput") {
-      const result = await client.getTeamThroughput(teamId, range);
-      return mapApiResultToCliResult(result);
-    }
-
-    if (subject === "cycleTimePercentiles") {
-      const result = await client.getTeamCycleTimePercentiles(teamId, range);
-      return mapApiResultToCliResult(result);
-    }
-
-    return getErrorResult(
-      `Unknown team metrics subcommand: ${subject ?? "(none)"}`,
-    );
   }
 
   if (scope === "portfolio" && action === "metrics") {
@@ -546,65 +501,34 @@ export const runCliCommand = async (
     if (portfolioId === null) {
       return getErrorResult("Missing required --id for portfolio metrics.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
     const startDate = getOptionValue(args, "--start-date");
     const endDate = getOptionValue(args, "--end-date");
     const range =
       startDate !== undefined && endDate !== undefined
         ? { startDate, endDate }
         : getDefaultMetricsDateRange();
-
-    const client = dependencies.createClient({ endpointUrl, auth });
-
+    const client = dependencies.createClient(connectionOrError);
     if (subject === "throughput") {
       const result = await client.getPortfolioThroughput(portfolioId, range);
       return mapApiResultToCliResult(result);
     }
-
     return getErrorResult(
       `Unknown portfolio metrics subcommand: ${subject ?? "(none)"}`,
     );
   }
 
-  // ── Feature commands ──────────────────────────────────────────────────────
+  // ── Features ──────────────────────────────────────────────────────────────
 
   if (scope === "feature" && action === "get") {
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
-
+    const client = dependencies.createClient(connectionOrError);
     const idsRaw = getOptionValue(args, "--ids");
     if (idsRaw !== undefined) {
       const ids = idsRaw
@@ -614,7 +538,6 @@ export const runCliCommand = async (
       const result = await client.getFeaturesByIds(ids);
       return mapApiResultToCliResult(result);
     }
-
     const refsRaw = getOptionValue(args, "--refs");
     if (refsRaw !== undefined) {
       const refs = refsRaw
@@ -624,7 +547,6 @@ export const runCliCommand = async (
       const result = await client.getFeaturesByReferences(refs);
       return mapApiResultToCliResult(result);
     }
-
     return getErrorResult("Missing required --ids or --refs for feature get.");
   }
 
@@ -633,30 +555,16 @@ export const runCliCommand = async (
     if (featureId === null) {
       return getErrorResult("Missing required --id for feature workitems.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.getFeatureWorkItems(featureId);
     return mapApiResultToCliResult(result);
   }
 
-  // ── Delivery commands ─────────────────────────────────────────────────────
+  // ── Deliveries ────────────────────────────────────────────────────────────
 
   if (scope === "delivery" && action === "list") {
     const portfolioId = getRequiredIdOption(args, "--portfolio-id");
@@ -665,30 +573,16 @@ export const runCliCommand = async (
         "Missing required --portfolio-id for delivery list.",
       );
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.listDeliveries(portfolioId);
     return mapApiResultToCliResult(result);
   }
 
-  // ── Forecast commands ─────────────────────────────────────────────────────
+  // ── Forecasts ─────────────────────────────────────────────────────────────
 
   if (scope === "forecast" && action === "manual") {
     const teamIdRaw = getOptionValue(args, "--team-id");
@@ -699,32 +593,17 @@ export const runCliCommand = async (
     if (Number.isNaN(teamId)) {
       return getErrorResult("Invalid --team-id for forecast manual.");
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
     const remainingRaw = getOptionValue(args, "--remaining");
     const targetDate = getOptionValue(args, "--target-date");
     const remaining =
-      remainingRaw !== undefined
-        ? Number.parseInt(remainingRaw, 10)
-        : undefined;
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+      remainingRaw === undefined
+        ? undefined
+        : Number.parseInt(remainingRaw, 10);
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.runManualForecast(teamId, {
       remainingItems: remaining,
       targetDate,
@@ -743,36 +622,20 @@ export const runCliCommand = async (
     if (Number.isNaN(teamId)) {
       return getErrorResult("Invalid --team-id for forecast backtest.");
     }
-
     const startDate = getOptionValue(args, "--start-date");
     const endDate = getOptionValue(args, "--end-date");
     const histStartDate = getOptionValue(args, "--hist-start-date");
     const histEndDate = getOptionValue(args, "--hist-end-date");
-
     if (!startDate || !endDate || !histStartDate || !histEndDate) {
       return getErrorResult(
         "Missing required --start-date, --end-date, --hist-start-date, or --hist-end-date for forecast backtest.",
       );
     }
-
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
     }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({ endpointUrl, auth });
+    const client = dependencies.createClient(connectionOrError);
     const result = await client.runBacktest(teamId, {
       startDate,
       endDate,
@@ -782,62 +645,32 @@ export const runCliCommand = async (
     return mapApiResultToCliResult(result);
   }
 
-  if (scope === "health" && action === "check") {
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
-    }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({
-      endpointUrl,
-      auth,
-    });
-    const health = await client.checkConnectivity();
-    if (health.category === "success") {
-      return getSuccessResult("success");
-    }
-
-    return getErrorResult(`${health.category}: ${health.reason}`);
+  if (scope === "help") {
+    return getErrorResult(await getUsageText(dependencies));
   }
 
-  if (scope === "version" && action === "get") {
-    const config = await dependencies.loadConfig();
-    const endpointUrl = getEndpointUrl(args, config);
-    if (endpointUrl === null) {
-      return getErrorResult(
-        "No endpoint configured. Set one with 'config endpoint set --url <lighthouse-url>' or pass --url.",
-      );
-    }
-
-    let auth: LighthouseClientAuth;
-    try {
-      auth = await dependencies.authContext.resolveAuth(getAuthOverrides(args));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to resolve auth.";
-      return getErrorResult(message);
-    }
-
-    const client = dependencies.createClient({
-      endpointUrl,
-      auth,
-    });
-    const versionResult = await client.getVersion();
-
-    return mapApiResultToCliResult(versionResult);
-  }
-
-  return getErrorResult(getUsageText());
+  return getErrorResult(await getUsageText(dependencies));
 };
+
+// Default dependencies for standalone binary use — exported for testing convenience
+export const getDefaultDependencies = (): RunCliCommandDependencies => ({
+  loadConnection: async () => null,
+  saveConnection: async () => undefined,
+  prompt: async () => "",
+  openBrowser: async () => undefined,
+  validateConnectivity: async () => ({
+    category: "unreachable" as const,
+    reason: "No connectivity validator configured.",
+  }),
+  queryAuthMode: async () => ({ mode: "disabled" }),
+  startAuthSession: async () => null,
+  pollCliAuthSession: async () => ({ status: "pending" as const }),
+  createClient: ({ endpointUrl, auth }) =>
+    createLighthouseClient({
+      connection: {
+        kind: "explicit",
+        lighthouseUrl: endpointUrl,
+      },
+      auth,
+    }),
+});

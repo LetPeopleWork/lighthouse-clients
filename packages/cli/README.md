@@ -15,11 +15,11 @@ After installation, the `lh` command is available globally.
 ## Quick Start
 
 ```bash
-# Point the CLI at your Lighthouse instance
-lh config endpoint set --url https://your-lighthouse-instance
+# Connect to your Lighthouse instance (interactive wizard)
+lh connect
 
-# Check connectivity
-lh health check
+# Check current connection status
+lh connection
 
 # List teams
 lh team list
@@ -28,53 +28,37 @@ lh team list
 lh forecast manual --team-id 1 --remaining 10
 ```
 
-## Authentication
-
-```bash
-# API key
-lh auth login --api-key <your-api-key>
-
-# Bearer token
-lh auth login --bearer-token <your-token>
-
-# Check current auth status
-lh auth status
-
-# Clear stored credentials
-lh auth logout
-```
+`lh connect` walks you through server URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. The resulting connection and token are stored in `~/.config/lighthouse-clients/cli-config.json`.
 
 ## Commands
 
 ```
-lh config endpoint set --url <lighthouse-url>
-lh config endpoint show
-lh auth status [--api-key <key>] [--bearer-token <token>]
-lh auth login --api-key <key> [--api-key-header <header-name>]
-lh auth login --bearer-token <token>
-lh auth logout
-lh worktracking list [--url <lighthouse-url>]
-lh worktracking get --id <connection-id> [--url <lighthouse-url>]
-lh team list [--url <lighthouse-url>]
-lh team get --id <team-id> [--url <lighthouse-url>]
-lh team refresh --id <team-id> [--url <lighthouse-url>]
+lh connect                                    Connect to a Lighthouse server (interactive)
+lh connection                                 Show current connection status
+lh health check                               Check server connectivity
+lh version get                                Get server version
+lh worktracking list                          List work tracking connections
+lh worktracking get --id <id>                Get a work tracking connection
+lh team list                                  List all teams
+lh team get --id <team-id>                   Get a team
+lh team refresh --id <team-id>               Refresh a team
 lh team metrics throughput --id <team-id> [--start-date <date>] [--end-date <date>]
 lh team metrics cycleTimePercentiles --id <team-id> [--start-date <date>] [--end-date <date>]
-lh portfolio list [--url <lighthouse-url>]
-lh portfolio get --id <portfolio-id> [--url <lighthouse-url>]
-lh portfolio refresh --id <portfolio-id> [--url <lighthouse-url>]
+lh portfolio list                             List all portfolios
+lh portfolio get --id <portfolio-id>         Get a portfolio
+lh portfolio refresh --id <portfolio-id>     Refresh a portfolio
 lh portfolio metrics throughput --id <portfolio-id> [--start-date <date>] [--end-date <date>]
-lh feature get --ids <id1,id2,...> [--url <lighthouse-url>]
-lh feature get --refs <ref1,ref2,...> [--url <lighthouse-url>]
-lh feature workitems --id <feature-id> [--url <lighthouse-url>]
-lh delivery list --portfolio-id <portfolio-id> [--url <lighthouse-url>]
+lh feature get --ids <id1,id2,...>           Get features by IDs
+lh feature get --refs <ref1,ref2,...>        Get features by references
+lh feature workitems --id <feature-id>       Get work items for a feature
+lh delivery list --portfolio-id <portfolio-id>
 lh forecast manual --team-id <team-id> [--remaining <n>] [--target-date <date>]
 lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>
-lh health check [--url <lighthouse-url>]
-lh version get [--url <lighthouse-url>]
 ```
 
-Pass `--url <lighthouse-url>` to any command to override the configured endpoint for that call.
+All operational commands require an active connection. Run `lh connect` first.
+
+> **Note:** Standalone auto-discovery is not yet supported. Use server mode when connecting.
 
 ## Alternate Installation (Standalone Binary)
 
