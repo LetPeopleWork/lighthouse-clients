@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-client
 
+## 0.5.0
+
+### Minor Changes
+
+- [`2ad3aeb`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2ad3aeb8d5cae15c3fb6a80ee8c9146474f02e33) Thanks [@huserben](https://github.com/huserben)! - enhance CLI to support standalone mode
+
 ## 0.4.0
 
 ### Minor Changes

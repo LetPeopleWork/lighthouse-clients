@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "User-facing Lighthouse CLI",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
