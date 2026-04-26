@@ -112,6 +112,8 @@ jobs:
         run: |
           cp scripts/install.sh release-assets/install.sh
           cp scripts/uninstall.sh release-assets/uninstall.sh
+          cp scripts/install.ps1 release-assets/install.ps1
+          cp scripts/uninstall.ps1 release-assets/uninstall.ps1
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -125,6 +127,8 @@ jobs:
             release-assets/lh-windows-x64.zip
             release-assets/install.sh
             release-assets/uninstall.sh
+            release-assets/install.ps1
+            release-assets/uninstall.ps1
 
       - name: Login to GHCR
         uses: docker/login-action@v3

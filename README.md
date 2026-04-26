@@ -12,13 +12,25 @@ Workspace for Lighthouse external client packages.
 
 ## Installation
 # Install
+Linux and macOS:
 ```
 	curl -fsSL https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/install.sh | bash
 ```
 
+Windows:
+```
+	irm https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/install.ps1 | iex
+```
+
 # Uninstall
+Linux and macOS:
 ```
 	curl -fsSL https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/uninstall.sh | bash
+```
+
+Windows:
+```
+	
 ```
 
 ## Local Development
