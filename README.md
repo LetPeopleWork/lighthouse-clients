@@ -30,7 +30,7 @@ Linux and macOS:
 
 Windows:
 ```
-	
+	irm https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/uninstall.ps1 | iex
 ```
 
 ## Local Development
