@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.3.1
+
+### Patch Changes
+
+- Make cli executable via npm
+
 ## 0.3.0
 
 ### Minor Changes
