@@ -18,6 +18,7 @@ import {
 import { Agent, fetch as undiciFetch } from "undici";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
 import { type OutputFormat, isOutputFormat } from "./output";
+import { fileURLToPath } from "node:url";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";
 
@@ -315,6 +316,6 @@ export const runCli = async (
   return result.exitCode;
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   process.exitCode = await runCli();
 }
