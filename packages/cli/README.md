@@ -34,7 +34,7 @@ lh team get --id 1 --json
 lh forecast manual --team-id 1 --remaining 10
 ```
 
-`lh connect` walks you through server URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. The resulting connection, token, and default output format are stored in `~/.config/lighthouse-clients/cli-config.json`.
+`lh connect` supports both server mode and standalone mode. Server mode walks you through URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. Standalone mode reads the current Lighthouse URL from the standalone lockfile in the Lighthouse app data directory, so no URL is stored in the CLI config and dynamic ports are picked up fresh on every CLI startup.
 
 ## Output Formats
 
@@ -66,7 +66,7 @@ Explicit flags take precedence over the saved default. Status and error output r
 ## Commands
 
 ```
-lh connect                                    Connect to a Lighthouse server (interactive)
+lh connect                                    Connect to a Lighthouse server or standalone app (interactive)
 lh connection                                 Show current connection status
 lh config output                              Show the current default payload output format
 lh config output set --format <pretty|toon|json>
@@ -96,7 +96,11 @@ Global payload output override flags: `--pretty`, `--json`, `--toon`
 
 All operational commands require an active connection. Run `lh connect` first.
 
-> **Note:** Standalone auto-discovery is not yet supported. Use server mode when connecting.
+Standalone discovery uses the Lighthouse lockfile in the app data directory:
+
+- macOS: `~/Library/Application Support/Lighthouse/standalone.lock.json`
+- Windows: `%APPDATA%/Lighthouse/standalone.lock.json`
+- Linux: `$XDG_CONFIG_HOME/Lighthouse/standalone.lock.json` or `~/.config/Lighthouse/standalone.lock.json`
 
 ## Alternate Installation (Standalone Binary)
 

@@ -312,7 +312,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
   {
     name: "lighthouse.version.get",
-    description: "Get Lighthouse version from /api/v1/version.",
+    description: "Get Lighthouse version from /api/v1/version/current.",
     inputSchema: {
       type: "object",
       properties: {},

@@ -183,6 +183,7 @@ const getDependencies = (overrides?: {
     url: string,
     insecure?: boolean,
   ) => Promise<ConnectivityValidationResult>;
+  readonly validateStandaloneDiscovery?: () => Promise<ConnectivityValidationResult>;
   readonly queryAuthMode?: (
     url: string,
     insecure?: boolean,
@@ -224,8 +225,22 @@ const getDependencies = (overrides?: {
         (async (url) => ({
           category: "success",
           endpoint: {
+            mode: "explicit",
             lighthouseUrl: url,
+            apiBaseUrl: `${url}/api`,
             healthCheckUrl: `${url}/api/v1/healthcheck`,
+          },
+          serverVersion: "1.0.0",
+        })),
+      validateStandaloneDiscovery:
+        overrides?.validateStandaloneDiscovery ??
+        (async () => ({
+          category: "success",
+          endpoint: {
+            mode: "standalone",
+            lighthouseUrl: "http://127.0.0.1:61234",
+            apiBaseUrl: "http://127.0.0.1:61234/api",
+            healthCheckUrl: "http://127.0.0.1:61234/api/v1/version/current",
           },
           serverVersion: "1.0.0",
         })),
@@ -346,15 +361,34 @@ describe("runCliCommand", () => {
     expect(result.stderr).toContain("Cannot reach server");
   });
 
-  it("connect fails for standalone mode selection", async () => {
-    const { dependencies } = getDependencies({
+  it("connect saves standalone connection without prompting for a URL", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
       promptResponses: ["2"],
     });
 
     const result = await runCliCommand(["connect"], dependencies);
 
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("standalone Lighthouse");
+    expect(getSavedConnection()).toEqual({
+      mode: "standalone",
+      authMode: "disabled",
+    });
+  });
+
+  it("connect fails when standalone discovery is unavailable", async () => {
+    const { dependencies } = getDependencies({
+      promptResponses: ["2"],
+      validateStandaloneDiscovery: async () => ({
+        category: "misconfigured",
+        reason: "Standalone discovery contract is not available.",
+      }),
+    });
+
+    const result = await runCliCommand(["connect"], dependencies);
+
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("not yet supported");
+    expect(result.stderr).toContain("Cannot reach standalone Lighthouse");
   });
 
   it("connect fails when auth session cannot be started", async () => {
@@ -388,7 +422,7 @@ describe("runCliCommand", () => {
             reason: "fetch failed",
             endpoint: {
               lighthouseUrl: "https://localhost:48332",
-              healthCheckUrl: "https://localhost:48332/api/v1/version",
+              healthCheckUrl: "https://localhost:48332/api/v1/version/current",
             },
           };
         }
@@ -397,7 +431,7 @@ describe("runCliCommand", () => {
           category: "success",
           endpoint: {
             lighthouseUrl: "https://localhost:48332",
-            healthCheckUrl: "https://localhost:48332/api/v1/version",
+            healthCheckUrl: "https://localhost:48332/api/v1/version/current",
             apiBaseUrl: "https://localhost:48332/api",
             mode: "explicit",
           },
@@ -481,6 +515,38 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("token stored");
+  });
+
+  it("connection shows standalone connection status", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "standalone",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(["connection"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Connected to: standalone Lighthouse");
+    expect(result.stdout).toContain(
+      "Discovery: lockfile in Lighthouse app data",
+    );
+  });
+
+  it("disconnect reports standalone connection label", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      connection: {
+        mode: "standalone",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(["disconnect"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Disconnected from standalone Lighthouse.");
+    expect(getSavedConnection()).toBeNull();
   });
 
   it("disconnect clears saved connection", async () => {

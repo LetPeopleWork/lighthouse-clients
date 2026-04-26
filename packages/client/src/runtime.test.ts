@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  type ConnectivityValidationResult,
   type StandaloneDiscoveryContract,
   createLighthouseClient,
 } from "./index";
@@ -32,8 +31,7 @@ const getFetchSequenceMock = (
     calls: mutableCalls,
     fetch: async (url: string, init?: RequestInit): Promise<MockResponse> => {
       mutableCalls.push({ url, init });
-      const response =
-        responses[responseIndex] ?? responses[responses.length - 1];
+      const response = responses[responseIndex] ?? responses.at(-1);
       responseIndex += 1;
       return response;
     },
@@ -84,7 +82,7 @@ describe("createLighthouseClient", () => {
 
     expect(result.category).toBe("success");
     expect(fetchMock.calls[0]?.url).toBe(
-      "http://localhost:5000/api/v1/version",
+      "http://localhost:5000/api/v1/version/current",
     );
   });
 
@@ -110,8 +108,66 @@ describe("createLighthouseClient", () => {
 
     expect(result.category).toBe("success");
     expect(fetchMock.calls[0]?.url).toBe(
-      "http://127.0.0.1:61234/api/v1/version",
+      "http://127.0.0.1:61234/api/v1/version/current",
     );
+  });
+
+  it("re-reads standalone discovery for each client request", async () => {
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v2.0.0",
+        json: async () => "v2.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v2.0.0",
+        json: async () => "v2.0.0",
+      },
+    ]);
+    const discoveryUrls = ["http://127.0.0.1:61234", "http://127.0.0.1:61235"];
+    let discoveryIndex = 0;
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "standalone",
+          getDiscoveryContract: async () => {
+            const lighthouseUrl =
+              discoveryUrls[discoveryIndex] ?? discoveryUrls.at(-1);
+            discoveryIndex += 1;
+            return getStandaloneContract({ lighthouseUrl });
+          },
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const firstVersion = await client.getVersion();
+    const secondVersion = await client.getVersion();
+
+    expect(firstVersion).toEqual({ ok: true, value: "v1.0.0" });
+    expect(secondVersion).toEqual({ ok: true, value: "v2.0.0" });
+    expect(fetchMock.calls.map((call) => call.url)).toEqual([
+      "http://127.0.0.1:61234/api/v1/version/current",
+      "http://127.0.0.1:61234/api/v1/version/current",
+      "http://127.0.0.1:61235/api/v1/version/current",
+      "http://127.0.0.1:61235/api/v1/version/current",
+    ]);
   });
 
   it("gets version from Lighthouse", async () => {
@@ -533,8 +589,7 @@ describe("createLighthouseClient", () => {
       { fetch: fetchMock.fetch },
     );
 
-    const result =
-      (await client.checkConnectivity()) as ConnectivityValidationResult;
+    const result = await client.checkConnectivity();
     expect(result.category).toBe("misconfigured");
   });
 

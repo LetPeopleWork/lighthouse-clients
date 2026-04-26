@@ -96,12 +96,37 @@ describe("validateLighthouseConnectivity", () => {
     expect(result.endpoint.mode).toBe("explicit");
     expect(result.endpoint.apiBaseUrl).toBe("http://localhost:5000/api");
     expect(result.endpoint.healthCheckUrl).toBe(
-      "http://localhost:5000/api/v1/version",
+      "http://localhost:5000/api/v1/version/current",
     );
     expect(result.serverVersion).toBe("v1.2.3");
     expect(fetchMock.calls).toEqual([
       {
-        url: "http://localhost:5000/api/v1/version",
+        url: "http://localhost:5000/api/v1/version/current",
+      },
+    ]);
+  });
+
+  it("normalizes connectivity checks to the current version route", async () => {
+    const fetchMock = getFetchMock({
+      ok: true,
+      status: 200,
+      text: async () => "v1.2.3",
+    });
+
+    const result = await validateLighthouseConnectivity(
+      {
+        kind: "explicit",
+        lighthouseUrl: "http://localhost:5000/",
+      },
+      {
+        fetch: fetchMock.fetch,
+      },
+    );
+
+    expect(result.category).toBe("success");
+    expect(fetchMock.calls).toEqual([
+      {
+        url: "http://localhost:5000/api/v1/version/current",
       },
     ]);
   });
@@ -132,7 +157,7 @@ describe("validateLighthouseConnectivity", () => {
     expect(result.endpoint.lighthouseUrl).toBe("http://127.0.0.1:61234");
     expect(fetchMock.calls).toHaveLength(1);
     expect(fetchMock.calls[0]?.url).toBe(
-      "http://127.0.0.1:61234/api/v1/version",
+      "http://127.0.0.1:61234/api/v1/version/current",
     );
   });
 

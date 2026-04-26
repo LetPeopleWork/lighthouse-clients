@@ -245,7 +245,7 @@ const getResolvedEndpoint = (
     mode,
     lighthouseUrl,
     apiBaseUrl,
-    healthCheckUrl: `${apiBaseUrl}/v1/version`,
+    healthCheckUrl: `${apiBaseUrl}/v1/version/current`,
   };
 };
 
@@ -578,7 +578,12 @@ export type CliServerConnection = {
   readonly auth?: StoredLighthouseAuth;
 };
 
-export type CliConnection = CliServerConnection;
+export type CliStandaloneConnection = {
+  readonly mode: "standalone";
+  readonly authMode: "disabled";
+};
+
+export type CliConnection = CliServerConnection | CliStandaloneConnection;
 
 type AuthModeApiResponse = {
   readonly mode: string;
@@ -1196,7 +1201,7 @@ export const createLighthouseClient = (
     );
   },
   getVersion: async () =>
-    requestText(configuration, dependencies, "/v1/version"),
+    requestText(configuration, dependencies, "/v1/version/current"),
   listWorkTrackingConnections: async () =>
     requestJson<readonly unknown[]>(
       configuration,

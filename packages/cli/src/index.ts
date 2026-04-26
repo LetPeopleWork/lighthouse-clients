@@ -3,6 +3,7 @@ import {
   type CliAuthSessionStartOutcome,
   type CliConnection,
   type CliServerConnection,
+  type CliStandaloneConnection,
   type ConnectivityValidationResult,
   type LighthouseApiResult,
   type LighthouseClient,
@@ -74,6 +75,7 @@ export type RunCliCommandDependencies = {
     url: string,
     insecure?: boolean,
   ) => Promise<ConnectivityValidationResult>;
+  readonly validateStandaloneDiscovery: () => Promise<ConnectivityValidationResult>;
   readonly queryAuthMode: (
     url: string,
     insecure?: boolean,
@@ -87,9 +89,7 @@ export type RunCliCommandDependencies = {
     sessionId: string,
     insecure?: boolean,
   ) => Promise<CliAuthSessionPollResult>;
-  readonly createClient: (
-    connection: CliServerConnection,
-  ) => CliClientOperations;
+  readonly createClient: (connection: CliConnection) => CliClientOperations;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ const getRequiredIdOption = (
 
 const requireConnection = async (
   dependencies: RunCliCommandDependencies,
-): Promise<CliServerConnection | CliCommandResult> => {
+): Promise<CliConnection | CliCommandResult> => {
   const connection = await dependencies.loadConnection();
   if (connection === null) {
     return getErrorResult(
@@ -224,9 +224,18 @@ const isServerReachable = (
 > => result.category === "success" || result.category === "unauthorized";
 
 const getConnectionStatusLines = (
-  connection: CliServerConnection,
+  connection: CliConnection,
   outputFormat: OutputFormat,
 ): string[] => {
+  if (connection.mode === "standalone") {
+    return [
+      "Connected to: standalone Lighthouse",
+      "Discovery: lockfile in Lighthouse app data",
+      `Auth: ${connection.authMode}`,
+      `Output: ${outputFormat}`,
+    ];
+  }
+
   const lines: string[] = [
     `Connected to: ${connection.endpointUrl}`,
     `Auth: ${connection.authMode}`,
@@ -246,6 +255,14 @@ const getConnectionStatusLines = (
   }
 
   return lines;
+};
+
+const getConnectionLabel = (connection: CliConnection): string => {
+  if (connection.mode === "standalone") {
+    return "standalone Lighthouse";
+  }
+
+  return connection.endpointUrl;
 };
 
 const getAuthSessionStartErrorMessage = (
@@ -269,46 +286,172 @@ const getAuthSessionStartErrorMessage = (
 
 // ── connect wizard ─────────────────────────────────────────────────────────────
 
-const runConnect = async (
+const runStandaloneConnect = async (
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
-  const modeInput = await dependencies.prompt(
-    "Select connection mode:\n  1) Server (connect to a Lighthouse instance)\n  2) Standalone (local embedded mode)\n> ",
-  );
-
-  if (modeInput.trim() !== "1") {
+  const validationResult = await dependencies.validateStandaloneDiscovery();
+  if (!isServerReachable(validationResult)) {
     return getErrorResult(
-      "Standalone mode is not yet supported. Please choose server mode (1).",
+      `Cannot reach standalone Lighthouse: ${validationResult.reason}`,
     );
   }
 
+  const connection: CliStandaloneConnection = {
+    mode: "standalone",
+    authMode: "disabled",
+  };
+  await dependencies.saveConnection(connection);
+
+  return getSuccessResult(
+    `Connected to standalone Lighthouse at ${validationResult.endpoint.lighthouseUrl}`,
+  );
+};
+
+const getDisabledAuthConnection = (
+  url: string,
+  insecure: boolean,
+): CliServerConnection => {
+  if (insecure) {
+    return {
+      mode: "server",
+      endpointUrl: url,
+      authMode: "disabled",
+      insecure: true,
+    };
+  }
+
+  return {
+    mode: "server",
+    endpointUrl: url,
+    authMode: "disabled",
+  };
+};
+
+const getAuthenticatedConnection = (
+  url: string,
+  token: string,
+  insecure: boolean,
+): CliServerConnection => {
+  if (insecure) {
+    return {
+      mode: "server",
+      endpointUrl: url,
+      authMode: "required",
+      insecure: true,
+      auth: { kind: "bearer-token", token },
+    };
+  }
+
+  return {
+    mode: "server",
+    endpointUrl: url,
+    authMode: "required",
+    auth: { kind: "bearer-token", token },
+  };
+};
+
+const getServerConnectivityError = (
+  url: string,
+  reason: string,
+): CliCommandResult => {
+  return getErrorResult(`Cannot reach server at ${url}: ${reason}`);
+};
+
+const resolveServerConnectionSecurity = async (
+  dependencies: RunCliCommandDependencies,
+  url: string,
+  validationResult: Exclude<
+    ConnectivityValidationResult,
+    { readonly category: "success" | "unauthorized" }
+  >,
+): Promise<boolean | CliCommandResult> => {
+  if (!url.toLowerCase().startsWith("https://")) {
+    return getServerConnectivityError(url, validationResult.reason);
+  }
+
+  const retry = await dependencies.prompt(
+    `\nCannot reach server (${validationResult.reason}).\nThis may be a TLS certificate issue (e.g. self-signed cert).\nSkip TLS certificate verification? [y/N] `,
+  );
+  if (retry.trim().toLowerCase() !== "y") {
+    return getServerConnectivityError(url, validationResult.reason);
+  }
+
+  const insecureResult = await dependencies.validateConnectivity(url, true);
+  if (!isServerReachable(insecureResult)) {
+    return getServerConnectivityError(url, insecureResult.reason);
+  }
+
+  return true;
+};
+
+const runAuthenticatedServerConnect = async (
+  dependencies: RunCliCommandDependencies,
+  url: string,
+  insecure: boolean,
+): Promise<CliCommandResult> => {
+  const session = await dependencies.startAuthSession(
+    url,
+    insecure || undefined,
+  );
+  if (session.status === "error") {
+    return getErrorResult(getAuthSessionStartErrorMessage(url, session));
+  }
+
+  await dependencies.openBrowser(session.verificationUrl);
+
+  const maxTries = 60;
+  for (let tries = 0; tries < maxTries; tries++) {
+    const pollResult = await dependencies.pollCliAuthSession(
+      url,
+      session.sessionId,
+      insecure || undefined,
+    );
+
+    if (pollResult.status === "approved") {
+      const connection = getAuthenticatedConnection(
+        url,
+        pollResult.token,
+        insecure,
+      );
+      await dependencies.saveConnection(connection);
+      return getSuccessResult(`Connected to ${url} as ${pollResult.userName}`);
+    }
+
+    if (
+      pollResult.status === "denied" ||
+      pollResult.status === "expired" ||
+      pollResult.status === "not-found"
+    ) {
+      return getErrorResult("Authorization timed out or was denied.");
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 2000);
+    });
+  }
+
+  return getErrorResult("Authorization timed out or was denied.");
+};
+
+const runServerConnect = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
   const url = await dependencies.prompt("Lighthouse server URL: ");
 
   let insecure = false;
 
   const validationResult = await dependencies.validateConnectivity(url);
   if (!isServerReachable(validationResult)) {
-    if (url.toLowerCase().startsWith("https://")) {
-      const retry = await dependencies.prompt(
-        `\nCannot reach server (${validationResult.reason}).\nThis may be a TLS certificate issue (e.g. self-signed cert).\nSkip TLS certificate verification? [y/N] `,
-      );
-      if (retry.trim().toLowerCase() !== "y") {
-        return getErrorResult(
-          `Cannot reach server at ${url}: ${validationResult.reason}`,
-        );
-      }
-      const insecureResult = await dependencies.validateConnectivity(url, true);
-      if (!isServerReachable(insecureResult)) {
-        return getErrorResult(
-          `Cannot reach server at ${url}: ${insecureResult.reason}`,
-        );
-      }
-      insecure = true;
-    } else {
-      return getErrorResult(
-        `Cannot reach server at ${url}: ${validationResult.reason}`,
-      );
+    const insecureResult = await resolveServerConnectionSecurity(
+      dependencies,
+      url,
+      validationResult,
+    );
+    if (isCliCommandResult(insecureResult)) {
+      return insecureResult;
     }
+
+    insecure = insecureResult;
   }
 
   const authModeResult = await dependencies.queryAuthMode(
@@ -331,62 +474,30 @@ const runConnect = async (
   }
 
   if (authModeResult.mode === "disabled") {
-    const connection: CliServerConnection = {
-      mode: "server",
-      endpointUrl: url,
-      authMode: "disabled",
-      ...(insecure ? { insecure: true } : {}),
-    };
+    const connection = getDisabledAuthConnection(url, insecure);
     await dependencies.saveConnection(connection);
     return getSuccessResult(`Connected to ${url} (auth: disabled)`);
   }
 
-  // Auth required — start device-authorization flow
-  const session = await dependencies.startAuthSession(
-    url,
-    insecure || undefined,
+  return runAuthenticatedServerConnect(dependencies, url, insecure);
+};
+
+const runConnect = async (
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const modeInput = await dependencies.prompt(
+    "Select connection mode:\n  1) Server (connect to a Lighthouse instance)\n  2) Standalone (local embedded mode)\n> ",
   );
-  if (session.status === "error") {
-    return getErrorResult(getAuthSessionStartErrorMessage(url, session));
+
+  if (modeInput.trim() === "2") {
+    return runStandaloneConnect(dependencies);
   }
 
-  await dependencies.openBrowser(session.verificationUrl);
-
-  const maxTries = 60; // 2 minutes at ~2s per poll
-  for (let tries = 0; tries < maxTries; tries++) {
-    const pollResult = await dependencies.pollCliAuthSession(
-      url,
-      session.sessionId,
-      insecure || undefined,
-    );
-
-    if (pollResult.status === "approved") {
-      const connection: CliServerConnection = {
-        mode: "server",
-        endpointUrl: url,
-        authMode: "required",
-        ...(insecure ? { insecure: true } : {}),
-        auth: { kind: "bearer-token", token: pollResult.token },
-      };
-      await dependencies.saveConnection(connection);
-      return getSuccessResult(`Connected to ${url} as ${pollResult.userName}`);
-    }
-
-    if (
-      pollResult.status === "denied" ||
-      pollResult.status === "expired" ||
-      pollResult.status === "not-found"
-    ) {
-      return getErrorResult("Authorization timed out or was denied.");
-    }
-
-    // status === "pending" — wait before polling again
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 2000);
-    });
+  if (modeInput.trim() !== "1") {
+    return getErrorResult("Invalid connection mode. Choose 1 or 2.");
   }
 
-  return getErrorResult("Authorization timed out or was denied.");
+  return runServerConnect(dependencies);
 };
 
 // ── connection status ──────────────────────────────────────────────────────────
@@ -420,7 +531,9 @@ const runDisconnect = async (
   }
 
   await dependencies.saveConnection(null);
-  return getSuccessResult(`Disconnected from ${connection.endpointUrl}.`);
+  return getSuccessResult(
+    `Disconnected from ${getConnectionLabel(connection)}.`,
+  );
 };
 
 // ── usage text ───────────────────────────────────────────────────────────────
@@ -886,6 +999,10 @@ export const getDefaultDependencies = (): RunCliCommandDependencies => ({
     category: "unreachable" as const,
     reason: "No connectivity validator configured.",
   }),
+  validateStandaloneDiscovery: async () => ({
+    category: "unreachable" as const,
+    reason: "No standalone discovery validator configured.",
+  }),
   queryAuthMode: async () => ({ mode: "disabled" }),
   startAuthSession: async () => ({
     status: "error" as const,
@@ -893,12 +1010,21 @@ export const getDefaultDependencies = (): RunCliCommandDependencies => ({
     reason: "No auth session starter configured.",
   }),
   pollCliAuthSession: async () => ({ status: "pending" as const }),
-  createClient: ({ endpointUrl, auth }) =>
-    createLighthouseClient({
-      connection: {
-        kind: "explicit",
-        lighthouseUrl: endpointUrl,
-      },
-      auth,
-    }),
+  createClient: (connection) =>
+    createLighthouseClient(
+      connection.mode === "standalone"
+        ? {
+            connection: {
+              kind: "standalone",
+              getDiscoveryContract: async () => null,
+            },
+          }
+        : {
+            connection: {
+              kind: "explicit",
+              lighthouseUrl: connection.endpointUrl,
+            },
+            auth: connection.auth,
+          },
+    ),
 });
