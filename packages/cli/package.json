@@ -22,9 +22,7 @@
       "require": "./dist/bin.cjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup && pnpm postbuild",
     "postbuild": "node scripts/fix-shebang.mjs",
