@@ -101,14 +101,12 @@ jobs:
       - name: Build CLI release binaries
         run: |
           mkdir -p release-assets
-          bun build ./packages/cli/src/bin.ts --compile --target bun-linux-x64-modern --outfile ./release-assets/lighthouse
-          tar -czf ./release-assets/lighthouse-linux-x64.tar.gz -C ./release-assets lighthouse
-
-          bun build ./packages/cli/src/bin.ts --compile --target bun-darwin-x64-modern --outfile ./release-assets/lighthouse
-          tar -czf ./release-assets/lighthouse-darwin-x64.tar.gz -C ./release-assets lighthouse
-
-          bun build ./packages/cli/src/bin.ts --compile --target bun-windows-x64-modern --outfile ./release-assets/lighthouse.exe
-          cd release-assets && zip -q lighthouse-windows-x64.zip lighthouse.exe
+          bun build ./packages/cli/src/bin.ts --compile --target bun-linux-x64-modern --outfile ./release-assets/lh
+          tar -czf ./release-assets/lh-linux-x64.tar.gz -C ./release-assets lh
+          bun build ./packages/cli/src/bin.ts --compile --target bun-darwin-x64-modern --outfile ./release-assets/lh
+          tar -czf ./release-assets/lh-darwin-x64.tar.gz -C ./release-assets lh
+          bun build ./packages/cli/src/bin.ts --compile --target bun-windows-x64-modern --outfile ./release-assets/lh.exe
+          cd release-assets && zip -q lh-windows-x64.zip lh.exe
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -117,9 +115,9 @@ jobs:
           name: Lighthouse Clients ${{ env.CLI_VERSION }}
           prerelease: false
           files: |
-            release-assets/lighthouse-linux-x64.tar.gz
-            release-assets/lighthouse-darwin-x64.tar.gz
-            release-assets/lighthouse-windows-x64.zip
+            release-assets/lh-linux-x64.tar.gz
+            release-assets/lh-darwin-x64.tar.gz
+            release-assets/lh-windows-x64.zip
 
       - name: Login to GHCR
         uses: docker/login-action@v3
