@@ -1,5 +1,20 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.5.0
+
+### Minor Changes
+
+- [`d5fd130`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d5fd130c5afc4b1a7e5d6655fb6ab993ba8a82b7) Thanks [@huserben](https://github.com/huserben)! - Handle auth properly
+
+- [`d4a3c0f`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d4a3c0f62525e59a3532251f8cab4c9761766bb2) Thanks [@huserben](https://github.com/huserben)! - enhance CLI authentication flow with support for insecure HTTPS and improved error handling
+
+- [`1b93ea0`](https://github.com/LetPeopleWork/lighthouse-clients/commit/1b93ea0ff231016b24d13e99bdf5a675c985e0a0) Thanks [@huserben](https://github.com/huserben)! - add support for multiple output formats (pretty, json, toon) and configure default output format
+
+### Patch Changes
+
+- Updated dependencies [[`d5fd130`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d5fd130c5afc4b1a7e5d6655fb6ab993ba8a82b7), [`d4a3c0f`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d4a3c0f62525e59a3532251f8cab4c9761766bb2)]:
+  - @letpeoplework/lighthouse-client@0.4.0
+
 ## 0.4.2
 
 ### Patch Changes
