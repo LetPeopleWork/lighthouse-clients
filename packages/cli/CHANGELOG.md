@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.8.0
+
+### Minor Changes
+
+- [`391212c`](https://github.com/LetPeopleWork/lighthouse-clients/commit/391212c10838382a0a6fbdb1ce2fe0c8f46d75cc) Thanks [@huserben](https://github.com/huserben)! - use fileURLToPath for URL comparison in runCli
+
 ## 0.7.0
 
 ### Minor Changes
