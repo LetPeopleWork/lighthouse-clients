@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.4.2
+
+### Patch Changes
+
+- fix: update CLI version to 0.5.0 and change bin entry to use .js extension
+
 ## 0.4.1
 
 ### Patch Changes
