@@ -16,10 +16,10 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b tsconfig.json --pretty false",
     "ci": "pnpm lint && pnpm test && pnpm typecheck && pnpm build",
-    "changeset": "changeset",
-    "release:version": "changeset version",
-    "release:publish": "changeset publish",
-    "release:status": "changeset status"
+    "changeset": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset",
+    "release:version": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset version",
+    "release:publish": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset publish",
+    "release:status": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset status"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
