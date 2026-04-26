@@ -19,7 +19,11 @@
     "changeset": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset",
     "release:version": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset version",
     "release:publish": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset publish",
-    "release:status": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset status"
+    "release:status": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset status",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm run ci && node scripts/check-changeset.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -27,6 +31,7 @@
     "@changesets/cli": "^2.29.7",
     "@types/node": "^22.19.17",
     "rimraf": "^6.0.1",
+    "simple-git-hooks": "^2.13.0",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

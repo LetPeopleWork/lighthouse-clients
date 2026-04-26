@@ -25,6 +25,9 @@ Business/domain behavior must be implemented in shared packages (`@letpeoplework
 ## Release Workflow
 1. Add a changeset for each package-affecting change:
   - `pnpm changeset`
+  - Stage the generated `.changeset/*.md` file alongside your other changes.
+  - The pre-commit hook enforces this: commits that touch `packages/<name>/src/` or
+    `packages/<name>/package.json` will be blocked unless a new `.changeset/*.md` is also staged.
 2. Apply version updates:
   - `pnpm release:version`
 3. Publish packages:
@@ -36,6 +39,10 @@ Before publishing, run:
 - `pnpm typecheck`
 - `pnpm build`
 - `pnpm lint`
+
+These same checks run automatically as a strict pre-commit gate via `pnpm ci`.
+To skip the hook in exceptional cases (e.g., WIP commits to a local branch), set
+`SKIP_SIMPLE_GIT_HOOKS=1` before your `git commit` command.
 
 ## Notes
 CI release automation and publication credentials are handled by workflows in `.github/workflows/`.
