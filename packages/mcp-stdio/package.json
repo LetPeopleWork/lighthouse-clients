@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-mcp-stdio",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "stdio transport adapter for Lighthouse MCP",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "main": "dist/index.cjs",
