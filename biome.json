@@ -12,6 +12,11 @@
     }
   },
   "files": {
-    "ignore": ["**/dist/**", "**/dist-types/**", "**/*.tsbuildinfo"]
+    "ignore": [
+      "**/dist/**",
+      "**/dist-types/**",
+      "**/*.tsbuildinfo",
+      "**/package.json"
+    ]
   }
 }
