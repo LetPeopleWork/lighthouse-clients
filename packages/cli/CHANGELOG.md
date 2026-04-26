@@ -1,5 +1,16 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.7.0
+
+### Minor Changes
+
+- [`a9ebce0`](https://github.com/LetPeopleWork/lighthouse-clients/commit/a9ebce0fceae503971b45bf3ec1b595efe0e6c94) Thanks [@huserben](https://github.com/huserben)! - add new team and portfolio metrics endpoints to Lighthouse client
+
+### Patch Changes
+
+- Updated dependencies [[`a9ebce0`](https://github.com/LetPeopleWork/lighthouse-clients/commit/a9ebce0fceae503971b45bf3ec1b595efe0e6c94)]:
+  - @letpeoplework/lighthouse-client@0.6.0
+
 ## 0.6.0
 
 ### Minor Changes
