@@ -1,5 +1,21 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.4.0
+
+### Minor Changes
+
+- rename CLI command from `lighthouse` to `lh`
+
+- Rename CLI command from `lighthouse` to `lh`.
+
+  **Breaking change:** the globally installed command is now `lh` instead of `lighthouse`. Users upgrading from 0.3.x must reinstall the package to register the new command name:
+
+  ```bash
+  npm install -g @letpeoplework/lighthouse-cli
+  # then use lh instead of lighthouse
+  lh health check
+  ```
+
 ## 0.3.1
 
 ### Patch Changes

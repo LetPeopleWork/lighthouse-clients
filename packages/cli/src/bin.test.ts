@@ -35,4 +35,31 @@ describe("cli binary entrypoint", () => {
       }
     }
   });
+
+  it("prints lh-prefixed usage text when no command is given", async () => {
+    const stdout = vi.fn<(message: string) => void>();
+    const stderr = vi.fn<(message: string) => void>();
+
+    const exitCode = await runCli([], { stdout, stderr });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).not.toHaveBeenCalled();
+    expect(stderr).toHaveBeenCalledOnce();
+    const helpText = stderr.mock.calls[0]?.[0] ?? "";
+    expect(helpText).toContain("lh config endpoint set");
+    expect(helpText).toContain("lh health check");
+    expect(helpText).not.toContain("  lighthouse ");
+  });
+
+  it("prints lh-prefixed usage text when only one argument is given", async () => {
+    const stdout = vi.fn<(message: string) => void>();
+    const stderr = vi.fn<(message: string) => void>();
+
+    const exitCode = await runCli(["team"], { stdout, stderr });
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toHaveBeenCalledOnce();
+    const helpText = stderr.mock.calls[0]?.[0] ?? "";
+    expect(helpText).toContain("lh team list");
+  });
 });

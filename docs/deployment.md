@@ -18,6 +18,7 @@ This repository is intentionally dedicated to client deliverables, so release ta
 ### npm
 - Package: `@letpeoplework/lighthouse-cli`
 - Install path: `pnpm add -g @letpeoplework/lighthouse-cli` or `npm i -g @letpeoplework/lighthouse-cli`
+- After install, the `lh` command is available globally.
 
 ### GitHub Releases
 - Release workflow builds standalone CLI binaries for Linux, macOS, and Windows.
