@@ -36,6 +36,12 @@ lh team get --id 1 --json
 # Get bundled team metrics for the last 30 days
 lh metrics team --id 1
 
+# Get only throughput and wip for a team
+lh metrics team --id 1 --metrics throughput,wip
+
+# Get a single metric for a portfolio
+lh metrics portfolio --id 7 --metrics cycletime
+
 # Run a forecast for a team
 lh forecast manual --team-id 1 --remaining 10
 ```
@@ -101,11 +107,15 @@ lh portfolio update --id <portfolio-id> --payload-json <json>
 							  Update a portfolio from a JSON payload
 lh portfolio delete --id <portfolio-id>      Delete a portfolio
 lh portfolio refresh --id <portfolio-id>     Refresh a portfolio
-lh metrics team --id <team-id> [--start-date <date>] [--end-date <date>]
-lh metrics portfolio --id <portfolio-id> [--start-date <date>] [--end-date <date>]
-							  Return bundled metrics. Team defaults to 30 days,
-							  portfolio defaults to 90 days. If only one date is
-							  provided, it is used for both start and end.
+lh metrics team --id <team-id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>]
+lh metrics portfolio --id <portfolio-id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>]
+						  Return bundled metrics. Team defaults to 30 days,
+						  portfolio defaults to 90 days. If only one date is
+						  provided, it is used for both start and end.
+						  Use --metrics to select one or more specific metrics;
+						  omit to get all. Allowed values:
+						  throughput, wip, cycleTime, workItemAge,
+						  totalWorkItemAge, arrivals, predictabilityScore
 lh feature get --ids <id1,id2,...>           Get features by IDs
 lh feature get --refs <ref1,ref2,...>        Get features by references
 lh feature workitems --id <feature-id>       Get work items for a feature

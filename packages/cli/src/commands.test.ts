@@ -1263,6 +1263,267 @@ describe("runCliCommand", () => {
     }
   });
 
+  it("returns only the requested metric when --metrics has a single value", async () => {
+    const throughputData = { total: 5, workItemsPerUnitOfTime: {} };
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: throughputData,
+    }));
+    const getTeamWip = vi.fn(async () => ({ ok: true as const, value: [] }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamThroughput,
+        getTeamWip,
+      },
+    });
+
+    const result = await runCliCommand(
+      ["metrics", "team", "--id", "1", "--json", "--metrics", "throughput"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    // Only requested metric present
+    expect(payload.throughput).toBeDefined();
+    // Unrequested metrics absent
+    expect(payload.wip).toBeUndefined();
+    expect(payload.cycleTime).toBeUndefined();
+    expect(payload.workItemAge).toBeUndefined();
+    expect(payload.arrivals).toBeUndefined();
+    expect(payload.totalWorkItemAge).toBeUndefined();
+    expect(payload.predictabilityScore).toBeUndefined();
+    // Metadata always present
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.id).toBe(1);
+    // Only the throughput client method was called
+    expect(getTeamThroughput).toHaveBeenCalledOnce();
+    expect(getTeamWip).not.toHaveBeenCalled();
+  });
+
+  it("returns only the requested metrics when --metrics has multiple values", async () => {
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const getTeamWip = vi.fn(async () => ({ ok: true as const, value: [] }));
+    const getTeamWipOverTime = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const getTeamArrivals = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamThroughput,
+        getTeamWip,
+        getTeamWipOverTime,
+        getTeamArrivals,
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "metrics",
+        "team",
+        "--id",
+        "1",
+        "--json",
+        "--metrics",
+        "throughput,wip,arrivals",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.throughput).toBeDefined();
+    expect(payload.wip).toBeDefined();
+    expect(payload.arrivals).toBeDefined();
+    expect(payload.cycleTime).toBeUndefined();
+    expect(payload.workItemAge).toBeUndefined();
+    expect(payload.totalWorkItemAge).toBeUndefined();
+    expect(payload.predictabilityScore).toBeUndefined();
+    // Verify only relevant methods were called
+    expect(getTeamThroughput).toHaveBeenCalledOnce();
+    expect(getTeamWip).toHaveBeenCalledOnce();
+    expect(getTeamWipOverTime).toHaveBeenCalledOnce();
+    expect(getTeamArrivals).toHaveBeenCalledOnce();
+  });
+
+  it("accepts cycletime alias and maps it to cycleTime section", async () => {
+    const getTeamCycleTimePercentiles = vi.fn(async () => ({
+      ok: true as const,
+      value: [],
+    }));
+    const getTeamCycleTimeData = vi.fn(async () => ({
+      ok: true as const,
+      value: [],
+    }));
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamCycleTimePercentiles,
+        getTeamCycleTimeData,
+        getTeamThroughput,
+      },
+    });
+
+    const result = await runCliCommand(
+      ["metrics", "team", "--id", "1", "--json", "--metrics", "cycletime"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.cycleTime).toBeDefined();
+    expect(payload.throughput).toBeUndefined();
+    expect(getTeamCycleTimePercentiles).toHaveBeenCalledOnce();
+    expect(getTeamCycleTimeData).toHaveBeenCalledOnce();
+    expect(getTeamThroughput).not.toHaveBeenCalled();
+  });
+
+  it("works with --metrics filter for portfolio metrics", async () => {
+    const getPortfolioThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const getPortfolioWip = vi.fn(async () => ({
+      ok: true as const,
+      value: [],
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getPortfolioThroughput,
+        getPortfolioWip,
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "metrics",
+        "portfolio",
+        "--id",
+        "7",
+        "--json",
+        "--metrics",
+        "throughput",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.throughput).toBeDefined();
+    expect(payload.wip).toBeUndefined();
+    expect(getPortfolioThroughput).toHaveBeenCalledOnce();
+    expect(getPortfolioWip).not.toHaveBeenCalled();
+  });
+
+  it("returns all metrics when --metrics is omitted (backward-compat regression guard)", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["metrics", "team", "--id", "1", "--json"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.throughput).toBeDefined();
+    expect(payload.wip).toBeDefined();
+    expect(payload.cycleTime).toBeDefined();
+    expect(payload.workItemAge).toBeDefined();
+    expect(payload.totalWorkItemAge).toBeDefined();
+    expect(payload.arrivals).toBeDefined();
+    expect(payload.predictabilityScore).toBeDefined();
+    expect(payload.blocked).toBeDefined();
+    expect(payload.workDistribution).toBeDefined();
+  });
+
+  it("fails with a clear error for an unknown metric name", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["metrics", "team", "--id", "1", "--metrics", "notametric"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("notametric");
+    expect(result.stderr).toContain("throughput");
+  });
+
+  it("normalizes whitespace and case in --metrics values", async () => {
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamThroughput,
+      },
+    });
+
+    // Leading/trailing whitespace around the comma and mixed-case alias
+    const result = await runCliCommand(
+      ["metrics", "team", "--id", "1", "--json", "--metrics", " Throughput "],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(payload.throughput).toBeDefined();
+    expect(getTeamThroughput).toHaveBeenCalledOnce();
+  });
+
   it("gets features by ids", async () => {
     const features = [{ id: 1, name: "Feature A" }];
     const { dependencies } = getDependencies({

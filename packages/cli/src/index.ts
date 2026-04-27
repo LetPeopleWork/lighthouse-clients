@@ -277,6 +277,77 @@ const getLastDaysMetricsDateRange = (days: number): MetricsDateRange => {
   };
 };
 
+// ── Metrics filter ───────────────────────────────────────────────────────────
+
+const METRIC_KEYS = [
+  "throughput",
+  "wip",
+  "cycleTime",
+  "workItemAge",
+  "totalWorkItemAge",
+  "arrivals",
+  "predictabilityScore",
+] as const;
+
+type MetricKey = (typeof METRIC_KEYS)[number];
+
+/** Aliases that users may type (lower-cased). Maps to canonical MetricKey. */
+const METRIC_ALIASES: Record<string, MetricKey> = {
+  throughput: "throughput",
+  wip: "wip",
+  cycletime: "cycleTime",
+  cycleTime: "cycleTime",
+  workitemage: "workItemAge",
+  workItemAge: "workItemAge",
+  totalworkitemage: "totalWorkItemAge",
+  totalWorkItemAge: "totalWorkItemAge",
+  arrivals: "arrivals",
+  predictabilityscore: "predictabilityScore",
+  predictabilityScore: "predictabilityScore",
+};
+
+const ALLOWED_METRIC_DISPLAY = METRIC_KEYS.join(", ");
+
+/**
+ * Parses `--metrics <metric,...>` from args.
+ * Returns:
+ *   - `null` when the flag is absent (means "all metrics").
+ *   - A non-empty `Set<MetricKey>` with selected metrics.
+ *   - A `CliCommandResult` error for unknown or empty values.
+ */
+const getMetricsFilter = (
+  args: readonly string[],
+): Set<MetricKey> | null | CliCommandResult => {
+  const raw = getOptionValue(args, "--metrics");
+  if (raw === undefined) {
+    return null; // no filter → all metrics
+  }
+
+  const entries = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  if (entries.length === 0) {
+    return getErrorResult(
+      `--metrics requires at least one metric name. Allowed: ${ALLOWED_METRIC_DISPLAY}`,
+    );
+  }
+
+  const resolved = new Set<MetricKey>();
+  for (const entry of entries) {
+    const key = METRIC_ALIASES[entry] ?? METRIC_ALIASES[entry.toLowerCase()];
+    if (key === undefined) {
+      return getErrorResult(
+        `Unknown metric: "${entry}". Allowed: ${ALLOWED_METRIC_DISPLAY}`,
+      );
+    }
+    resolved.add(key);
+  }
+
+  return resolved;
+};
+
 const getResolvedMetricsDateRange = (
   args: readonly string[],
   fallbackDays: number,
@@ -338,6 +409,16 @@ const isMetricErrorValue = (
   value: unknown,
 ): value is MetricErrorValue | MetricUnavailableValue =>
   isRecord(value) && typeof value.status === "string";
+
+/**
+ * Unwraps a `PromiseSettledResult` like `getMetricValueOrError`, but also
+ * accepts `null` (the "skipped" sentinel produced by `maybeFetch`) and returns
+ * `null` in that case so the payload builder can omit the section.
+ */
+const resolveOrSkip = <T>(
+  result: PromiseSettledResult<LighthouseApiResult<T>> | null,
+): T | MetricErrorValue | null =>
+  result === null ? null : getMetricValueOrError(result);
 
 const getJsonPayload = async (
   args: readonly string[],
@@ -891,13 +972,16 @@ const getPortfolioGroupHelpText = (): string =>
 const getMetricsGroupHelpText = (): string =>
   [
     "Usage:",
-    "  lh metrics team --id <id> [--start-date <date>] [--end-date <date>]",
-    "  lh metrics portfolio --id <id> [--start-date <date>] [--end-date <date>]",
+    "  lh metrics team --id <id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>]",
+    "  lh metrics portfolio --id <id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>]",
     "",
     "Defaults:",
     "  team: last 30 days",
     "  portfolio: last 90 days",
     "  if only one date is provided, it is reused for both start and end",
+    "  if --metrics is omitted, all metrics are returned",
+    "",
+    `Allowed metrics: ${ALLOWED_METRIC_DISPLAY}`,
   ].join("\n");
 
 const getDeliveryGroupHelpText = (): string =>
@@ -1002,34 +1086,26 @@ const buildMetricsPayload = async (
   entityId: number,
   range: MetricsDateRange,
   client: CliDomainClientLike,
+  filter: Set<MetricKey> | null,
 ): Promise<Record<string, unknown>> => {
   const unavailableReason =
     "No dedicated backend endpoint is available for this metric.";
 
-  const requests =
-    scope === "team"
-      ? [
-          client.getTeamThroughput(entityId, range),
-          client.getTeamArrivals(entityId, range),
-          client.getTeamWipOverTime(entityId, range),
-          client.getTeamWip(entityId, range.endDate),
-          client.getTeamCycleTimePercentiles(entityId, range),
-          client.getTeamCycleTimeData(entityId, range),
-          client.getTeamPredictabilityScore(entityId, range),
-          client.getTeamTotalWorkItemAge(entityId, range.endDate),
-          client.getTeamTotalWorkItemAgeInfo(entityId, range),
-        ]
-      : [
-          client.getPortfolioThroughput(entityId, range),
-          client.getPortfolioArrivals(entityId, range),
-          client.getPortfolioWipOverTime(entityId, range),
-          client.getPortfolioWip(entityId, range.endDate),
-          client.getPortfolioCycleTimePercentiles(entityId, range),
-          client.getPortfolioCycleTimeData(entityId, range),
-          client.getPortfolioPredictabilityScore(entityId, range),
-          client.getPortfolioTotalWorkItemAge(entityId, range.endDate),
-          client.getPortfolioTotalWorkItemAgeInfo(entityId, range),
-        ];
+  const all = filter === null;
+  const needs = (key: MetricKey): boolean => all || filter.has(key);
+  // wip.current is shared between the "wip" and "workItemAge" sections
+  const needsCurrentWip = needs("wip") || needs("workItemAge");
+  const isTeam = scope === "team";
+
+  // Execute a request only when condition is true; otherwise resolves to null
+  // so the payload builder can omit the section without making the HTTP call.
+  const maybeFetch = <T>(
+    condition: boolean,
+    requestFn: () => Promise<LighthouseApiResult<T>>,
+  ): Promise<PromiseSettledResult<LighthouseApiResult<T>> | null> =>
+    condition
+      ? Promise.allSettled([requestFn()]).then((r) => r[0])
+      : Promise.resolve(null);
 
   const [
     throughputResult,
@@ -1041,106 +1117,195 @@ const buildMetricsPayload = async (
     predictabilityScoreResult,
     totalWorkItemAgeResult,
     totalWorkItemAgeInfoResult,
-  ] = await Promise.allSettled(requests);
+  ] = await Promise.all([
+    maybeFetch(needs("throughput"), () =>
+      isTeam
+        ? client.getTeamThroughput(entityId, range)
+        : client.getPortfolioThroughput(entityId, range),
+    ),
+    maybeFetch(needs("arrivals"), () =>
+      isTeam
+        ? client.getTeamArrivals(entityId, range)
+        : client.getPortfolioArrivals(entityId, range),
+    ),
+    maybeFetch(needs("wip"), () =>
+      isTeam
+        ? client.getTeamWipOverTime(entityId, range)
+        : client.getPortfolioWipOverTime(entityId, range),
+    ),
+    maybeFetch(needsCurrentWip, () =>
+      isTeam
+        ? client.getTeamWip(entityId, range.endDate)
+        : client.getPortfolioWip(entityId, range.endDate),
+    ),
+    maybeFetch(needs("cycleTime"), () =>
+      isTeam
+        ? client.getTeamCycleTimePercentiles(entityId, range)
+        : client.getPortfolioCycleTimePercentiles(entityId, range),
+    ),
+    maybeFetch(needs("cycleTime"), () =>
+      isTeam
+        ? client.getTeamCycleTimeData(entityId, range)
+        : client.getPortfolioCycleTimeData(entityId, range),
+    ),
+    maybeFetch(needs("predictabilityScore"), () =>
+      isTeam
+        ? client.getTeamPredictabilityScore(entityId, range)
+        : client.getPortfolioPredictabilityScore(entityId, range),
+    ),
+    maybeFetch(needs("totalWorkItemAge"), () =>
+      isTeam
+        ? client.getTeamTotalWorkItemAge(entityId, range.endDate)
+        : client.getPortfolioTotalWorkItemAge(entityId, range.endDate),
+    ),
+    maybeFetch(needs("totalWorkItemAge"), () =>
+      isTeam
+        ? client.getTeamTotalWorkItemAgeInfo(entityId, range)
+        : client.getPortfolioTotalWorkItemAgeInfo(entityId, range),
+    ),
+  ]);
 
-  const throughputValue = getMetricValueOrError(throughputResult);
-  const arrivalsValue = getMetricValueOrError(arrivalsResult);
-  const wipOverTimeValue = getMetricValueOrError(wipOverTimeResult);
-  const currentWipValue = getMetricValueOrError(currentWipResult);
-  const cycleTimePercentilesValue = getMetricValueOrError(
-    cycleTimePercentilesResult,
-  );
-  const cycleTimeDataValue = getMetricValueOrError(cycleTimeDataResult);
-  const predictabilityScoreValue = getMetricValueOrError(
-    predictabilityScoreResult,
-  );
-  const totalWorkItemAgeValue = getMetricValueOrError(totalWorkItemAgeResult);
-  const totalWorkItemAgeInfoValue = getMetricValueOrError(
-    totalWorkItemAgeInfoResult,
-  );
+  const throughputValue = resolveOrSkip(throughputResult);
+  const arrivalsValue = resolveOrSkip(arrivalsResult);
+  const wipOverTimeValue = resolveOrSkip(wipOverTimeResult);
+  const currentWipValue = resolveOrSkip(currentWipResult);
+  const cycleTimePercentilesValue = resolveOrSkip(cycleTimePercentilesResult);
+  const cycleTimeDataValue = resolveOrSkip(cycleTimeDataResult);
+  const predictabilityScoreValue = resolveOrSkip(predictabilityScoreResult);
+  const totalWorkItemAgeValue = resolveOrSkip(totalWorkItemAgeResult);
+  const totalWorkItemAgeInfoValue = resolveOrSkip(totalWorkItemAgeInfoResult);
 
-  const currentItems = isMetricErrorValue(currentWipValue)
-    ? currentWipValue
-    : getWorkItemList(currentWipValue);
+  const currentItems =
+    currentWipValue === null
+      ? null
+      : isMetricErrorValue(currentWipValue)
+        ? currentWipValue
+        : getWorkItemList(currentWipValue);
 
-  return {
+  const payload: Record<string, unknown> = {
     schemaVersion: 1,
     scope,
     id: entityId,
     dateRange: range,
-    blocked: getMetricUnavailableValue(unavailableReason),
-    wip: {
-      current: isMetricErrorValue(currentItems)
-        ? currentItems
-        : {
-            asOfDate: range.endDate,
-            count: currentItems.length,
-            items: currentItems,
-          },
-      overTime: isMetricErrorValue(wipOverTimeValue)
-        ? wipOverTimeValue
-        : {
-            startDate: range.startDate,
-            endDate: range.endDate,
-            daily: getDailyCountSeries(wipOverTimeValue, range.startDate),
-          },
-    },
-    throughput: isMetricErrorValue(throughputValue)
-      ? throughputValue
-      : {
-          startDate: range.startDate,
-          endDate: range.endDate,
-          total: getChartTotal(
-            throughputValue,
-            getDailyCountSeries(throughputValue, range.startDate),
-          ),
-          daily: getDailyCountSeries(throughputValue, range.startDate),
-        },
-    cycleTime: {
-      percentiles: isMetricErrorValue(cycleTimePercentilesValue)
-        ? cycleTimePercentilesValue
-        : { values: cycleTimePercentilesValue },
-      closedItems: isMetricErrorValue(cycleTimeDataValue)
-        ? cycleTimeDataValue
-        : { items: getWorkItemList(cycleTimeDataValue) },
-    },
-    workItemAge: isMetricErrorValue(currentItems)
-      ? currentItems
-      : {
-          asOfDate: range.endDate,
-          itemsInProgress: currentItems,
-        },
-    totalWorkItemAge: {
-      current: isMetricErrorValue(totalWorkItemAgeValue)
-        ? totalWorkItemAgeValue
-        : {
-            asOfDate: range.endDate,
-            value: totalWorkItemAgeValue,
-          },
-      daily: isMetricErrorValue(totalWorkItemAgeInfoValue)
-        ? totalWorkItemAgeInfoValue
-        : {
-            startDate: range.startDate,
-            endDate: range.endDate,
-            points: getDailyValueSeriesFromInfo(totalWorkItemAgeInfoValue),
-          },
-    },
-    arrivals: isMetricErrorValue(arrivalsValue)
-      ? arrivalsValue
-      : {
-          startDate: range.startDate,
-          endDate: range.endDate,
-          total: getChartTotal(
-            arrivalsValue,
-            getDailyCountSeries(arrivalsValue, range.startDate),
-          ),
-          daily: getDailyCountSeries(arrivalsValue, range.startDate),
-        },
-    workDistribution: getMetricUnavailableValue(unavailableReason),
-    predictabilityScore: isMetricErrorValue(predictabilityScoreValue)
-      ? predictabilityScoreValue
-      : getPredictabilityScorePayload(predictabilityScoreValue),
   };
+
+  // Static unavailable sections are only included in the full (unfiltered) payload
+  // to avoid cluttering single-metric responses with unrelated keys.
+  if (all) {
+    payload.blocked = getMetricUnavailableValue(unavailableReason);
+    payload.workDistribution = getMetricUnavailableValue(unavailableReason);
+  }
+
+  if (needs("wip")) {
+    payload.wip = {
+      current:
+        currentItems === null || isMetricErrorValue(currentItems)
+          ? (currentItems ?? getMetricUnavailableValue(unavailableReason))
+          : {
+              asOfDate: range.endDate,
+              count: currentItems.length,
+              items: currentItems,
+            },
+      overTime:
+        wipOverTimeValue === null || isMetricErrorValue(wipOverTimeValue)
+          ? (wipOverTimeValue ?? getMetricUnavailableValue(unavailableReason))
+          : {
+              startDate: range.startDate,
+              endDate: range.endDate,
+              daily: getDailyCountSeries(wipOverTimeValue, range.startDate),
+            },
+    };
+  }
+
+  if (needs("throughput")) {
+    payload.throughput =
+      throughputValue === null || isMetricErrorValue(throughputValue)
+        ? (throughputValue ?? getMetricUnavailableValue(unavailableReason))
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            total: getChartTotal(
+              throughputValue,
+              getDailyCountSeries(throughputValue, range.startDate),
+            ),
+            daily: getDailyCountSeries(throughputValue, range.startDate),
+          };
+  }
+
+  if (needs("cycleTime")) {
+    payload.cycleTime = {
+      percentiles:
+        cycleTimePercentilesValue === null ||
+        isMetricErrorValue(cycleTimePercentilesValue)
+          ? (cycleTimePercentilesValue ??
+            getMetricUnavailableValue(unavailableReason))
+          : { values: cycleTimePercentilesValue },
+      closedItems:
+        cycleTimeDataValue === null || isMetricErrorValue(cycleTimeDataValue)
+          ? (cycleTimeDataValue ?? getMetricUnavailableValue(unavailableReason))
+          : { items: getWorkItemList(cycleTimeDataValue) },
+    };
+  }
+
+  if (needs("workItemAge")) {
+    payload.workItemAge =
+      currentItems === null || isMetricErrorValue(currentItems)
+        ? (currentItems ?? getMetricUnavailableValue(unavailableReason))
+        : {
+            asOfDate: range.endDate,
+            itemsInProgress: currentItems,
+          };
+  }
+
+  if (needs("totalWorkItemAge")) {
+    payload.totalWorkItemAge = {
+      current:
+        totalWorkItemAgeValue === null ||
+        isMetricErrorValue(totalWorkItemAgeValue)
+          ? (totalWorkItemAgeValue ??
+            getMetricUnavailableValue(unavailableReason))
+          : {
+              asOfDate: range.endDate,
+              value: totalWorkItemAgeValue,
+            },
+      daily:
+        totalWorkItemAgeInfoValue === null ||
+        isMetricErrorValue(totalWorkItemAgeInfoValue)
+          ? (totalWorkItemAgeInfoValue ??
+            getMetricUnavailableValue(unavailableReason))
+          : {
+              startDate: range.startDate,
+              endDate: range.endDate,
+              points: getDailyValueSeriesFromInfo(totalWorkItemAgeInfoValue),
+            },
+    };
+  }
+
+  if (needs("arrivals")) {
+    payload.arrivals =
+      arrivalsValue === null || isMetricErrorValue(arrivalsValue)
+        ? (arrivalsValue ?? getMetricUnavailableValue(unavailableReason))
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            total: getChartTotal(
+              arrivalsValue,
+              getDailyCountSeries(arrivalsValue, range.startDate),
+            ),
+            daily: getDailyCountSeries(arrivalsValue, range.startDate),
+          };
+  }
+
+  if (needs("predictabilityScore")) {
+    payload.predictabilityScore =
+      predictabilityScoreValue === null ||
+      isMetricErrorValue(predictabilityScoreValue)
+        ? (predictabilityScoreValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : getPredictabilityScorePayload(predictabilityScoreValue);
+  }
+
+  return payload;
 };
 
 const runConnectionGroup = async (
@@ -1496,7 +1661,19 @@ const runMetricsGroup = async (
 
   const client = dependencies.createClient(connectionOrError);
   const range = getResolvedMetricsDateRange(args, action === "team" ? 30 : 90);
-  const payload = await buildMetricsPayload(action, entityId, range, client);
+
+  const metricsFilterOrError = getMetricsFilter(args);
+  if (isCliCommandResult(metricsFilterOrError)) {
+    return metricsFilterOrError;
+  }
+
+  const payload = await buildMetricsPayload(
+    action,
+    entityId,
+    range,
+    client,
+    metricsFilterOrError,
+  );
   return mapApiResultToCliResult({ ok: true, value: payload }, outputFormat);
 };
 
