@@ -152,7 +152,7 @@ type MockClient = {
     readonly ok: true;
     readonly value: number;
   }>;
-  readonly getTeamTotalWorkItemAgePbc: (
+  readonly getTeamTotalWorkItemAgeInfo: (
     id: number,
     range?: unknown,
   ) => Promise<{
@@ -215,7 +215,7 @@ type MockClient = {
     readonly ok: true;
     readonly value: number;
   }>;
-  readonly getPortfolioTotalWorkItemAgePbc: (
+  readonly getPortfolioTotalWorkItemAgeInfo: (
     id: number,
     range?: unknown,
   ) => Promise<{
@@ -327,9 +327,9 @@ const getDefaultMockClient = (): MockClient => ({
     value: { predictabilityScore: 1 },
   }),
   getTeamTotalWorkItemAge: async () => ({ ok: true, value: 0 }),
-  getTeamTotalWorkItemAgePbc: async () => ({
+  getTeamTotalWorkItemAgeInfo: async () => ({
     ok: true,
-    value: { dataPoints: [] },
+    value: { totalAge: 0, comparison: null },
   }),
   getPortfolioThroughput: async () => ({
     ok: true,
@@ -351,9 +351,9 @@ const getDefaultMockClient = (): MockClient => ({
     value: { predictabilityScore: 1 },
   }),
   getPortfolioTotalWorkItemAge: async () => ({ ok: true, value: 0 }),
-  getPortfolioTotalWorkItemAgePbc: async () => ({
+  getPortfolioTotalWorkItemAgeInfo: async () => ({
     ok: true,
-    value: { dataPoints: [] },
+    value: { totalAge: 0, comparison: null },
   }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
@@ -1119,8 +1119,18 @@ describe("runCliCommand", () => {
       percentiles,
       forecastResults: { 5: 2 },
     };
-    const totalWorkItemAgePbc = {
-      dataPoints: [{ xValue: "2026-01-01", yValue: 4, workItemIds: [10] }],
+    const totalWorkItemAgeInfo = {
+      totalAge: 4,
+      comparison: {
+        direction: "flat",
+        metricLabel: "Total Work Item Age",
+        previousLabel: "2026-01-01",
+        previousValue: "4",
+        currentLabel: "2026-03-31",
+        currentValue: "4",
+        percentageDelta: null,
+        detailRows: null,
+      },
     };
     const { dependencies } = getDependencies({
       connection: {
@@ -1144,9 +1154,9 @@ describe("runCliCommand", () => {
           value: predictability,
         }),
         getTeamTotalWorkItemAge: async () => ({ ok: true, value: 4 }),
-        getTeamTotalWorkItemAgePbc: async () => ({
+        getTeamTotalWorkItemAgeInfo: async () => ({
           ok: true,
-          value: totalWorkItemAgePbc,
+          value: totalWorkItemAgeInfo,
         }),
       },
     });

@@ -835,12 +835,12 @@ describe("createLighthouseClient", () => {
 
     await expectMetricRequest(
       (client) =>
-        client.getTeamTotalWorkItemAgePbc(5, {
+        client.getTeamTotalWorkItemAgeInfo(5, {
           startDate: "2026-01-01",
           endDate: "2026-03-31",
         }),
-      "http://localhost:5000/api/v1/teams/5/metrics/totalWorkItemAge/pbc?startDate=2026-01-01&endDate=2026-03-31",
-      { dataPoints: [] },
+      "http://localhost:5000/api/v1/teams/5/metrics/totalWorkItemAgeInfo?startDate=2026-01-01&endDate=2026-03-31",
+      { totalAge: 0, comparison: null },
     );
   });
 
@@ -909,12 +909,12 @@ describe("createLighthouseClient", () => {
 
     await expectMetricRequest(
       (client) =>
-        client.getPortfolioTotalWorkItemAgePbc(7, {
+        client.getPortfolioTotalWorkItemAgeInfo(7, {
           startDate: "2026-01-01",
           endDate: "2026-03-31",
         }),
-      "http://localhost:5000/api/v1/portfolios/7/metrics/totalWorkItemAge/pbc?startDate=2026-01-01&endDate=2026-03-31",
-      { dataPoints: [] },
+      "http://localhost:5000/api/v1/portfolios/7/metrics/totalWorkItemAgeInfo?startDate=2026-01-01&endDate=2026-03-31",
+      { totalAge: 0, comparison: null },
     );
   });
 

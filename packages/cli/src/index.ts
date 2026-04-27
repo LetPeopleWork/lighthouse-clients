@@ -63,7 +63,7 @@ type CliDomainClientLike = Pick<
   | "getTeamCycleTimeData"
   | "getTeamPredictabilityScore"
   | "getTeamTotalWorkItemAge"
-  | "getTeamTotalWorkItemAgePbc"
+  | "getTeamTotalWorkItemAgeInfo"
   | "getPortfolioThroughput"
   | "getPortfolioCycleTimePercentiles"
   | "getPortfolioArrivals"
@@ -72,7 +72,7 @@ type CliDomainClientLike = Pick<
   | "getPortfolioCycleTimeData"
   | "getPortfolioPredictabilityScore"
   | "getPortfolioTotalWorkItemAge"
-  | "getPortfolioTotalWorkItemAgePbc"
+  | "getPortfolioTotalWorkItemAgeInfo"
   | "getFeaturesByIds"
   | "getFeaturesByReferences"
   | "getFeatureWorkItems"
@@ -423,6 +423,35 @@ const getDailyCountSeries = (
     })
     .filter((entry): entry is DailyCountPoint => entry !== null)
     .sort((left, right) => left.date.localeCompare(right.date));
+};
+
+const getDailyValueSeriesFromInfo = (
+  value: unknown,
+): readonly DailyValuePoint[] => {
+  if (!isRecord(value) || !isRecord(value.comparison)) {
+    return [];
+  }
+  const { comparison } = value;
+  const points: DailyValuePoint[] = [];
+  if (typeof comparison.previousLabel === "string") {
+    const numVal = Number.parseFloat(String(comparison.previousValue ?? "0"));
+    points.push({
+      date: comparison.previousLabel,
+      value: Number.isFinite(numVal) ? numVal : 0,
+      isBlackout: false,
+      workItemIds: [],
+    });
+  }
+  if (typeof comparison.currentLabel === "string") {
+    const numVal = Number.parseFloat(String(comparison.currentValue ?? "0"));
+    points.push({
+      date: comparison.currentLabel,
+      value: Number.isFinite(numVal) ? numVal : 0,
+      isBlackout: false,
+      workItemIds: [],
+    });
+  }
+  return points;
 };
 
 const getDailyValueSeries = (value: unknown): readonly DailyValuePoint[] => {
@@ -988,7 +1017,7 @@ const buildMetricsPayload = async (
           client.getTeamCycleTimeData(entityId, range),
           client.getTeamPredictabilityScore(entityId, range),
           client.getTeamTotalWorkItemAge(entityId, range.endDate),
-          client.getTeamTotalWorkItemAgePbc(entityId, range),
+          client.getTeamTotalWorkItemAgeInfo(entityId, range),
         ]
       : [
           client.getPortfolioThroughput(entityId, range),
@@ -999,7 +1028,7 @@ const buildMetricsPayload = async (
           client.getPortfolioCycleTimeData(entityId, range),
           client.getPortfolioPredictabilityScore(entityId, range),
           client.getPortfolioTotalWorkItemAge(entityId, range.endDate),
-          client.getPortfolioTotalWorkItemAgePbc(entityId, range),
+          client.getPortfolioTotalWorkItemAgeInfo(entityId, range),
         ];
 
   const [
@@ -1011,7 +1040,7 @@ const buildMetricsPayload = async (
     cycleTimeDataResult,
     predictabilityScoreResult,
     totalWorkItemAgeResult,
-    totalWorkItemAgePbcResult,
+    totalWorkItemAgeInfoResult,
   ] = await Promise.allSettled(requests);
 
   const throughputValue = getMetricValueOrError(throughputResult);
@@ -1026,8 +1055,8 @@ const buildMetricsPayload = async (
     predictabilityScoreResult,
   );
   const totalWorkItemAgeValue = getMetricValueOrError(totalWorkItemAgeResult);
-  const totalWorkItemAgePbcValue = getMetricValueOrError(
-    totalWorkItemAgePbcResult,
+  const totalWorkItemAgeInfoValue = getMetricValueOrError(
+    totalWorkItemAgeInfoResult,
   );
 
   const currentItems = isMetricErrorValue(currentWipValue)
@@ -1088,12 +1117,12 @@ const buildMetricsPayload = async (
             asOfDate: range.endDate,
             value: totalWorkItemAgeValue,
           },
-      daily: isMetricErrorValue(totalWorkItemAgePbcValue)
-        ? totalWorkItemAgePbcValue
+      daily: isMetricErrorValue(totalWorkItemAgeInfoValue)
+        ? totalWorkItemAgeInfoValue
         : {
             startDate: range.startDate,
             endDate: range.endDate,
-            points: getDailyValueSeries(totalWorkItemAgePbcValue),
+            points: getDailyValueSeriesFromInfo(totalWorkItemAgeInfoValue),
           },
     },
     arrivals: isMetricErrorValue(arrivalsValue)

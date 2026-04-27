@@ -902,7 +902,7 @@ export type LighthouseClient = {
     teamId: number,
     asOfDate: string,
   ) => Promise<LighthouseApiResult<number>>;
-  readonly getTeamTotalWorkItemAgePbc: (
+  readonly getTeamTotalWorkItemAgeInfo: (
     teamId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<unknown>>;
@@ -938,7 +938,7 @@ export type LighthouseClient = {
     portfolioId: number,
     asOfDate: string,
   ) => Promise<LighthouseApiResult<number>>;
-  readonly getPortfolioTotalWorkItemAgePbc: (
+  readonly getPortfolioTotalWorkItemAgeInfo: (
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<unknown>>;
@@ -1461,7 +1461,7 @@ export const createLighthouseClient = (
       `/v1/teams/${teamId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
       { method: "GET" },
     ),
-  getTeamTotalWorkItemAgePbc: async (
+  getTeamTotalWorkItemAgeInfo: async (
     teamId: number,
     range?: MetricsDateRange,
   ) => {
@@ -1469,7 +1469,7 @@ export const createLighthouseClient = (
     return requestJson<unknown>(
       configuration,
       dependencies,
-      `/v1/teams/${teamId}/metrics/totalWorkItemAge/pbc?${getMetricsDateRangeQuery(r)}`,
+      `/v1/teams/${teamId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
       { method: "GET" },
     );
   },
@@ -1559,7 +1559,7 @@ export const createLighthouseClient = (
       `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
       { method: "GET" },
     ),
-  getPortfolioTotalWorkItemAgePbc: async (
+  getPortfolioTotalWorkItemAgeInfo: async (
     portfolioId: number,
     range?: MetricsDateRange,
   ) => {
@@ -1567,7 +1567,7 @@ export const createLighthouseClient = (
     return requestJson<unknown>(
       configuration,
       dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAge/pbc?${getMetricsDateRangeQuery(r)}`,
+      `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
       { method: "GET" },
     );
   },
