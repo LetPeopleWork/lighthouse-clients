@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.8.1
+
+### Patch Changes
+
+- [`6f72583`](https://github.com/LetPeopleWork/lighthouse-clients/commit/6f7258350fca6cd19a200624c3a8f5d8be1a05cf) Thanks [@huserben](https://github.com/huserben)! - Fix linting
+
 ## 0.8.0
 
 ### Minor Changes
