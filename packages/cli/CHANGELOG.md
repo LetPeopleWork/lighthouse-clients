@@ -1,5 +1,20 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.9.0
+
+### Minor Changes
+
+- [`8db3471`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8db34715fc38bf951223fd14eef4e55abf3edf33) Thanks [@huserben](https://github.com/huserben)! - Add optional `--metrics` flag to `lh metrics team` and `lh metrics portfolio` commands. Pass a comma-separated list of metric names to retrieve only those metrics (e.g. `--metrics throughput,wip,cycletime`). Omit the flag to get all metrics as before. Allowed values: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItemAge`, `arrivals`, `predictabilityScore`. Unknown values produce a clear error listing allowed names.
+
+- [`8db3471`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8db34715fc38bf951223fd14eef4e55abf3edf33) Thanks [@huserben](https://github.com/huserben)! - add optional --metrics flag to lh metrics commands for selective metric retrieval
+
+- [`d2b2795`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d2b27956b91c84d314ce8b37ae81d6ff4c8800ee) Thanks [@huserben](https://github.com/huserben)! - rename totalWorkItemAgePbc to totalWorkItemAgeInfo and update related API endpoints
+
+### Patch Changes
+
+- Updated dependencies [[`d2b2795`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d2b27956b91c84d314ce8b37ae81d6ff4c8800ee)]:
+  - @letpeoplework/lighthouse-client@0.7.0
+
 ## 0.8.1
 
 ### Patch Changes

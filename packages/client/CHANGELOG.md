@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-client
 
+## 0.7.0
+
+### Minor Changes
+
+- [`d2b2795`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d2b27956b91c84d314ce8b37ae81d6ff4c8800ee) Thanks [@huserben](https://github.com/huserben)! - rename totalWorkItemAgePbc to totalWorkItemAgeInfo and update related API endpoints
+
 ## 0.6.0
 
 ### Minor Changes

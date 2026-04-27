@@ -1,5 +1,12 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @letpeoplework/lighthouse-mcp-core@0.4.2
+
 ## 0.2.4
 
 ### Patch Changes
