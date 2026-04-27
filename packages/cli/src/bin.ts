@@ -3,6 +3,7 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
+import { fileURLToPath } from "node:url";
 import {
   type CliConnection,
   type CliServerConnection,
@@ -18,7 +19,6 @@ import {
 import { Agent, fetch as undiciFetch } from "undici";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
 import { type OutputFormat, isOutputFormat } from "./output";
-import { fileURLToPath } from "node:url";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";
 
