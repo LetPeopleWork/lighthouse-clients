@@ -1,3 +1,7 @@
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 export type ClientCapability =
   | "versioned-api-contracts"
   | "shared-domain-operations"
@@ -88,6 +92,7 @@ export type ConnectivityValidationResult =
     };
 
 const SUPPORTED_DISCOVERY_CONTRACT_VERSION = 1;
+const STANDALONE_DISCOVERY_LOCKFILE_NAME = "standalone.lock.json";
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -234,6 +239,56 @@ export const parseStandaloneDiscoveryContract = (
     detectedAtUtc,
   });
 };
+
+export const getStandaloneDiscoveryLockfilePath = (): string => {
+  if (process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH !== undefined) {
+    return process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH;
+  }
+
+  if (process.platform === "darwin") {
+    return join(
+      homedir(),
+      "Library",
+      "Application Support",
+      "Lighthouse",
+      STANDALONE_DISCOVERY_LOCKFILE_NAME,
+    );
+  }
+
+  if (process.platform === "win32") {
+    return join(
+      process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"),
+      "Lighthouse",
+      STANDALONE_DISCOVERY_LOCKFILE_NAME,
+    );
+  }
+
+  return join(
+    process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
+    "Lighthouse",
+    STANDALONE_DISCOVERY_LOCKFILE_NAME,
+  );
+};
+
+export const loadStandaloneDiscoveryContract =
+  async (): Promise<StandaloneDiscoveryContract | null> => {
+    try {
+      const serializedContract = await readFile(
+        getStandaloneDiscoveryLockfilePath(),
+        "utf8",
+      );
+      const parsedContract =
+        parseStandaloneDiscoveryContract(serializedContract);
+
+      if (!parsedContract.isValid) {
+        return null;
+      }
+
+      return parsedContract.contract;
+    } catch {
+      return null;
+    }
+  };
 
 const getResolvedEndpoint = (
   mode: "explicit" | "standalone",

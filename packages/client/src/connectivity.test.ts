@@ -1,6 +1,11 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type StandaloneDiscoveryContract,
+  getStandaloneDiscoveryLockfilePath,
+  loadStandaloneDiscoveryContract,
   parseStandaloneDiscoveryContract,
   validateLighthouseConnectivity,
 } from "./index";
@@ -67,6 +72,45 @@ describe("parseStandaloneDiscoveryContract", () => {
     }
 
     expect(parsed.reason).toContain("contractVersion");
+  });
+});
+
+describe("shared standalone discovery helpers", () => {
+  it("uses LIGHTHOUSE_STANDALONE_LOCKFILE_PATH override", () => {
+    const originalOverride = process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH;
+    process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH =
+      "/tmp/lighthouse-standalone-test.lock.json";
+
+    try {
+      expect(getStandaloneDiscoveryLockfilePath()).toBe(
+        "/tmp/lighthouse-standalone-test.lock.json",
+      );
+    } finally {
+      process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH = originalOverride;
+    }
+  });
+
+  it("loads a valid standalone contract from the override path", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "lighthouse-client-test-"));
+    const lockfilePath = join(tempDir, "standalone.lock.json");
+    const originalOverride = process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH;
+
+    process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH = lockfilePath;
+
+    try {
+      await writeFile(lockfilePath, JSON.stringify(getStandaloneContract()), {
+        encoding: "utf8",
+      });
+
+      const contract = await loadStandaloneDiscoveryContract();
+
+      expect(contract).not.toBeNull();
+      expect(contract?.lighthouseUrl).toBe("http://127.0.0.1:61234");
+      expect(contract?.contractVersion).toBe(1);
+    } finally {
+      process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH = originalOverride;
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 

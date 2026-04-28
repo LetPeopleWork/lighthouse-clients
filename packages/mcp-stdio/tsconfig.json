@@ -8,6 +8,9 @@
   "exclude": ["src/**/*.test.ts"],
   "references": [
     {
+      "path": "../client"
+    },
+    {
       "path": "../mcp-core"
     }
   ]

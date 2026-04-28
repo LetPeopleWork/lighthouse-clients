@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMcpCoreRuntime } from "./index";
+import { createMcpCoreRuntime, registerMcpTools } from "./index";
 
 describe("createMcpCoreRuntime", () => {
   it("lists baseline Lighthouse tools", () => {
@@ -351,5 +351,91 @@ describe("createMcpCoreRuntime", () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain("Release 1");
+  });
+});
+
+describe("registerMcpTools", () => {
+  it("registers all tools and delegates tool calls to the runtime", async () => {
+    const registered: {
+      readonly name: string;
+      readonly handler: (argumentsPayload: unknown) => Promise<unknown>;
+    }[] = [];
+
+    const server = {
+      registerTool: (
+        name: string,
+        _configuration: unknown,
+        handler: (argumentsPayload: unknown) => Promise<unknown>,
+      ) => {
+        registered.push({ name, handler });
+      },
+    };
+
+    registerMcpTools(server as never, {
+      createClient: () =>
+        ({
+          checkConnectivity: async () => ({ category: "success" as const }),
+          getVersion: async () => ({ ok: true as const, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getWorkTrackingConnection: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          listTeams: async () => ({ ok: true as const, value: [] }),
+          getTeam: async () => ({ ok: true as const, value: {} }),
+          refreshTeam: async () => ({ ok: true as const, value: {} }),
+          listPortfolios: async () => ({ ok: true as const, value: [] }),
+          getPortfolio: async () => ({ ok: true as const, value: {} }),
+          refreshPortfolio: async () => ({ ok: true as const, value: {} }),
+          getTeamThroughput: async () => ({ ok: true as const, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getPortfolioThroughput: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true as const, value: [] }),
+          getFeaturesByReferences: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
+          listDeliveries: async () => ({ ok: true as const, value: [] }),
+          createDelivery: async () => ({ ok: true as const, value: {} }),
+          updateDelivery: async () => ({ ok: true as const, value: {} }),
+          deleteDelivery: async () => ({
+            ok: true as const,
+            value: undefined,
+          }),
+          runManualForecast: async () => ({ ok: true as const, value: {} }),
+          runBacktest: async () => ({ ok: true as const, value: {} }),
+        }) as never,
+    });
+
+    expect(registered).toHaveLength(18);
+
+    const healthTool = registered.find(
+      (tool) => tool.name === "lighthouse.health.check",
+    );
+    expect(healthTool).toBeDefined();
+    if (healthTool === undefined) {
+      throw new Error("Expected lighthouse.health.check tool to be registered");
+    }
+
+    const result = await healthTool.handler({});
+    expect(result).toEqual({
+      isError: false,
+      content: [
+        {
+          type: "text",
+          text: "connectivity: success",
+        },
+      ],
+    });
   });
 });

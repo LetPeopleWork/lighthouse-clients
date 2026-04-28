@@ -3,21 +3,29 @@
   "version": "0.2.5",
   "description": "stdio transport adapter for Lighthouse MCP",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
+  "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "lighthouse-mcp-stdio": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./bin": {
+      "types": "./dist/bin.d.ts",
+      "import": "./dist/bin.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "build": "tsup --config tsup.config.ts",
     "clean": "rimraf dist"
   },
   "publishConfig": {
@@ -26,6 +34,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@letpeoplework/lighthouse-mcp-core": "workspace:*"
+    "@letpeoplework/lighthouse-client": "workspace:*",
+    "@letpeoplework/lighthouse-mcp-core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.26.0"
   }
 }

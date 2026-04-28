@@ -1,3 +1,6 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+
 export type McpCorePackageContract = {
   readonly name: "@letpeoplework/lighthouse-mcp-core";
   readonly dependsOn: "@letpeoplework/lighthouse-client";
@@ -43,10 +46,40 @@ export type McpToolDefinition = {
   readonly description: string;
   readonly inputSchema: {
     readonly type: "object";
-    readonly properties: Record<string, never>;
+    readonly properties: Record<string, unknown>;
+    readonly required?: readonly string[];
     readonly additionalProperties: false;
   };
 };
+
+const emptyInputSchema = {
+  type: "object",
+  properties: {},
+  additionalProperties: false,
+} as const;
+
+const idInputSchema = {
+  type: "object",
+  properties: {
+    id: {
+      type: "integer",
+      description: "Unique numeric identifier.",
+    },
+  },
+  required: ["id"],
+  additionalProperties: false,
+} as const;
+
+const dateRangeProperties = {
+  startDate: {
+    type: "string",
+    description: "Inclusive start date in ISO format (YYYY-MM-DD).",
+  },
+  endDate: {
+    type: "string",
+    description: "Inclusive end date in ISO format (YYYY-MM-DD).",
+  },
+} as const;
 
 type McpRuntimeClient = {
   readonly checkConnectivity: () => Promise<{
@@ -303,169 +336,188 @@ export type McpCoreRuntime = {
 const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse.health.check",
-    description: "Validate Lighthouse API connectivity.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description:
+      "Check connectivity to Lighthouse and return whether the configured endpoint is reachable.",
+    inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse.version.get",
-    description: "Get Lighthouse version from /api/v1/version/current.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description:
+      "Retrieve the Lighthouse server version from the version endpoint.",
+    inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse.worktracking.list",
-    description: "List work-tracking system connections.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description:
+      "List configured work-tracking system connections in Lighthouse.",
+    inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse.worktracking.get",
-    description: "Get one work-tracking system connection by id.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "Get a single work-tracking system connection by ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.team.list",
-    description: "List teams.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "List all teams available in Lighthouse.",
+    inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse.team.get",
-    description: "Get one team by id.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "Get full details for one team by ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.team.refresh",
-    description: "Trigger a refresh for one team.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "Trigger data refresh for a team by ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.portfolio.list",
-    description: "List portfolios.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "List all portfolios in Lighthouse.",
+    inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse.portfolio.get",
-    description: "Get one portfolio by id.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "Get full details for one portfolio by ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.portfolio.refresh",
-    description: "Trigger a refresh for one portfolio.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "Trigger data refresh for a portfolio by ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.team.metrics.throughput",
     description:
-      "Get throughput run-chart data for a team. Requires id. Optional startDate and endDate (ISO date strings, defaults to last 90 days).",
+      "Get throughput run-chart data for a team by ID, optionally filtered by start and end dates.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
       additionalProperties: false,
     },
   },
   {
     name: "lighthouse.team.metrics.cycleTimePercentiles",
     description:
-      "Get cycle-time percentiles for a team. Requires id. Optional startDate and endDate (ISO date strings, defaults to last 90 days).",
+      "Get cycle-time percentiles for a team by ID, optionally filtered by start and end dates.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
       additionalProperties: false,
     },
   },
   {
     name: "lighthouse.portfolio.metrics.throughput",
     description:
-      "Get throughput run-chart data for a portfolio. Requires id. Optional startDate and endDate (ISO date strings, defaults to last 90 days).",
+      "Get throughput run-chart data for a portfolio by ID, optionally filtered by start and end dates.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
       additionalProperties: false,
     },
   },
   {
     name: "lighthouse.feature.get",
     description:
-      "Get features by ids (provide ids array) or by reference ids (provide refs array).",
+      "Get feature details by numeric IDs or external reference IDs.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        ids: {
+          type: "array",
+          items: {
+            type: "integer",
+          },
+          description: "Feature IDs.",
+        },
+        refs: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          description: "Feature reference identifiers.",
+        },
+      },
       additionalProperties: false,
     },
   },
   {
     name: "lighthouse.feature.workitems",
-    description: "Get work items for a feature. Requires id.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "Get work items linked to a feature by ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.delivery.list",
-    description: "List deliveries for a portfolio. Requires id (portfolio id).",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    description: "List deliveries for a portfolio by portfolio ID.",
+    inputSchema: idInputSchema,
   },
   {
     name: "lighthouse.forecast.manual",
     description:
-      "Run a manual forecast for a team. Requires id (team id). Optional remainingItems and targetDate.",
+      "Run a manual forecast for a team by ID with optional remaining items and target date.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        ...idInputSchema.properties,
+        remainingItems: {
+          type: "integer",
+          description: "Remaining items to forecast.",
+        },
+        targetDate: {
+          type: "string",
+          description: "Optional target date in ISO format (YYYY-MM-DD).",
+        },
+      },
+      required: ["id"],
       additionalProperties: false,
     },
   },
   {
     name: "lighthouse.forecast.backtest",
     description:
-      "Run a backtest forecast for a team. Requires id, startDate, endDate, historicalStartDate, historicalEndDate.",
+      "Run a forecast backtest for a team by ID using forecast and historical date ranges.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        ...idInputSchema.properties,
+        startDate: {
+          type: "string",
+          description: "Forecast start date in ISO format (YYYY-MM-DD).",
+        },
+        endDate: {
+          type: "string",
+          description: "Forecast end date in ISO format (YYYY-MM-DD).",
+        },
+        historicalStartDate: {
+          type: "string",
+          description:
+            "Historical sample start date in ISO format (YYYY-MM-DD).",
+        },
+        historicalEndDate: {
+          type: "string",
+          description: "Historical sample end date in ISO format (YYYY-MM-DD).",
+        },
+      },
+      required: [
+        "id",
+        "startDate",
+        "endDate",
+        "historicalStartDate",
+        "historicalEndDate",
+      ],
       additionalProperties: false,
     },
   },
@@ -529,6 +581,59 @@ const getDateRange = (
   return undefined;
 };
 
+const isoDateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/u, "Expected ISO date in YYYY-MM-DD format.");
+
+const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
+  "lighthouse.health.check": z.object({}),
+  "lighthouse.version.get": z.object({}),
+  "lighthouse.worktracking.list": z.object({}),
+  "lighthouse.worktracking.get": z.object({ id: z.number().int() }),
+  "lighthouse.team.list": z.object({}),
+  "lighthouse.team.get": z.object({ id: z.number().int() }),
+  "lighthouse.team.refresh": z.object({ id: z.number().int() }),
+  "lighthouse.portfolio.list": z.object({}),
+  "lighthouse.portfolio.get": z.object({ id: z.number().int() }),
+  "lighthouse.portfolio.refresh": z.object({ id: z.number().int() }),
+  "lighthouse.team.metrics.throughput": z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  "lighthouse.team.metrics.cycleTimePercentiles": z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  "lighthouse.portfolio.metrics.throughput": z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  "lighthouse.feature.get": z.object({
+    ids: z.array(z.number().int()).optional(),
+    refs: z.array(z.string()).optional(),
+  }),
+  "lighthouse.feature.workitems": z.object({ id: z.number().int() }),
+  "lighthouse.delivery.list": z.object({ id: z.number().int() }),
+  "lighthouse.forecast.manual": z.object({
+    id: z.number().int(),
+    remainingItems: z.number().int().optional(),
+    targetDate: isoDateStringSchema.optional(),
+  }),
+  "lighthouse.forecast.backtest": z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema,
+    endDate: isoDateStringSchema,
+    historicalStartDate: isoDateStringSchema,
+    historicalEndDate: isoDateStringSchema,
+  }),
+};
+
+const isReadOnlyTool = (toolName: McpToolDefinition["name"]): boolean =>
+  !toolName.endsWith(".refresh");
+
 export const createMcpCoreRuntime = (
   dependencies: McpCoreRuntimeDependencies,
 ): McpCoreRuntime => ({
@@ -542,10 +647,11 @@ export const createMcpCoreRuntime = (
         return getSuccessToolResult("connectivity: success");
       }
 
+      const healthReasonSuffix =
+        health.reason === undefined ? "" : ` (${health.reason})`;
+
       return getErrorToolResult(
-        `connectivity: ${health.category}${
-          health.reason !== undefined ? ` (${health.reason})` : ""
-        }`,
+        `connectivity: ${health.category}${healthReasonSuffix}`,
       );
     }
 
@@ -888,3 +994,32 @@ export const createMcpCoreRuntime = (
     return getErrorToolResult(`Unknown tool: ${name}`);
   },
 });
+
+export const registerMcpTools = (
+  server: Pick<McpServer, "registerTool">,
+  dependencies: McpCoreRuntimeDependencies,
+): void => {
+  const runtime = createMcpCoreRuntime(dependencies);
+
+  for (const tool of toolDefinitions) {
+    server.registerTool(
+      tool.name,
+      {
+        description: tool.description,
+        inputSchema: toolInputSchemas[tool.name],
+        annotations: {
+          readOnlyHint: isReadOnlyTool(tool.name),
+          idempotentHint: isReadOnlyTool(tool.name),
+          openWorldHint: false,
+        },
+      },
+      async (argumentsPayload) => {
+        const result = await runtime.callTool(tool.name, argumentsPayload);
+        return {
+          ...result,
+          content: [...result.content],
+        };
+      },
+    );
+  }
+};

@@ -7,9 +7,8 @@ import { fileURLToPath } from "node:url";
 import {
   type CliConnection,
   type CliServerConnection,
-  type StandaloneDiscoveryContract,
   createLighthouseClient,
-  parseStandaloneDiscoveryContract,
+  loadStandaloneDiscoveryContract,
   validateLighthouseConnectivity,
 } from "@letpeoplework/lighthouse-client";
 import { Agent, fetch as undiciFetch } from "undici";
@@ -37,58 +36,6 @@ type PersistedConfigV2 = {
 const getConfigPath = (): string =>
   process.env.LIGHTHOUSE_CLI_CONFIG_PATH ??
   join(homedir(), ".config", "lighthouse-clients", "cli-config.json");
-
-const STANDALONE_DISCOVERY_LOCKFILE_NAME = "standalone.lock.json";
-
-const getStandaloneDiscoveryLockfilePath = (): string => {
-  if (process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH !== undefined) {
-    return process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH;
-  }
-
-  if (process.platform === "darwin") {
-    return join(
-      homedir(),
-      "Library",
-      "Application Support",
-      "Lighthouse",
-      STANDALONE_DISCOVERY_LOCKFILE_NAME,
-    );
-  }
-
-  if (process.platform === "win32") {
-    return join(
-      process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"),
-      "Lighthouse",
-      STANDALONE_DISCOVERY_LOCKFILE_NAME,
-    );
-  }
-
-  return join(
-    process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
-    "Lighthouse",
-    STANDALONE_DISCOVERY_LOCKFILE_NAME,
-  );
-};
-
-const loadStandaloneDiscoveryContract =
-  async (): Promise<StandaloneDiscoveryContract | null> => {
-    try {
-      const serializedContract = await readFile(
-        getStandaloneDiscoveryLockfilePath(),
-        "utf8",
-      );
-      const parsedContract =
-        parseStandaloneDiscoveryContract(serializedContract);
-
-      if (!parsedContract.isValid) {
-        return null;
-      }
-
-      return parsedContract.contract;
-    } catch {
-      return null;
-    }
-  };
 
 const loadPersistedStorage = async (): Promise<PersistedConfigV2> => {
   try {
