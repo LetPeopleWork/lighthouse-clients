@@ -2,6 +2,16 @@
 
 Command-line interface for [Lighthouse](https://github.com/LetPeopleWork/Lighthouse) — a flow metrics and forecasting tool.
 
+## When to Use the CLI
+
+Use the CLI when you want a terminal-first workflow:
+
+- Connect to a Lighthouse server or standalone app from scripts, local shells, or CI jobs.
+- Inspect teams, portfolios, work tracking connections, deliveries, features, metrics, and forecasts without opening an MCP client.
+- Switch between human-readable output, raw JSON, and TOON depending on the consumer.
+
+If you want Lighthouse exposed as MCP tools inside VS Code / GitHub Copilot or Claude Code, use `@letpeoplework/lighthouse-mcp-stdio` or `@letpeoplework/lighthouse-mcp-http` instead.
+
 ## Installation
 
 ```bash
@@ -11,6 +21,43 @@ pnpm add -g @letpeoplework/lighthouse-cli
 ```
 
 After installation, the `lh` command is available globally.
+
+You can also install the latest published CLI build from GitHub Releases.
+
+Linux and macOS:
+
+```bash
+curl -fsSL https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/install.sh | bash
+```
+
+Windows:
+
+```powershell
+irm https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/install.ps1 | iex
+```
+
+Uninstall with the matching release asset.
+
+Linux and macOS:
+
+```bash
+curl -fsSL https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/uninstall.sh | bash
+```
+
+Windows:
+
+```powershell
+irm https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download/uninstall.ps1 | iex
+```
+
+## What You Can Do
+
+- Connect to a Lighthouse server or standalone app.
+- Check health and version information.
+- List, inspect, and refresh work tracking connections, teams, and portfolios.
+- Create, update, and delete teams and portfolios with JSON payloads.
+- Query features, deliveries, metrics, and forecasts.
+- Persist a default output format and override it per command.
 
 ## Quick Start
 
@@ -178,10 +225,6 @@ Standalone discovery uses the Lighthouse lockfile in the app data directory:
 - Windows: `%APPDATA%/Lighthouse/standalone.lock.json`
 - Linux: `$XDG_CONFIG_HOME/Lighthouse/standalone.lock.json` or `~/.config/Lighthouse/standalone.lock.json`
 
-## Alternate Installation (Standalone Binary)
+## Release Assets
 
-Standalone binaries for Linux, macOS, and Windows are available on the [GitHub Releases](https://github.com/LetPeopleWork/lighthouse-clients/releases) page, or via the installer script:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/LetPeopleWork/lighthouse-clients/main/scripts/install-cli.sh | bash
-```
+Standalone binaries for Linux, macOS, and Windows are available on the [GitHub Releases](https://github.com/LetPeopleWork/lighthouse-clients/releases) page together with the install and uninstall scripts shown above.

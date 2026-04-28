@@ -23,7 +23,7 @@ This repository is intentionally dedicated to client deliverables, so release ta
 ### GitHub Releases
 - Release workflow builds standalone CLI binaries for Linux, macOS, and Windows.
 - Assets are attached to the selected release tag.
-- Installer helper script is provided at `scripts/install-cli.sh`.
+- Installer helpers are published as release assets: `install.sh`, `uninstall.sh`, `install.ps1`, and `uninstall.ps1`.
 
 ## MCP Deployment
 ### npm
