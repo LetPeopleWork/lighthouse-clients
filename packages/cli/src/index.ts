@@ -1,6 +1,4 @@
 import {
-  type CliAuthSessionPollResult,
-  type CliAuthSessionStartOutcome,
   type CliConnection,
   type CliServerConnection,
   type CliStandaloneConnection,
@@ -8,7 +6,6 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
-  type ServerAuthModeResult,
   createLighthouseClient,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -98,19 +95,6 @@ export type RunCliCommandDependencies = {
     insecure?: boolean,
   ) => Promise<ConnectivityValidationResult>;
   readonly validateStandaloneDiscovery: () => Promise<ConnectivityValidationResult>;
-  readonly queryAuthMode: (
-    url: string,
-    insecure?: boolean,
-  ) => Promise<ServerAuthModeResult>;
-  readonly startAuthSession: (
-    url: string,
-    insecure?: boolean,
-  ) => Promise<CliAuthSessionStartOutcome>;
-  readonly pollCliAuthSession: (
-    url: string,
-    sessionId: string,
-    insecure?: boolean,
-  ) => Promise<CliAuthSessionPollResult>;
   readonly createClient: (connection: CliConnection) => CliClientOperations;
 };
 
@@ -631,9 +615,11 @@ const getConnectionStatusLines = (
 
   if (connection.authMode === "required") {
     if (connection.auth === undefined) {
-      lines.push("Token: none - re-run lh connect to authenticate");
+      lines.push(
+        "API Key: none - re-run lh connection connect to authenticate",
+      );
     } else {
-      lines.push("Token: token stored");
+      lines.push("API Key: stored");
     }
   }
 
@@ -648,25 +634,6 @@ const getConnectionLabel = (connection: CliConnection): string => {
   return connection.endpointUrl;
 };
 
-const getAuthSessionStartErrorMessage = (
-  url: string,
-  outcome: Exclude<CliAuthSessionStartOutcome, { status: "started" }>,
-): string => {
-  const defaultReason = `Failed to start authentication session (${outcome.category}).`;
-  const reason =
-    outcome.reason.trim().length > 0 ? outcome.reason : defaultReason;
-
-  if (outcome.category === "unauthorized") {
-    return `Authentication session request was rejected by ${url}: ${reason}`;
-  }
-
-  if (outcome.category === "misconfigured") {
-    return `Authentication session endpoint is unavailable at ${url}: ${reason}`;
-  }
-
-  return `Failed to start an authentication session at ${url}: ${reason}`;
-};
-
 // ── connect option parser ───────────────────────────────────────────────────────
 
 type ScriptedConnectOptions =
@@ -674,7 +641,7 @@ type ScriptedConnectOptions =
   | {
       readonly mode: "server";
       readonly url: string;
-      readonly token: string | undefined;
+      readonly apiKey: string | undefined;
       readonly insecure: boolean;
     };
 
@@ -695,10 +662,10 @@ const parseScriptedConnectOptions = (
   }
 
   const url = getOptionValue(args, "--url");
-  const rawToken = getOptionValue(args, "--token");
-  const token =
-    rawToken !== undefined && rawToken.trim().length > 0
-      ? rawToken.trim()
+  const rawApiKey = getOptionValue(args, "--api-key");
+  const apiKey =
+    rawApiKey !== undefined && rawApiKey.trim().length > 0
+      ? rawApiKey.trim()
       : undefined;
   const insecure = args.includes("--insecure");
 
@@ -708,9 +675,9 @@ const parseScriptedConnectOptions = (
         "--url is not valid for standalone mode. Remove --url and retry.",
       );
     }
-    if (token !== undefined) {
+    if (apiKey !== undefined) {
       return getErrorResult(
-        "--token is not valid for standalone mode. Remove --token and retry.",
+        "--api-key is not valid for standalone mode. Remove --api-key and retry.",
       );
     }
     if (insecure) {
@@ -728,7 +695,7 @@ const parseScriptedConnectOptions = (
     );
   }
 
-  return { mode: "server", url: url.trim(), token, insecure };
+  return { mode: "server", url: url.trim(), apiKey, insecure };
 };
 
 // ── connect wizard ─────────────────────────────────────────────────────────────
@@ -776,7 +743,7 @@ const getDisabledAuthConnection = (
 
 const getAuthenticatedConnection = (
   url: string,
-  token: string,
+  apiKey: string,
   insecure: boolean,
 ): CliServerConnection => {
   if (insecure) {
@@ -785,7 +752,7 @@ const getAuthenticatedConnection = (
       endpointUrl: url,
       authMode: "required",
       insecure: true,
-      auth: { kind: "bearer-token", token },
+      auth: { kind: "api-key", value: apiKey },
     };
   }
 
@@ -793,7 +760,7 @@ const getAuthenticatedConnection = (
     mode: "server",
     endpointUrl: url,
     authMode: "required",
-    auth: { kind: "bearer-token", token },
+    auth: { kind: "api-key", value: apiKey },
   };
 };
 
@@ -836,54 +803,20 @@ const runAuthenticatedServerConnect = async (
   url: string,
   insecure: boolean,
 ): Promise<CliCommandResult> => {
-  const session = await dependencies.startAuthSession(
-    url,
-    insecure || undefined,
-  );
-  if (session.status === "error") {
-    return getErrorResult(getAuthSessionStartErrorMessage(url, session));
+  const apiKey = await dependencies.prompt("API Key: ");
+  if (apiKey.trim().length === 0) {
+    return getErrorResult("API key cannot be empty.");
   }
 
-  await dependencies.openBrowser(session.verificationUrl);
-
-  const maxTries = 60;
-  for (let tries = 0; tries < maxTries; tries++) {
-    const pollResult = await dependencies.pollCliAuthSession(
-      url,
-      session.sessionId,
-      insecure || undefined,
-    );
-
-    if (pollResult.status === "approved") {
-      const connection = getAuthenticatedConnection(
-        url,
-        pollResult.token,
-        insecure,
-      );
-      await dependencies.saveConnection(connection);
-      return getSuccessResult(`Connected to ${url} as ${pollResult.userName}`);
-    }
-
-    if (
-      pollResult.status === "denied" ||
-      pollResult.status === "expired" ||
-      pollResult.status === "not-found"
-    ) {
-      return getErrorResult("Authorization timed out or was denied.");
-    }
-
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 2000);
-    });
-  }
-
-  return getErrorResult("Authorization timed out or was denied.");
+  const connection = getAuthenticatedConnection(url, apiKey.trim(), insecure);
+  await dependencies.saveConnection(connection);
+  return getSuccessResult(`Connected to ${url} (auth: api-key)`);
 };
 
 const runScriptedServerConnect = async (
   dependencies: RunCliCommandDependencies,
   url: string,
-  token: string | undefined,
+  apiKey: string | undefined,
   insecure: boolean,
 ): Promise<CliCommandResult> => {
   const validationResult = await dependencies.validateConnectivity(
@@ -899,41 +832,15 @@ const runScriptedServerConnect = async (
     return getServerConnectivityError(url, validationResult.reason);
   }
 
-  const authModeResult = await dependencies.queryAuthMode(
-    url,
-    insecure || undefined,
-  );
-
-  if (authModeResult.mode === "blocked") {
-    return getErrorResult(
-      authModeResult.misconfigurationMessage ??
-        "Authentication is blocked by server configuration.",
-    );
-  }
-
-  if (authModeResult.mode === "misconfigured") {
-    return getErrorResult(
-      authModeResult.misconfigurationMessage ??
-        "Authentication appears to be misconfigured on the server.",
-    );
-  }
-
-  if (authModeResult.mode === "disabled") {
+  if (apiKey === undefined) {
     const connection = getDisabledAuthConnection(url, insecure);
     await dependencies.saveConnection(connection);
     return getSuccessResult(`Connected to ${url} (auth: disabled)`);
   }
 
-  // auth required
-  if (token === undefined) {
-    return getErrorResult(
-      `Server at ${url} requires authentication. Provide a bearer token with --token <token>.`,
-    );
-  }
-
-  const connection = getAuthenticatedConnection(url, token, insecure);
+  const connection = getAuthenticatedConnection(url, apiKey, insecure);
   await dependencies.saveConnection(connection);
-  return getSuccessResult(`Connected to ${url} (auth: required)`);
+  return getSuccessResult(`Connected to ${url} (auth: api-key)`);
 };
 
 const runServerConnect = async (
@@ -957,26 +864,11 @@ const runServerConnect = async (
     insecure = insecureResult;
   }
 
-  const authModeResult = await dependencies.queryAuthMode(
-    url,
-    insecure || undefined,
+  const needsAuth = await dependencies.prompt(
+    "Does this server require authentication? [y/N] ",
   );
 
-  if (authModeResult.mode === "blocked") {
-    return getErrorResult(
-      authModeResult.misconfigurationMessage ??
-        "Authentication is blocked by server configuration.",
-    );
-  }
-
-  if (authModeResult.mode === "misconfigured") {
-    return getErrorResult(
-      authModeResult.misconfigurationMessage ??
-        "Authentication appears to be misconfigured on the server.",
-    );
-  }
-
-  if (authModeResult.mode === "disabled") {
+  if (needsAuth.trim().toLowerCase() !== "y") {
     const connection = getDisabledAuthConnection(url, insecure);
     await dependencies.saveConnection(connection);
     return getSuccessResult(`Connected to ${url} (auth: disabled)`);
@@ -1002,7 +894,7 @@ const runConnect = async (
     return runScriptedServerConnect(
       dependencies,
       scriptedOptions.url,
-      scriptedOptions.token,
+      scriptedOptions.apiKey,
       scriptedOptions.insecure,
     );
   }
@@ -1064,11 +956,11 @@ const runDisconnect = async (
 const getConnectionGroupHelpText = (): string =>
   [
     "Usage:",
-    "  lh connection connect                                          (interactive wizard)",
-    "  lh connection connect --mode standalone                        (non-interactive)",
-    "  lh connection connect --mode server --url <url>               (server, no auth)",
-    "  lh connection connect --mode server --url <url> --token <token>  (server, with auth)",
-    "  lh connection connect --mode server --url <url> --insecure    (skip TLS verification)",
+    "  lh connection connect                                               (interactive wizard)",
+    "  lh connection connect --mode standalone                             (non-interactive)",
+    "  lh connection connect --mode server --url <url>                    (server, no auth)",
+    "  lh connection connect --mode server --url <url> --api-key <key>   (server, with API key auth)",
+    "  lh connection connect --mode server --url <url> --insecure         (skip TLS verification)",
     "  lh connection disconnect",
     "  lh connection status",
   ].join("\n");
@@ -2160,13 +2052,6 @@ export const getDefaultDependencies = (): RunCliCommandDependencies => ({
     category: "unreachable" as const,
     reason: "No standalone discovery validator configured.",
   }),
-  queryAuthMode: async () => ({ mode: "disabled" }),
-  startAuthSession: async () => ({
-    status: "error" as const,
-    category: "unreachable" as const,
-    reason: "No auth session starter configured.",
-  }),
-  pollCliAuthSession: async () => ({ status: "pending" as const }),
   createClient: (connection) =>
     createLighthouseClient(
       connection.mode === "standalone"

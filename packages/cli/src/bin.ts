@@ -8,10 +8,6 @@ import {
   type CliConnection,
   type CliServerConnection,
   type StandaloneDiscoveryContract,
-  type StoredLighthouseAuth,
-  pollCliAuthSession as clientPollCliAuthSession,
-  queryServerAuthMode as clientQueryServerAuthMode,
-  startCliAuthSession as clientStartCliAuthSession,
   createLighthouseClient,
   parseStandaloneDiscoveryContract,
   validateLighthouseConnectivity,
@@ -29,7 +25,7 @@ type RunCliIo = {
 
 type PersistedConfigV1 = {
   readonly endpointUrl?: string;
-  readonly auth?: StoredLighthouseAuth;
+  readonly auth?: { readonly kind: string; [key: string]: unknown };
 };
 
 type PersistedConfigV2 = {
@@ -113,13 +109,11 @@ const loadPersistedStorage = async (): Promise<PersistedConfigV2> => {
       typeof v1.endpointUrl === "string" &&
       v1.endpointUrl.trim().length > 0
     ) {
-      const authMode =
-        v1.auth === undefined ? ("disabled" as const) : ("required" as const);
+      // v1 used bearer-token auth; we drop it since tokens are no longer valid
       const connection: CliServerConnection = {
         mode: "server",
         endpointUrl: v1.endpointUrl,
-        authMode,
-        auth: v1.auth,
+        authMode: "disabled",
       };
       return { version: 2, connection };
     }
@@ -269,15 +263,14 @@ export const runCli = async (
         },
         { fetch: createFetch() },
       ),
-    queryAuthMode: async (url, insecure) =>
-      clientQueryServerAuthMode(url, { fetch: createFetch(insecure) }),
-    startAuthSession: async (url, insecure) =>
-      clientStartCliAuthSession(url, { fetch: createFetch(insecure) }),
-    pollCliAuthSession: async (url, sessionId, insecure) =>
-      clientPollCliAuthSession(url, sessionId, {
-        fetch: createFetch(insecure),
-      }),
     createClient: (connection) => {
+      // LIGHTHOUSE_API_KEY env var overrides stored auth
+      const envApiKey = process.env.LIGHTHOUSE_API_KEY?.trim();
+      const envAuth =
+        envApiKey !== undefined && envApiKey.length > 0
+          ? { kind: "api-key" as const, value: envApiKey }
+          : undefined;
+
       if (connection.mode === "standalone") {
         return createLighthouseClient(
           {
@@ -296,7 +289,7 @@ export const runCli = async (
             kind: "explicit",
             lighthouseUrl: connection.endpointUrl,
           },
-          auth: connection.auth,
+          auth: envAuth ?? connection.auth,
         },
         { fetch: createFetch(connection.insecure) },
       );
