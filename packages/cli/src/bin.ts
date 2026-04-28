@@ -241,6 +241,10 @@ export const runCli = async (
         { fetch: createFetch(connection.insecure) },
       );
     },
+    getEnvApiKey: () => {
+      const key = process.env.LIGHTHOUSE_API_KEY?.trim();
+      return key !== undefined && key.length > 0 ? key : undefined;
+    },
   };
 
   const result = await runCliCommand(args, dependencies);

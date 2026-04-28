@@ -60,15 +60,31 @@ lh connection connect --mode standalone
 # Server, auth disabled
 lh connection connect --mode server --url https://lighthouse.example.com
 
-# Server, auth required — supply a bearer token
-lh connection connect --mode server --url https://lighthouse.example.com --token <token>
+# Server, auth required — supply the API key directly (stored in CLI config)
+lh connection connect --mode server --url https://lighthouse.example.com --api-key <key>
 
 # Server with a self-signed TLS certificate
 lh connection connect --mode server --url https://lighthouse.example.com --insecure
-lh connection connect --mode server --url https://lighthouse.example.com --insecure --token <token>
+lh connection connect --mode server --url https://lighthouse.example.com --insecure --api-key <key>
 ```
 
 When `--mode` is provided, the command never prompts for input and exits with a non-zero code if required flags are missing or the server is unreachable.
+
+## Authentication via Environment Variable
+
+You can authenticate without storing an API key in the CLI config by setting the `LIGHTHOUSE_API_KEY` environment variable:
+
+```bash
+export LIGHTHOUSE_API_KEY=<your-api-key>
+```
+
+When this variable is set:
+
+- All commands use it automatically at runtime (it takes precedence over any stored key).
+- During interactive connect, you can leave the **API Key** prompt blank — the CLI will detect the env var and save the connection as auth-required without persisting the key to disk.
+- `lh connection status` will report `API Key: none` with a hint to set `LIGHTHOUSE_API_KEY` if no key is stored.
+
+This is the recommended approach for CI/CD pipelines and environments where secrets management tooling already injects credentials via environment variables.
 
 ## Output Formats
 
@@ -104,7 +120,7 @@ lh connection                                 Show connection subcommands
 lh connection connect                         Connect to a Lighthouse server or standalone app (interactive wizard)
 lh connection connect --mode standalone       Connect to standalone Lighthouse (non-interactive)
 lh connection connect --mode server --url <url>                    Connect to a server (auth disabled)
-lh connection connect --mode server --url <url> --token <token>    Connect to a server (auth required)
+lh connection connect --mode server --url <url> --api-key <key>   Connect to a server (store API key)
 lh connection connect --mode server --url <url> --insecure         Skip TLS certificate verification
 lh connection disconnect                      Remove the saved connection
 lh connection status                          Show current connection status

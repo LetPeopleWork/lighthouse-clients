@@ -96,6 +96,7 @@ export type RunCliCommandDependencies = {
   ) => Promise<ConnectivityValidationResult>;
   readonly validateStandaloneDiscovery: () => Promise<ConnectivityValidationResult>;
   readonly createClient: (connection: CliConnection) => CliClientOperations;
+  readonly getEnvApiKey?: () => string | undefined;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -616,7 +617,7 @@ const getConnectionStatusLines = (
   if (connection.authMode === "required") {
     if (connection.auth === undefined) {
       lines.push(
-        "API Key: none - re-run lh connection connect to authenticate",
+        "API Key: none (set LIGHTHOUSE_API_KEY env var, or re-run lh connection connect to store a key)",
       );
     } else {
       lines.push("API Key: stored");
@@ -803,9 +804,30 @@ const runAuthenticatedServerConnect = async (
   url: string,
   insecure: boolean,
 ): Promise<CliCommandResult> => {
-  const apiKey = await dependencies.prompt("API Key: ");
+  const apiKey = await dependencies.prompt(
+    "API Key (leave blank if using LIGHTHOUSE_API_KEY env var): ",
+  );
   if (apiKey.trim().length === 0) {
-    return getErrorResult("API key cannot be empty.");
+    const envApiKey = dependencies.getEnvApiKey?.();
+    if (envApiKey === undefined || envApiKey.length === 0) {
+      return getErrorResult(
+        "API key cannot be empty.\n" +
+          "To skip storing the key, set LIGHTHOUSE_API_KEY before running this command:\n" +
+          "  export LIGHTHOUSE_API_KEY=<your-api-key>",
+      );
+    }
+    const connection: CliServerConnection = insecure
+      ? {
+          mode: "server",
+          endpointUrl: url,
+          authMode: "required",
+          insecure: true,
+        }
+      : { mode: "server", endpointUrl: url, authMode: "required" };
+    await dependencies.saveConnection(connection);
+    return getSuccessResult(
+      `Connected to ${url} (auth: api-key via LIGHTHOUSE_API_KEY env var)`,
+    );
   }
 
   const connection = getAuthenticatedConnection(url, apiKey.trim(), insecure);
@@ -963,6 +985,11 @@ const getConnectionGroupHelpText = (): string =>
     "  lh connection connect --mode server --url <url> --insecure         (skip TLS verification)",
     "  lh connection disconnect",
     "  lh connection status",
+    "",
+    "Auth env var:",
+    "  LIGHTHOUSE_API_KEY=<key>  Set this env var to authenticate without storing the key.",
+    "  When set, you can leave the API Key prompt blank during interactive connect,",
+    "  and all commands will use it automatically at runtime.",
   ].join("\n");
 
 const getTeamGroupHelpText = (): string =>

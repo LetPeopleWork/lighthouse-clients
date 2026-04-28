@@ -374,6 +374,7 @@ const getDependencies = (overrides?: {
   ) => Promise<ConnectivityValidationResult>;
   readonly validateStandaloneDiscovery?: () => Promise<ConnectivityValidationResult>;
   readonly readTextFile?: (filePath: string) => Promise<string>;
+  readonly getEnvApiKey?: () => string | undefined;
 }): {
   readonly dependencies: RunCliCommandDependencies;
   readonly getSavedConnection: () => CliConnection | null;
@@ -427,6 +428,7 @@ const getDependencies = (overrides?: {
           serverVersion: "1.0.0",
         })),
       createClient: () => overrides?.client ?? defaultClient,
+      getEnvApiKey: overrides?.getEnvApiKey,
     },
     getSavedConnection: () => savedConnection,
     getSavedOutputFormat: () => savedOutputFormat,
@@ -536,7 +538,7 @@ describe("runCliCommand", () => {
     expect(result.stderr).toContain("Cannot reach standalone Lighthouse");
   });
 
-  it("connect fails when api key is empty", async () => {
+  it("connect fails when api key is empty and LIGHTHOUSE_API_KEY env var is not set", async () => {
     const { dependencies } = getDependencies({
       promptResponses: ["1", "http://localhost:5000", "y", ""],
     });
@@ -545,6 +547,21 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("API key cannot be empty");
+  });
+
+  it("connect succeeds when api key is blank but LIGHTHOUSE_API_KEY env var is set", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000", "y", ""],
+      getEnvApiKey: () => "env-api-key",
+    });
+
+    const result = await runCliCommand(["connection", "connect"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("LIGHTHOUSE_API_KEY env var");
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.authMode).toBe("required");
+    expect(conn.auth).toBeUndefined();
   });
 
   it("connect retries https connectivity with insecure mode when accepted", async () => {
@@ -854,6 +871,21 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("API Key: stored");
+  });
+
+  it("connection shows env var hint when auth is required but key is not stored", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "required",
+      },
+    });
+
+    const result = await runCliCommand(["connection", "status"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("LIGHTHOUSE_API_KEY");
   });
 
   it("connection shows standalone connection status", async () => {
