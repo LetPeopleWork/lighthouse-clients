@@ -6,13 +6,15 @@ export default defineConfig([
     format: ["esm", "cjs"],
     dts: true,
     clean: true,
+    bundle: true,
   },
   {
     entry: { bin: "src/bin.ts" },
-    format: ["esm"],
-    dts: true,
+    format: ["esm", "cjs"],
+    dts: false,
     banner: {
       js: "#!/usr/bin/env node",
     },
+    bundle: true,
   },
 ]);

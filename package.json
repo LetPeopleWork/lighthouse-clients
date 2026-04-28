@@ -21,7 +21,8 @@
     "release:publish": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset publish",
     "release:status": "GITHUB_TOKEN=$GITHUB_TOKEN_CHANGESET changeset status",
     "prepare": "simple-git-hooks",
-    "lh": "node packages/cli/dist/bin.js"
+    "lh": "node packages/cli/dist/bin.js",
+    "mcp-stdio": "node packages/mcp-stdio/dist/bin.js"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm run ci && node scripts/check-changeset.mjs"
