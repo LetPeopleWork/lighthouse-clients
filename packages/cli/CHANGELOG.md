@@ -1,5 +1,16 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.11.0
+
+### Minor Changes
+
+- [`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94) Thanks [@huserben](https://github.com/huserben)! - Add MCP Server features
+
+### Patch Changes
+
+- Updated dependencies [[`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94), [`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94)]:
+  - @letpeoplework/lighthouse-client@0.8.0
+
 ## 0.10.0
 
 ### Minor Changes

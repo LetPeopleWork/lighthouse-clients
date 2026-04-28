@@ -1,5 +1,13 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies [[`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94), [`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94)]:
+  - @letpeoplework/lighthouse-client@0.8.0
+  - @letpeoplework/lighthouse-mcp-core@0.5.0
+
 ## 0.2.5
 
 ### Patch Changes

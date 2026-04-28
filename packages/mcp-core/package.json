@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-mcp-core",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Shared MCP semantics for Lighthouse",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",

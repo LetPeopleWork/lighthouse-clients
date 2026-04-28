@@ -1,5 +1,19 @@
 # @letpeoplework/lighthouse-client
 
+## 0.8.0
+
+### Minor Changes
+
+- [`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94) Thanks [@huserben](https://github.com/huserben)! - Implement the first production-ready stdio MCP server slice and shared discovery/runtime plumbing:
+
+  - extract and export shared standalone lock-file discovery helpers in the client package
+  - move CLI standalone discovery to use shared client helper exports
+  - add SDK-based MCP tool registration helper and richer tool schemas in mcp-core
+  - implement executable stdio MCP runtime with env/lockfile connection resolution, API-key auth wiring, and graceful shutdown
+  - add targeted tests for shared discovery and stdio startup guard paths
+
+- [`0976815`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0976815b9a460ee74da65a2871a5bdf36685dd94) Thanks [@huserben](https://github.com/huserben)! - Add MCP Server features
+
 ## 0.7.0
 
 ### Minor Changes
