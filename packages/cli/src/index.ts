@@ -233,13 +233,11 @@ type MetricUnavailableValue = {
 type DailyCountPoint = {
   readonly date: string;
   readonly count: number;
-  readonly isBlackout: boolean;
 };
 
 type DailyValuePoint = {
   readonly date: string;
   readonly value: number;
-  readonly isBlackout: boolean;
   readonly workItemIds: readonly number[];
 };
 
@@ -481,14 +479,6 @@ const getDailyCountSeries = (
     return [];
   }
 
-  const blackoutIndices = new Set(
-    Array.isArray(value.blackoutDayIndices)
-      ? value.blackoutDayIndices.filter(
-          (entry): entry is number => typeof entry === "number",
-        )
-      : [],
-  );
-
   return Object.entries(value.workItemsPerUnitOfTime)
     .map(([offset, items]) => {
       const dayOffset = Number.parseInt(offset, 10);
@@ -499,7 +489,6 @@ const getDailyCountSeries = (
       return {
         date: addDaysToIsoDate(startDate, dayOffset),
         count: Array.isArray(items) ? items.length : 0,
-        isBlackout: blackoutIndices.has(dayOffset),
       };
     })
     .filter((entry): entry is DailyCountPoint => entry !== null)
@@ -519,7 +508,6 @@ const getDailyValueSeriesFromInfo = (
     points.push({
       date: comparison.previousLabel,
       value: Number.isFinite(numVal) ? numVal : 0,
-      isBlackout: false,
       workItemIds: [],
     });
   }
@@ -528,7 +516,6 @@ const getDailyValueSeriesFromInfo = (
     points.push({
       date: comparison.currentLabel,
       value: Number.isFinite(numVal) ? numVal : 0,
-      isBlackout: false,
       workItemIds: [],
     });
   }
@@ -557,7 +544,6 @@ const getDailyValueSeries = (value: unknown): readonly DailyValuePoint[] => {
       const point: DailyValuePoint = {
         date: dataPoint.xValue,
         value: typeof dataPoint.yValue === "number" ? dataPoint.yValue : 0,
-        isBlackout: dataPoint.isBlackout === true,
         workItemIds,
       };
 
@@ -581,7 +567,7 @@ const getPredictabilityScorePayload = (
   value: unknown,
 ): Record<string, unknown> => {
   if (!isRecord(value)) {
-    return { score: null, percentiles: [], forecastResults: {} };
+    return { score: null };
   }
 
   return {
@@ -589,10 +575,6 @@ const getPredictabilityScorePayload = (
       typeof value.predictabilityScore === "number"
         ? value.predictabilityScore
         : null,
-    percentiles: Array.isArray(value.percentiles) ? value.percentiles : [],
-    forecastResults: isRecord(value.forecastResults)
-      ? value.forecastResults
-      : {},
   };
 };
 

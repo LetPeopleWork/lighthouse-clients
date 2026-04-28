@@ -1096,6 +1096,7 @@ describe("runCliCommand", () => {
         0: [{ id: 1 }],
         1: [{ id: 2 }, { id: 3 }],
       },
+      blackoutDayIndices: [1],
     };
     const arrivalsData = {
       total: 2,
@@ -1103,6 +1104,7 @@ describe("runCliCommand", () => {
         0: [{ id: 4 }],
         1: [{ id: 5 }],
       },
+      blackoutDayIndices: [0],
     };
     const wipOverTime = {
       total: 3,
@@ -1110,6 +1112,7 @@ describe("runCliCommand", () => {
         0: [{ id: 1 }],
         1: [{ id: 1 }, { id: 2 }],
       },
+      blackoutDayIndices: [0, 1],
     };
     const currentItems = [{ id: 10, workItemAge: 4 }];
     const percentiles = [{ percentile: 50, value: 4 }];
@@ -1188,12 +1191,150 @@ describe("runCliCommand", () => {
     expect((payload.throughput.total as number) ?? 0).toBe(3);
     expect(payload.blocked.status).toBe("unavailable");
     expect((payload.wip.current as Record<string, unknown>).count).toBe(1);
+    expect(payload.predictabilityScore).toEqual({ score: 1.25 });
+    expect(
+      (payload.throughput.daily as readonly Record<string, unknown>[])[0],
+    ).toEqual({ date: "2026-01-01", count: 1 });
+    expect(
+      (payload.arrivals.daily as readonly Record<string, unknown>[])[0],
+    ).toEqual({ date: "2026-01-01", count: 1 });
+    expect(
+      (
+        (payload.wip.overTime as Record<string, unknown>)
+          .daily as readonly Record<string, unknown>[]
+      )[0],
+    ).toEqual({ date: "2026-01-01", count: 1 });
+    expect(
+      (payload.totalWorkItemAge.daily as Record<string, unknown>)
+        .points as readonly Record<string, unknown>[],
+    ).toEqual([
+      { date: "2026-01-01", value: 4, workItemIds: [] },
+      { date: "2026-03-31", value: 4, workItemIds: [] },
+    ]);
     expect(
       (
         (payload.cycleTime.percentiles as Record<string, unknown>)
           .values as unknown[]
       ).length,
     ).toBe(1);
+  });
+
+  it("strips blackout markers and predictability details from bundled portfolio metrics", async () => {
+    const throughputData = {
+      total: 4,
+      workItemsPerUnitOfTime: {
+        0: [{ id: 1 }],
+        1: [{ id: 2 }, { id: 3 }, { id: 4 }],
+      },
+      blackoutDayIndices: [1],
+    };
+    const arrivalsData = {
+      total: 1,
+      workItemsPerUnitOfTime: {
+        0: [{ id: 5 }],
+      },
+      blackoutDayIndices: [0],
+    };
+    const wipOverTime = {
+      total: 2,
+      workItemsPerUnitOfTime: {
+        0: [{ id: 1 }],
+        1: [{ id: 1 }, { id: 2 }],
+      },
+      blackoutDayIndices: [0],
+    };
+    const totalWorkItemAgeInfo = {
+      totalAge: 7,
+      comparison: {
+        direction: "up",
+        metricLabel: "Total Work Item Age",
+        previousLabel: "2026-02-01",
+        previousValue: "3",
+        currentLabel: "2026-04-30",
+        currentValue: "7",
+        percentageDelta: "133",
+        detailRows: null,
+      },
+    };
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getPortfolioThroughput: async () => ({
+          ok: true,
+          value: throughputData,
+        }),
+        getPortfolioArrivals: async () => ({ ok: true, value: arrivalsData }),
+        getPortfolioWipOverTime: async () => ({ ok: true, value: wipOverTime }),
+        getPortfolioWip: async () => ({ ok: true, value: [{ id: 42 }] }),
+        getPortfolioPredictabilityScore: async () => ({
+          ok: true,
+          value: {
+            predictabilityScore: 0.9,
+            percentiles: [{ percentile: 50, value: 2 }],
+            forecastResults: { 3: 4 },
+          },
+        }),
+        getPortfolioTotalWorkItemAge: async () => ({ ok: true, value: 7 }),
+        getPortfolioTotalWorkItemAgeInfo: async () => ({
+          ok: true,
+          value: totalWorkItemAgeInfo,
+        }),
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "metrics",
+        "portfolio",
+        "--id",
+        "7",
+        "--json",
+        "--start-date",
+        "2026-02-01",
+        "--end-date",
+        "2026-04-30",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as Record<string, unknown> & {
+      readonly throughput: Record<string, unknown>;
+      readonly arrivals: Record<string, unknown>;
+      readonly wip: Record<string, unknown>;
+      readonly totalWorkItemAge: Record<string, unknown>;
+    };
+
+    expect(payload.scope).toBe("portfolio");
+    expect(payload.predictabilityScore).toEqual({ score: 0.9 });
+    expect(
+      payload.throughput.daily as readonly Record<string, unknown>[],
+    ).toEqual([
+      { date: "2026-02-01", count: 1 },
+      { date: "2026-02-02", count: 3 },
+    ]);
+    expect(
+      payload.arrivals.daily as readonly Record<string, unknown>[],
+    ).toEqual([{ date: "2026-02-01", count: 1 }]);
+    expect(
+      (payload.wip.overTime as Record<string, unknown>)
+        .daily as readonly Record<string, unknown>[],
+    ).toEqual([
+      { date: "2026-02-01", count: 1 },
+      { date: "2026-02-02", count: 2 },
+    ]);
+    expect(
+      (payload.totalWorkItemAge.daily as Record<string, unknown>)
+        .points as readonly Record<string, unknown>[],
+    ).toEqual([
+      { date: "2026-02-01", value: 3, workItemIds: [] },
+      { date: "2026-04-30", value: 7, workItemIds: [] },
+    ]);
   });
 
   it("reuses a single team metrics date for start and end", async () => {
