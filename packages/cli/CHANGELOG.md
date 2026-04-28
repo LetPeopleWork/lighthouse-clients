@@ -1,5 +1,15 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.12.0
+
+### Minor Changes
+
+- [`820ea0a`](https://github.com/LetPeopleWork/lighthouse-clients/commit/820ea0aaae19e3e3883124503467b9851d4c68f5) Thanks [@huserben](https://github.com/huserben)! - add support for API key authentication via environment variable in CLI
+
+### Patch Changes
+
+- [`d3fa8cd`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d3fa8cd3d8455653137f637f2ca5b0c1fdabb7b7) Thanks [@huserben](https://github.com/huserben)! - Update readme
+
 ## 0.11.0
 
 ### Minor Changes
