@@ -1,5 +1,17 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.10.0
+
+### Minor Changes
+
+- [`5e2e897`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5e2e8970d070e124d7962c37176632eb004126e7) Thanks [@huserben](https://github.com/huserben)! - replace bearer token authentication with API key support in CLI
+
+### Patch Changes
+
+- [`2a7085a`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2a7085a17f68d19dedfad8c3497c267cf712e731) Thanks [@huserben](https://github.com/huserben)! - remove blackout indicators from daily metrics data structures
+
+- [`0f91053`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0f910534adbb9670b35f96780d3b440a3c799322) Thanks [@huserben](https://github.com/huserben)! - add scripted connection options for non-interactive CLI usage
+
 ## 0.9.0
 
 ### Minor Changes
