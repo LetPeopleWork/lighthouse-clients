@@ -46,7 +46,29 @@ lh metrics portfolio --id 7 --metrics cycletime
 lh forecast manual --team-id 1 --remaining 10
 ```
 
-`lh connection connect` supports both server mode and standalone mode. Server mode walks you through URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. Standalone mode reads the current Lighthouse URL from the standalone lockfile in the Lighthouse app data directory, so no URL is stored in the CLI config and dynamic ports are picked up fresh on every CLI startup.
+`lh connection connect` supports both server mode and standalone mode.
+
+**Interactive wizard** (default, no flags):
+Server mode walks you through URL entry, connectivity validation, and — if authentication is enabled on the server — opens your browser so you can log in and authorize CLI access. Standalone mode reads the current Lighthouse URL from the standalone lockfile in the Lighthouse app data directory, so no URL is stored in the CLI config and dynamic ports are picked up fresh on every CLI startup.
+
+**Scripted / non-interactive** (supply `--mode` to skip all prompts):
+
+```bash
+# Standalone (no URL needed)
+lh connection connect --mode standalone
+
+# Server, auth disabled
+lh connection connect --mode server --url https://lighthouse.example.com
+
+# Server, auth required — supply a bearer token
+lh connection connect --mode server --url https://lighthouse.example.com --token <token>
+
+# Server with a self-signed TLS certificate
+lh connection connect --mode server --url https://lighthouse.example.com --insecure
+lh connection connect --mode server --url https://lighthouse.example.com --insecure --token <token>
+```
+
+When `--mode` is provided, the command never prompts for input and exits with a non-zero code if required flags are missing or the server is unreachable.
 
 ## Output Formats
 
@@ -79,7 +101,11 @@ Explicit flags take precedence over the saved default. Status and error output r
 
 ```
 lh connection                                 Show connection subcommands
-lh connection connect                         Connect to a Lighthouse server or standalone app (interactive)
+lh connection connect                         Connect to a Lighthouse server or standalone app (interactive wizard)
+lh connection connect --mode standalone       Connect to standalone Lighthouse (non-interactive)
+lh connection connect --mode server --url <url>                    Connect to a server (auth disabled)
+lh connection connect --mode server --url <url> --token <token>    Connect to a server (auth required)
+lh connection connect --mode server --url <url> --insecure         Skip TLS certificate verification
 lh connection disconnect                      Remove the saved connection
 lh connection status                          Show current connection status
 lh config output                              Show the current default payload output format

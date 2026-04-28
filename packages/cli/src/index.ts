@@ -667,6 +667,70 @@ const getAuthSessionStartErrorMessage = (
   return `Failed to start an authentication session at ${url}: ${reason}`;
 };
 
+// ── connect option parser ───────────────────────────────────────────────────────
+
+type ScriptedConnectOptions =
+  | { readonly mode: "standalone" }
+  | {
+      readonly mode: "server";
+      readonly url: string;
+      readonly token: string | undefined;
+      readonly insecure: boolean;
+    };
+
+const parseScriptedConnectOptions = (
+  args: readonly string[],
+): ScriptedConnectOptions | null | CliCommandResult => {
+  const mode = getOptionValue(args, "--mode");
+
+  // No scripted flags supplied → fall through to interactive wizard
+  if (mode === undefined) {
+    return null;
+  }
+
+  if (mode !== "server" && mode !== "standalone") {
+    return getErrorResult(
+      `Invalid --mode "${mode}". Use "server" or "standalone".`,
+    );
+  }
+
+  const url = getOptionValue(args, "--url");
+  const rawToken = getOptionValue(args, "--token");
+  const token =
+    rawToken !== undefined && rawToken.trim().length > 0
+      ? rawToken.trim()
+      : undefined;
+  const insecure = args.includes("--insecure");
+
+  if (mode === "standalone") {
+    if (url !== undefined) {
+      return getErrorResult(
+        "--url is not valid for standalone mode. Remove --url and retry.",
+      );
+    }
+    if (token !== undefined) {
+      return getErrorResult(
+        "--token is not valid for standalone mode. Remove --token and retry.",
+      );
+    }
+    if (insecure) {
+      return getErrorResult(
+        "--insecure is not valid for standalone mode. Remove --insecure and retry.",
+      );
+    }
+    return { mode: "standalone" };
+  }
+
+  // server mode
+  if (url === undefined || url.trim().length === 0) {
+    return getErrorResult(
+      "--url is required for server mode. Example: lh connection connect --mode server --url https://lighthouse.example.com",
+    );
+  }
+
+  return { mode: "server", url: url.trim(), token, insecure };
+};
+
 // ── connect wizard ─────────────────────────────────────────────────────────────
 
 const runStandaloneConnect = async (
@@ -816,6 +880,62 @@ const runAuthenticatedServerConnect = async (
   return getErrorResult("Authorization timed out or was denied.");
 };
 
+const runScriptedServerConnect = async (
+  dependencies: RunCliCommandDependencies,
+  url: string,
+  token: string | undefined,
+  insecure: boolean,
+): Promise<CliCommandResult> => {
+  const validationResult = await dependencies.validateConnectivity(
+    url,
+    insecure || undefined,
+  );
+  if (!isServerReachable(validationResult)) {
+    if (!insecure && url.toLowerCase().startsWith("https://")) {
+      return getErrorResult(
+        `Cannot reach server at ${url}: ${validationResult.reason}\nThis may be a TLS certificate issue. Retry with --insecure to skip TLS verification.`,
+      );
+    }
+    return getServerConnectivityError(url, validationResult.reason);
+  }
+
+  const authModeResult = await dependencies.queryAuthMode(
+    url,
+    insecure || undefined,
+  );
+
+  if (authModeResult.mode === "blocked") {
+    return getErrorResult(
+      authModeResult.misconfigurationMessage ??
+        "Authentication is blocked by server configuration.",
+    );
+  }
+
+  if (authModeResult.mode === "misconfigured") {
+    return getErrorResult(
+      authModeResult.misconfigurationMessage ??
+        "Authentication appears to be misconfigured on the server.",
+    );
+  }
+
+  if (authModeResult.mode === "disabled") {
+    const connection = getDisabledAuthConnection(url, insecure);
+    await dependencies.saveConnection(connection);
+    return getSuccessResult(`Connected to ${url} (auth: disabled)`);
+  }
+
+  // auth required
+  if (token === undefined) {
+    return getErrorResult(
+      `Server at ${url} requires authentication. Provide a bearer token with --token <token>.`,
+    );
+  }
+
+  const connection = getAuthenticatedConnection(url, token, insecure);
+  await dependencies.saveConnection(connection);
+  return getSuccessResult(`Connected to ${url} (auth: required)`);
+};
+
 const runServerConnect = async (
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
@@ -866,8 +986,28 @@ const runServerConnect = async (
 };
 
 const runConnect = async (
+  args: readonly string[],
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
+  const scriptedOptions = parseScriptedConnectOptions(args);
+
+  if (isCliCommandResult(scriptedOptions)) {
+    return scriptedOptions;
+  }
+
+  if (scriptedOptions !== null) {
+    if (scriptedOptions.mode === "standalone") {
+      return runStandaloneConnect(dependencies);
+    }
+    return runScriptedServerConnect(
+      dependencies,
+      scriptedOptions.url,
+      scriptedOptions.token,
+      scriptedOptions.insecure,
+    );
+  }
+
+  // Interactive wizard
   const modeInput = await dependencies.prompt(
     "Select connection mode:\n  1) Server (connect to a Lighthouse instance)\n  2) Standalone (local embedded mode)\n> ",
   );
@@ -924,7 +1064,11 @@ const runDisconnect = async (
 const getConnectionGroupHelpText = (): string =>
   [
     "Usage:",
-    "  lh connection connect",
+    "  lh connection connect                                          (interactive wizard)",
+    "  lh connection connect --mode standalone                        (non-interactive)",
+    "  lh connection connect --mode server --url <url>               (server, no auth)",
+    "  lh connection connect --mode server --url <url> --token <token>  (server, with auth)",
+    "  lh connection connect --mode server --url <url> --insecure    (skip TLS verification)",
     "  lh connection disconnect",
     "  lh connection status",
   ].join("\n");
@@ -1292,6 +1436,7 @@ const buildMetricsPayload = async (
 
 const runConnectionGroup = async (
   action: string | undefined,
+  args: readonly string[],
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
   if (action === undefined) {
@@ -1299,7 +1444,7 @@ const runConnectionGroup = async (
   }
 
   if (action === "connect") {
-    return runConnect(dependencies);
+    return runConnect(args, dependencies);
   }
 
   if (action === "disconnect") {
@@ -1946,7 +2091,7 @@ export const runCliCommand = async (
   const [scope, action, subject] = positionalArgs;
 
   if (scope === "connection") {
-    return runConnectionGroup(action, dependencies);
+    return runConnectionGroup(action, args, dependencies);
   }
 
   if (scope === "team") {

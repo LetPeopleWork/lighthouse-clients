@@ -680,6 +680,267 @@ describe("runCliCommand", () => {
     expect(result.stderr).toContain("timed out or was denied");
   });
 
+  // ── scripted connect ───────────────────────────────────────────────────────
+
+  it("scripted connect saves standalone connection", async () => {
+    const { dependencies, getSavedConnection } = getDependencies();
+
+    const result = await runCliCommand(
+      ["connection", "connect", "--mode", "standalone"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("standalone Lighthouse");
+    expect(getSavedConnection()).toEqual({
+      mode: "standalone",
+      authMode: "disabled",
+    });
+  });
+
+  it("scripted connect saves server connection with auth disabled", async () => {
+    const { dependencies, getSavedConnection } = getDependencies();
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "server",
+        "--url",
+        "http://localhost:5000",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("http://localhost:5000");
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.mode).toBe("server");
+    expect(conn.endpointUrl).toBe("http://localhost:5000");
+    expect(conn.authMode).toBe("disabled");
+    expect(conn.auth).toBeUndefined();
+  });
+
+  it("scripted connect saves server connection with bearer token when auth is required", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      queryAuthMode: async () => ({ mode: "required" }),
+    });
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "server",
+        "--url",
+        "http://localhost:5000",
+        "--token",
+        "my-secret-token",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("http://localhost:5000");
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.authMode).toBe("required");
+    expect(conn.auth).toEqual({
+      kind: "bearer-token",
+      token: "my-secret-token",
+    });
+  });
+
+  it("scripted connect ignores supplied token when server auth is disabled", async () => {
+    const { dependencies, getSavedConnection } = getDependencies();
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "server",
+        "--url",
+        "http://localhost:5000",
+        "--token",
+        "ignored-token",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.authMode).toBe("disabled");
+    expect(conn.auth).toBeUndefined();
+  });
+
+  it("scripted connect saves insecure server connection", async () => {
+    const connectivityAttempts: Array<boolean | undefined> = [];
+    const { dependencies, getSavedConnection } = getDependencies({
+      validateConnectivity: async (_url, insecure) => {
+        connectivityAttempts.push(insecure);
+        return {
+          category: "success",
+          endpoint: {
+            lighthouseUrl: "https://localhost:48332",
+            healthCheckUrl: "https://localhost:48332/api/v1/version/current",
+            apiBaseUrl: "https://localhost:48332/api",
+            mode: "explicit",
+          },
+          serverVersion: "1.0.0",
+        };
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "server",
+        "--url",
+        "https://localhost:48332",
+        "--insecure",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(connectivityAttempts).toEqual([true]);
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.insecure).toBe(true);
+  });
+
+  it("scripted connect fails with TLS hint when https server unreachable and --insecure not supplied", async () => {
+    const { dependencies } = getDependencies({
+      validateConnectivity: async () => ({
+        category: "unreachable",
+        reason: "certificate verify failed",
+        endpoint: {
+          lighthouseUrl: "https://localhost:48332",
+          healthCheckUrl: "https://localhost:48332/api/v1/version/current",
+        },
+      }),
+    });
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "server",
+        "--url",
+        "https://localhost:48332",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--insecure");
+  });
+
+  it("scripted connect fails when server auth is required but --token is not supplied", async () => {
+    const { dependencies } = getDependencies({
+      queryAuthMode: async () => ({ mode: "required" }),
+    });
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "server",
+        "--url",
+        "http://localhost:5000",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--token");
+  });
+
+  it("scripted connect fails with invalid --mode value", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(
+      ["connection", "connect", "--mode", "invalid"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--mode");
+  });
+
+  it("scripted connect fails when --mode is server but --url is missing", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(
+      ["connection", "connect", "--mode", "server"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--url");
+  });
+
+  it("scripted connect fails when --url is supplied for standalone mode", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(
+      [
+        "connection",
+        "connect",
+        "--mode",
+        "standalone",
+        "--url",
+        "http://localhost:5000",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--url");
+  });
+
+  it("scripted connect fails when --token is supplied for standalone mode", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(
+      ["connection", "connect", "--mode", "standalone", "--token", "tok"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--token");
+  });
+
+  it("scripted connect fails when --insecure is supplied for standalone mode", async () => {
+    const { dependencies } = getDependencies();
+
+    const result = await runCliCommand(
+      ["connection", "connect", "--mode", "standalone", "--insecure"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--insecure");
+  });
+
+  it("interactive wizard still works when no connect flags are supplied", async () => {
+    const { dependencies, getSavedConnection } = getDependencies({
+      promptResponses: ["1", "http://localhost:5000"],
+    });
+
+    const result = await runCliCommand(["connection", "connect"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("http://localhost:5000");
+    const conn = getSavedConnection() as CliServerConnection;
+    expect(conn.mode).toBe("server");
+    expect(conn.authMode).toBe("disabled");
+  });
+
   // ── connection ─────────────────────────────────────────────────────────────
 
   it("connection shows server connection status", async () => {
