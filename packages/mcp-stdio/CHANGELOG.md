@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 0.3.1
+
+### Patch Changes
+
+- [`33632f6`](https://github.com/LetPeopleWork/lighthouse-clients/commit/33632f636a0ef210c185c37bf7c41d1945d58b40) Thanks [@huserben](https://github.com/huserben)! - update package.json and tsup.config.ts for improved CLI and MCP build configurations
+
 ## 0.3.0
 
 ### Minor Changes
