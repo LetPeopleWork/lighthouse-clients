@@ -1,14 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
 import * as undiciModule from "undici";
+import { describe, expect, it, vi } from "vitest";
 import { startMcpHttpServer } from "./bin";
 
 vi.mock("undici", async (importOriginal) => {
   const mod = await importOriginal<typeof import("undici")>();
   const OriginalAgent = mod.Agent;
-  const MockAgent = vi.fn().mockImplementation(
-    (opts: ConstructorParameters<typeof OriginalAgent>[0]) =>
-      new OriginalAgent(opts),
-  );
+  const MockAgent = vi
+    .fn()
+    .mockImplementation(
+      (opts: ConstructorParameters<typeof OriginalAgent>[0]) =>
+        new OriginalAgent(opts),
+    );
   return {
     ...mod,
     Agent: MockAgent,

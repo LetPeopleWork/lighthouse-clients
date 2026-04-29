@@ -1,15 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as undiciModule from "undici";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("undici", async (importOriginal) => {
   const mod = await importOriginal<typeof import("undici")>();
   const OriginalAgent = mod.Agent;
   return {
     ...mod,
-    Agent: vi.fn().mockImplementation(
-      (opts: ConstructorParameters<typeof OriginalAgent>[0]) =>
-        new OriginalAgent(opts),
-    ),
+    Agent: vi
+      .fn()
+      .mockImplementation(
+        (opts: ConstructorParameters<typeof OriginalAgent>[0]) =>
+          new OriginalAgent(opts),
+      ),
   };
 });
 
@@ -29,9 +31,8 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", async (importOriginal) => {
 });
 
 vi.mock("@letpeoplework/lighthouse-mcp-core", async (importOriginal) => {
-  const mod = await importOriginal<
-    typeof import("@letpeoplework/lighthouse-mcp-core")
-  >();
+  const mod =
+    await importOriginal<typeof import("@letpeoplework/lighthouse-mcp-core")>();
   return {
     ...mod,
     registerMcpTools: vi.fn(),
