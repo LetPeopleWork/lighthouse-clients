@@ -8,6 +8,7 @@ import {
   createLighthouseClient,
 } from "@letpeoplework/lighthouse-client";
 import { createMcpCoreRuntime } from "@letpeoplework/lighthouse-mcp-core";
+import { Agent, fetch as undiciFetch } from "undici";
 import { createMcpHttpRuntime } from "./index";
 
 export type McpHttpServerOptions = {
@@ -70,16 +71,33 @@ const getCoreRuntime = (options: McpHttpServerOptions) =>
   createMcpCoreRuntime({
     createClient: () => {
       const authContext = getAuthContext(options);
+      const insecureHttpsDispatcher = new Agent({
+        connect: { rejectUnauthorized: false },
+      });
+      const insecureFetch: typeof fetch = async (input, init) => {
+        const requestInit = (
+          init === undefined
+            ? { dispatcher: insecureHttpsDispatcher }
+            : { ...init, dispatcher: insecureHttpsDispatcher }
+        ) as RequestInit & { dispatcher: Agent };
+        return undiciFetch(
+          input as never,
+          requestInit as never,
+        ) as unknown as Promise<Response>;
+      };
       const getClient = async () => {
         const auth = await authContext.resolveAuth();
 
-        return createLighthouseClient({
-          connection: {
-            kind: "explicit",
-            lighthouseUrl: options.lighthouseUrl,
+        return createLighthouseClient(
+          {
+            connection: {
+              kind: "explicit",
+              lighthouseUrl: options.lighthouseUrl,
+            },
+            auth,
           },
-          auth,
-        });
+          { fetch: insecureFetch },
+        );
       };
 
       return {

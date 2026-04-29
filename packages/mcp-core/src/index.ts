@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { encode } from "@toon-format/toon";
 import { z } from "zod";
 
 export type McpCorePackageContract = {
@@ -523,6 +524,14 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
 ];
 
+const encodePayload = (value: unknown): string => {
+  try {
+    return encode(value as never);
+  } catch {
+    return JSON.stringify(value);
+  }
+};
+
 const getSuccessToolResult = (text: string): McpToolResult => ({
   isError: false,
   content: [
@@ -670,7 +679,7 @@ export const createMcpCoreRuntime = (
       const connections = await client.listWorkTrackingConnections();
       if (connections.ok) {
         return getSuccessToolResult(
-          `worktracking: ${JSON.stringify(connections.value)}`,
+          `worktracking: ${encodePayload(connections.value)}`,
         );
       }
 
@@ -688,7 +697,7 @@ export const createMcpCoreRuntime = (
       const connection = await client.getWorkTrackingConnection(id);
       if (connection.ok) {
         return getSuccessToolResult(
-          `worktracking: ${JSON.stringify(connection.value)}`,
+          `worktracking: ${encodePayload(connection.value)}`,
         );
       }
 
@@ -700,7 +709,7 @@ export const createMcpCoreRuntime = (
     if (name === "lighthouse.team.list") {
       const teams = await client.listTeams();
       if (teams.ok) {
-        return getSuccessToolResult(`teams: ${JSON.stringify(teams.value)}`);
+        return getSuccessToolResult(`teams: ${encodePayload(teams.value)}`);
       }
 
       return getErrorToolResult(
@@ -716,7 +725,7 @@ export const createMcpCoreRuntime = (
 
       const team = await client.getTeam(id);
       if (team.ok) {
-        return getSuccessToolResult(`team: ${JSON.stringify(team.value)}`);
+        return getSuccessToolResult(`team: ${encodePayload(team.value)}`);
       }
 
       return getErrorToolResult(
@@ -744,7 +753,7 @@ export const createMcpCoreRuntime = (
       const portfolios = await client.listPortfolios();
       if (portfolios.ok) {
         return getSuccessToolResult(
-          `portfolios: ${JSON.stringify(portfolios.value)}`,
+          `portfolios: ${encodePayload(portfolios.value)}`,
         );
       }
 
@@ -762,7 +771,7 @@ export const createMcpCoreRuntime = (
       const portfolio = await client.getPortfolio(id);
       if (portfolio.ok) {
         return getSuccessToolResult(
-          `portfolio: ${JSON.stringify(portfolio.value)}`,
+          `portfolio: ${encodePayload(portfolio.value)}`,
         );
       }
 
@@ -798,7 +807,7 @@ export const createMcpCoreRuntime = (
       const result = await client.getTeamThroughput(id, range);
       if (result.ok) {
         return getSuccessToolResult(
-          `team throughput: ${JSON.stringify(result.value)}`,
+          `team throughput: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(
@@ -815,7 +824,7 @@ export const createMcpCoreRuntime = (
       const result = await client.getTeamCycleTimePercentiles(id, range);
       if (result.ok) {
         return getSuccessToolResult(
-          `team cycleTimePercentiles: ${JSON.stringify(result.value)}`,
+          `team cycleTimePercentiles: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(
@@ -832,7 +841,7 @@ export const createMcpCoreRuntime = (
       const result = await client.getPortfolioThroughput(id, range);
       if (result.ok) {
         return getSuccessToolResult(
-          `portfolio throughput: ${JSON.stringify(result.value)}`,
+          `portfolio throughput: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(
@@ -852,7 +861,7 @@ export const createMcpCoreRuntime = (
         const result = await client.getFeaturesByIds(ids);
         if (result.ok) {
           return getSuccessToolResult(
-            `features: ${JSON.stringify(result.value)}`,
+            `features: ${encodePayload(result.value)}`,
           );
         }
         return getErrorToolResult(
@@ -867,7 +876,7 @@ export const createMcpCoreRuntime = (
         const result = await client.getFeaturesByReferences(refs);
         if (result.ok) {
           return getSuccessToolResult(
-            `features: ${JSON.stringify(result.value)}`,
+            `features: ${encodePayload(result.value)}`,
           );
         }
         return getErrorToolResult(
@@ -888,7 +897,7 @@ export const createMcpCoreRuntime = (
       const result = await client.getFeatureWorkItems(id);
       if (result.ok) {
         return getSuccessToolResult(
-          `feature workitems: ${JSON.stringify(result.value)}`,
+          `feature workitems: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(
@@ -908,7 +917,7 @@ export const createMcpCoreRuntime = (
       const result = await client.listDeliveries(id);
       if (result.ok) {
         return getSuccessToolResult(
-          `deliveries: ${JSON.stringify(result.value)}`,
+          `deliveries: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(
@@ -936,9 +945,7 @@ export const createMcpCoreRuntime = (
         targetDate,
       });
       if (result.ok) {
-        return getSuccessToolResult(
-          `forecast: ${JSON.stringify(result.value)}`,
-        );
+        return getSuccessToolResult(`forecast: ${encodePayload(result.value)}`);
       }
       return getErrorToolResult(
         `forecast: ${result.error.category} (${result.error.reason})`,
@@ -982,9 +989,7 @@ export const createMcpCoreRuntime = (
         historicalEndDate,
       });
       if (result.ok) {
-        return getSuccessToolResult(
-          `backtest: ${JSON.stringify(result.value)}`,
-        );
+        return getSuccessToolResult(`backtest: ${encodePayload(result.value)}`);
       }
       return getErrorToolResult(
         `backtest: ${result.error.category} (${result.error.reason})`,

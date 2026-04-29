@@ -1,3 +1,4 @@
+import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import { createMcpCoreRuntime, registerMcpTools } from "./index";
 
@@ -271,7 +272,7 @@ describe("createMcpCoreRuntime", () => {
     );
 
     expect(result.isError).toBe(false);
-    expect(result.content[0]?.text).toContain(JSON.stringify(throughputData));
+    expect(result.content[0]?.text).toContain(encode(throughputData));
   });
 
   it("calls forecast manual tool", async () => {

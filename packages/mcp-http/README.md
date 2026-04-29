@@ -157,3 +157,17 @@ curl http://127.0.0.1:3000/health
 Use `@letpeoplework/lighthouse-mcp-http` when you want one hosted MCP endpoint that many clients can connect to.
 
 Use `@letpeoplework/lighthouse-mcp-stdio` when each developer should run Lighthouse tools locally inside their own MCP client process.
+
+## Runtime Behavior
+
+### Tool response format
+
+All MCP tool responses are serialized using [TOON](https://github.com/LetPeopleWork/toon-format) instead of plain JSON.
+TOON is a structured text format designed for LLM consumption.
+MCP clients that display raw tool results will see TOON-encoded output.
+
+### TLS certificate validation
+
+All outbound HTTPS requests to Lighthouse skip TLS certificate validation.
+This is intentional and hard-enforced so the server works with self-hosted Lighthouse instances that use self-signed certificates.
+There is no option to enable strict TLS validation.

@@ -58,6 +58,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.29.0(zod@3.25.76)
+      '@toon-format/toon':
+        specifier: ^2.1.0
+        version: 2.1.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -70,6 +73,9 @@ importers:
       '@letpeoplework/lighthouse-mcp-core':
         specifier: workspace:*
         version: link:../mcp-core
+      undici:
+        specifier: ^8.1.0
+        version: 8.1.0
 
   packages/mcp-stdio:
     dependencies:
@@ -82,6 +88,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.29.0(zod@3.25.76)
+      undici:
+        specifier: ^8.1.0
+        version: 8.1.0
 
 packages:
 

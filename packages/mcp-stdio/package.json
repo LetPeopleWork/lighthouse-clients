@@ -36,6 +36,7 @@
   "dependencies": {
     "@letpeoplework/lighthouse-client": "workspace:*",
     "@letpeoplework/lighthouse-mcp-core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.26.0"
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "undici": "^8.1.0"
   }
 }

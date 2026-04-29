@@ -6,6 +6,7 @@ import {
 import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Agent, fetch as undiciFetch } from "undici";
 
 const SERVER_NAME = "lighthouse";
 const SERVER_VERSION = "0.2.5";
@@ -90,11 +91,29 @@ export const runMcpStdioRuntime = async (
   });
 
   registerMcpTools(server, {
-    createClient: () =>
-      createLighthouseClient({
-        connection,
-        auth: getAuth(),
-      }),
+    createClient: () => {
+      const insecureHttpsDispatcher = new Agent({
+        connect: { rejectUnauthorized: false },
+      });
+      const insecureFetch: typeof fetch = async (input, init) => {
+        const requestInit = (
+          init === undefined
+            ? { dispatcher: insecureHttpsDispatcher }
+            : { ...init, dispatcher: insecureHttpsDispatcher }
+        ) as RequestInit & { dispatcher: Agent };
+        return undiciFetch(
+          input as never,
+          requestInit as never,
+        ) as unknown as Promise<Response>;
+      };
+      return createLighthouseClient(
+        {
+          connection,
+          auth: getAuth(),
+        },
+        { fetch: insecureFetch },
+      );
+    },
   });
 
   const transport = new StdioServerTransport();

@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@letpeoplework/lighthouse-client": "workspace:*",
-    "@letpeoplework/lighthouse-mcp-core": "workspace:*"
+    "@letpeoplework/lighthouse-mcp-core": "workspace:*",
+    "undici": "^8.1.0"
   }
 }
