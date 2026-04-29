@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 0.6.0
+
+### Minor Changes
+
+- [`53ca796`](https://github.com/LetPeopleWork/lighthouse-clients/commit/53ca79637b8d67319423693f81603c809d7b01bf) Thanks [@huserben](https://github.com/huserben)! - add TOON serialization for MCP tool responses and implement insecure HTTPS handling
+
 ## 0.5.0
 
 ### Minor Changes
