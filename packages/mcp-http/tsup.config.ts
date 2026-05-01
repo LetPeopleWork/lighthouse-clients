@@ -7,6 +7,7 @@ export default defineConfig([
     dts: true,
     clean: true,
     bundle: true,
+    tsconfig: "tsconfig.build.json",
   },
   {
     entry: { bin: "src/bin.ts" },
@@ -16,5 +17,6 @@ export default defineConfig([
       js: "#!/usr/bin/env node",
     },
     bundle: true,
+    tsconfig: "tsconfig.build.json",
   },
 ]);

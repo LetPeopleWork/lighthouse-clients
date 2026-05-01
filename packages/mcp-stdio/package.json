@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "build": "tsup --config tsup.config.ts",
+    "postbuild": "node scripts/fix-shebang.mjs",
     "clean": "rimraf dist"
   },
   "publishConfig": {

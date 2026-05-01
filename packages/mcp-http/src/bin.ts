@@ -3,6 +3,7 @@ import {
   type ServerResponse,
   createServer,
 } from "node:http";
+import { fileURLToPath } from "node:url";
 import {
   createLighthouseAuthContext,
   createLighthouseClient,
@@ -313,7 +314,7 @@ export const runMcpHttpRuntime = async (
   return 0;
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   void runMcpHttpRuntime().then((code) => {
     process.exitCode = code;
   });

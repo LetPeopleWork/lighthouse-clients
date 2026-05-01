@@ -8,7 +8,7 @@
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "lighthouse-mcp-http": "./dist/bin.cjs"
+    "lighthouse-mcp-http": "./dist/bin.js"
   },
   "exports": {
     ".": {
@@ -18,15 +18,15 @@
     },
     "./bin": {
       "types": "./dist/bin.d.ts",
-      "import": "./dist/bin.js",
-      "require": "./dist/bin.cjs"
+      "import": "./dist/bin.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/bin.ts --format esm,cjs --dts --clean --tsconfig tsconfig.build.json",
+    "build": "tsup --config tsup.config.ts",
+    "postbuild": "node scripts/fix-shebang.mjs",
     "clean": "rimraf dist"
   },
   "publishConfig": {

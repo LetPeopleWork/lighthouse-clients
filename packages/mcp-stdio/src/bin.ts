@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import {
   type LighthouseConnectionConfiguration,
   createLighthouseClient,
@@ -142,7 +143,7 @@ export const runMcpStdioRuntime = async (
   return 0;
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   void runMcpStdioRuntime().then((code) => {
     process.exitCode = code;
   });

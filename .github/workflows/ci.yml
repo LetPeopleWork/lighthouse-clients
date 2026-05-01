@@ -39,6 +39,19 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Smoke test bin launch (npx regression guard)
+        run: |
+          # mcp-stdio: must exit 1 with "Failed to resolve Lighthouse URL" when no URL configured
+          LIGHTHOUSE_STANDALONE_LOCKFILE_PATH=/tmp/smoke-missing.lock.json \
+            node packages/mcp-stdio/dist/bin.js 2>&1 | grep -q "Failed to resolve Lighthouse URL" \
+            && echo "mcp-stdio smoke: PASS" \
+            || (echo "mcp-stdio smoke: FAIL - unexpected output"; exit 1)
+
+          # mcp-http: must exit 1 with "Missing LIGHTHOUSE_URL" when env var absent
+          node packages/mcp-http/dist/bin.js 2>&1 | grep -q "Missing LIGHTHOUSE_URL" \
+            && echo "mcp-http smoke: PASS" \
+            || (echo "mcp-http smoke: FAIL - unexpected output"; exit 1)
+
   release:
     runs-on: ubuntu-latest
     needs:
