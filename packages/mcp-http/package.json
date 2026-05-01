@@ -25,7 +25,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "pnpm --filter @letpeoplework/lighthouse-client build && pnpm --filter @letpeoplework/lighthouse-mcp-core build && tsup --config tsup.config.ts && pnpm postbuild",
+    "build": "tsup --config tsup.config.ts && pnpm postbuild",
     "postbuild": "node scripts/fix-shebang.mjs",
     "clean": "rimraf dist"
   },
