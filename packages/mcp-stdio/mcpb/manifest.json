@@ -1,0 +1,62 @@
+{
+  "manifest_version": "0.3",
+  "name": "lighthouse-mcp-stdio",
+  "display_name": "Lighthouse MCP (stdio)",
+  "version": "0.0.0",
+  "description": "Local stdio MCP server for Lighthouse. Exposes Lighthouse forecasting and flow-metrics tools to any MCP-compatible client (Claude Desktop, Cursor, VS Code, etc.).",
+  "author": {
+    "name": "LetPeopleWork",
+    "email": "lighthouse@letpeoplework.ch",
+    "url": "https://github.com/LetPeopleWork"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LetPeopleWork/lighthouse-clients"
+  },
+  "homepage": "https://letpeoplework.github.io/Lighthouse/",
+  "documentation": "https://github.com/LetPeopleWork/lighthouse-clients/tree/main/packages/mcp-stdio#readme",
+  "support": "https://github.com/LetPeopleWork/lighthouse-clients/issues",
+  "keywords": [
+    "lighthouse",
+    "mcp",
+    "forecasting",
+    "flow-metrics",
+    "agile",
+    "kanban"
+  ],
+  "license": "MIT",
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/launcher.cjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/launcher.cjs"],
+      "env": {
+        "LIGHTHOUSE_URL": "${user_config.lighthouse_url}",
+        "LIGHTHOUSE_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "user_config": {
+    "lighthouse_url": {
+      "type": "string",
+      "title": "Lighthouse URL",
+      "description": "Base URL of your Lighthouse instance (e.g. https://lighthouse.example.com). Must include protocol; trailing slash is optional.",
+      "required": true
+    },
+    "api_key": {
+      "type": "string",
+      "title": "API Key (optional)",
+      "description": "API key for Lighthouse instances that require authentication. Leave empty when auth is disabled.",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "tools_generated": true
+}

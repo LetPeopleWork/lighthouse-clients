@@ -49,11 +49,16 @@ case "${os}" in
     ;;
 esac
 
-# --- Download ---
+# --- Resolve release URL ---
+# LH_VERSION: pin an exact release (e.g. "0.12.0").  Unset = use latest.
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
-download_url="https://github.com/${OWNER}/${REPO}/releases/latest/download/${asset}"
+if [[ -n "${LH_VERSION:-}" ]]; then
+  download_url="https://github.com/${OWNER}/${REPO}/releases/download/v${LH_VERSION}/${asset}"
+else
+  download_url="https://github.com/${OWNER}/${REPO}/releases/latest/download/${asset}"
+fi
 archive_path="${tmp_dir}/${asset}"
 
 echo "Downloading ${download_url} ..."
@@ -72,6 +77,13 @@ else
 fi
 
 echo "✓ Installed lh to ${INSTALL_DIR}/${BINARY}"
+
+# --- Emit install dir for CI capture ---
+# When running inside GitHub Actions, write INSTALL_DIR to $GITHUB_OUTPUT so
+# subsequent steps can add it to PATH without string-parsing this script's output.
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  echo "install_dir=${INSTALL_DIR}" >> "${GITHUB_OUTPUT}"
+fi
 
 # --- PATH hint ---
 if [[ ":${PATH}:" != *":${INSTALL_DIR}:"* ]]; then

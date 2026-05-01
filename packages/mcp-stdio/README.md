@@ -117,6 +117,29 @@ You can also commit a project-scoped `.mcp.json` file for Claude Code:
 
 After adding the server, use `/mcp` in Claude Code to confirm it is connected.
 
+## Claude Desktop (MCPB Bundle)
+
+The easiest way to add Lighthouse MCP to Claude Desktop is via the `.mcpb` bundle, which is attached to every [lighthouse-clients GitHub Release](https://github.com/LetPeopleWork/lighthouse-clients/releases) as `lighthouse-mcp-stdio.mcpb`.
+
+Download the `.mcpb` file and open it — Claude Desktop will guide you through installation and ask for your Lighthouse URL and optional API key.
+
+Alternatively, configure the server manually in `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "lighthouse": {
+      "command": "npx",
+      "args": ["-y", "@letpeoplework/lighthouse-mcp-stdio"],
+      "env": {
+        "LIGHTHOUSE_URL": "https://lighthouse.example.com",
+        "LIGHTHOUSE_API_KEY": "replace-me"
+      }
+    }
+  }
+}
+```
+
 ## Example Prompts
 
 Once connected, you can ask your MCP client for things like:

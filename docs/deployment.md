@@ -25,10 +25,25 @@ This repository is intentionally dedicated to client deliverables, so release ta
 - Assets are attached to the selected release tag.
 - Installer helpers are published as release assets: `install.sh`, `uninstall.sh`, `install.ps1`, and `uninstall.ps1`.
 
+#### Installer environment variables
+
+| Variable | Script | Purpose |
+| --- | --- | --- |
+| `LH_VERSION` | `install.sh`, `install.ps1` | Pin an exact release version (e.g. `0.12.0`). When unset, the latest release is used. |
+| `LH_INSTALL_DIR` | `install.sh` | Override the install directory. Defaults to `/usr/local/bin` (root) or `~/.local/bin` (user). |
+
+When running inside GitHub Actions (i.e. `GITHUB_OUTPUT` is set), the installer emits `install_dir=<path>` to `$GITHUB_OUTPUT` so subsequent steps can add it to `$GITHUB_PATH`.
+
 ## MCP Deployment
 ### npm
 - Package: `@letpeoplework/lighthouse-mcp-http`
 - Hosted runtime entrypoint is provided via package bin `lighthouse-mcp-http`.
+
+### MCPB Bundle (stdio)
+- Asset: `lighthouse-mcp-stdio.mcpb` — attached to every [GitHub Release](https://github.com/LetPeopleWork/lighthouse-clients/releases).
+- Allows one-click installation into MCP clients that support MCPB (e.g. Claude Desktop).
+- The bundle is built and validated in the release workflow using `@anthropic-ai/mcpb`.
+- When installed, the MCP client runs the bundled launcher which bootstraps `@letpeoplework/lighthouse-mcp-stdio` via npx.
 
 ### Container
 - Image: `ghcr.io/letpeoplework/lighthouse-clients/mcp-http`
