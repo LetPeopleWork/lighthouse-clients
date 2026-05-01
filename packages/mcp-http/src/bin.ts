@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import {
   type IncomingMessage,
   type ServerResponse,
@@ -314,6 +315,19 @@ export const runMcpHttpRuntime = async (
   return 0;
 };
 
-if (fileURLToPath(import.meta.url) === process.argv[1]) {
+const isDirectExecution = (): boolean => {
+  const argvPath = process.argv[1];
+  if (argvPath === undefined) {
+    return false;
+  }
+
+  try {
+    return fileURLToPath(import.meta.url) === realpathSync(argvPath);
+  } catch {
+    return false;
+  }
+};
+
+if (isDirectExecution()) {
   process.exitCode = await runMcpHttpRuntime();
 }
