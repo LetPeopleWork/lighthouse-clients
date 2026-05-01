@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.5.0
+
+### Minor Changes
+
+- [`226fd77`](https://github.com/LetPeopleWork/lighthouse-clients/commit/226fd778a3b7a1b2ef226bf3d42fbb37295e14d4) Thanks [@huserben](https://github.com/huserben)! - update build scripts and improve runtime exit handling for MCP tools
+
 ## 0.4.0
 
 ### Minor Changes
