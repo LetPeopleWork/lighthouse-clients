@@ -167,6 +167,8 @@ jobs:
           tags: |
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
+  
+  
   # ---------------------------------------------------------------------------
   # Post-release smoke tests
   # ---------------------------------------------------------------------------
@@ -175,10 +177,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: release
     if: github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        install_method: [script, npm]
-      fail-fast: false
     permissions:
       contents: read
     steps:
@@ -190,20 +188,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install CLI via script
-        id: install_cli
-        if: matrix.install_method == 'script'
-        run: bash scripts/install.sh
-        env:
-          LH_VERSION: ${{ needs.release.outputs.cli_version }}
-          LH_INSTALL_DIR: ${{ runner.temp }}/lh-bin
-
-      - name: Add script-installed CLI to PATH
-        if: matrix.install_method == 'script'
-        run: echo "${{ steps.install_cli.outputs.install_dir }}" >> $GITHUB_PATH
-
       - name: Install CLI via npm
-        if: matrix.install_method == 'npm'
         run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
 
       - name: Start Lighthouse (SQLite mode)
@@ -227,6 +212,13 @@ jobs:
           curl --fail --insecure -X POST \
             https://127.0.0.1:8443/api/v1/demo/scenarios/2/load
           echo "Demo data seeded."
+
+      - name: Wait for demo data to be processed
+        run: |
+          echo "Waiting for teams to appear in API..."
+          timeout 60 bash -c \
+            'until lh team list --json 2>/dev/null | grep -q "Team Zenith"; do sleep 2; done'
+          echo "Teams are ready."
 
       - name: Connect CLI to Lighthouse
         run: |
@@ -267,10 +259,6 @@ jobs:
     runs-on: windows-latest
     needs: release
     if: github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        install_method: [script, npm]
-      fail-fast: false
     permissions:
       contents: read
     steps:
@@ -299,21 +287,7 @@ jobs:
           echo "fixture_port=$FIXTURE_PORT" >> "$GITHUB_OUTPUT"
           echo "Fixture ready on port $FIXTURE_PORT"
 
-      - name: Install CLI via script
-        id: install_cli
-        if: matrix.install_method == 'script'
-        shell: pwsh
-        run: .\scripts\install.ps1
-        env:
-          LH_VERSION: ${{ needs.release.outputs.cli_version }}
-
-      - name: Add script-installed CLI to PATH
-        if: matrix.install_method == 'script'
-        shell: bash
-        run: echo "${{ steps.install_cli.outputs.install_dir }}" >> "$GITHUB_PATH"
-
       - name: Install CLI via npm
-        if: matrix.install_method == 'npm'
         run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
 
       - name: Connect CLI to fixture
@@ -333,13 +307,9 @@ jobs:
           echo "Team list assertion: PASS"
 
   smoke-macos:
-    runs-on: macos-13
+    runs-on: macos-latest
     needs: release
     if: github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        install_method: [script, npm]
-      fail-fast: false
     permissions:
       contents: read
     steps:
@@ -367,20 +337,7 @@ jobs:
           echo "fixture_port=$FIXTURE_PORT" >> "$GITHUB_OUTPUT"
           echo "Fixture ready on port $FIXTURE_PORT"
 
-      - name: Install CLI via script
-        id: install_cli
-        if: matrix.install_method == 'script'
-        run: bash scripts/install.sh
-        env:
-          LH_VERSION: ${{ needs.release.outputs.cli_version }}
-          LH_INSTALL_DIR: ${{ runner.temp }}/lh-bin
-
-      - name: Add script-installed CLI to PATH
-        if: matrix.install_method == 'script'
-        run: echo "${{ steps.install_cli.outputs.install_dir }}" >> $GITHUB_PATH
-
       - name: Install CLI via npm
-        if: matrix.install_method == 'npm'
         run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
 
       - name: Connect CLI to fixture
