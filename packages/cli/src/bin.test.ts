@@ -1,9 +1,11 @@
+import { mkdtempSync, symlinkSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { renderCliBanner, runCli } from "./bin";
+import { isDirectExecution, renderCliBanner, runCli } from "./bin";
 
 const writeStandaloneLockfile = async (
   lockfilePath: string,
@@ -313,6 +315,55 @@ describe("cli binary entrypoint", () => {
       } else {
         process.env.LIGHTHOUSE_STANDALONE_LOCKFILE_PATH = previousLockfilePath;
       }
+    }
+  });
+});
+
+describe("isDirectExecution", () => {
+  it("returns false when process.argv[1] is undefined", () => {
+    const original = process.argv[1];
+    // @ts-expect-error -- intentionally testing undefined path
+    process.argv[1] = undefined;
+    try {
+      expect(isDirectExecution()).toBe(false);
+    } finally {
+      process.argv[1] = original;
+    }
+  });
+
+  it("returns true when process.argv[1] is the real path of this module", () => {
+    const realPath = fileURLToPath(import.meta.url);
+    const original = process.argv[1];
+    process.argv[1] = realPath;
+    try {
+      expect(isDirectExecution(import.meta.url)).toBe(true);
+    } finally {
+      process.argv[1] = original;
+    }
+  });
+
+  it("returns true when process.argv[1] is a symlink pointing to this module", () => {
+    const realPath = fileURLToPath(import.meta.url);
+    const tmpDir = mkdtempSync(join(tmpdir(), "lh-symlink-test-"));
+    const symlinkPath = join(tmpDir, "lh");
+    symlinkSync(realPath, symlinkPath);
+
+    const original = process.argv[1];
+    process.argv[1] = symlinkPath;
+    try {
+      expect(isDirectExecution(import.meta.url)).toBe(true);
+    } finally {
+      process.argv[1] = original;
+    }
+  });
+
+  it("returns false when process.argv[1] points to a different file", () => {
+    const original = process.argv[1];
+    process.argv[1] = join(tmpdir(), "some-other-entrypoint.js");
+    try {
+      expect(isDirectExecution()).toBe(false);
+    } finally {
+      process.argv[1] = original;
     }
   });
 });

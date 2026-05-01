@@ -207,6 +207,14 @@ jobs:
       - name: Install CLI via npm
         run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
 
+      - name: Verify CLI starts up
+        run: |
+          OUTPUT=$(lh 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "lh connection connect" \
+            || (echo "FAIL: lh produced no help output"; exit 1)
+          echo "CLI startup assertion: PASS"
+
       - name: Connect CLI to fixture
         run: |
           lh connection connect \
@@ -305,6 +313,14 @@ jobs:
 
       - name: Install CLI via npm
         run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
+
+      - name: Verify CLI starts up
+        run: |
+          OUTPUT=$(lh 2>&1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "lh connection connect" \
+            || (echo "FAIL: lh produced no help output"; exit 1)
+          echo "CLI startup assertion: PASS"
 
       - name: Connect CLI to fixture
         run: |

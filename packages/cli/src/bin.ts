@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -260,6 +261,21 @@ export const runCli = async (
   return result.exitCode;
 };
 
-if (fileURLToPath(import.meta.url) === process.argv[1]) {
+export const isDirectExecution = (
+  moduleUrl: string = import.meta.url,
+): boolean => {
+  const argvPath = process.argv[1];
+  if (argvPath === undefined) {
+    return false;
+  }
+
+  try {
+    return fileURLToPath(moduleUrl) === realpathSync(argvPath);
+  } catch {
+    return false;
+  }
+};
+
+if (isDirectExecution()) {
   process.exitCode = await runCli();
 }
