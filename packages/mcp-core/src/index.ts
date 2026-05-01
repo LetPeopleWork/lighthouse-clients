@@ -26,24 +26,24 @@ export type McpToolResult = {
 
 export type McpToolDefinition = {
   readonly name:
-    | "lighthouse.health.check"
-    | "lighthouse.version.get"
-    | "lighthouse.worktracking.list"
-    | "lighthouse.worktracking.get"
-    | "lighthouse.team.list"
-    | "lighthouse.team.get"
-    | "lighthouse.team.refresh"
-    | "lighthouse.portfolio.list"
-    | "lighthouse.portfolio.get"
-    | "lighthouse.portfolio.refresh"
-    | "lighthouse.team.metrics.throughput"
-    | "lighthouse.team.metrics.cycleTimePercentiles"
-    | "lighthouse.portfolio.metrics.throughput"
-    | "lighthouse.feature.get"
-    | "lighthouse.feature.workitems"
-    | "lighthouse.delivery.list"
-    | "lighthouse.forecast.manual"
-    | "lighthouse.forecast.backtest";
+    | "lighthouse_health_check"
+    | "lighthouse_version_get"
+    | "lighthouse_worktracking_list"
+    | "lighthouse_worktracking_get"
+    | "lighthouse_team_list"
+    | "lighthouse_team_get"
+    | "lighthouse_team_refresh"
+    | "lighthouse_portfolio_list"
+    | "lighthouse_portfolio_get"
+    | "lighthouse_portfolio_refresh"
+    | "lighthouse_team_metrics_throughput"
+    | "lighthouse_team_metrics_cycleTimePercentiles"
+    | "lighthouse_portfolio_metrics_throughput"
+    | "lighthouse_feature_get"
+    | "lighthouse_feature_workitems"
+    | "lighthouse_delivery_list"
+    | "lighthouse_forecast_manual"
+    | "lighthouse_forecast_backtest";
   readonly description: string;
   readonly inputSchema: {
     readonly type: "object";
@@ -336,60 +336,60 @@ export type McpCoreRuntime = {
 
 const toolDefinitions: readonly McpToolDefinition[] = [
   {
-    name: "lighthouse.health.check",
+    name: "lighthouse_health_check",
     description:
       "Check connectivity to Lighthouse and return whether the configured endpoint is reachable.",
     inputSchema: emptyInputSchema,
   },
   {
-    name: "lighthouse.version.get",
+    name: "lighthouse_version_get",
     description:
       "Retrieve the Lighthouse server version from the version endpoint.",
     inputSchema: emptyInputSchema,
   },
   {
-    name: "lighthouse.worktracking.list",
+    name: "lighthouse_worktracking_list",
     description:
       "List configured work-tracking system connections in Lighthouse.",
     inputSchema: emptyInputSchema,
   },
   {
-    name: "lighthouse.worktracking.get",
+    name: "lighthouse_worktracking_get",
     description: "Get a single work-tracking system connection by ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.team.list",
+    name: "lighthouse_team_list",
     description: "List all teams available in Lighthouse.",
     inputSchema: emptyInputSchema,
   },
   {
-    name: "lighthouse.team.get",
+    name: "lighthouse_team_get",
     description: "Get full details for one team by ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.team.refresh",
+    name: "lighthouse_team_refresh",
     description: "Trigger data refresh for a team by ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.portfolio.list",
+    name: "lighthouse_portfolio_list",
     description: "List all portfolios in Lighthouse.",
     inputSchema: emptyInputSchema,
   },
   {
-    name: "lighthouse.portfolio.get",
+    name: "lighthouse_portfolio_get",
     description: "Get full details for one portfolio by ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.portfolio.refresh",
+    name: "lighthouse_portfolio_refresh",
     description: "Trigger data refresh for a portfolio by ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.team.metrics.throughput",
+    name: "lighthouse_team_metrics_throughput",
     description:
       "Get throughput run-chart data for a team by ID, optionally filtered by start and end dates.",
     inputSchema: {
@@ -403,7 +403,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     },
   },
   {
-    name: "lighthouse.team.metrics.cycleTimePercentiles",
+    name: "lighthouse_team_metrics_cycleTimePercentiles",
     description:
       "Get cycle-time percentiles for a team by ID, optionally filtered by start and end dates.",
     inputSchema: {
@@ -417,7 +417,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     },
   },
   {
-    name: "lighthouse.portfolio.metrics.throughput",
+    name: "lighthouse_portfolio_metrics_throughput",
     description:
       "Get throughput run-chart data for a portfolio by ID, optionally filtered by start and end dates.",
     inputSchema: {
@@ -431,7 +431,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     },
   },
   {
-    name: "lighthouse.feature.get",
+    name: "lighthouse_feature_get",
     description:
       "Get feature details by numeric IDs or external reference IDs.",
     inputSchema: {
@@ -456,17 +456,17 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     },
   },
   {
-    name: "lighthouse.feature.workitems",
+    name: "lighthouse_feature_workitems",
     description: "Get work items linked to a feature by ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.delivery.list",
+    name: "lighthouse_delivery_list",
     description: "List deliveries for a portfolio by portfolio ID.",
     inputSchema: idInputSchema,
   },
   {
-    name: "lighthouse.forecast.manual",
+    name: "lighthouse_forecast_manual",
     description:
       "Run a manual forecast for a team by ID with optional remaining items and target date.",
     inputSchema: {
@@ -487,7 +487,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     },
   },
   {
-    name: "lighthouse.forecast.backtest",
+    name: "lighthouse_forecast_backtest",
     description:
       "Run a forecast backtest for a team by ID using forecast and historical date ranges.",
     inputSchema: {
@@ -595,43 +595,43 @@ const isoDateStringSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/u, "Expected ISO date in YYYY-MM-DD format.");
 
 const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
-  "lighthouse.health.check": z.object({}),
-  "lighthouse.version.get": z.object({}),
-  "lighthouse.worktracking.list": z.object({}),
-  "lighthouse.worktracking.get": z.object({ id: z.number().int() }),
-  "lighthouse.team.list": z.object({}),
-  "lighthouse.team.get": z.object({ id: z.number().int() }),
-  "lighthouse.team.refresh": z.object({ id: z.number().int() }),
-  "lighthouse.portfolio.list": z.object({}),
-  "lighthouse.portfolio.get": z.object({ id: z.number().int() }),
-  "lighthouse.portfolio.refresh": z.object({ id: z.number().int() }),
-  "lighthouse.team.metrics.throughput": z.object({
+  lighthouse_health_check: z.object({}),
+  lighthouse_version_get: z.object({}),
+  lighthouse_worktracking_list: z.object({}),
+  lighthouse_worktracking_get: z.object({ id: z.number().int() }),
+  lighthouse_team_list: z.object({}),
+  lighthouse_team_get: z.object({ id: z.number().int() }),
+  lighthouse_team_refresh: z.object({ id: z.number().int() }),
+  lighthouse_portfolio_list: z.object({}),
+  lighthouse_portfolio_get: z.object({ id: z.number().int() }),
+  lighthouse_portfolio_refresh: z.object({ id: z.number().int() }),
+  lighthouse_team_metrics_throughput: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
   }),
-  "lighthouse.team.metrics.cycleTimePercentiles": z.object({
+  lighthouse_team_metrics_cycleTimePercentiles: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
   }),
-  "lighthouse.portfolio.metrics.throughput": z.object({
+  lighthouse_portfolio_metrics_throughput: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
   }),
-  "lighthouse.feature.get": z.object({
+  lighthouse_feature_get: z.object({
     ids: z.array(z.number().int()).optional(),
     refs: z.array(z.string()).optional(),
   }),
-  "lighthouse.feature.workitems": z.object({ id: z.number().int() }),
-  "lighthouse.delivery.list": z.object({ id: z.number().int() }),
-  "lighthouse.forecast.manual": z.object({
+  lighthouse_feature_workitems: z.object({ id: z.number().int() }),
+  lighthouse_delivery_list: z.object({ id: z.number().int() }),
+  lighthouse_forecast_manual: z.object({
     id: z.number().int(),
     remainingItems: z.number().int().optional(),
     targetDate: isoDateStringSchema.optional(),
   }),
-  "lighthouse.forecast.backtest": z.object({
+  lighthouse_forecast_backtest: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema,
     endDate: isoDateStringSchema,
@@ -641,7 +641,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
 };
 
 const isReadOnlyTool = (toolName: McpToolDefinition["name"]): boolean =>
-  !toolName.endsWith(".refresh");
+  !toolName.endsWith("_refresh");
 
 export const createMcpCoreRuntime = (
   dependencies: McpCoreRuntimeDependencies,
@@ -650,7 +650,7 @@ export const createMcpCoreRuntime = (
   callTool: async (name: string, argumentsPayload: unknown) => {
     const client = dependencies.createClient();
 
-    if (name === "lighthouse.health.check") {
+    if (name === "lighthouse_health_check") {
       const health = await client.checkConnectivity();
       if (health.category === "success") {
         return getSuccessToolResult("connectivity: success");
@@ -664,7 +664,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.version.get") {
+    if (name === "lighthouse_version_get") {
       const version = await client.getVersion();
       if (version.ok) {
         return getSuccessToolResult(`version: ${version.value}`);
@@ -675,7 +675,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.worktracking.list") {
+    if (name === "lighthouse_worktracking_list") {
       const connections = await client.listWorkTrackingConnections();
       if (connections.ok) {
         return getSuccessToolResult(
@@ -688,7 +688,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.worktracking.get") {
+    if (name === "lighthouse_worktracking_get") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("worktracking: invalid id");
@@ -706,7 +706,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.team.list") {
+    if (name === "lighthouse_team_list") {
       const teams = await client.listTeams();
       if (teams.ok) {
         return getSuccessToolResult(`teams: ${encodePayload(teams.value)}`);
@@ -717,7 +717,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.team.get") {
+    if (name === "lighthouse_team_get") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("team: invalid id");
@@ -733,7 +733,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.team.refresh") {
+    if (name === "lighthouse_team_refresh") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("team: invalid id");
@@ -749,7 +749,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.portfolio.list") {
+    if (name === "lighthouse_portfolio_list") {
       const portfolios = await client.listPortfolios();
       if (portfolios.ok) {
         return getSuccessToolResult(
@@ -762,7 +762,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.portfolio.get") {
+    if (name === "lighthouse_portfolio_get") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("portfolio: invalid id");
@@ -780,7 +780,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.portfolio.refresh") {
+    if (name === "lighthouse_portfolio_refresh") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("portfolio: invalid id");
@@ -798,7 +798,7 @@ export const createMcpCoreRuntime = (
 
     // ── Metrics tools ────────────────────────────────────────────────────────
 
-    if (name === "lighthouse.team.metrics.throughput") {
+    if (name === "lighthouse_team_metrics_throughput") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("team metrics: invalid id");
@@ -815,7 +815,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.team.metrics.cycleTimePercentiles") {
+    if (name === "lighthouse_team_metrics_cycleTimePercentiles") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("team metrics: invalid id");
@@ -832,7 +832,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.portfolio.metrics.throughput") {
+    if (name === "lighthouse_portfolio_metrics_throughput") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("portfolio metrics: invalid id");
@@ -851,7 +851,7 @@ export const createMcpCoreRuntime = (
 
     // ── Feature tools ────────────────────────────────────────────────────────
 
-    if (name === "lighthouse.feature.get") {
+    if (name === "lighthouse_feature_get") {
       const payload = isObjectRecord(argumentsPayload) ? argumentsPayload : {};
       const idsValue = payload.ids;
       const refsValue = payload.refs;
@@ -889,7 +889,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.feature.workitems") {
+    if (name === "lighthouse_feature_workitems") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("feature workitems: invalid id");
@@ -907,7 +907,7 @@ export const createMcpCoreRuntime = (
 
     // ── Delivery tools ───────────────────────────────────────────────────────
 
-    if (name === "lighthouse.delivery.list") {
+    if (name === "lighthouse_delivery_list") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult(
@@ -927,7 +927,7 @@ export const createMcpCoreRuntime = (
 
     // ── Forecast tools ───────────────────────────────────────────────────────
 
-    if (name === "lighthouse.forecast.manual") {
+    if (name === "lighthouse_forecast_manual") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("forecast: invalid id (team id required)");
@@ -952,7 +952,7 @@ export const createMcpCoreRuntime = (
       );
     }
 
-    if (name === "lighthouse.forecast.backtest") {
+    if (name === "lighthouse_forecast_backtest") {
       const id = getNumericId(argumentsPayload);
       if (id === null) {
         return getErrorToolResult("backtest: invalid id (team id required)");

@@ -38,7 +38,7 @@ describe("mcp-http insecure HTTPS wiring", () => {
           jsonrpc: "2.0",
           id: 1,
           method: "tools/call",
-          params: { name: "lighthouse.team.list", arguments: {} },
+          params: { name: "lighthouse_team_list", arguments: {} },
         }),
       });
 

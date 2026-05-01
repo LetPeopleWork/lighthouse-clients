@@ -22,24 +22,24 @@ describe("createMcpCoreRuntime", () => {
     const tools = runtime.listTools();
 
     expect(tools.map((tool) => tool.name)).toEqual([
-      "lighthouse.health.check",
-      "lighthouse.version.get",
-      "lighthouse.worktracking.list",
-      "lighthouse.worktracking.get",
-      "lighthouse.team.list",
-      "lighthouse.team.get",
-      "lighthouse.team.refresh",
-      "lighthouse.portfolio.list",
-      "lighthouse.portfolio.get",
-      "lighthouse.portfolio.refresh",
-      "lighthouse.team.metrics.throughput",
-      "lighthouse.team.metrics.cycleTimePercentiles",
-      "lighthouse.portfolio.metrics.throughput",
-      "lighthouse.feature.get",
-      "lighthouse.feature.workitems",
-      "lighthouse.delivery.list",
-      "lighthouse.forecast.manual",
-      "lighthouse.forecast.backtest",
+      "lighthouse_health_check",
+      "lighthouse_version_get",
+      "lighthouse_worktracking_list",
+      "lighthouse_worktracking_get",
+      "lighthouse_team_list",
+      "lighthouse_team_get",
+      "lighthouse_team_refresh",
+      "lighthouse_portfolio_list",
+      "lighthouse_portfolio_get",
+      "lighthouse_portfolio_refresh",
+      "lighthouse_team_metrics_throughput",
+      "lighthouse_team_metrics_cycleTimePercentiles",
+      "lighthouse_portfolio_metrics_throughput",
+      "lighthouse_feature_get",
+      "lighthouse_feature_workitems",
+      "lighthouse_delivery_list",
+      "lighthouse_forecast_manual",
+      "lighthouse_forecast_backtest",
     ]);
   });
 
@@ -59,7 +59,7 @@ describe("createMcpCoreRuntime", () => {
       }),
     });
 
-    const result = await runtime.callTool("lighthouse.health.check", {});
+    const result = await runtime.callTool("lighthouse_health_check", {});
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain("success");
@@ -81,7 +81,7 @@ describe("createMcpCoreRuntime", () => {
       }),
     });
 
-    const result = await runtime.callTool("lighthouse.version.get", {});
+    const result = await runtime.callTool("lighthouse_version_get", {});
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain("v2.0.0");
@@ -103,7 +103,7 @@ describe("createMcpCoreRuntime", () => {
       }),
     });
 
-    const result = await runtime.callTool("lighthouse.unknown", {});
+    const result = await runtime.callTool("lighthouse_unknown", {});
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("Unknown tool");
@@ -128,7 +128,7 @@ describe("createMcpCoreRuntime", () => {
       }),
     });
 
-    const result = await runtime.callTool("lighthouse.health.check", {});
+    const result = await runtime.callTool("lighthouse_health_check", {});
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("unauthorized");
@@ -181,18 +181,18 @@ describe("createMcpCoreRuntime", () => {
     });
 
     const worktrackingList = await runtime.callTool(
-      "lighthouse.worktracking.list",
+      "lighthouse_worktracking_list",
       {},
     );
     expect(worktrackingList.isError).toBe(false);
     expect(worktrackingList.content[0]?.text).toContain("Jira");
 
-    const teamGet = await runtime.callTool("lighthouse.team.get", { id: 5 });
+    const teamGet = await runtime.callTool("lighthouse_team_get", { id: 5 });
     expect(teamGet.isError).toBe(false);
     expect(teamGet.content[0]?.text).toContain("Team A");
 
     const portfolioRefresh = await runtime.callTool(
-      "lighthouse.portfolio.refresh",
+      "lighthouse_portfolio_refresh",
       { id: 9 },
     );
     expect(portfolioRefresh.isError).toBe(false);
@@ -229,12 +229,12 @@ describe("createMcpCoreRuntime", () => {
 
     const toolNames = runtime.listTools().map((t) => t.name);
 
-    expect(toolNames).toContain("lighthouse.team.metrics.throughput");
-    expect(toolNames).toContain("lighthouse.portfolio.metrics.throughput");
-    expect(toolNames).toContain("lighthouse.feature.get");
-    expect(toolNames).toContain("lighthouse.delivery.list");
-    expect(toolNames).toContain("lighthouse.forecast.manual");
-    expect(toolNames).toContain("lighthouse.forecast.backtest");
+    expect(toolNames).toContain("lighthouse_team_metrics_throughput");
+    expect(toolNames).toContain("lighthouse_portfolio_metrics_throughput");
+    expect(toolNames).toContain("lighthouse_feature_get");
+    expect(toolNames).toContain("lighthouse_delivery_list");
+    expect(toolNames).toContain("lighthouse_forecast_manual");
+    expect(toolNames).toContain("lighthouse_forecast_backtest");
   });
 
   it("calls team throughput metrics tool", async () => {
@@ -267,7 +267,7 @@ describe("createMcpCoreRuntime", () => {
     });
 
     const result = await runtime.callTool(
-      "lighthouse.team.metrics.throughput",
+      "lighthouse_team_metrics_throughput",
       { id: 5 },
     );
 
@@ -308,7 +308,7 @@ describe("createMcpCoreRuntime", () => {
       }),
     });
 
-    const result = await runtime.callTool("lighthouse.forecast.manual", {
+    const result = await runtime.callTool("lighthouse_forecast_manual", {
       id: 2,
       remainingItems: 3,
     });
@@ -346,7 +346,7 @@ describe("createMcpCoreRuntime", () => {
       }),
     });
 
-    const result = await runtime.callTool("lighthouse.delivery.list", {
+    const result = await runtime.callTool("lighthouse_delivery_list", {
       id: 4,
     });
 
@@ -421,7 +421,7 @@ describe("registerMcpTools", () => {
     expect(registered).toHaveLength(18);
 
     const healthTool = registered.find(
-      (tool) => tool.name === "lighthouse.health.check",
+      (tool) => tool.name === "lighthouse_health_check",
     );
     expect(healthTool).toBeDefined();
     if (healthTool === undefined) {

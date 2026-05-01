@@ -55,7 +55,7 @@ describe("createMcpHttpRuntime", () => {
       coreRuntime: {
         listTools: () => [
           {
-            name: "lighthouse.health.check",
+            name: "lighthouse_health_check",
             description: "Check connectivity",
             inputSchema: {
               type: "object",
@@ -84,7 +84,7 @@ describe("createMcpHttpRuntime", () => {
       result: {
         tools: [
           {
-            name: "lighthouse.health.check",
+            name: "lighthouse_health_check",
             description: "Check connectivity",
             inputSchema: {
               type: "object",
@@ -118,7 +118,7 @@ describe("createMcpHttpRuntime", () => {
       id: "abc",
       method: "tools/call",
       params: {
-        name: "lighthouse.version.get",
+        name: "lighthouse_version_get",
         arguments: {
           includeBuild: true,
         },
@@ -133,7 +133,7 @@ describe("createMcpHttpRuntime", () => {
         content: [
           {
             type: "text",
-            text: 'lighthouse.version.get:{"includeBuild":true}',
+            text: 'lighthouse_version_get:{"includeBuild":true}',
           },
         ],
       },
