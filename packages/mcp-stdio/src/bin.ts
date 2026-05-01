@@ -144,7 +144,5 @@ export const runMcpStdioRuntime = async (
 };
 
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
-  void runMcpStdioRuntime().then((code) => {
-    process.exitCode = code;
-  });
+  process.exitCode = await runMcpStdioRuntime();
 }

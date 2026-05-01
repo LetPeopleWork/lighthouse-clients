@@ -315,7 +315,5 @@ export const runMcpHttpRuntime = async (
 };
 
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
-  void runMcpHttpRuntime().then((code) => {
-    process.exitCode = code;
-  });
+  process.exitCode = await runMcpHttpRuntime();
 }
