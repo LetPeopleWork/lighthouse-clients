@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.6.1
+
+### Patch Changes
+
+- [`1f4ada1`](https://github.com/LetPeopleWork/lighthouse-clients/commit/1f4ada1232f39576f14d98763898db651141c9e2) Thanks [@huserben](https://github.com/huserben)! - Update build steps
+
 ## 0.6.0
 
 ### Minor Changes

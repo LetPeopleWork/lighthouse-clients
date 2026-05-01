@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-cli
 
+## 0.12.1
+
+### Patch Changes
+
+- [`c0faba8`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c0faba8cce1798d2c7046c2d1b4b21373d137540) Thanks [@huserben](https://github.com/huserben)! - add CLI startup verification and enhance isDirectExecution logic
+
 ## 0.12.0
 
 ### Minor Changes
