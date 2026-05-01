@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.4.0
+
+### Minor Changes
+
+- [`c84ef36`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c84ef36d59f577fa057d3235fdc514b9d82bf23a) Thanks [@huserben](https://github.com/huserben)! - update bin scripts for proper shebang handling
+
 ## 0.3.0
 
 ### Minor Changes
