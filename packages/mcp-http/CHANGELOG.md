@@ -1,5 +1,16 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.7.0
+
+### Minor Changes
+
+- [`8dc4efc`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8dc4efc5d151d36c5e68d74741ae3feb14c94865) Thanks [@huserben](https://github.com/huserben)! - update tool names to use snake_case format for consistency
+
+### Patch Changes
+
+- Updated dependencies [[`8dc4efc`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8dc4efc5d151d36c5e68d74741ae3feb14c94865)]:
+  - @letpeoplework/lighthouse-mcp-core@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes

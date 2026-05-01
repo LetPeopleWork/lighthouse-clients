@@ -1,5 +1,14 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 0.8.2
+
+### Patch Changes
+
+- [`00305be`](https://github.com/LetPeopleWork/lighthouse-clients/commit/00305be38dd065a1eaf43a24c35f083519789046) Thanks [@huserben](https://github.com/huserben)! - feat: enhance MCPB bundle to include self-contained runtime and streamline installation process
+
+- Updated dependencies [[`8dc4efc`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8dc4efc5d151d36c5e68d74741ae3feb14c94865)]:
+  - @letpeoplework/lighthouse-mcp-core@0.7.0
+
 ## 0.8.1
 
 ### Patch Changes
