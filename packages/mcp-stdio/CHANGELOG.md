@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 0.8.0
+
+### Minor Changes
+
+- [`8921a33`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8921a336a63feebd23ff8edd9c34dd03d5cbf1bb) Thanks [@huserben](https://github.com/huserben)! - implement post-release smoke tests and MCPB packaging for lighthouse-mcp-stdio
+
 ## 0.7.0
 
 ### Minor Changes
