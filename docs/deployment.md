@@ -43,7 +43,7 @@ When running inside GitHub Actions (i.e. `GITHUB_OUTPUT` is set), the installer 
 - Asset: `lighthouse-mcp-stdio.mcpb` — attached to every [GitHub Release](https://github.com/LetPeopleWork/lighthouse-clients/releases).
 - Allows one-click installation into MCP clients that support MCPB (e.g. Claude Desktop).
 - The bundle is built and validated in the release workflow using `@anthropic-ai/mcpb`.
-- When installed, the MCP client runs the bundled launcher which bootstraps `@letpeoplework/lighthouse-mcp-stdio` via npx.
+- The bundle is fully self-contained: the MCP server runtime (`mcpb-runtime.cjs`) is bundled inside the `.mcpb` file alongside the launcher. When installed, the MCP client runs the bundled launcher which starts the server in-process without npx or any additional npm install.
 
 ### Container
 - Image: `ghcr.io/letpeoplework/lighthouse-clients/mcp-http`

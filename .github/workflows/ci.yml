@@ -125,6 +125,7 @@ jobs:
           jq --arg v "$MCP_STDIO_VERSION" '.version = $v' \
             packages/mcp-stdio/mcpb/manifest.json > mcpb-staging/manifest.json
           cp packages/mcp-stdio/mcpb/launcher.cjs mcpb-staging/server/launcher.cjs
+          cp packages/mcp-stdio/dist/mcpb-runtime.cjs mcpb-staging/server/mcpb-runtime.cjs
           npx -y @anthropic-ai/mcpb validate mcpb-staging/manifest.json
           npx -y @anthropic-ai/mcpb pack mcpb-staging/ release-assets/lighthouse-mcp-stdio.mcpb
 

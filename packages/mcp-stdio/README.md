@@ -123,14 +123,20 @@ The easiest way to add Lighthouse MCP to Claude Desktop is via the `.mcpb` bundl
 
 Download the `.mcpb` file and open it — Claude Desktop will guide you through installation and ask for your Lighthouse URL and optional API key.
 
-Alternatively, configure the server manually in `claude_desktop_config.json`:
+The bundle is fully self-contained: the MCP server runtime is bundled inside the `.mcpb` file and starts in-process when Claude Desktop launches it. No npx, no additional npm install, and no network access is required at startup.
+
+Alternatively, install the package globally and configure the server manually in `claude_desktop_config.json`:
+
+```bash
+npm install -g @letpeoplework/lighthouse-mcp-stdio
+```
 
 ```json
 {
   "mcpServers": {
     "lighthouse": {
-      "command": "npx",
-      "args": ["-y", "@letpeoplework/lighthouse-mcp-stdio"],
+      "command": "lighthouse-mcp-stdio",
+      "args": [],
       "env": {
         "LIGHTHOUSE_URL": "https://lighthouse.example.com",
         "LIGHTHOUSE_API_KEY": "replace-me"

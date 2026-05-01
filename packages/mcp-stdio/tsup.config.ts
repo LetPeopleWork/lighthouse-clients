@@ -17,4 +17,13 @@ export default defineConfig([
       js: "#!/usr/bin/env node",
     },
   },
+  {
+    // Self-contained CJS bundle for the MCPB distribution.
+    // All dependencies are inlined so the MCPB runs without any npm install or npx.
+    entry: { "mcpb-runtime": "src/mcpb-launcher.ts" },
+    format: ["cjs"],
+    noExternal: [/.*/],
+    platform: "node",
+    tsconfig: "tsconfig.build.json",
+  },
 ]);
