@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 0.7.0
+
+### Minor Changes
+
+- [`e8f8796`](https://github.com/LetPeopleWork/lighthouse-clients/commit/e8f8796638fe1572f2d794dcbef2926cd9eab9dc) Thanks [@huserben](https://github.com/huserben)! - implement direct execution check for MCP tools using realpathSync
+
 ## 0.6.0
 
 ### Minor Changes
