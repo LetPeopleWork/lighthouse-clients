@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.8.0
+
+### Minor Changes
+
+- [`ceeef62`](https://github.com/LetPeopleWork/lighthouse-clients/commit/ceeef62888f6285e01fcb6e8b075a43ede120e46) Thanks [@huserben](https://github.com/huserben)! - enhance HTTP headers
+
 ## 0.7.0
 
 ### Minor Changes
