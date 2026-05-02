@@ -1,24 +1,20 @@
 import { realpathSync } from "node:fs";
-import {
-  type IncomingMessage,
-  type ServerResponse,
-  createServer,
-} from "node:http";
+import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
-import {
-  createLighthouseAuthContext,
-  createLighthouseClient,
-} from "@letpeoplework/lighthouse-client";
-import { createMcpCoreRuntime } from "@letpeoplework/lighthouse-mcp-core";
+import { createLighthouseClient } from "@letpeoplework/lighthouse-client";
+import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Agent, fetch as undiciFetch } from "undici";
-import { createMcpHttpRuntime } from "./index";
+
+const SERVER_NAME = "@letpeoplework/lighthouse-mcp-http";
+const SERVER_VERSION = "0.1.0";
 
 export type McpHttpServerOptions = {
   readonly lighthouseUrl: string;
   readonly host: string;
   readonly port: number;
   readonly apiKey?: string;
-  readonly bearerToken?: string;
 };
 
 export type McpHttpServerHandle = {
@@ -26,233 +22,83 @@ export type McpHttpServerHandle = {
   readonly close: () => Promise<void>;
 };
 
-const readBody = async (request: IncomingMessage): Promise<string> => {
-  const chunks: Uint8Array[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(chunk);
-  }
-
-  return Buffer.concat(chunks).toString("utf8");
-};
-
-const writeJson = (
-  response: ServerResponse,
-  statusCode: number,
-  payload: unknown,
-): void => {
-  response.statusCode = statusCode;
-  response.setHeader("content-type", "application/json");
-  response.end(JSON.stringify(payload));
-};
-
-const getAuthContext = (options: McpHttpServerOptions) =>
-  createLighthouseAuthContext({
-    load: async () => {
-      if (options.apiKey !== undefined) {
-        return {
-          kind: "api-key" as const,
-          value: options.apiKey,
-        };
-      }
-
-      if (options.bearerToken !== undefined) {
-        return {
-          kind: "bearer-token" as const,
-          token: options.bearerToken,
-        };
-      }
-
-      return null;
-    },
-    save: async () => undefined,
-    clear: async () => undefined,
-  });
-
-const getCoreRuntime = (options: McpHttpServerOptions) =>
-  createMcpCoreRuntime({
-    createClient: () => {
-      const authContext = getAuthContext(options);
-      const insecureHttpsDispatcher = new Agent({
-        connect: { rejectUnauthorized: false },
-      });
-      const insecureFetch: typeof fetch = async (input, init) => {
-        const requestInit = (
-          init === undefined
-            ? { dispatcher: insecureHttpsDispatcher }
-            : { ...init, dispatcher: insecureHttpsDispatcher }
-        ) as RequestInit & { dispatcher: Agent };
-        return undiciFetch(
-          input as never,
-          requestInit as never,
-        ) as unknown as Promise<Response>;
-      };
-      const getClient = async () => {
-        const auth = await authContext.resolveAuth();
-
-        return createLighthouseClient(
-          {
-            connection: {
-              kind: "explicit",
-              lighthouseUrl: options.lighthouseUrl,
-            },
-            auth,
-          },
-          { fetch: insecureFetch },
-        );
-      };
-
-      return {
-        checkConnectivity: async () => {
-          const client = await getClient();
-          return client.checkConnectivity();
-        },
-        getVersion: async () => {
-          const client = await getClient();
-          return client.getVersion();
-        },
-        listWorkTrackingConnections: async () => {
-          const client = await getClient();
-          return client.listWorkTrackingConnections();
-        },
-        getWorkTrackingConnection: async (id: number) => {
-          const client = await getClient();
-          return client.getWorkTrackingConnection(id);
-        },
-        listTeams: async () => {
-          const client = await getClient();
-          return client.listTeams();
-        },
-        getTeam: async (id: number) => {
-          const client = await getClient();
-          return client.getTeam(id);
-        },
-        refreshTeam: async (id: number) => {
-          const client = await getClient();
-          return client.refreshTeam(id);
-        },
-        listPortfolios: async () => {
-          const client = await getClient();
-          return client.listPortfolios();
-        },
-        getPortfolio: async (id: number) => {
-          const client = await getClient();
-          return client.getPortfolio(id);
-        },
-        refreshPortfolio: async (id: number) => {
-          const client = await getClient();
-          return client.refreshPortfolio(id);
-        },
-        getTeamThroughput: async (id: number, range?) => {
-          const client = await getClient();
-          return client.getTeamThroughput(id, range);
-        },
-        getTeamCycleTimePercentiles: async (id: number, range?) => {
-          const client = await getClient();
-          return client.getTeamCycleTimePercentiles(id, range);
-        },
-        getPortfolioThroughput: async (id: number, range?) => {
-          const client = await getClient();
-          return client.getPortfolioThroughput(id, range);
-        },
-        getFeaturesByIds: async (ids: readonly number[]) => {
-          const client = await getClient();
-          return client.getFeaturesByIds(ids);
-        },
-        getFeaturesByReferences: async (refs: readonly string[]) => {
-          const client = await getClient();
-          return client.getFeaturesByReferences(refs);
-        },
-        getFeatureWorkItems: async (featureId: number) => {
-          const client = await getClient();
-          return client.getFeatureWorkItems(featureId);
-        },
-        listDeliveries: async (portfolioId: number) => {
-          const client = await getClient();
-          return client.listDeliveries(portfolioId);
-        },
-        createDelivery: async (portfolioId: number, payload) => {
-          const client = await getClient();
-          return client.createDelivery(portfolioId, payload);
-        },
-        updateDelivery: async (deliveryId: number, payload) => {
-          const client = await getClient();
-          return client.updateDelivery(deliveryId, payload);
-        },
-        deleteDelivery: async (deliveryId: number) => {
-          const client = await getClient();
-          return client.deleteDelivery(deliveryId);
-        },
-        runManualForecast: async (teamId: number, payload) => {
-          const client = await getClient();
-          return client.runManualForecast(teamId, payload);
-        },
-        runBacktest: async (teamId: number, payload) => {
-          const client = await getClient();
-          return client.runBacktest(teamId, payload);
-        },
-      };
-    },
-  });
-
 export const renderMcpHttpBanner = (url: string): string =>
   `Lighthouse MCP HTTP server running at ${url}`;
 
 export const startMcpHttpServer = async (
   options: McpHttpServerOptions,
 ): Promise<McpHttpServerHandle> => {
-  const coreRuntime = getCoreRuntime(options);
+  const getAuth = () =>
+    options.apiKey === undefined
+      ? { kind: "none" as const }
+      : { kind: "api-key" as const, value: options.apiKey };
 
-  const runtime = createMcpHttpRuntime({
-    coreRuntime,
+  const insecureHttpsDispatcher = new Agent({
+    connect: { rejectUnauthorized: false },
   });
+  const insecureFetch: typeof fetch = async (input, init) => {
+    const requestInit = (
+      init === undefined
+        ? { dispatcher: insecureHttpsDispatcher }
+        : { ...init, dispatcher: insecureHttpsDispatcher }
+    ) as RequestInit & { dispatcher: Agent };
+    return undiciFetch(
+      input as never,
+      requestInit as never,
+    ) as unknown as Promise<Response>;
+  };
 
-  const server = createServer(async (request, response) => {
-    if (request.method === "GET" && request.url === "/health") {
-      writeJson(response, 200, runtime.getHealth());
+  // Each request gets its own McpServer + transport (stateless/sessionless)
+  const httpServer = createServer(async (req, res) => {
+    if (req.method === "GET" && req.url === "/health") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
       return;
     }
 
-    if (request.method === "POST" && request.url === "/mcp") {
-      try {
-        const body = await readBody(request);
-        const parsed = JSON.parse(body) as {
-          readonly jsonrpc: "2.0";
-          readonly id: string | number | null;
-          readonly method: string;
-          readonly params?: unknown;
-        };
+    if (req.method === "POST" && (req.url === "/mcp" || req.url === "/")) {
+      const server = new McpServer({
+        name: SERVER_NAME,
+        version: SERVER_VERSION,
+      });
 
-        const rpcResponse = await runtime.handleJsonRpcRequest(parsed);
-        writeJson(response, 200, rpcResponse);
-        return;
-      } catch {
-        writeJson(response, 400, {
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32700,
-            message: "Parse error",
-          },
-        });
-        return;
-      }
+      registerMcpTools(server, {
+        createClient: () =>
+          createLighthouseClient(
+            {
+              connection: {
+                kind: "explicit",
+                lighthouseUrl: options.lighthouseUrl,
+              },
+              auth: getAuth(),
+            },
+            { fetch: insecureFetch },
+          ),
+      });
+
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined, // stateless — no session pinning
+      });
+
+      await server.connect(transport);
+      await transport.handleRequest(req, res);
+      await server.close();
+      return;
     }
 
-    writeJson(response, 404, {
-      error: "Not found",
-    });
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "Not found" }));
   });
 
   await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(options.port, options.host, () => {
-      server.off("error", reject);
+    httpServer.once("error", reject);
+    httpServer.listen(options.port, options.host, () => {
+      httpServer.off("error", reject);
       resolve();
     });
   });
 
-  const address = server.address();
+  const address = httpServer.address();
   const activePort =
     typeof address === "object" && address !== null
       ? address.port
@@ -262,14 +108,7 @@ export const startMcpHttpServer = async (
     url: `http://${options.host}:${activePort}`,
     close: async () => {
       await new Promise<void>((resolve, reject) => {
-        server.close((error) => {
-          if (error !== undefined) {
-            reject(error);
-            return;
-          }
-
-          resolve();
-        });
+        httpServer.close((err) => (err ? reject(err) : resolve()));
       });
     },
   };
@@ -277,16 +116,12 @@ export const startMcpHttpServer = async (
 
 export const runMcpHttpRuntime = async (
   env: NodeJS.ProcessEnv = process.env,
-  write: (message: string) => void = (message) => {
-    process.stdout.write(`${message}\n`);
-  },
-  writeError: (message: string) => void = (message) => {
-    process.stderr.write(`${message}\n`);
-  },
+  write: (msg: string) => void = (msg) => process.stdout.write(`${msg}\n`),
+  writeError: (msg: string) => void = (msg) => process.stderr.write(`${msg}\n`),
   onServerStarted?: (server: McpHttpServerHandle) => Promise<void> | void,
 ): Promise<number> => {
   const lighthouseUrl = env.LIGHTHOUSE_URL;
-  if (lighthouseUrl === undefined || lighthouseUrl.length === 0) {
+  if (!lighthouseUrl?.length) {
     writeError("Missing LIGHTHOUSE_URL environment variable.");
     return 1;
   }
@@ -303,24 +138,16 @@ export const runMcpHttpRuntime = async (
     host,
     port: parsedPort,
     apiKey: env.LIGHTHOUSE_API_KEY,
-    bearerToken: env.LIGHTHOUSE_BEARER_TOKEN,
   });
 
   write(renderMcpHttpBanner(server.url));
-
-  if (onServerStarted !== undefined) {
-    await onServerStarted(server);
-  }
-
+  await onServerStarted?.(server);
   return 0;
 };
 
 const isDirectExecution = (): boolean => {
   const argvPath = process.argv[1];
-  if (argvPath === undefined) {
-    return false;
-  }
-
+  if (argvPath === undefined) return false;
   try {
     return fileURLToPath(import.meta.url) === realpathSync(argvPath);
   } catch {

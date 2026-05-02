@@ -33,7 +33,10 @@ describe("mcp-http insecure HTTPS wiring", () => {
       // but the Agent must have been instantiated before any HTTP attempt.
       const response = await fetch(`${server.url}/mcp`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 1,

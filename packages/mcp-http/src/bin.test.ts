@@ -44,23 +44,35 @@ describe("mcp-http runtime entrypoint", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          accept: "application/json, text/event-stream",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 1,
           method: "initialize",
-          params: {},
+          params: {
+            protocolVersion: "2025-11-05",
+            capabilities: {},
+            clientInfo: { name: "test", version: "0.0.0" },
+          },
         }),
       });
 
       expect(initializeResponse.status).toBe(200);
 
-      const payload = (await initializeResponse.json()) as {
-        readonly result?: {
-          readonly serverInfo?: {
-            readonly name?: string;
-          };
-        };
+      const text = await initializeResponse.text();
+      const dataLine = text
+        .split("\n")
+        .find((line) => line.startsWith("data:"));
+
+      if (!dataLine) {
+        throw new Error(
+          `Expected to receive data line in response, got: ${text}`,
+        );
+      }
+
+      const payload = JSON.parse(dataLine.slice("data:".length).trim()) as {
+        readonly result?: { readonly serverInfo?: { readonly name?: string } };
       };
 
       expect(payload.result?.serverInfo?.name).toBe(
