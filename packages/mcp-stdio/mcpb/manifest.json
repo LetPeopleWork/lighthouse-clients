@@ -6,7 +6,7 @@
   "description": "Local stdio MCP server for Lighthouse. Exposes Lighthouse forecasting and flow-metrics tools to any MCP-compatible client (Claude Desktop, Cursor, VS Code, etc.).",
   "author": {
     "name": "LetPeopleWork",
-    "email": "lighthouse@letpeoplework.ch",
+    "email": "lighthouse@letpeople.work",
     "url": "https://github.com/LetPeopleWork"
   },
   "repository": {
