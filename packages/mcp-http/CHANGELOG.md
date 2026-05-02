@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 0.8.1
+
+### Patch Changes
+
+- [`7e11c9e`](https://github.com/LetPeopleWork/lighthouse-clients/commit/7e11c9e61238b722143de8c013a700c9c8cfd2a3) Thanks [@huserben](https://github.com/huserben)! - update Dockerfile for mcp-http to streamline build process and add noExternal configuration in tsup
+
 ## 0.8.0
 
 ### Minor Changes
