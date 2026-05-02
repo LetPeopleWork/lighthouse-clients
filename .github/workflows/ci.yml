@@ -162,7 +162,7 @@ jobs:
       - name: Build and push mcp-http container
         uses: docker/build-push-action@v6
         with:
-          context: ./packages/mcp-http
+          context: .
           file: ./packages/mcp-http/Dockerfile
           push: true
           tags: |

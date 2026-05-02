@@ -13,6 +13,7 @@ export default defineConfig([
     format: ["esm"],
     dts: true,
     tsconfig: "tsconfig.build.json",
+    noExternal: [/@letpeoplework\/.*/],
     banner: {
       js: "#!/usr/bin/env node",
     },
