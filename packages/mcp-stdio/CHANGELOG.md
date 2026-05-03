@@ -1,5 +1,39 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 1.0.0
+
+### Major Changes
+
+- [`2b54253`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2b542537d2756dbeb582764bdff1aa4077e35e3c) Thanks [@huserben](https://github.com/huserben)! - Initial release of cli and mcp for Lighthouse
+
+### Minor Changes
+
+- [`2b54253`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2b542537d2756dbeb582764bdff1aa4077e35e3c) Thanks [@huserben](https://github.com/huserben)! - Add work item age and total work item age metrics, derived client-side from the WIP-over-time endpoint.
+
+  **New exports in `@letpeoplework/lighthouse-client`:**
+
+  - `WorkItemAgeEntry`, `DailyWorkItemAge`, `WorkItemAgeOverTimeResult`
+  - `DailyTotalWorkItemAge`, `TotalWorkItemAgeOverTimeResult`
+  - `getTeamWorkItemAgeOverTime`, `getTeamTotalWorkItemAgeOverTime`
+  - `getPortfolioWorkItemAgeOverTime`, `getPortfolioTotalWorkItemAgeOverTime`
+
+  **Breaking change in `@letpeoplework/lighthouse-cli`:** The `workItemAge` and `totalWorkItemAge` metric payload shapes have changed. Both now return a time-series result with `{ startDate, endDate, daily: [...] }` instead of a single scalar or legacy structure.
+
+  **New MCP tools in `@letpeoplework/lighthouse-mcp-core`:**
+
+  - `lighthouse_team_metrics_workItemAge`
+  - `lighthouse_team_metrics_totalWorkItemAge`
+  - `lighthouse_portfolio_metrics_workItemAge`
+  - `lighthouse_portfolio_metrics_totalWorkItemAge`
+
+### Patch Changes
+
+- [`5c912d6`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5c912d60b3c8b59d6ca8774625f3e670e6c7d3f4) Thanks [@huserben](https://github.com/huserben)! - author email in manifest.json
+
+- Updated dependencies [[`2b54253`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2b542537d2756dbeb582764bdff1aa4077e35e3c), [`2b54253`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2b542537d2756dbeb582764bdff1aa4077e35e3c)]:
+  - @letpeoplework/lighthouse-mcp-core@1.0.0
+  - @letpeoplework/lighthouse-client@1.0.0
+
 ## 0.8.2
 
 ### Patch Changes
