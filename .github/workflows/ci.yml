@@ -193,125 +193,21 @@ jobs:
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
 
-  # ---------------------------------------------------------------------------
-  # Post-release smoke tests
-  # ---------------------------------------------------------------------------
-
-  smoke-linux:
-    runs-on: ubuntu-latest
+  smoke-platform:
+    runs-on: ${{ matrix.os }}
     needs: release
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
 
-      - name: Start smoke fixture
-        id: start_fixture
-        run: |
-          node scripts/smoke-fixture.mjs &
-          for i in $(seq 1 20); do
-            [ -f .fixture-port ] && break
-            sleep 0.5
-          done
-          if [ ! -f .fixture-port ]; then
-            echo "ERROR: Fixture server did not start within 10 s"
-            exit 1
-          fi
-          FIXTURE_PORT=$(cat .fixture-port)
-          echo "fixture_port=$FIXTURE_PORT" >> "$GITHUB_OUTPUT"
-          echo "Fixture ready on port $FIXTURE_PORT"
-
-      - name: Install CLI via npm
-        run: npm install -g @letpeoplework/lighthouse-cli@${{
-          needs.release.outputs.cli_version }}
-
-      - name: Verify CLI starts up
-        run: |
-          OUTPUT=$(lh 2>&1)
-          echo "$OUTPUT"
-          echo "$OUTPUT" | grep -q "lh connection connect" \
-            || (echo "FAIL: lh produced no help output"; exit 1)
-          echo "CLI startup assertion: PASS"
-
-      - name: Connect CLI to fixture
-        run: |
-          lh connection connect \
-            --mode server \
-            --url http://127.0.0.1:${{ steps.start_fixture.outputs.fixture_port }}
-
-      - name: Verify team list
-        run: |
-          TEAMS=$(lh team list --json)
-          echo "$TEAMS"
-          echo "$TEAMS" | grep -q "FixtureTeam" \
-            || (echo "FAIL: FixtureTeam not found in team list"; exit 1)
-          echo "Team list assertion: PASS"
-
-  smoke-windows:
-    runs-on: windows-latest
-    needs: release
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Start smoke fixture
-        id: start_fixture
+    defaults:
+      run:
         shell: bash
-        run: |
-          node scripts/smoke-fixture.mjs &
-          for i in $(seq 1 20); do
-            [ -f .fixture-port ] && break
-            sleep 0.5
-          done
-          if [ ! -f .fixture-port ]; then
-            echo "ERROR: Fixture server did not start within 10 s"
-            exit 1
-          fi
-          FIXTURE_PORT=$(cat .fixture-port)
-          echo "fixture_port=$FIXTURE_PORT" >> "$GITHUB_OUTPUT"
-          echo "Fixture ready on port $FIXTURE_PORT"
 
-      - name: Install CLI via npm
-        run: npm install -g @letpeoplework/lighthouse-cli@${{
-          needs.release.outputs.cli_version }}
-
-      - name: Connect CLI to fixture
-        shell: bash
-        run: |
-          lh connection connect \
-            --mode server \
-            --url http://127.0.0.1:${{ steps.start_fixture.outputs.fixture_port }}
-
-      - name: Verify team list
-        shell: bash
-        run: |
-          TEAMS=$(lh team list --json)
-          echo "$TEAMS"
-          echo "$TEAMS" | grep -q "FixtureTeam" \
-            || (echo "FAIL: FixtureTeam not found in team list"; exit 1)
-          echo "Team list assertion: PASS"
-
-  smoke-macos:
-    runs-on: macos-latest
-    needs: release
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v5
