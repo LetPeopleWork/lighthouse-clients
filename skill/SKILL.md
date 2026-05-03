@@ -17,27 +17,290 @@ description: >
 
 This skill has two capabilities:
 
-1. **CLI Operations** — Querying and managing a Lighthouse instance via the `lh` command-line tool
+1. **Tool/CLI Operations** — Querying and managing a Lighthouse instance via MCP tools or the `lh` CLI
 2. **Flow Advisory** — Interpreting Lighthouse data and coaching on flow improvement
 
-Read the relevant section based on what the user needs. If they share data or screenshots, start with Flow Advisory. If they want to fetch data or run commands, start with CLI Operations. Often you'll use both: fetch data via CLI, then interpret it as a flow advisor.
+Read the relevant section based on what the user needs. If they share data or screenshots, start with Flow Advisory. If they want to fetch data or run commands, start with Tool/CLI Operations. Often you'll use both: fetch data via the available tool/CLI, then interpret it as a flow advisor.
 
 ---
 
-## ⚡ Priority: MCP Tools vs CLI
+## ⚡ Priority: How to Connect to Lighthouse
 
-**Before using the CLI, always check if Lighthouse MCP tools are available.**
+All three Lighthouse client packages expose **identical capabilities** — choose based on what's available in the current environment, following this priority order:
 
-Call `tool_search` with query `"lighthouse team"` or `"lighthouse forecast"`. If tools like `lighthouse_team_list`, `lighthouse_forecast_manual`, `lighthouse_team_metrics_throughput`, etc. are returned — **use those MCP tools instead of the CLI**. They are faster, require no installation or connection setup, and work reliably in all environments.
+```
+1. MCP tools already connected  →  use them directly
+2. MCP stdio available          →  use it (per-developer local process)
+3. MCP HTTP available           →  use it (shared hosted endpoint)
+4. CLI (lh)                     →  fallback when MCP is not an option
+```
 
-**Use MCP tools when:** They appear in tool_search results. This is the default and preferred path.
+### Step 0: Check for already-connected MCP tools
 
-**Use the CLI (`lh`) only when:**
-- MCP tools are not available in this session (tool_search returns nothing relevant)
-- The user explicitly asks to use the CLI
-- You need a CLI-specific operation not covered by the MCP tools (e.g. `lh config`, `lh worktracking`)
+Call `tool_search` with query `"lighthouse team"` or `"lighthouse forecast"`. If tools like `lighthouse_team_list`, `lighthouse_forecast_manual`, `lighthouse_team_metrics_throughput`, etc. are returned — **use those MCP tools immediately**. No installation needed.
 
-**Never use both in the same task** — pick one approach and stick with it. If MCP tools are available, don't fall back to CLI mid-task.
+**Never use both MCP tools and CLI in the same task** — pick one approach and stick with it.
+
+---
+
+### Step 1 (if no MCP tools found): Determine the right access method
+
+Ask the user (or infer from context) which environment they're in:
+
+| Environment | Recommended approach |
+|---|---|
+| Claude Desktop / local MCP client | **MCP stdio** — run as local process per developer |
+| Web-based AI (claude.ai, ChatGPT, etc.) | **MCP HTTP** — requires a hosted endpoint |
+| Team/shared deployment | **MCP HTTP** — one server, many clients |
+| Terminal / scripting / automation | **CLI (`lh`)** — direct command-line access |
+| Any environment where MCP isn't an option | **CLI (`lh`)** — always works |
+
+> **Note:** MCP stdio and the CLI are not available in web-based AI environments (e.g. claude.ai chat) because they require a local process. In those cases, MCP HTTP is the only remote option — the user must have a server running.
+
+---
+
+### MCP stdio — Installation
+
+**Preferred for:** developers running a local MCP client (Claude Desktop, VS Code Copilot, Claude Code).
+
+**Option A: One-click install via `.mcpb` (Desktop Extension)**
+
+Download the latest `.mcpb` file from the GitHub releases page:
+
+```
+https://github.com/LetPeopleWork/lighthouse-clients/releases/latest
+```
+
+Look for `lighthouse-mcp-stdio.mcpb` in the assets. A `.mcpb` file is a Desktop Extension — double-clicking it installs the MCP server into supported desktop apps (e.g. Claude Desktop) in one click, without manual config.
+
+**Option B: npx (no install required)**
+
+Add to your MCP client config (e.g. `claude_desktop_config.json` or `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "lighthouse": {
+      "command": "npx",
+      "args": ["-y", "@letpeoplework/lighthouse-mcp-stdio"],
+      "env": {
+        "LIGHTHOUSE_URL": "https://lighthouse.example.com",
+        "LIGHTHOUSE_API_KEY": "replace-me"
+      }
+    }
+  }
+}
+```
+
+**Environment variables:**
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `LIGHTHOUSE_URL` | Yes | Lighthouse base URL |
+| `LIGHTHOUSE_API_KEY` | No | API key (if auth required) |
+| `LIGHTHOUSE_BEARER_TOKEN` | No | Bearer token (alternative to API key) |
+
+---
+
+### MCP HTTP — Installation
+
+**Preferred for:** web-based AI environments, shared/team deployments, remote dev environments.
+
+The HTTP server runs as a standalone service. MCP clients connect to it over HTTP — no local process needed per client.
+
+**Option A: npx (simplest)**
+
+```bash
+LIGHTHOUSE_URL=https://lighthouse.example.com \
+LIGHTHOUSE_API_KEY=replace-me \
+HOST=127.0.0.1 \
+PORT=3333 \
+npx -y @letpeoplework/lighthouse-mcp-http
+```
+
+When running, it exposes:
+- `GET /health` — health check
+- `POST /mcp` — MCP JSON-RPC endpoint
+
+**Option B: Docker**
+
+```bash
+docker run --rm \
+  -p 3000:3000 \
+  -e HOST=0.0.0.0 \
+  -e PORT=3000 \
+  -e LIGHTHOUSE_URL=https://lighthouse.example.com \
+  -e LIGHTHOUSE_API_KEY=replace-me \
+  ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
+```
+
+Or with `docker-compose.yml`:
+
+```yaml
+services:
+  lighthouse-mcp:
+    image: ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
+    ports:
+      - "3000:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      LIGHTHOUSE_URL: https://lighthouse.example.com
+      LIGHTHOUSE_API_KEY: replace-me
+```
+
+> Set `HOST=0.0.0.0` when running in Docker so the container is reachable outside its namespace.
+
+**Environment variables:**
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `LIGHTHOUSE_URL` | Yes | Lighthouse base URL |
+| `LIGHTHOUSE_API_KEY` | No | API key (if auth required) |
+| `LIGHTHOUSE_BEARER_TOKEN` | No | Bearer token (alternative to API key) |
+| `HOST` | No | Bind host. Defaults to `127.0.0.1` |
+| `PORT` | No | Bind port. Defaults to `3333` |
+
+**Connecting clients to MCP HTTP:**
+
+*VS Code / GitHub Copilot* — add to `.vscode/mcp.json`:
+```json
+{
+  "servers": {
+    "lighthouse": {
+      "type": "http",
+      "url": "http://127.0.0.1:3333/mcp"
+    }
+  }
+}
+```
+
+*Claude Code:*
+```bash
+claude mcp add --transport http --scope user \
+  lighthouse http://127.0.0.1:3333/mcp
+```
+
+With auth header (authenticated reverse proxy):
+```bash
+claude mcp add --transport http --scope user \
+  --header "Authorization: Bearer replace-me" \
+  lighthouse https://mcp.example.com/mcp
+```
+
+*`.mcp.json` for Claude Code projects:*
+```json
+{
+  "mcpServers": {
+    "lighthouse": {
+      "type": "http",
+      "url": "http://127.0.0.1:3333/mcp"
+    }
+  }
+}
+```
+
+---
+
+### CLI (`lh`) — Installation & Usage
+
+**Use when:** MCP is unavailable, the user prefers the terminal, or the task is scripting/automation.
+
+> MCP stdio and CLI **cannot** be used in web-based AI environments — they require a local process. Suggest MCP HTTP in those cases.
+
+**Step 1: Ensure the CLI is available**
+
+```bash
+which lh 2>/dev/null || node $(npm root -g)/@letpeoplework/lighthouse-cli/dist/bin.js --help 2>/dev/null
+```
+
+If not found, install globally:
+
+```bash
+npm install -g @letpeoplework/lighthouse-cli
+```
+
+Verify:
+```bash
+lh version 2>&1 || node $(npm root -g)/@letpeoplework/lighthouse-cli/dist/bin.js version
+```
+
+> **Container/claude.ai environments:** If `lh` is not on PATH after install, use the full path:
+> `node ~/.npm-global/lib/node_modules/@letpeoplework/lighthouse-cli/dist/bin.js`
+> Or: `alias lh="node ~/.npm-global/lib/node_modules/@letpeoplework/lighthouse-cli/dist/bin.js"`
+
+**Step 2: Connect**
+
+```bash
+# Check status
+lh connection status
+
+# Connect (interactive)
+lh connection connect
+
+# Connect to server
+lh connection connect --mode server --url <url>
+lh connection connect --mode server --url <url> --api-key <key>
+lh connection connect --mode server --url <url> --insecure  # skip TLS
+
+# Standalone mode
+lh connection connect --mode standalone
+
+# Env var auth (no stored key)
+export LIGHTHOUSE_API_KEY=<key>
+```
+
+**Command reference**
+
+All commands support `--pretty` (default), `--json` (machine-readable), `--toon` (ASCII). Use `--json` when parsing output programmatically.
+
+```bash
+# List
+lh team list
+lh portfolio list
+
+# Metrics (last 30/90 days by default)
+lh metrics team --id <id>
+lh metrics portfolio --id <id>
+lh metrics team --id <id> --start-date 2025-01-01 --end-date 2025-03-31
+lh metrics team --id <id> --metrics throughput,cycleTime,wip
+
+# Forecasting
+lh forecast manual --team-id <id> --remaining <n> --target-date <date>
+lh forecast backtest \
+  --team-id <id> \
+  --start-date <date> --end-date <date> \
+  --hist-start-date <date> --hist-end-date <date>
+
+# Other
+lh delivery list --portfolio-id <id>
+lh worktracking list
+lh feature list
+lh health check
+lh config output
+lh config output set --format json
+```
+
+Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItemAge`, `arrivals`, `predictabilityScore`
+
+**Common CLI workflows:**
+
+| Goal | Commands |
+|------|----------|
+| Team metrics this quarter | `lh team list --json` → `lh metrics team --id <id> --start-date ... --end-date ... --json` |
+| Forecast 20 items | `lh team list --json` → `lh forecast manual --team-id <id> --remaining 20` |
+| Health check | `lh health check` |
+| Throughput + cycle time as JSON | `lh metrics team --id <id> --metrics throughput,cycleTime --json` |
+
+**Troubleshooting:**
+
+| Problem | Fix |
+|---|---|
+| `lh: command not found` | `npm install -g @letpeoplework/lighthouse-cli` |
+| `Not connected` error | `lh connection connect` first |
+| TLS / cert errors | Add `--insecure` to connect command |
+| Auth failures | Set `LIGHTHOUSE_API_KEY` env var or reconnect with `--api-key` |
+| Old version | `npm install -g @letpeoplework/lighthouse-cli@latest` |
 
 ---
 
@@ -89,145 +352,6 @@ There is no `lighthouse_workitemage` tool. To get age data for in-progress items
 | "When will feature X be done?" | `portfolio_list` → feature ID → `forecast_manual({id: team_id, remainingItems: N})` |
 | "What's the chance we hit date D?" | `team_list` → team ID → `forecast_manual({id: team_id, targetDate: "YYYY-MM-DD"})` |
 | "How accurate are our forecasts?" | `team_list` → team ID → `forecast_backtest({id, startDate, endDate, historicalStartDate, historicalEndDate})` |
-
----
-
-## Part 1: CLI Operations
-
-This enables interaction with a Lighthouse instance using the `@letpeoplework/lighthouse-cli` (`lh`) tool.
-
-> **Only use this section if MCP tools are not available.** See the Priority section above.
-
-### Step 1: Ensure the CLI is Available
-
-Before running any `lh` command, check if it's installed:
-
-```bash
-which lh 2>/dev/null || node $(npm root -g)/@letpeoplework/lighthouse-cli/dist/bin.js --help 2>/dev/null
-```
-
-If not found, install it globally via npm:
-
-```bash
-npm install -g @letpeoplework/lighthouse-cli
-```
-
-After install, the binary is at `lh`. Always verify with:
-
-```bash
-lh version 2>&1 || node $(npm root -g)/@letpeoplework/lighthouse-cli/dist/bin.js version
-```
-
-> **Note for Claude.ai / container environments:** If `lh` is not on PATH after install, use the full path:
-> `node ~/.npm-global/lib/node_modules/@letpeoplework/lighthouse-cli/dist/bin.js`
-> Or set: `alias lh="node ~/.npm-global/lib/node_modules/@letpeoplework/lighthouse-cli/dist/bin.js"`
-
-### Step 2: Connection
-
-All commands except `connection` and `config` require an active connection.
-
-```bash
-# Check connection status
-lh connection status
-
-# Connect (interactive)
-lh connection connect
-
-# Connect (non-interactive, standalone mode)
-lh connection connect --mode standalone
-
-# Connect to a server
-lh connection connect --mode server --url <url>
-# With API key:
-lh connection connect --mode server --url <url> --api-key <key>
-# Skip TLS verification:
-lh connection connect --mode server --url <url> --insecure
-
-# Env var auth (no stored key)
-# Set LIGHTHOUSE_API_KEY=<key> before running any command
-
-# Disconnect
-lh connection disconnect
-```
-
-### Command Reference
-
-**Output Formats** — all commands support: `--pretty` (default), `--json` (machine-readable), `--toon` (ASCII art). Use `--json` when processing output programmatically.
-
-**Teams & Portfolios:**
-```bash
-lh team list
-lh portfolio list
-```
-Use `--json` to get IDs for use in other commands.
-
-**Metrics:**
-```bash
-# Team metrics (last 30 days by default)
-lh metrics team --id <team-id>
-
-# Portfolio metrics (last 90 days by default)
-lh metrics portfolio --id <portfolio-id>
-
-# With date range
-lh metrics team --id <id> --start-date 2025-01-01 --end-date 2025-03-31
-
-# Specific metrics only
-lh metrics team --id <id> --metrics throughput,cycleTime,wip
-```
-
-Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItemAge`, `arrivals`, `predictabilityScore`
-
-**Forecasting:**
-```bash
-# Manual forecast: how many items a team can deliver by a date
-lh forecast manual --team-id <id> --remaining <n> --target-date <date>
-
-# Backtest: evaluate historical forecast accuracy
-lh forecast backtest \
-  --team-id <id> \
-  --start-date <date> \
-  --end-date <date> \
-  --hist-start-date <date> \
-  --hist-end-date <date>
-```
-
-**Delivery, Work Tracking, Features, Config:**
-```bash
-lh delivery list --portfolio-id <id>
-lh worktracking list
-lh feature list
-lh config output
-lh config output set --format json
-lh health check
-```
-
-### Common Workflows
-
-| Goal | Commands |
-|------|----------|
-| Team metrics this quarter | `lh team list --json` → `lh metrics team --id <id> --start-date ... --end-date ... --json` |
-| Forecast 20 items | `lh team list --json` → `lh forecast manual --team-id <id> --remaining 20` |
-| Health check | `lh health check` |
-| Throughput + cycle time as JSON | `lh metrics team --id <id> --metrics throughput,cycleTime --json` |
-
-### Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `lh: command not found` | `npm install -g @letpeoplework/lighthouse-cli` |
-| `Not connected` error | `lh connection connect` first |
-| TLS / cert errors | Add `--insecure` to connect command |
-| Auth failures | Set `LIGHTHOUSE_API_KEY` env var or reconnect with `--api-key` |
-| Old version | `npm install -g @letpeoplework/lighthouse-cli@latest` |
-
-### Tips for Claude
-
-- Always run `lh connection status` before other commands to confirm connectivity.
-- Use `--json` flag when parsing IDs or passing data between commands.
-- If the user hasn't provided connection details, ask for: mode (standalone vs server), URL (if server), and API key (if required).
-- When listing teams/portfolios, always show name alongside ID so the user can verify.
-- Date format: `YYYY-MM-DD`.
 
 ---
 
