@@ -47,8 +47,8 @@
     "lighthouse_url": {
       "type": "string",
       "title": "Lighthouse URL",
-      "description": "Base URL of your Lighthouse instance (e.g. https://lighthouse.example.com). Must include protocol; trailing slash is optional.",
-      "required": true
+      "description": "Base URL of your Lighthouse instance (e.g. https://lighthouse.example.com). Must include protocol. Leave empty if you connect to a standalone instance.",
+      "required": false
     },
     "api_key": {
       "type": "string",
