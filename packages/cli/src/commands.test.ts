@@ -142,14 +142,14 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
-  readonly getTeamTotalWorkItemAge: (
+  readonly getTeamWorkItemAgeOverTime: (
     id: number,
-    asOfDate: string,
+    range?: unknown,
   ) => Promise<{
     readonly ok: true;
-    readonly value: number;
+    readonly value: unknown;
   }>;
-  readonly getTeamTotalWorkItemAgeInfo: (
+  readonly getTeamTotalWorkItemAgeOverTime: (
     id: number,
     range?: unknown,
   ) => Promise<{
@@ -205,14 +205,14 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
-  readonly getPortfolioTotalWorkItemAge: (
+  readonly getPortfolioWorkItemAgeOverTime: (
     id: number,
-    asOfDate: string,
+    range?: unknown,
   ) => Promise<{
     readonly ok: true;
-    readonly value: number;
+    readonly value: unknown;
   }>;
-  readonly getPortfolioTotalWorkItemAgeInfo: (
+  readonly getPortfolioTotalWorkItemAgeOverTime: (
     id: number,
     range?: unknown,
   ) => Promise<{
@@ -323,10 +323,13 @@ const getDefaultMockClient = (): MockClient => ({
     ok: true,
     value: { predictabilityScore: 1 },
   }),
-  getTeamTotalWorkItemAge: async () => ({ ok: true, value: 0 }),
-  getTeamTotalWorkItemAgeInfo: async () => ({
+  getTeamWorkItemAgeOverTime: async () => ({
     ok: true,
-    value: { totalAge: 0, comparison: null },
+    value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
+  }),
+  getTeamTotalWorkItemAgeOverTime: async () => ({
+    ok: true,
+    value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
   }),
   getPortfolioThroughput: async () => ({
     ok: true,
@@ -347,10 +350,13 @@ const getDefaultMockClient = (): MockClient => ({
     ok: true,
     value: { predictabilityScore: 1 },
   }),
-  getPortfolioTotalWorkItemAge: async () => ({ ok: true, value: 0 }),
-  getPortfolioTotalWorkItemAgeInfo: async () => ({
+  getPortfolioWorkItemAgeOverTime: async () => ({
     ok: true,
-    value: { totalAge: 0, comparison: null },
+    value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
+  }),
+  getPortfolioTotalWorkItemAgeOverTime: async () => ({
+    ok: true,
+    value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
   }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
@@ -1295,18 +1301,23 @@ describe("runCliCommand", () => {
       percentiles,
       forecastResults: { 5: 2 },
     };
-    const totalWorkItemAgeInfo = {
-      totalAge: 4,
-      comparison: {
-        direction: "flat",
-        metricLabel: "Total Work Item Age",
-        previousLabel: "2026-01-01",
-        previousValue: "4",
-        currentLabel: "2026-03-31",
-        currentValue: "4",
-        percentageDelta: null,
-        detailRows: null,
-      },
+    const teamWorkItemAge = {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+      daily: [
+        {
+          date: "2026-01-01",
+          items: [{ id: 10, name: "Work Item", referenceId: "WI-10", age: 4 }],
+        },
+      ],
+    };
+    const teamTotalWorkItemAge = {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+      daily: [
+        { date: "2026-01-01", totalAge: 4, itemCount: 1 },
+        { date: "2026-03-31", totalAge: 4, itemCount: 1 },
+      ],
     };
     const { dependencies } = getDependencies({
       connection: {
@@ -1329,10 +1340,13 @@ describe("runCliCommand", () => {
           ok: true,
           value: predictability,
         }),
-        getTeamTotalWorkItemAge: async () => ({ ok: true, value: 4 }),
-        getTeamTotalWorkItemAgeInfo: async () => ({
+        getTeamWorkItemAgeOverTime: async () => ({
           ok: true,
-          value: totalWorkItemAgeInfo,
+          value: teamWorkItemAge,
+        }),
+        getTeamTotalWorkItemAgeOverTime: async () => ({
+          ok: true,
+          value: teamTotalWorkItemAge,
         }),
       },
     });
@@ -1377,13 +1391,14 @@ describe("runCliCommand", () => {
           .daily as readonly Record<string, unknown>[]
       )[0],
     ).toEqual({ date: "2026-01-01", count: 1 });
-    expect(
-      (payload.totalWorkItemAge.daily as Record<string, unknown>)
-        .points as readonly Record<string, unknown>[],
-    ).toEqual([
-      { date: "2026-01-01", value: 4, workItemIds: [] },
-      { date: "2026-03-31", value: 4, workItemIds: [] },
-    ]);
+    expect(payload.totalWorkItemAge).toMatchObject({
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+      daily: [
+        { date: "2026-01-01", totalAge: 4, itemCount: 1 },
+        { date: "2026-03-31", totalAge: 4, itemCount: 1 },
+      ],
+    });
     expect(
       (
         (payload.cycleTime.percentiles as Record<string, unknown>)
@@ -1417,17 +1432,12 @@ describe("runCliCommand", () => {
       blackoutDayIndices: [0],
     };
     const totalWorkItemAgeInfo = {
-      totalAge: 7,
-      comparison: {
-        direction: "up",
-        metricLabel: "Total Work Item Age",
-        previousLabel: "2026-02-01",
-        previousValue: "3",
-        currentLabel: "2026-04-30",
-        currentValue: "7",
-        percentageDelta: "133",
-        detailRows: null,
-      },
+      startDate: "2026-02-01",
+      endDate: "2026-04-30",
+      daily: [
+        { date: "2026-02-01", totalAge: 3, itemCount: 1 },
+        { date: "2026-04-30", totalAge: 7, itemCount: 1 },
+      ],
     };
     const { dependencies } = getDependencies({
       connection: {
@@ -1452,8 +1462,7 @@ describe("runCliCommand", () => {
             forecastResults: { 3: 4 },
           },
         }),
-        getPortfolioTotalWorkItemAge: async () => ({ ok: true, value: 7 }),
-        getPortfolioTotalWorkItemAgeInfo: async () => ({
+        getPortfolioTotalWorkItemAgeOverTime: async () => ({
           ok: true,
           value: totalWorkItemAgeInfo,
         }),
@@ -1501,13 +1510,14 @@ describe("runCliCommand", () => {
       { date: "2026-02-01", count: 1 },
       { date: "2026-02-02", count: 2 },
     ]);
-    expect(
-      (payload.totalWorkItemAge.daily as Record<string, unknown>)
-        .points as readonly Record<string, unknown>[],
-    ).toEqual([
-      { date: "2026-02-01", value: 3, workItemIds: [] },
-      { date: "2026-04-30", value: 7, workItemIds: [] },
-    ]);
+    expect(payload.totalWorkItemAge).toMatchObject({
+      startDate: "2026-02-01",
+      endDate: "2026-04-30",
+      daily: [
+        { date: "2026-02-01", totalAge: 3, itemCount: 1 },
+        { date: "2026-04-30", totalAge: 7, itemCount: 1 },
+      ],
+    });
   });
 
   it("reuses a single team metrics date for start and end", async () => {

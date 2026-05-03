@@ -38,7 +38,11 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_refresh"
     | "lighthouse_team_metrics_throughput"
     | "lighthouse_team_metrics_cycleTimePercentiles"
+    | "lighthouse_team_metrics_workItemAge"
+    | "lighthouse_team_metrics_totalWorkItemAge"
     | "lighthouse_portfolio_metrics_throughput"
+    | "lighthouse_portfolio_metrics_workItemAge"
+    | "lighthouse_portfolio_metrics_totalWorkItemAge"
     | "lighthouse_feature_get"
     | "lighthouse_feature_workitems"
     | "lighthouse_delivery_list"
@@ -240,6 +244,46 @@ type McpRuntimeClient = {
         readonly error: { readonly category: string; readonly reason: string };
       }
   >;
+  readonly getTeamWorkItemAgeOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamTotalWorkItemAgeOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioWorkItemAgeOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioTotalWorkItemAgeOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
   readonly getFeaturesByIds: (ids: readonly number[]) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
     | {
@@ -420,6 +464,62 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     name: "lighthouse_portfolio_metrics_throughput",
     description:
       "Get throughput run-chart data for a portfolio by ID, optionally filtered by start and end dates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_workItemAge",
+    description:
+      "Get per-item work item age over time for a team by ID. Returns daily snapshots with each in-progress item's age in days derived from its startedDate. Items without a startedDate are omitted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_totalWorkItemAge",
+    description:
+      "Get the total (summed) work item age over time for a team by ID. Returns daily totals of all in-progress item ages derived from startedDate. Items without a startedDate are not counted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_workItemAge",
+    description:
+      "Get per-item work item age over time for a portfolio by ID. Returns daily snapshots with each in-progress item's age in days derived from its startedDate. Items without a startedDate are omitted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_totalWorkItemAge",
+    description:
+      "Get the total (summed) work item age over time for a portfolio by ID. Returns daily totals of all in-progress item ages derived from startedDate. Items without a startedDate are not counted.",
     inputSchema: {
       type: "object",
       properties: {
@@ -615,7 +715,27 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
   }),
+  lighthouse_team_metrics_workItemAge: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_team_metrics_totalWorkItemAge: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
   lighthouse_portfolio_metrics_throughput: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_portfolio_metrics_workItemAge: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_portfolio_metrics_totalWorkItemAge: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
@@ -842,6 +962,77 @@ export const createMcpCoreRuntime = (
       if (result.ok) {
         return getSuccessToolResult(
           `portfolio throughput: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_workItemAge") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getTeamWorkItemAgeOverTime(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team workItemAge: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_totalWorkItemAge") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getTeamTotalWorkItemAgeOverTime(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team totalWorkItemAge: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_workItemAge") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getPortfolioWorkItemAgeOverTime(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio workItemAge: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_totalWorkItemAge") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getPortfolioTotalWorkItemAgeOverTime(
+        id,
+        range,
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio totalWorkItemAge: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(

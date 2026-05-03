@@ -59,8 +59,8 @@ type CliDomainClientLike = Pick<
   | "getTeamCycleTimePercentiles"
   | "getTeamCycleTimeData"
   | "getTeamPredictabilityScore"
-  | "getTeamTotalWorkItemAge"
-  | "getTeamTotalWorkItemAgeInfo"
+  | "getTeamWorkItemAgeOverTime"
+  | "getTeamTotalWorkItemAgeOverTime"
   | "getPortfolioThroughput"
   | "getPortfolioCycleTimePercentiles"
   | "getPortfolioArrivals"
@@ -68,8 +68,8 @@ type CliDomainClientLike = Pick<
   | "getPortfolioWip"
   | "getPortfolioCycleTimeData"
   | "getPortfolioPredictabilityScore"
-  | "getPortfolioTotalWorkItemAge"
-  | "getPortfolioTotalWorkItemAgeInfo"
+  | "getPortfolioWorkItemAgeOverTime"
+  | "getPortfolioTotalWorkItemAgeOverTime"
   | "getFeaturesByIds"
   | "getFeaturesByReferences"
   | "getFeatureWorkItems"
@@ -1138,8 +1138,8 @@ const buildMetricsPayload = async (
 
   const all = filter === null;
   const needs = (key: MetricKey): boolean => all || filter.has(key);
-  // wip.current is shared between the "wip" and "workItemAge" sections
-  const needsCurrentWip = needs("wip") || needs("workItemAge");
+  // wip.current is shared between the "wip" sections only (workItemAge now uses WIP-over-time)
+  const needsCurrentWip = needs("wip");
   const isTeam = scope === "team";
 
   // Execute a request only when condition is true; otherwise resolves to null
@@ -1160,8 +1160,8 @@ const buildMetricsPayload = async (
     cycleTimePercentilesResult,
     cycleTimeDataResult,
     predictabilityScoreResult,
-    totalWorkItemAgeResult,
-    totalWorkItemAgeInfoResult,
+    workItemAgeOverTimeResult,
+    totalWorkItemAgeOverTimeResult,
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
@@ -1198,15 +1198,15 @@ const buildMetricsPayload = async (
         ? client.getTeamPredictabilityScore(entityId, range)
         : client.getPortfolioPredictabilityScore(entityId, range),
     ),
-    maybeFetch(needs("totalWorkItemAge"), () =>
+    maybeFetch(needs("workItemAge"), () =>
       isTeam
-        ? client.getTeamTotalWorkItemAge(entityId, range.endDate)
-        : client.getPortfolioTotalWorkItemAge(entityId, range.endDate),
+        ? client.getTeamWorkItemAgeOverTime(entityId, range)
+        : client.getPortfolioWorkItemAgeOverTime(entityId, range),
     ),
     maybeFetch(needs("totalWorkItemAge"), () =>
       isTeam
-        ? client.getTeamTotalWorkItemAgeInfo(entityId, range)
-        : client.getPortfolioTotalWorkItemAgeInfo(entityId, range),
+        ? client.getTeamTotalWorkItemAgeOverTime(entityId, range)
+        : client.getPortfolioTotalWorkItemAgeOverTime(entityId, range),
     ),
   ]);
 
@@ -1217,8 +1217,10 @@ const buildMetricsPayload = async (
   const cycleTimePercentilesValue = resolveOrSkip(cycleTimePercentilesResult);
   const cycleTimeDataValue = resolveOrSkip(cycleTimeDataResult);
   const predictabilityScoreValue = resolveOrSkip(predictabilityScoreResult);
-  const totalWorkItemAgeValue = resolveOrSkip(totalWorkItemAgeResult);
-  const totalWorkItemAgeInfoValue = resolveOrSkip(totalWorkItemAgeInfoResult);
+  const workItemAgeOverTimeValue = resolveOrSkip(workItemAgeOverTimeResult);
+  const totalWorkItemAgeOverTimeValue = resolveOrSkip(
+    totalWorkItemAgeOverTimeResult,
+  );
 
   const currentItems =
     currentWipValue === null
@@ -1294,36 +1296,20 @@ const buildMetricsPayload = async (
 
   if (needs("workItemAge")) {
     payload.workItemAge =
-      currentItems === null || isMetricErrorValue(currentItems)
-        ? (currentItems ?? getMetricUnavailableValue(unavailableReason))
-        : {
-            asOfDate: range.endDate,
-            itemsInProgress: currentItems,
-          };
+      workItemAgeOverTimeValue === null ||
+      isMetricErrorValue(workItemAgeOverTimeValue)
+        ? (workItemAgeOverTimeValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : workItemAgeOverTimeValue;
   }
 
   if (needs("totalWorkItemAge")) {
-    payload.totalWorkItemAge = {
-      current:
-        totalWorkItemAgeValue === null ||
-        isMetricErrorValue(totalWorkItemAgeValue)
-          ? (totalWorkItemAgeValue ??
-            getMetricUnavailableValue(unavailableReason))
-          : {
-              asOfDate: range.endDate,
-              value: totalWorkItemAgeValue,
-            },
-      daily:
-        totalWorkItemAgeInfoValue === null ||
-        isMetricErrorValue(totalWorkItemAgeInfoValue)
-          ? (totalWorkItemAgeInfoValue ??
-            getMetricUnavailableValue(unavailableReason))
-          : {
-              startDate: range.startDate,
-              endDate: range.endDate,
-              points: getDailyValueSeriesFromInfo(totalWorkItemAgeInfoValue),
-            },
-    };
+    payload.totalWorkItemAge =
+      totalWorkItemAgeOverTimeValue === null ||
+      isMetricErrorValue(totalWorkItemAgeOverTimeValue)
+        ? (totalWorkItemAgeOverTimeValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : totalWorkItemAgeOverTimeValue;
   }
 
   if (needs("arrivals")) {

@@ -842,6 +842,26 @@ describe("createLighthouseClient", () => {
       "http://localhost:5000/api/v1/teams/5/metrics/totalWorkItemAgeInfo?startDate=2026-01-01&endDate=2026-03-31",
       { totalAge: 0, comparison: null },
     );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamWorkItemAgeOverTime(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/wipOverTime?startDate=2026-01-01&endDate=2026-03-31",
+      { workItemsPerUnitOfTime: {}, total: 0, blackoutDayIndices: [] },
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getTeamTotalWorkItemAgeOverTime(5, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/teams/5/metrics/wipOverTime?startDate=2026-01-01&endDate=2026-03-31",
+      { workItemsPerUnitOfTime: {}, total: 0, blackoutDayIndices: [] },
+    );
   });
 
   it("routes additional portfolio metrics endpoints through the versioned API contract", async () => {
@@ -916,6 +936,177 @@ describe("createLighthouseClient", () => {
       "http://localhost:5000/api/v1/portfolios/7/metrics/totalWorkItemAgeInfo?startDate=2026-01-01&endDate=2026-03-31",
       { totalAge: 0, comparison: null },
     );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioWorkItemAgeOverTime(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/wipOverTime?startDate=2026-01-01&endDate=2026-03-31",
+      { workItemsPerUnitOfTime: {}, total: 0, blackoutDayIndices: [] },
+    );
+
+    await expectMetricRequest(
+      (client) =>
+        client.getPortfolioTotalWorkItemAgeOverTime(7, {
+          startDate: "2026-01-01",
+          endDate: "2026-03-31",
+        }),
+      "http://localhost:5000/api/v1/portfolios/7/metrics/wipOverTime?startDate=2026-01-01&endDate=2026-03-31",
+      { workItemsPerUnitOfTime: {}, total: 0, blackoutDayIndices: [] },
+    );
+  });
+
+  it("derives work item age over time from wip data", async () => {
+    const wipPayload = {
+      workItemsPerUnitOfTime: {
+        "0": [
+          {
+            id: 1,
+            name: "Item A",
+            referenceId: "A-1",
+            startedDate: "2026-01-01T00:00:00Z",
+          },
+          {
+            id: 2,
+            name: "Item B",
+            referenceId: "B-2",
+            startedDate: null,
+          },
+        ],
+        "2": [
+          {
+            id: 3,
+            name: "Item C",
+            referenceId: "C-3",
+            startedDate: "2025-12-30T00:00:00Z",
+          },
+        ],
+      },
+      total: 2,
+      blackoutDayIndices: [],
+    };
+
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wipPayload),
+        json: async () => wipPayload,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamWorkItemAgeOverTime(5, {
+      startDate: "2026-01-01",
+      endDate: "2026-01-03",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.startDate).toBe("2026-01-01");
+    expect(result.value.endDate).toBe("2026-01-03");
+    // day index 0 → 2026-01-01; Item A started 2026-01-01 → age 1; Item B skipped (no startedDate)
+    const day0 = result.value.daily.find((d) => d.date === "2026-01-01");
+    expect(day0?.items).toHaveLength(1);
+    expect(day0?.items[0]).toMatchObject({
+      id: 1,
+      name: "Item A",
+      referenceId: "A-1",
+      age: 1,
+    });
+    // day index 2 → 2026-01-03; Item C started 2025-12-30 → age = (3 - (-2)) = 5 days
+    const day2 = result.value.daily.find((d) => d.date === "2026-01-03");
+    expect(day2?.items).toHaveLength(1);
+    expect(day2?.items[0]).toMatchObject({ id: 3, age: 5 });
+  });
+
+  it("derives total work item age over time from wip data", async () => {
+    const wipPayload = {
+      workItemsPerUnitOfTime: {
+        "0": [
+          {
+            id: 1,
+            name: "Item A",
+            referenceId: "A-1",
+            startedDate: "2026-01-01T00:00:00Z",
+          },
+          {
+            id: 2,
+            name: "Item B",
+            referenceId: "B-2",
+            startedDate: "2025-12-31T00:00:00Z",
+          },
+        ],
+        "1": [
+          {
+            id: 2,
+            name: "Item B",
+            referenceId: "B-2",
+            startedDate: "2025-12-31T00:00:00Z",
+          },
+        ],
+      },
+      total: 2,
+      blackoutDayIndices: [],
+    };
+
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wipPayload),
+        json: async () => wipPayload,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamTotalWorkItemAgeOverTime(5, {
+      startDate: "2026-01-01",
+      endDate: "2026-01-02",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // day 0 (2026-01-01): Item A age=1, Item B age=2 → totalAge=3, itemCount=2
+    const day0 = result.value.daily.find((d) => d.date === "2026-01-01");
+    expect(day0).toMatchObject({ totalAge: 3, itemCount: 2 });
+    // day 1 (2026-01-02): Item B age=3 → totalAge=3, itemCount=1
+    const day1 = result.value.daily.find((d) => d.date === "2026-01-02");
+    expect(day1).toMatchObject({ totalAge: 3, itemCount: 1 });
   });
 
   it("gets features by ids", async () => {

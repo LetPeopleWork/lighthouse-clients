@@ -871,6 +871,36 @@ export type BacktestInput = {
   readonly historicalEndDate: string;
 };
 
+export type WorkItemAgeEntry = {
+  readonly id: number;
+  readonly name: string;
+  readonly referenceId: string;
+  readonly age: number;
+};
+
+export type DailyWorkItemAge = {
+  readonly date: string;
+  readonly items: readonly WorkItemAgeEntry[];
+};
+
+export type DailyTotalWorkItemAge = {
+  readonly date: string;
+  readonly totalAge: number;
+  readonly itemCount: number;
+};
+
+export type WorkItemAgeOverTimeResult = {
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly daily: readonly DailyWorkItemAge[];
+};
+
+export type TotalWorkItemAgeOverTimeResult = {
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly daily: readonly DailyTotalWorkItemAge[];
+};
+
 export type LighthouseClient = {
   readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
   readonly getVersion: () => Promise<LighthouseApiResult<string>>;
@@ -989,6 +1019,14 @@ export type LighthouseClient = {
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamWorkItemAgeOverTime: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<WorkItemAgeOverTimeResult>>;
+  readonly getTeamTotalWorkItemAgeOverTime: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<TotalWorkItemAgeOverTimeResult>>;
   readonly getPortfolioTotalWorkItemAge: (
     portfolioId: number,
     asOfDate: string,
@@ -997,6 +1035,14 @@ export type LighthouseClient = {
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioWorkItemAgeOverTime: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<WorkItemAgeOverTimeResult>>;
+  readonly getPortfolioTotalWorkItemAgeOverTime: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<TotalWorkItemAgeOverTimeResult>>;
 
   // Features
   readonly getFeaturesByIds: (
@@ -1295,6 +1341,81 @@ const getMetricsDateRangeQuery = (range: MetricsDateRange): string =>
 const getMetricsAsOfDateQuery = (asOfDate: string): string =>
   `asOfDate=${encodeURIComponent(asOfDate)}`;
 
+type WipItemDto = {
+  readonly id: number;
+  readonly name: string;
+  readonly referenceId: string;
+  readonly startedDate: string | null | undefined;
+};
+
+type WipRunChartData = {
+  readonly workItemsPerUnitOfTime: Record<string, WipItemDto[]>;
+};
+
+const addUtcDays = (dateStr: string, days: number): string => {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().split("T")[0];
+};
+
+const computeItemAge = (dayDate: string, startedDate: string): number => {
+  const day = Date.parse(`${dayDate}T00:00:00Z`);
+  const started = Date.parse(startedDate);
+  const diffDays = Math.floor((day - started) / 86400000);
+  return Math.max(1, diffDays + 1);
+};
+
+const deriveWorkItemAgeOverTime = (
+  startDate: string,
+  endDate: string,
+  wipData: WipRunChartData,
+): WorkItemAgeOverTimeResult => {
+  const daily: DailyWorkItemAge[] = Object.entries(
+    wipData.workItemsPerUnitOfTime,
+  ).map(([dayIndexStr, items]) => {
+    const dayIndex = Number.parseInt(dayIndexStr, 10);
+    const date = addUtcDays(startDate, dayIndex);
+    const ageItems: WorkItemAgeEntry[] = items
+      .filter(
+        (item): item is WipItemDto & { readonly startedDate: string } =>
+          item.startedDate != null && item.startedDate.length > 0,
+      )
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        referenceId: item.referenceId,
+        age: computeItemAge(date, item.startedDate),
+      }));
+    return { date, items: ageItems };
+  });
+  daily.sort((a, b) => a.date.localeCompare(b.date));
+  return { startDate, endDate, daily };
+};
+
+const deriveTotalWorkItemAgeOverTime = (
+  startDate: string,
+  endDate: string,
+  wipData: WipRunChartData,
+): TotalWorkItemAgeOverTimeResult => {
+  const daily: DailyTotalWorkItemAge[] = Object.entries(
+    wipData.workItemsPerUnitOfTime,
+  ).map(([dayIndexStr, items]) => {
+    const dayIndex = Number.parseInt(dayIndexStr, 10);
+    const date = addUtcDays(startDate, dayIndex);
+    const activeItems = items.filter(
+      (item): item is WipItemDto & { readonly startedDate: string } =>
+        item.startedDate != null && item.startedDate.length > 0,
+    );
+    const totalAge = activeItems.reduce(
+      (sum, item) => sum + computeItemAge(date, item.startedDate),
+      0,
+    );
+    return { date, totalAge, itemCount: activeItems.length };
+  });
+  daily.sort((a, b) => a.date.localeCompare(b.date));
+  return { startDate, endDate, daily };
+};
+
 export const createLighthouseClient = (
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies = {},
@@ -1528,6 +1649,48 @@ export const createLighthouseClient = (
       { method: "GET" },
     );
   },
+  getTeamWorkItemAgeOverTime: async (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    const wipResult = await requestJson<WipRunChartData>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+    if (!wipResult.ok) {
+      return wipResult;
+    }
+    return {
+      ok: true as const,
+      value: deriveWorkItemAgeOverTime(r.startDate, r.endDate, wipResult.value),
+    };
+  },
+  getTeamTotalWorkItemAgeOverTime: async (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    const wipResult = await requestJson<WipRunChartData>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+    if (!wipResult.ok) {
+      return wipResult;
+    }
+    return {
+      ok: true as const,
+      value: deriveTotalWorkItemAgeOverTime(
+        r.startDate,
+        r.endDate,
+        wipResult.value,
+      ),
+    };
+  },
   getPortfolioThroughput: async (
     portfolioId: number,
     range?: MetricsDateRange,
@@ -1625,6 +1788,48 @@ export const createLighthouseClient = (
       `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
       { method: "GET" },
     );
+  },
+  getPortfolioWorkItemAgeOverTime: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    const wipResult = await requestJson<WipRunChartData>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+    if (!wipResult.ok) {
+      return wipResult;
+    }
+    return {
+      ok: true as const,
+      value: deriveWorkItemAgeOverTime(r.startDate, r.endDate, wipResult.value),
+    };
+  },
+  getPortfolioTotalWorkItemAgeOverTime: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    const wipResult = await requestJson<WipRunChartData>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+    if (!wipResult.ok) {
+      return wipResult;
+    }
+    return {
+      ok: true as const,
+      value: deriveTotalWorkItemAgeOverTime(
+        r.startDate,
+        r.endDate,
+        wipResult.value,
+      ),
+    };
   },
   getFeaturesByIds: async (ids: readonly number[]) => {
     const queryString = ids

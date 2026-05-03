@@ -339,11 +339,17 @@ If you see the message `features: provide ids (array of numbers) or refs (array 
 
 `lighthouse_portfolio_list` already returns each portfolio's feature list (id + name). If the user only needs feature names and IDs, **do not call `lighthouse_feature_get`** — the data is already there. Only call `feature_get` when you need additional detail (status, size, dates, etc.).
 
-### Work Item Age — no direct endpoint
+### Work Item Age — direct MCP tools and CLI
 
-There is no `lighthouse_workitemage` tool. To get age data for in-progress items on a feature:
-1. `lighthouse_feature_workitems({id: <feature_id>})` — returns work items with a `workItemAge` field
-2. Filter for items where `stateCategory !== "Done"`
+Use the dedicated tools to retrieve work item age data:
+- `lighthouse_team_metrics_workItemAge({id: <team_id>})` — per-item daily ages for the team's WIP
+- `lighthouse_team_metrics_totalWorkItemAge({id: <team_id>})` — daily total age summed across all WIP items
+- `lighthouse_portfolio_metrics_workItemAge({id: <portfolio_id>})` — per-item daily ages for portfolio WIP
+- `lighthouse_portfolio_metrics_totalWorkItemAge({id: <portfolio_id>})` — daily total age for portfolio WIP
+
+All accept optional `startDate` / `endDate` parameters. Results include a `daily` array of `{ date, items[{id, name, referenceId, age}] }` (per-item) or `{ date, totalAge, itemCount }` (total).
+
+For age data on items within a specific *feature*, use `lighthouse_feature_workitems({id: <feature_id>})` — returns work items with a `workItemAge` field.
 
 ### Forecast workflows
 
