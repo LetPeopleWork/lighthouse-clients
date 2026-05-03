@@ -61,6 +61,7 @@ jobs:
 
     outputs:
       cli_version: ${{ steps.get_versions.outputs.cli_version }}
+      release_tag: ${{ steps.get_versions.outputs.release_tag }}
 
     permissions:
       contents: write
@@ -79,7 +80,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       - name: Update npm to latest version for OIDC support
         run: npm install -g npm@latest
@@ -90,10 +91,14 @@ jobs:
           CLI_VER=$(jq -r .version packages/cli/package.json)
           MCP_VER=$(jq -r .version packages/mcp-http/package.json)
           MCP_STDIO_VER=$(jq -r .version packages/mcp-stdio/package.json)
+          RELEASE_DATE=$(date -u +'%Y.%m.%d')
+          RELEASE_TAG="${RELEASE_DATE}.${{ github.run_number }}"
           echo "CLI_VERSION=$CLI_VER" >> $GITHUB_ENV
           echo "MCP_VERSION=$MCP_VER" >> $GITHUB_ENV
           echo "MCP_STDIO_VERSION=$MCP_STDIO_VER" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
           echo "cli_version=$CLI_VER" >> $GITHUB_OUTPUT
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -129,6 +134,11 @@ jobs:
           npx -y @anthropic-ai/mcpb validate mcpb-staging/manifest.json
           npx -y @anthropic-ai/mcpb pack mcpb-staging/ release-assets/lighthouse-mcp-stdio.mcpb
 
+      - name: Pack skill folder
+        run: |
+          cd skill
+          zip -qr ../release-assets/lighthouse-skill.zip .
+
       - name: Copy install/uninstall scripts to release assets
         run: |
           cp scripts/install.sh release-assets/install.sh
@@ -139,8 +149,8 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.CLI_VERSION }}
-          name: Lighthouse Clients ${{ env.CLI_VERSION }}
+          tag_name: v${{ env.RELEASE_TAG }}
+          name: Lighthouse Clients ${{ env.RELEASE_TAG }}
           prerelease: false
           files: |
             release-assets/lh-linux-x64.tar.gz
@@ -151,6 +161,7 @@ jobs:
             release-assets/install.ps1
             release-assets/uninstall.ps1
             release-assets/lighthouse-mcp-stdio.mcpb
+            release-assets/lighthouse-skill.zip
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -159,7 +170,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check if mcp-http image version already exists
+        id: check_docker
+        run: |
+          IMAGE=ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Image $IMAGE already exists — skipping publish"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Image $IMAGE not found — will publish"
+          fi
+
       - name: Build and push mcp-http container
+        if: steps.check_docker.outputs.exists == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -168,8 +192,7 @@ jobs:
           tags: |
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
-  
-  
+
   # ---------------------------------------------------------------------------
   # Post-release smoke tests
   # ---------------------------------------------------------------------------
@@ -206,7 +229,8 @@ jobs:
           echo "Fixture ready on port $FIXTURE_PORT"
 
       - name: Install CLI via npm
-        run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
+        run: npm install -g @letpeoplework/lighthouse-cli@${{
+          needs.release.outputs.cli_version }}
 
       - name: Verify CLI starts up
         run: |
@@ -263,7 +287,8 @@ jobs:
           echo "Fixture ready on port $FIXTURE_PORT"
 
       - name: Install CLI via npm
-        run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
+        run: npm install -g @letpeoplework/lighthouse-cli@${{
+          needs.release.outputs.cli_version }}
 
       - name: Connect CLI to fixture
         shell: bash
@@ -313,7 +338,8 @@ jobs:
           echo "Fixture ready on port $FIXTURE_PORT"
 
       - name: Install CLI via npm
-        run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
+        run: npm install -g @letpeoplework/lighthouse-cli@${{
+          needs.release.outputs.cli_version }}
 
       - name: Verify CLI starts up
         run: |
@@ -353,7 +379,8 @@ jobs:
           node-version: 24
 
       - name: Install CLI via npm
-        run: npm install -g @letpeoplework/lighthouse-cli@${{ needs.release.outputs.cli_version }}
+        run: npm install -g @letpeoplework/lighthouse-cli@${{
+          needs.release.outputs.cli_version }}
 
       - name: Start Lighthouse (SQLite mode)
         run: |
