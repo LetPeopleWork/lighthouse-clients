@@ -3,7 +3,7 @@
 "@letpeoplework/lighthouse-cli": major
 "@letpeoplework/lighthouse-mcp-core": minor
 "@letpeoplework/lighthouse-mcp-stdio": minor
-"@letpeoplework/lighthouse-mcp-sse": minor
+"@letpeoplework/lighthouse-mcp-http": minor
 ---
 
 Add work item age and total work item age metrics, derived client-side from the WIP-over-time endpoint.
