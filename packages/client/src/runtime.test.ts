@@ -1109,6 +1109,174 @@ describe("createLighthouseClient", () => {
     expect(day1).toMatchObject({ totalAge: 3, itemCount: 1 });
   });
 
+  it("computes per-item age correctly when startedDate has a non-midnight UTC time", async () => {
+    // Item started at 14:34 UTC on 2026-05-04; query is for 2026-05-05.
+    // Expected age = 2 (calendar day difference + 1), matching backend .Date normalisation.
+    // Bug: without time truncation, Date.parse("2026-05-04T14:34:08Z") is only ~9.4 h before
+    // midnight of 2026-05-05, so Math.floor(…/86400000) = 0, giving age = 1 instead of 2.
+    const wipPayload = {
+      workItemsPerUnitOfTime: {
+        "0": [
+          {
+            id: 141,
+            name: "DATAOP-141",
+            referenceId: "DATAOP-141",
+            startedDate: "2026-05-04T14:34:08Z",
+          },
+        ],
+      },
+      total: 1,
+      blackoutDayIndices: [],
+    };
+
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wipPayload),
+        json: async () => wipPayload,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamWorkItemAgeOverTime(5, {
+      startDate: "2026-05-05",
+      endDate: "2026-05-05",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const day0 = result.value.daily.find((d) => d.date === "2026-05-05");
+    expect(day0?.items).toHaveLength(1);
+    expect(day0?.items[0]).toMatchObject({ id: 141, age: 2 });
+  });
+
+  it("computes total age correctly when startedDate has a non-midnight UTC time", async () => {
+    // Same scenario as above but via getTeamTotalWorkItemAgeOverTime.
+    const wipPayload = {
+      workItemsPerUnitOfTime: {
+        "0": [
+          {
+            id: 141,
+            name: "DATAOP-141",
+            referenceId: "DATAOP-141",
+            startedDate: "2026-05-04T14:34:08Z",
+          },
+        ],
+      },
+      total: 1,
+      blackoutDayIndices: [],
+    };
+
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wipPayload),
+        json: async () => wipPayload,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamTotalWorkItemAgeOverTime(5, {
+      startDate: "2026-05-05",
+      endDate: "2026-05-05",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const day0 = result.value.daily.find((d) => d.date === "2026-05-05");
+    expect(day0).toMatchObject({ totalAge: 2, itemCount: 1 });
+  });
+
+  it("keeps age at 1 for a same-day item with a non-midnight UTC startedDate", async () => {
+    // Item started at 10:00 UTC on 2026-05-05; query is also for 2026-05-05.
+    // Expected age = 1 (started same calendar day), regardless of time component.
+    const wipPayload = {
+      workItemsPerUnitOfTime: {
+        "0": [
+          {
+            id: 200,
+            name: "SAME-DAY",
+            referenceId: "SAME-DAY",
+            startedDate: "2026-05-05T10:00:00Z",
+          },
+        ],
+      },
+      total: 1,
+      blackoutDayIndices: [],
+    };
+
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wipPayload),
+        json: async () => wipPayload,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamWorkItemAgeOverTime(5, {
+      startDate: "2026-05-05",
+      endDate: "2026-05-05",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const day0 = result.value.daily.find((d) => d.date === "2026-05-05");
+    expect(day0?.items).toHaveLength(1);
+    expect(day0?.items[0]).toMatchObject({ id: 200, age: 1 });
+  });
+
   it("gets features by ids", async () => {
     const features = [
       { id: 1, name: "Feature A" },

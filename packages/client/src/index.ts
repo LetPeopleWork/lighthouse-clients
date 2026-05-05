@@ -1360,7 +1360,8 @@ const addUtcDays = (dateStr: string, days: number): string => {
 
 const computeItemAge = (dayDate: string, startedDate: string): number => {
   const day = Date.parse(`${dayDate}T00:00:00Z`);
-  const started = Date.parse(startedDate);
+  const startedDateOnly = startedDate.substring(0, 10); // "YYYY-MM-DD" — normalise to midnight UTC, matching backend .Date
+  const started = Date.parse(`${startedDateOnly}T00:00:00Z`);
   const diffDays = Math.floor((day - started) / 86400000);
   return Math.max(1, diffDays + 1);
 };
