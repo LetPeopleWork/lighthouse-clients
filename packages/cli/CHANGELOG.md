@@ -1,5 +1,14 @@
 # @letpeoplework/lighthouse-cli
 
+## 1.0.1
+
+### Patch Changes
+
+- [`9c0a057`](https://github.com/LetPeopleWork/lighthouse-clients/commit/9c0a0575c2803ff2fcbc5168ffa1aea87338ca6d) Thanks [@huserben](https://github.com/huserben)! - fix item age calculation with non-midnight UTC startedDate
+
+- Updated dependencies [[`9c0a057`](https://github.com/LetPeopleWork/lighthouse-clients/commit/9c0a0575c2803ff2fcbc5168ffa1aea87338ca6d)]:
+  - @letpeoplework/lighthouse-client@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

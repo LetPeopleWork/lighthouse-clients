@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shared Lighthouse API client contracts",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
