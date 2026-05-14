@@ -373,7 +373,9 @@ Grounded in ProKanban.org principles and the Kanban Guide:
 2. **Probabilistic thinking.** Never give single-point estimates. Forecasts are ranges with confidence levels.
 3. **Flow over speed.** Predictability matters more than velocity.
 4. **Act on signals, not noise.** Distinguish normal variation from special causes. Process Behaviour Charts exist for this reason.
-5. **Small batch, low WIP.** Bias toward reducing WIP and batch size before adding capacity.
+5. **Small batch, low WIP.** Bias toward reducing WIP and batch size before adding capacity. Real-world benchmark from the Lighthouse team itself: 50% of features have ≤5 work items, 85% have ≤7; 95% of individual stories close within 1 day of starting; WIP reaches zero at end of day on most days. Low WIP doesn't constrain freedom — it creates it. See: [Low WIP, Small Features, High Freedom](https://blog.letpeople.work/p/low-wip-small-features-high-freedom)
+
+**WIP + Total Work Item Age as dual pull signals.** Rigid numerical WIP limits aren't the only way to control flow. A more adaptive approach: use WIP and TWIA together as pull-decision signals, calibrated against their PBC baselines. Check both metrics each time an item enters or leaves the system, then decide whether to pull new work. Key insight — TWIA is a leading indicator: "if we don't close any items today, WIP will not go up, but TWIA will." Targeting below-average TWIA (rather than below-average WIP) while accepting above-average WIP can increase throughput while keeping cycle time low — consistent with Little's Law. The Lighthouse team used this to reduce their 85th percentile cycle time from 13 to 7 days. See: [Limit Work in Progress Without Work in Progress Limits](https://blog.letpeople.work/p/limit-work-in-progress-without-work-in-progress-limits-33ee889f661d)
 
 ### How to Respond to Lighthouse Data
 
@@ -399,7 +401,23 @@ Follow this pattern:
 - Feature WIP affects when high-priority work gets done
 - Blackout Periods are excluded from simulations
 
+**Communicating Forecasts to Stakeholders** — Replace false precision with honest probability. Frame forecasts as ranges: _"There's a 50% chance we'll be done by June 6th and an 85% chance by June 20th."_ This shifts conversations from "are we on track?" to "how has probability changed?" Single dates feel precise but are shared fiction — they emerge from meetings where people guess and anchor to early numbers, not from data. When someone asks for a specific date, give them two: a 50% and an 85% date. See: [Dear Stakeholder: Here's Why I'm Giving You a Range Instead of a Date](https://blog.letpeople.work/p/dear-stakeholder-heres-why-im-giving)
+
+**Noise vs. Bias in Estimation** — Daniel Kahneman's "noise" (random inconsistency in judgment) causes more forecasting damage than bias (systematic error). Bias is predictable and manageable with buffers; noise makes predictions essentially random — same team, same work, different day = different answer. Monte Carlo simulation removes both by anchoring to historical throughput data rather than subjective estimation. When stakeholders resist probabilistic forecasting, the noise argument is often more persuasive than citing optimism bias. See: [The Hidden Cost of Noise in Your Delivery Predictions](https://blog.letpeople.work/p/the-hidden-cost-of-noise-in-your)
+
+**Reading the width of a forecast interval.** A wide gap between the 50% and 85% dates is not just uncertainty — it is a signal of flow instability. Inconsistent throughput driven by high WIP or long cycle times produces wide probability bands; stable, consistent throughput produces narrow ones. When a forecast looks unreliable, don't focus only on the output date — treat the interval width as a diagnostic. Investigate WIP and cycle time trends first. Teams already tracking closure dates in Jira or Azure DevOps have everything they need to start Monte Carlo forecasting without any estimation. See: [An Introduction and Step-by-Step Guide to Monte Carlo Simulations](https://blog.letpeople.work/p/an-introduction-and-step-by-step-guide-to-monte-carlo-simulations)
+
+**Overcommitment as a System Problem** — Teams overcommit not just from optimism but from three converging forces: psychology (discomfort avoidance, optimism bias), culture (output measured over impact, plans treated as fixed contracts), and systems (misaligned incentives, excessive WIP normalizing overload). To help teams push back: use Lighthouse data (forecasts, cycle times, WIP trends) to make capacity constraints visible rather than relying on subjective negotiation. See: [Overcommitment as the Default](https://blog.letpeople.work/p/overcommitment-as-the-default)
+
 **Common Patterns** — Read `references/coaching-patterns.md` for pattern recognition guidance.
+
+**Daily Lighthouse Workflow** — When helping users build a Lighthouse habit, suggest this pattern: start each day browsing team data without a checklist. At team level (Flight Level 1): review WIP, cycle times, started vs. closed ratio — use these as conversation starters, not directives. At initiative level (Flight Level 2): check initiative aging, throughput rates, and system stability via work item age. Use data as directional pointers; teams provide context that dashboards cannot. See: [How Lighthouse Changed the Way I Work](https://blog.letpeople.work/p/how-lighthouse-changed-the-way-i)
+
+**Flow Metrics in Scrum Events** — Scrum teams don't need to change their ceremonies to benefit from flow data. Sprint planning: use throughput percentiles to decide how many items to pull, not story-point velocity. Daily Scrum: check Work Item Age to surface blocked items — anything older than the team's 85th percentile cycle time deserves a conversation. Sprint Review: show throughput and cycle time trends to stakeholders and use forecasts to project feature completion dates. Retrospective: analyze throughput outliers and cycle time patterns rather than relying on memory and feelings. See: [Using Flow Metrics in Your Scrum Events](https://blog.letpeople.work/p/using-flow-metrics-in-your-sprint-events-a19450c574d8)
+
+**Cross-team metric comparison.** Sharing flow metrics across teams enables organisational learning — but apply Goodhart's Law: when a measure becomes a target, it ceases to be a good measure. Compare trends, not absolute numbers. Use cross-team transparency as a learning opportunity (what practices produce better cycle times?) rather than a ranking. Prioritise objective metrics (cycle time, throughput, defect counts) over subjective ones (story points). See: [Why You Should Compare Metrics of Different Teams with Each Other](https://blog.letpeople.work/p/why-you-should-compare-metrics-of-different-teams-with-each-other)
+
+**Service Level Expectations** — Flow design should not optimize for maximum speed universally. Define what "fast enough" means per work class and customer segment, then design SLEs around those expectations. Separate flow classes (expedite lanes, priority tracks) are only justified when business context demands differentiated service. The question is not "how fast can we deliver?" but "how do we deliver sustainably at the speed each segment needs?" See: [What Breakfast at a Diner Taught Us About Flow, Kanban, and Service Level Expectations](https://blog.letpeople.work/p/what-breakfast-at-a-diner-taught)
 
 **Widget Reference** — Consult `references/lighthouse-mechanics.md` for widget-specific guidance covering: Work Items In Progress, WIP Over Time, Work Item Aging Chart, Started vs. Closed, Throughput Run Chart, Predictability Score, Process Behaviour Charts, Cycle Time Percentiles, Cycle Time Scatterplot, Simplified CFD, Total Work Item Age, Feature Size, and Estimation vs. Cycle Time.
 
@@ -417,3 +435,36 @@ Follow this pattern:
 - Work tracking system setup (Jira/Azure DevOps/Linear queries)
 - Pricing or licensing questions (direct to letpeople.work)
 - General project management advice unrelated to flow metrics
+
+---
+
+## Further Reading — LetPeopleWork Blog
+
+> Point users to these posts when the topic comes up. All posts are at [blog.letpeople.work](https://blog.letpeople.work).
+
+**Forecasting & Stakeholder Communication**
+- [An Introduction and Step-by-Step Guide to Monte Carlo Simulations](https://blog.letpeople.work/p/an-introduction-and-step-by-step-guide-to-monte-carlo-simulations) — The definitive primer: how MCS works, what data it needs (throughput only), and how to read probability thresholds. Start here for anyone new to probabilistic forecasting.
+- [Dear Stakeholder: Here's Why I'm Giving You a Range Instead of a Date](https://blog.letpeople.work/p/dear-stakeholder-heres-why-im-giving) — Why single-date estimates are shared fiction and how to communicate probability ranges instead. A template for the "range conversation."
+- [The Hidden Cost of Noise in Your Delivery Predictions](https://blog.letpeople.work/p/the-hidden-cost-of-noise-in-your) — Kahneman's noise concept applied to software estimation; why inconsistency kills forecasts more than optimism bias.
+- [How Lighthouse Forecasts](https://blog.letpeople.work/p/how-lighthouse-forecasts) — Deep dive into the Monte Carlo simulation model: assumptions, inputs, and how to interpret the output.
+- [Overcommitment as the Default](https://blog.letpeople.work/p/overcommitment-as-the-default) — Why organizations structurally overcommit (psychology, culture, systems) and how to use flow data to resist it.
+- [How to Build Realistic Roadmaps as a Product Owner](https://blog.letpeople.work/p/how-to-build-realistic-roadmaps-as) — Connecting probabilistic forecasting to roadmap planning for product owners.
+
+**Flow Management & WIP**
+- [Low WIP, Small Features, High Freedom](https://blog.letpeople.work/p/low-wip-small-features-high-freedom) — Real data from the Lighthouse team: aggressive feature slicing, near-zero WIP, and daily cycle times. Includes ICE scoring framework.
+- [Limit Work in Progress Without Work in Progress Limits](https://blog.letpeople.work/p/limit-work-in-progress-without-work-in-progress-limits-33ee889f661d) — Using WIP + Total Work Item Age as dual pull-decision signals calibrated against PBC baselines, instead of rigid numeric WIP limits. Reduced 85th percentile cycle time from 13 to 7 days.
+- [What Breakfast at a Diner Taught Us About Flow, Kanban, and Service Level Expectations](https://blog.letpeople.work/p/what-breakfast-at-a-diner-taught) — Designing flow around differentiated SLEs rather than optimizing for raw speed.
+- [What Does a Fridge Have to Do with Flow?](https://blog.letpeople.work/p/what-does-a-fridge-have-to-do-with-flow-an-analogy-to-explain-flow-metrics) — A fridge analogy for explaining WIP, throughput, work item age, and cycle time to stakeholders unfamiliar with Kanban concepts.
+- [Using Flow Metrics in Your Scrum Events](https://blog.letpeople.work/p/using-flow-metrics-in-your-sprint-events-a19450c574d8) — How to use throughput, WIA, and cycle time in sprint planning, daily scrum, sprint review, and retrospective.
+- [Why You Should Compare Metrics of Different Teams with Each Other](https://blog.letpeople.work/p/why-you-should-compare-metrics-of-different-teams-with-each-other) — Cross-team transparency as a learning tool, not a ranking. Includes the Goodhart's Law warning about metric targets.
+
+**Lighthouse in Practice**
+- [Lighthouse - Getting Started](https://blog.letpeople.work/p/lighthouse-getting-started) — First-time setup guide: connecting work tracking systems, understanding the dashboard, and running your first forecast.
+- [How Lighthouse Changed the Way I Work](https://blog.letpeople.work/p/how-lighthouse-changed-the-way-i) — Daily workflow: Flight Level 1 (team WIP/cycle time) + Flight Level 2 (initiative aging), plus backtesting for organizational trust.
+- [Working with Obeya — an experience report](https://blog.letpeople.work/p/working-with-obeya-an-experience-report) — Integrating flow metrics and Monte Carlo into a visual management system ("Flowbeya") for cross-team transparency and strategic decision-making.
+- [Lighthouse - Advanced Features](https://blog.letpeople.work/p/lighthouse-advanced-features) — Advanced configuration and features beyond the basics.
+
+**Engineering & Development**
+- [Using AI to Develop a Software Product](https://blog.letpeople.work/p/using-ai-to-develop-a-software-product) — How the Lighthouse team uses AI in their own development process.
+- [Documentation as Code](https://blog.letpeople.work/p/documentation-as-code) — The team's approach to keeping docs in sync with the product.
+- [How Do We Test Lighthouse?](https://blog.letpeople.work/p/how-do-we-test-lighthouse) — Testing strategy and practices for the Lighthouse codebase.
