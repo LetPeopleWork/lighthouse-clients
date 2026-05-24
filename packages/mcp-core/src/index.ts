@@ -86,6 +86,23 @@ const dateRangeProperties = {
   },
 } as const;
 
+const throughputFilterViewProperty = {
+  view: {
+    type: "string",
+    enum: ["raw", "filtered"],
+    description:
+      'Forecast-filter view (Lighthouse v26.5.24.10+). "filtered" applies the team\'s exclusion rule to throughput. Omit or "raw" returns unfiltered data.',
+  },
+} as const;
+
+const forecastFilterOverrideProperty = {
+  applyFilterOverride: {
+    type: "boolean",
+    description:
+      "Override the team's forecast-filter setting (Lighthouse v26.5.24.10+). true = apply the team filter; false = skip the filter (raw); omit = respect the team setting.",
+  },
+} as const;
+
 type McpRuntimeClient = {
   readonly checkConnectivity: () => Promise<{
     readonly category:
@@ -217,6 +234,7 @@ type McpRuntimeClient = {
   readonly getTeamThroughput: (
     id: number,
     range?: { readonly startDate: string; readonly endDate: string },
+    view?: "raw" | "filtered",
   ) => Promise<
     | { readonly ok: true; readonly value: unknown }
     | {
@@ -341,7 +359,11 @@ type McpRuntimeClient = {
   >;
   readonly runManualForecast: (
     teamId: number,
-    payload: { readonly remainingItems?: number; readonly targetDate?: string },
+    payload: {
+      readonly remainingItems?: number;
+      readonly targetDate?: string;
+      readonly applyFilterOverride?: boolean;
+    },
   ) => Promise<
     | { readonly ok: true; readonly value: unknown }
     | {
@@ -356,6 +378,7 @@ type McpRuntimeClient = {
       readonly endDate: string;
       readonly historicalStartDate: string;
       readonly historicalEndDate: string;
+      readonly applyFilterOverride?: boolean;
     },
   ) => Promise<
     | { readonly ok: true; readonly value: unknown }
@@ -435,12 +458,13 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_throughput",
     description:
-      "Get throughput run-chart data for a team by ID, optionally filtered by start and end dates.",
+      'Get throughput run-chart data for a team by ID, optionally filtered by start and end dates. Pass view="filtered" to apply the team\'s forecast-exclusion rule (Lighthouse v26.5.24.10+); omit or "raw" returns unfiltered data.',
     inputSchema: {
       type: "object",
       properties: {
         ...idInputSchema.properties,
         ...dateRangeProperties,
+        ...throughputFilterViewProperty,
       },
       required: ["id"],
       additionalProperties: false,
@@ -568,7 +592,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_forecast_manual",
     description:
-      "Run a manual forecast for a team by ID with optional remaining items and target date.",
+      "Run a manual forecast for a team by ID with optional remaining items and target date. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied.",
     inputSchema: {
       type: "object",
       properties: {
@@ -581,6 +605,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
           type: "string",
           description: "Optional target date in ISO format (YYYY-MM-DD).",
         },
+        ...forecastFilterOverrideProperty,
       },
       required: ["id"],
       additionalProperties: false,
@@ -589,7 +614,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_forecast_backtest",
     description:
-      "Run a forecast backtest for a team by ID using forecast and historical date ranges.",
+      "Run a forecast backtest for a team by ID using forecast and historical date ranges. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied.",
     inputSchema: {
       type: "object",
       properties: {
@@ -611,6 +636,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
           type: "string",
           description: "Historical sample end date in ISO format (YYYY-MM-DD).",
         },
+        ...forecastFilterOverrideProperty,
       },
       required: [
         "id",
@@ -690,6 +716,26 @@ const getDateRange = (
   return undefined;
 };
 
+const getThroughputFilterView = (
+  argumentsPayload: unknown,
+): "raw" | "filtered" | undefined => {
+  if (!isObjectRecord(argumentsPayload)) {
+    return undefined;
+  }
+  const view = argumentsPayload.view;
+  return view === "raw" || view === "filtered" ? view : undefined;
+};
+
+const getApplyFilterOverride = (
+  argumentsPayload: unknown,
+): boolean | undefined => {
+  if (!isObjectRecord(argumentsPayload)) {
+    return undefined;
+  }
+  const value = argumentsPayload.applyFilterOverride;
+  return typeof value === "boolean" ? value : undefined;
+};
+
 const isoDateStringSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/u, "Expected ISO date in YYYY-MM-DD format.");
@@ -709,6 +755,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
+    view: z.enum(["raw", "filtered"]).optional(),
   }),
   lighthouse_team_metrics_cycleTimePercentiles: z.object({
     id: z.number().int(),
@@ -750,6 +797,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     id: z.number().int(),
     remainingItems: z.number().int().optional(),
     targetDate: isoDateStringSchema.optional(),
+    applyFilterOverride: z.boolean().optional(),
   }),
   lighthouse_forecast_backtest: z.object({
     id: z.number().int(),
@@ -757,6 +805,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     endDate: isoDateStringSchema,
     historicalStartDate: isoDateStringSchema,
     historicalEndDate: isoDateStringSchema,
+    applyFilterOverride: z.boolean().optional(),
   }),
 };
 
@@ -924,7 +973,8 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamThroughput(id, range);
+      const view = getThroughputFilterView(argumentsPayload);
+      const result = await client.getTeamThroughput(id, range, view);
       if (result.ok) {
         return getSuccessToolResult(
           `team throughput: ${encodePayload(result.value)}`,
@@ -1131,9 +1181,12 @@ export const createMcpCoreRuntime = (
       const targetDate =
         typeof payload.targetDate === "string" ? payload.targetDate : undefined;
 
+      const applyFilterOverride = getApplyFilterOverride(argumentsPayload);
+
       const result = await client.runManualForecast(id, {
         remainingItems,
         targetDate,
+        applyFilterOverride,
       });
       if (result.ok) {
         return getSuccessToolResult(`forecast: ${encodePayload(result.value)}`);
@@ -1173,11 +1226,14 @@ export const createMcpCoreRuntime = (
         );
       }
 
+      const applyFilterOverride = getApplyFilterOverride(argumentsPayload);
+
       const result = await client.runBacktest(id, {
         startDate,
         endDate,
         historicalStartDate,
         historicalEndDate,
+        applyFilterOverride,
       });
       if (result.ok) {
         return getSuccessToolResult(`backtest: ${encodePayload(result.value)}`);

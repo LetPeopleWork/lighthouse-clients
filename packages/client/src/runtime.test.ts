@@ -701,6 +701,123 @@ describe("createLighthouseClient", () => {
     );
   });
 
+  it("appends &view=filtered to team throughput when view is filtered", async () => {
+    const throughputData = { labels: [], data: [] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(throughputData),
+        json: async () => throughputData,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamThroughput(
+      5,
+      { startDate: "2026-01-01", endDate: "2026-03-31" },
+      "filtered",
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/teams/5/metrics/throughput?startDate=2026-01-01&endDate=2026-03-31&view=filtered",
+    );
+  });
+
+  it("omits the view query when view is raw or undefined", async () => {
+    const throughputData = { labels: [], data: [] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(throughputData),
+        json: async () => throughputData,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamThroughput(
+      5,
+      { startDate: "2026-01-01", endDate: "2026-03-31" },
+      "raw",
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/teams/5/metrics/throughput?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("appends &view=filtered to team predictability score when view is filtered", async () => {
+    const predictability = { percentiles: [] };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(predictability),
+        json: async () => predictability,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamPredictabilityScore(
+      5,
+      { startDate: "2026-01-01", endDate: "2026-03-31" },
+      "filtered",
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/teams/5/metrics/multiitemforecastpredictabilityscore?startDate=2026-01-01&endDate=2026-03-31&view=filtered",
+    );
+  });
+
   it("gets team cycle-time percentiles with a date range", async () => {
     const percentiles = [
       { percentile: 50, value: 4 },
@@ -1569,5 +1686,86 @@ describe("createLighthouseClient", () => {
       "http://localhost:5000/api/v1/forecast/backtest/2",
     );
     expect(fetchMock.calls[1]?.init?.method).toBe("POST");
+  });
+
+  it("posts applyFilterOverride=true in the manual-forecast body", async () => {
+    const forecastResult = { whenForecasts: [], filterApplied: true };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(forecastResult),
+        json: async () => forecastResult,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    await client.runManualForecast(2, {
+      remainingItems: 5,
+      applyFilterOverride: true,
+    });
+
+    const body = JSON.parse(
+      String(fetchMock.calls[1]?.init?.body ?? "{}"),
+    ) as Record<string, unknown>;
+    expect(body.remainingItems).toBe(5);
+    expect(body.applyFilterOverride).toBe(true);
+  });
+
+  it("posts applyFilterOverride=false in the backtest body to skip the team filter", async () => {
+    const backtestResult = { actualThroughput: 10 };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(backtestResult),
+        json: async () => backtestResult,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    await client.runBacktest(2, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+      historicalStartDate: "2025-10-01",
+      historicalEndDate: "2025-12-31",
+      applyFilterOverride: false,
+    });
+
+    const body = JSON.parse(
+      String(fetchMock.calls[1]?.init?.body ?? "{}"),
+    ) as Record<string, unknown>;
+    expect(body.applyFilterOverride).toBe(false);
+    expect(body.historicalStartDate).toBe("2025-10-01");
   });
 });

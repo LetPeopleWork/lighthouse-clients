@@ -241,6 +241,58 @@ const getRequiredTextOption = (
   return value;
 };
 
+type ThroughputFilterCliValue = "raw" | "filtered";
+type ForecastFilterCliValue = "raw" | "filtered" | "team";
+
+/**
+ * Parses `--filter <raw|filtered>` for metrics commands.
+ * - omitted → undefined (no `view` query)
+ * - "raw"   → undefined (server default; no `view` query)
+ * - "filtered" → "filtered"
+ * - anything else → { error }
+ */
+const parseThroughputFilterOption = (
+  args: readonly string[],
+):
+  | { readonly view: ThroughputFilterCliValue | undefined }
+  | { readonly error: string } => {
+  const value = getOptionValue(args, "--filter");
+  if (value === undefined) {
+    return { view: undefined };
+  }
+  if (value === "raw" || value === "filtered") {
+    return { view: value };
+  }
+  return { error: `Invalid --filter value: ${value}. Allowed: raw, filtered.` };
+};
+
+/**
+ * Parses `--filter <raw|filtered|team>` for forecast commands.
+ * Maps the user-visible word to the wire `applyFilterOverride` field:
+ * - omitted | "team" → undefined (respect the team's setting)
+ * - "filtered"       → true (apply the filter)
+ * - "raw"            → false (skip the filter)
+ */
+const parseForecastFilterOption = (
+  args: readonly string[],
+):
+  | { readonly applyFilterOverride: boolean | undefined }
+  | { readonly error: string } => {
+  const value = getOptionValue(args, "--filter");
+  if (value === undefined || value === "team") {
+    return { applyFilterOverride: undefined };
+  }
+  if (value === "filtered") {
+    return { applyFilterOverride: true };
+  }
+  if (value === "raw") {
+    return { applyFilterOverride: false };
+  }
+  return {
+    error: `Invalid --filter value: ${value}. Allowed: raw, filtered, team.`,
+  };
+};
+
 const toIsoDate = (value: Date): string => value.toISOString().split("T")[0];
 
 const addDaysToIsoDate = (isoDate: string, days: number): string => {
@@ -1017,7 +1069,7 @@ const getPortfolioGroupHelpText = (): string =>
 const getMetricsGroupHelpText = (): string =>
   [
     "Usage:",
-    "  lh metrics team --id <id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>]",
+    "  lh metrics team --id <id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>] [--filter <raw|filtered>]",
     "  lh metrics portfolio --id <id> [--start-date <date>] [--end-date <date>] [--metrics <metric,...>]",
     "",
     "Defaults:",
@@ -1025,6 +1077,7 @@ const getMetricsGroupHelpText = (): string =>
     "  portfolio: last 90 days",
     "  if only one date is provided, it is reused for both start and end",
     "  if --metrics is omitted, all metrics are returned",
+    "  --filter (team scope only): `filtered` applies the team's forecast-exclusion rule to throughput + predictability score (Lighthouse v26.5.24.10+). Default is `raw`.",
     "",
     `Allowed metrics: ${ALLOWED_METRIC_DISPLAY}`,
   ].join("\n");
@@ -1035,8 +1088,13 @@ const getDeliveryGroupHelpText = (): string =>
 const getForecastGroupHelpText = (): string =>
   [
     "Usage:",
-    "  lh forecast manual --team-id <id> [--remaining <n>] [--target-date <date>]",
-    "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>",
+    "  lh forecast manual --team-id <id> [--remaining <n>] [--target-date <date>] [--filter <raw|filtered|team>]",
+    "  lh forecast backtest --team-id <id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date> [--filter <raw|filtered|team>]",
+    "",
+    "  --filter (Lighthouse v26.5.24.10+):",
+    "    `raw`      — skip the team's forecast filter (raw throughput).",
+    "    `filtered` — apply the team's forecast filter.",
+    "    `team`     — respect the team's current setting (default).",
   ].join("\n");
 
 const getWorktrackingGroupHelpText = (): string =>
@@ -1132,6 +1190,7 @@ const buildMetricsPayload = async (
   range: MetricsDateRange,
   client: CliDomainClientLike,
   filter: Set<MetricKey> | null,
+  view?: ThroughputFilterCliValue,
 ): Promise<Record<string, unknown>> => {
   const unavailableReason =
     "No dedicated backend endpoint is available for this metric.";
@@ -1165,7 +1224,9 @@ const buildMetricsPayload = async (
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
-        ? client.getTeamThroughput(entityId, range)
+        ? view === undefined
+          ? client.getTeamThroughput(entityId, range)
+          : client.getTeamThroughput(entityId, range, view)
         : client.getPortfolioThroughput(entityId, range),
     ),
     maybeFetch(needs("arrivals"), () =>
@@ -1195,7 +1256,9 @@ const buildMetricsPayload = async (
     ),
     maybeFetch(needs("predictabilityScore"), () =>
       isTeam
-        ? client.getTeamPredictabilityScore(entityId, range)
+        ? view === undefined
+          ? client.getTeamPredictabilityScore(entityId, range)
+          : client.getTeamPredictabilityScore(entityId, range, view)
         : client.getPortfolioPredictabilityScore(entityId, range),
     ),
     maybeFetch(needs("workItemAge"), () =>
@@ -1606,11 +1669,18 @@ const runManualForecastCommand = async (
   const remainingRaw = getOptionValue(args, "--remaining");
   const remaining =
     remainingRaw === undefined ? undefined : Number.parseInt(remainingRaw, 10);
+
+  const filterOrError = parseForecastFilterOption(args);
+  if ("error" in filterOrError) {
+    return getErrorResult(filterOrError.error);
+  }
+
   const client = dependencies.createClient(connectionOrError);
   return mapApiResultToCliResult(
     await client.runManualForecast(teamId, {
       remainingItems: remaining,
       targetDate: getOptionValue(args, "--target-date"),
+      applyFilterOverride: filterOrError.applyFilterOverride,
     }),
     outputFormat,
   );
@@ -1651,6 +1721,11 @@ const runBacktestForecastCommand = async (
     return connectionOrError;
   }
 
+  const filterOrError = parseForecastFilterOption(args);
+  if ("error" in filterOrError) {
+    return getErrorResult(filterOrError.error);
+  }
+
   const client = dependencies.createClient(connectionOrError);
   return mapApiResultToCliResult(
     await client.runBacktest(teamId, {
@@ -1658,6 +1733,7 @@ const runBacktestForecastCommand = async (
       endDate,
       historicalStartDate: histStartDate,
       historicalEndDate: histEndDate,
+      applyFilterOverride: filterOrError.applyFilterOverride,
     }),
     outputFormat,
   );
@@ -1699,12 +1775,23 @@ const runMetricsGroup = async (
     return metricsFilterOrError;
   }
 
+  const viewOrError = parseThroughputFilterOption(args);
+  if ("error" in viewOrError) {
+    return getErrorResult(viewOrError.error);
+  }
+  if (action !== "team" && viewOrError.view !== undefined) {
+    return getErrorResult(
+      "`--filter` is only supported on `metrics team` (per-team forecast-filter).",
+    );
+  }
+
   const payload = await buildMetricsPayload(
     action,
     entityId,
     range,
     client,
     metricsFilterOrError,
+    viewOrError.view,
   );
   return mapApiResultToCliResult({ ok: true, value: payload }, outputFormat);
 };

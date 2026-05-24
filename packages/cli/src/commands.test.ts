@@ -1848,6 +1848,96 @@ describe("runCliCommand", () => {
     expect(getTeamThroughput).toHaveBeenCalledOnce();
   });
 
+  it("forwards --filter filtered to team throughput as view=filtered", async () => {
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const getTeamPredictabilityScore = vi.fn(async () => ({
+      ok: true as const,
+      value: {},
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamThroughput,
+        getTeamPredictabilityScore,
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "metrics",
+        "team",
+        "--id",
+        "1",
+        "--json",
+        "--metrics",
+        "throughput,predictabilityScore",
+        "--filter",
+        "filtered",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(getTeamThroughput).toHaveBeenCalledWith(
+      1,
+      expect.anything(),
+      "filtered",
+    );
+    expect(getTeamPredictabilityScore).toHaveBeenCalledWith(
+      1,
+      expect.anything(),
+      "filtered",
+    );
+  });
+
+  it("rejects --filter on metrics portfolio (per-team feature only)", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: getDefaultMockClient(),
+    });
+
+    const result = await runCliCommand(
+      ["metrics", "portfolio", "--id", "1", "--filter", "filtered"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "`--filter` is only supported on `metrics team`",
+    );
+  });
+
+  it("rejects invalid --filter on metrics team", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: getDefaultMockClient(),
+    });
+
+    const result = await runCliCommand(
+      ["metrics", "team", "--id", "1", "--filter", "weird"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Invalid --filter value: weird");
+  });
+
   it("gets features by ids", async () => {
     const features = [{ id: 1, name: "Feature A" }];
     const { dependencies } = getDependencies({
@@ -1942,6 +2032,107 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("whenForecasts");
+  });
+
+  it("threads --filter filtered through manual forecast as applyFilterOverride=true", async () => {
+    const runManualForecast = vi.fn(async () => ({
+      ok: true as const,
+      value: {},
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: { ...getDefaultMockClient(), runManualForecast },
+    });
+
+    const result = await runCliCommand(
+      [
+        "forecast",
+        "manual",
+        "--team-id",
+        "2",
+        "--remaining",
+        "5",
+        "--filter",
+        "filtered",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const [, payload] = runManualForecast.mock.calls[0] ?? [];
+    expect(
+      (payload as { applyFilterOverride?: boolean }).applyFilterOverride,
+    ).toBe(true);
+  });
+
+  it("threads --filter raw through backtest as applyFilterOverride=false", async () => {
+    const runBacktest = vi.fn(async () => ({ ok: true as const, value: {} }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: { ...getDefaultMockClient(), runBacktest },
+    });
+
+    const result = await runCliCommand(
+      [
+        "forecast",
+        "backtest",
+        "--team-id",
+        "2",
+        "--start-date",
+        "2026-01-01",
+        "--end-date",
+        "2026-03-31",
+        "--hist-start-date",
+        "2025-10-01",
+        "--hist-end-date",
+        "2025-12-31",
+        "--filter",
+        "raw",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const [, payload] = runBacktest.mock.calls[0] ?? [];
+    expect(
+      (payload as { applyFilterOverride?: boolean }).applyFilterOverride,
+    ).toBe(false);
+  });
+
+  it("rejects invalid --filter on forecast manual", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: getDefaultMockClient(),
+    });
+
+    const result = await runCliCommand(
+      [
+        "forecast",
+        "manual",
+        "--team-id",
+        "2",
+        "--remaining",
+        "5",
+        "--filter",
+        "weird",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Invalid --filter value: weird");
   });
 
   it("runs a backtest for a team", async () => {

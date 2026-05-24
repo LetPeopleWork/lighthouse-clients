@@ -607,6 +607,200 @@ describe("createMcpCoreRuntime", () => {
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain("totalAge");
   });
+
+  it("forwards view=filtered to the underlying client for team throughput", async () => {
+    const calls: {
+      view: "raw" | "filtered" | undefined;
+    }[] = [];
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          checkConnectivity: async () => ({ category: "success" as const }),
+          getVersion: async () => ({ ok: true as const, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getWorkTrackingConnection: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          listTeams: async () => ({ ok: true as const, value: [] }),
+          getTeam: async () => ({ ok: true as const, value: {} }),
+          refreshTeam: async () => ({ ok: true as const, value: undefined }),
+          listPortfolios: async () => ({ ok: true as const, value: [] }),
+          getPortfolio: async () => ({ ok: true as const, value: {} }),
+          refreshPortfolio: async () => ({
+            ok: true as const,
+            value: undefined,
+          }),
+          getTeamThroughput: async (
+            _id: number,
+            _range?: { readonly startDate: string; readonly endDate: string },
+            view?: "raw" | "filtered",
+          ) => {
+            calls.push({ view });
+            return { ok: true as const, value: {} };
+          },
+          getTeamCycleTimePercentiles: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getPortfolioThroughput: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getTeamWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true as const, value: [] }),
+          getFeaturesByReferences: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
+          listDeliveries: async () => ({ ok: true as const, value: [] }),
+          createDelivery: async () => ({ ok: true as const, value: {} }),
+          updateDelivery: async () => ({ ok: true as const, value: {} }),
+          deleteDelivery: async () => ({
+            ok: true as const,
+            value: undefined,
+          }),
+          runManualForecast: async () => ({ ok: true as const, value: {} }),
+          runBacktest: async () => ({ ok: true as const, value: {} }),
+        }) as never,
+    });
+
+    await runtime.callTool("lighthouse_team_metrics_throughput", {
+      id: 5,
+      view: "filtered",
+    });
+    await runtime.callTool("lighthouse_team_metrics_throughput", { id: 5 });
+
+    expect(calls).toEqual([{ view: "filtered" }, { view: undefined }]);
+  });
+
+  it("forwards applyFilterOverride to manual forecast and backtest payloads", async () => {
+    const manualCalls: { applyFilterOverride: boolean | undefined }[] = [];
+    const backtestCalls: { applyFilterOverride: boolean | undefined }[] = [];
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          checkConnectivity: async () => ({ category: "success" as const }),
+          getVersion: async () => ({ ok: true as const, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getWorkTrackingConnection: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          listTeams: async () => ({ ok: true as const, value: [] }),
+          getTeam: async () => ({ ok: true as const, value: {} }),
+          refreshTeam: async () => ({ ok: true as const, value: undefined }),
+          listPortfolios: async () => ({ ok: true as const, value: [] }),
+          getPortfolio: async () => ({ ok: true as const, value: {} }),
+          refreshPortfolio: async () => ({
+            ok: true as const,
+            value: undefined,
+          }),
+          getTeamThroughput: async () => ({ ok: true as const, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getPortfolioThroughput: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getTeamWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true as const, value: [] }),
+          getFeaturesByReferences: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
+          listDeliveries: async () => ({ ok: true as const, value: [] }),
+          createDelivery: async () => ({ ok: true as const, value: {} }),
+          updateDelivery: async () => ({ ok: true as const, value: {} }),
+          deleteDelivery: async () => ({
+            ok: true as const,
+            value: undefined,
+          }),
+          runManualForecast: async (
+            _id: number,
+            payload: { applyFilterOverride?: boolean },
+          ) => {
+            manualCalls.push({
+              applyFilterOverride: payload.applyFilterOverride,
+            });
+            return { ok: true as const, value: {} };
+          },
+          runBacktest: async (
+            _id: number,
+            payload: { applyFilterOverride?: boolean },
+          ) => {
+            backtestCalls.push({
+              applyFilterOverride: payload.applyFilterOverride,
+            });
+            return { ok: true as const, value: {} };
+          },
+        }) as never,
+    });
+
+    await runtime.callTool("lighthouse_forecast_manual", {
+      id: 2,
+      remainingItems: 5,
+      applyFilterOverride: true,
+    });
+    await runtime.callTool("lighthouse_forecast_manual", {
+      id: 2,
+      remainingItems: 5,
+    });
+    await runtime.callTool("lighthouse_forecast_backtest", {
+      id: 2,
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+      historicalStartDate: "2025-10-01",
+      historicalEndDate: "2025-12-31",
+      applyFilterOverride: false,
+    });
+
+    expect(manualCalls).toEqual([
+      { applyFilterOverride: true },
+      { applyFilterOverride: undefined },
+    ]);
+    expect(backtestCalls).toEqual([{ applyFilterOverride: false }]);
+  });
 });
 
 describe("registerMcpTools", () => {

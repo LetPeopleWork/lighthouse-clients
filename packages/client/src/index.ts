@@ -862,6 +862,15 @@ export const getDefaultMetricsDateRange = (): MetricsDateRange => {
 export type ManualForecastInput = {
   readonly remainingItems?: number;
   readonly targetDate?: string;
+  /**
+   * Override the team's forecast-filter setting for this forecast call:
+   * - `true`  — apply the team's exclusion rule (filtered throughput).
+   * - `false` — skip the team's exclusion rule (raw throughput).
+   * - omit    — respect the team's current setting (default).
+   *
+   * Lighthouse v26.5.24.10+. Older servers ignore this field.
+   */
+  readonly applyFilterOverride?: boolean;
 };
 
 export type BacktestInput = {
@@ -869,7 +878,24 @@ export type BacktestInput = {
   readonly endDate: string;
   readonly historicalStartDate: string;
   readonly historicalEndDate: string;
+  /**
+   * Override the team's forecast-filter setting for this backtest call:
+   * - `true`  — apply the team's exclusion rule (filtered throughput).
+   * - `false` — skip the team's exclusion rule (raw throughput).
+   * - omit    — respect the team's current setting (default).
+   *
+   * Lighthouse v26.5.24.10+. Older servers ignore this field.
+   */
+  readonly applyFilterOverride?: boolean;
 };
+
+/**
+ * Forecast-filter view for team-level throughput / PBC / predictability metrics.
+ * Lighthouse v26.5.24.10+ ignores unknown values and falls back to raw.
+ * - `"filtered"` — apply the team's exclusion rule.
+ * - `"raw"` / omit — return unfiltered data (default).
+ */
+export type ThroughputFilterView = "raw" | "filtered";
 
 export type WorkItemAgeEntry = {
   readonly id: number;
@@ -958,6 +984,7 @@ export type LighthouseClient = {
   readonly getTeamThroughput: (
     teamId: number,
     range?: MetricsDateRange,
+    view?: ThroughputFilterView,
   ) => Promise<LighthouseApiResult<unknown>>;
   readonly getTeamArrivals: (
     teamId: number,
@@ -982,6 +1009,7 @@ export type LighthouseClient = {
   readonly getTeamPredictabilityScore: (
     teamId: number,
     range?: MetricsDateRange,
+    view?: ThroughputFilterView,
   ) => Promise<LighthouseApiResult<unknown>>;
   readonly getTeamTotalWorkItemAge: (
     teamId: number,
@@ -1341,6 +1369,9 @@ const getMetricsDateRangeQuery = (range: MetricsDateRange): string =>
 const getMetricsAsOfDateQuery = (asOfDate: string): string =>
   `asOfDate=${encodeURIComponent(asOfDate)}`;
 
+const getViewQuerySuffix = (view?: ThroughputFilterView): string =>
+  view === "filtered" ? "&view=filtered" : "";
+
 type WipItemDto = {
   readonly id: number;
   readonly name: string;
@@ -1564,12 +1595,16 @@ export const createLighthouseClient = (
         method: "POST",
       },
     ),
-  getTeamThroughput: async (teamId: number, range?: MetricsDateRange) => {
+  getTeamThroughput: async (
+    teamId: number,
+    range?: MetricsDateRange,
+    view?: ThroughputFilterView,
+  ) => {
     const r = getResolvedMetricsDateRange(range);
     return requestJson<unknown>(
       configuration,
       dependencies,
-      `/v1/teams/${teamId}/metrics/throughput?${getMetricsDateRangeQuery(r)}`,
+      `/v1/teams/${teamId}/metrics/throughput?${getMetricsDateRangeQuery(r)}${getViewQuerySuffix(view)}`,
       { method: "GET" },
     );
   },
@@ -1622,12 +1657,13 @@ export const createLighthouseClient = (
   getTeamPredictabilityScore: async (
     teamId: number,
     range?: MetricsDateRange,
+    view?: ThroughputFilterView,
   ) => {
     const r = getResolvedMetricsDateRange(range);
     return requestJson<unknown>(
       configuration,
       dependencies,
-      `/v1/teams/${teamId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}`,
+      `/v1/teams/${teamId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}${getViewQuerySuffix(view)}`,
       { method: "GET" },
     );
   },
