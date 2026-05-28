@@ -43,6 +43,12 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_metrics_throughput"
     | "lighthouse_portfolio_metrics_workItemAge"
     | "lighthouse_portfolio_metrics_totalWorkItemAge"
+    | "lighthouse_team_metrics_cumulativeStateTime"
+    | "lighthouse_team_metrics_cumulativeStateTimeItems"
+    | "lighthouse_team_metrics_cumulativeStateTimeCandidates"
+    | "lighthouse_portfolio_metrics_cumulativeStateTime"
+    | "lighthouse_portfolio_metrics_cumulativeStateTimeItems"
+    | "lighthouse_portfolio_metrics_cumulativeStateTimeCandidates"
     | "lighthouse_feature_get"
     | "lighthouse_feature_workitems"
     | "lighthouse_delivery_list"
@@ -92,6 +98,23 @@ const throughputFilterViewProperty = {
     enum: ["raw", "filtered"],
     description:
       'Forecast-filter view (Lighthouse v26.5.24.10+). "filtered" applies the team\'s exclusion rule to throughput. Omit or "raw" returns unfiltered data.',
+  },
+} as const;
+
+const cumulativeStateProperty = {
+  state: {
+    type: "string",
+    description:
+      "Workflow state name to drill into (must match a bar's state from the cumulativeStateTime response).",
+  },
+} as const;
+
+const itemIdsProperty = {
+  itemIds: {
+    type: "array",
+    items: { type: "integer" },
+    description:
+      "Optional work-item IDs to narrow the computation to a selected subset; omit for all in-scope items.",
   },
 } as const;
 
@@ -293,6 +316,72 @@ type McpRuntimeClient = {
       }
   >;
   readonly getPortfolioTotalWorkItemAgeOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamCumulativeStateTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+    itemIds?: readonly number[],
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamCumulativeStateTimeItems: (
+    id: number,
+    state: string,
+    range?: { readonly startDate: string; readonly endDate: string },
+    itemIds?: readonly number[],
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamCumulativeStateTimeCandidates: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioCumulativeStateTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+    itemIds?: readonly number[],
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioCumulativeStateTimeItems: (
+    id: number,
+    state: string,
+    range?: { readonly startDate: string; readonly endDate: string },
+    itemIds?: readonly number[],
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioCumulativeStateTimeCandidates: (
     id: number,
     range?: { readonly startDate: string; readonly endDate: string },
   ) => Promise<
@@ -648,6 +737,96 @@ const toolDefinitions: readonly McpToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "lighthouse_team_metrics_cumulativeStateTime",
+    description:
+      "Get cumulative time-per-state bar data for a team by ID: one entry per Doing-category workflow state with total/completed/ongoing contribution days and item counts. Optionally filter by date range and a subset of work-item IDs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+        ...itemIdsProperty,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_cumulativeStateTimeItems",
+    description:
+      "Get the per-item drill-down for ONE state of a team's cumulative time-per-state chart: the work items that contributed to that state, with days contributed. Requires the state name.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...cumulativeStateProperty,
+        ...dateRangeProperties,
+        ...itemIdsProperty,
+      },
+      required: ["id", "state"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_cumulativeStateTimeCandidates",
+    description:
+      "List the work items selectable in a team's cumulative time-per-state item picker for the window (the in-scope candidate set). Search keys are referenceId and title.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_cumulativeStateTime",
+    description:
+      "Get cumulative time-per-state bar data for a portfolio by ID: one entry per Doing-category workflow state with total/completed/ongoing contribution days and item counts. Optionally filter by date range and a subset of work-item IDs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+        ...itemIdsProperty,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_cumulativeStateTimeItems",
+    description:
+      "Get the per-item drill-down for ONE state of a portfolio's cumulative time-per-state chart: the work items that contributed to that state, with days contributed. Requires the state name.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...cumulativeStateProperty,
+        ...dateRangeProperties,
+        ...itemIdsProperty,
+      },
+      required: ["id", "state"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_cumulativeStateTimeCandidates",
+    description:
+      "List the work items selectable in a portfolio's cumulative time-per-state item picker for the window (the in-scope candidate set). Search keys are referenceId and title.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const encodePayload = (value: unknown): string => {
@@ -714,6 +893,34 @@ const getDateRange = (
   }
 
   return undefined;
+};
+
+const getStringArgument = (
+  argumentsPayload: unknown,
+  key: string,
+): string | undefined => {
+  if (!isObjectRecord(argumentsPayload)) {
+    return undefined;
+  }
+  const value = argumentsPayload[key];
+  return typeof value === "string" ? value : undefined;
+};
+
+const getItemIdsArgument = (
+  argumentsPayload: unknown,
+): readonly number[] | undefined => {
+  if (!isObjectRecord(argumentsPayload)) {
+    return undefined;
+  }
+  const value = argumentsPayload.itemIds;
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const ids = value.filter(
+    (entry): entry is number =>
+      typeof entry === "number" && Number.isInteger(entry),
+  );
+  return ids.length > 0 ? ids : undefined;
 };
 
 const getThroughputFilterView = (
@@ -783,6 +990,42 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     endDate: isoDateStringSchema.optional(),
   }),
   lighthouse_portfolio_metrics_totalWorkItemAge: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_team_metrics_cumulativeStateTime: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    itemIds: z.array(z.number().int()).optional(),
+  }),
+  lighthouse_team_metrics_cumulativeStateTimeItems: z.object({
+    id: z.number().int(),
+    state: z.string(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    itemIds: z.array(z.number().int()).optional(),
+  }),
+  lighthouse_team_metrics_cumulativeStateTimeCandidates: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_portfolio_metrics_cumulativeStateTime: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    itemIds: z.array(z.number().int()).optional(),
+  }),
+  lighthouse_portfolio_metrics_cumulativeStateTimeItems: z.object({
+    id: z.number().int(),
+    state: z.string(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    itemIds: z.array(z.number().int()).optional(),
+  }),
+  lighthouse_portfolio_metrics_cumulativeStateTimeCandidates: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
@@ -999,6 +1242,134 @@ export const createMcpCoreRuntime = (
       }
       return getErrorToolResult(
         `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_cumulativeStateTime") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const result = await client.getTeamCumulativeStateTime(
+        id,
+        getDateRange(argumentsPayload),
+        getItemIdsArgument(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team cumulativeStateTime: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_cumulativeStateTimeItems") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const state = getStringArgument(argumentsPayload, "state");
+      if (state === undefined) {
+        return getErrorToolResult("team metrics: missing state");
+      }
+      const result = await client.getTeamCumulativeStateTimeItems(
+        id,
+        state,
+        getDateRange(argumentsPayload),
+        getItemIdsArgument(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team cumulativeStateTimeItems: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_cumulativeStateTimeCandidates") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const result = await client.getTeamCumulativeStateTimeCandidates(
+        id,
+        getDateRange(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team cumulativeStateTimeCandidates: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_cumulativeStateTime") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const result = await client.getPortfolioCumulativeStateTime(
+        id,
+        getDateRange(argumentsPayload),
+        getItemIdsArgument(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio cumulativeStateTime: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_cumulativeStateTimeItems") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const state = getStringArgument(argumentsPayload, "state");
+      if (state === undefined) {
+        return getErrorToolResult("portfolio metrics: missing state");
+      }
+      const result = await client.getPortfolioCumulativeStateTimeItems(
+        id,
+        state,
+        getDateRange(argumentsPayload),
+        getItemIdsArgument(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio cumulativeStateTimeItems: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_cumulativeStateTimeCandidates") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const result = await client.getPortfolioCumulativeStateTimeCandidates(
+        id,
+        getDateRange(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio cumulativeStateTimeCandidates: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
       );
     }
 

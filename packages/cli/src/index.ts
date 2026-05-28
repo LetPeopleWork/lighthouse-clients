@@ -70,6 +70,12 @@ type CliDomainClientLike = Pick<
   | "getPortfolioPredictabilityScore"
   | "getPortfolioWorkItemAgeOverTime"
   | "getPortfolioTotalWorkItemAgeOverTime"
+  | "getTeamCumulativeStateTime"
+  | "getTeamCumulativeStateTimeItems"
+  | "getTeamCumulativeStateTimeCandidates"
+  | "getPortfolioCumulativeStateTime"
+  | "getPortfolioCumulativeStateTimeItems"
+  | "getPortfolioCumulativeStateTimeCandidates"
   | "getFeaturesByIds"
   | "getFeaturesByReferences"
   | "getFeatureWorkItems"
@@ -322,6 +328,7 @@ const METRIC_KEYS = [
   "totalWorkItemAge",
   "arrivals",
   "predictabilityScore",
+  "cumulativeStateTime",
 ] as const;
 
 type MetricKey = (typeof METRIC_KEYS)[number];
@@ -339,6 +346,8 @@ const METRIC_ALIASES: Record<string, MetricKey> = {
   arrivals: "arrivals",
   predictabilityscore: "predictabilityScore",
   predictabilityScore: "predictabilityScore",
+  cumulativestatetime: "cumulativeStateTime",
+  cumulativeStateTime: "cumulativeStateTime",
 };
 
 const ALLOWED_METRIC_DISPLAY = METRIC_KEYS.join(", ");
@@ -381,6 +390,32 @@ const getMetricsFilter = (
   }
 
   return resolved;
+};
+
+/**
+ * Parses `--item-ids <id,...>` (comma-separated integers) for cumulative-state-time.
+ * Returns undefined when absent, or a `CliCommandResult` error on a non-integer entry.
+ */
+const getItemIdsOption = (
+  args: readonly string[],
+): readonly number[] | undefined | CliCommandResult => {
+  const raw = getOptionValue(args, "--item-ids");
+  if (raw === undefined) {
+    return undefined;
+  }
+  const entries = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  const ids: number[] = [];
+  for (const entry of entries) {
+    const parsed = Number(entry);
+    if (!Number.isInteger(parsed)) {
+      return getErrorResult(`--item-ids must be integers; got "${entry}".`);
+    }
+    ids.push(parsed);
+  }
+  return ids.length > 0 ? ids : undefined;
 };
 
 const getResolvedMetricsDateRange = (
@@ -1078,6 +1113,8 @@ const getMetricsGroupHelpText = (): string =>
     "  if only one date is provided, it is reused for both start and end",
     "  if --metrics is omitted, all metrics are returned",
     "  --filter (team scope only): `filtered` applies the team's forecast-exclusion rule to throughput + predictability score (Lighthouse v26.5.24.10+). Default is `raw`.",
+    "  --item-ids <id,...> (cumulativeStateTime only): narrow the bars to a subset of work items.",
+    "  --state <name> (cumulativeStateTime only): also include the per-item drill-down for that state.",
     "",
     `Allowed metrics: ${ALLOWED_METRIC_DISPLAY}`,
   ].join("\n");
@@ -1191,6 +1228,10 @@ const buildMetricsPayload = async (
   client: CliDomainClientLike,
   filter: Set<MetricKey> | null,
   view?: ThroughputFilterCliValue,
+  cumulativeOptions?: {
+    readonly state?: string;
+    readonly itemIds?: readonly number[];
+  },
 ): Promise<Record<string, unknown>> => {
   const unavailableReason =
     "No dedicated backend endpoint is available for this metric.";
@@ -1221,6 +1262,9 @@ const buildMetricsPayload = async (
     predictabilityScoreResult,
     workItemAgeOverTimeResult,
     totalWorkItemAgeOverTimeResult,
+    cumulativeStateTimeResult,
+    cumulativeCandidatesResult,
+    cumulativeItemsResult,
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
@@ -1271,6 +1315,41 @@ const buildMetricsPayload = async (
         ? client.getTeamTotalWorkItemAgeOverTime(entityId, range)
         : client.getPortfolioTotalWorkItemAgeOverTime(entityId, range),
     ),
+    maybeFetch(needs("cumulativeStateTime"), () =>
+      isTeam
+        ? client.getTeamCumulativeStateTime(
+            entityId,
+            range,
+            cumulativeOptions?.itemIds,
+          )
+        : client.getPortfolioCumulativeStateTime(
+            entityId,
+            range,
+            cumulativeOptions?.itemIds,
+          ),
+    ),
+    maybeFetch(needs("cumulativeStateTime"), () =>
+      isTeam
+        ? client.getTeamCumulativeStateTimeCandidates(entityId, range)
+        : client.getPortfolioCumulativeStateTimeCandidates(entityId, range),
+    ),
+    maybeFetch(
+      needs("cumulativeStateTime") && cumulativeOptions?.state !== undefined,
+      () =>
+        isTeam
+          ? client.getTeamCumulativeStateTimeItems(
+              entityId,
+              cumulativeOptions?.state ?? "",
+              range,
+              cumulativeOptions?.itemIds,
+            )
+          : client.getPortfolioCumulativeStateTimeItems(
+              entityId,
+              cumulativeOptions?.state ?? "",
+              range,
+              cumulativeOptions?.itemIds,
+            ),
+    ),
   ]);
 
   const throughputValue = resolveOrSkip(throughputResult);
@@ -1284,6 +1363,9 @@ const buildMetricsPayload = async (
   const totalWorkItemAgeOverTimeValue = resolveOrSkip(
     totalWorkItemAgeOverTimeResult,
   );
+  const cumulativeStateTimeValue = resolveOrSkip(cumulativeStateTimeResult);
+  const cumulativeCandidatesValue = resolveOrSkip(cumulativeCandidatesResult);
+  const cumulativeItemsValue = resolveOrSkip(cumulativeItemsResult);
 
   const currentItems =
     currentWipValue === null
@@ -1397,6 +1479,22 @@ const buildMetricsPayload = async (
         ? (predictabilityScoreValue ??
           getMetricUnavailableValue(unavailableReason))
         : getPredictabilityScorePayload(predictabilityScoreValue);
+  }
+
+  if (needs("cumulativeStateTime")) {
+    const cumulativeSection: Record<string, unknown> = {
+      bar:
+        cumulativeStateTimeValue ??
+        getMetricUnavailableValue(unavailableReason),
+      candidates:
+        cumulativeCandidatesValue ??
+        getMetricUnavailableValue(unavailableReason),
+    };
+    if (cumulativeOptions?.state !== undefined) {
+      cumulativeSection.items =
+        cumulativeItemsValue ?? getMetricUnavailableValue(unavailableReason);
+    }
+    payload.cumulativeStateTime = cumulativeSection;
   }
 
   return payload;
@@ -1785,6 +1883,11 @@ const runMetricsGroup = async (
     );
   }
 
+  const itemIdsOrError = getItemIdsOption(args);
+  if (isCliCommandResult(itemIdsOrError)) {
+    return itemIdsOrError;
+  }
+
   const payload = await buildMetricsPayload(
     action,
     entityId,
@@ -1792,6 +1895,10 @@ const runMetricsGroup = async (
     client,
     metricsFilterOrError,
     viewOrError.view,
+    {
+      state: getOptionValue(args, "--state"),
+      itemIds: itemIdsOrError,
+    },
   );
   return mapApiResultToCliResult({ ok: true, value: payload }, outputFormat);
 };

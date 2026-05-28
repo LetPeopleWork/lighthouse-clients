@@ -219,6 +219,36 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
+  readonly getTeamCumulativeStateTime: (
+    id: number,
+    range?: unknown,
+    itemIds?: readonly number[],
+  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
+  readonly getTeamCumulativeStateTimeItems: (
+    id: number,
+    state: string,
+    range?: unknown,
+    itemIds?: readonly number[],
+  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
+  readonly getTeamCumulativeStateTimeCandidates: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
+  readonly getPortfolioCumulativeStateTime: (
+    id: number,
+    range?: unknown,
+    itemIds?: readonly number[],
+  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
+  readonly getPortfolioCumulativeStateTimeItems: (
+    id: number,
+    state: string,
+    range?: unknown,
+    itemIds?: readonly number[],
+  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
+  readonly getPortfolioCumulativeStateTimeCandidates: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
   readonly getFeaturesByIds: (ids: readonly number[]) => Promise<{
     readonly ok: true;
     readonly value: readonly unknown[];
@@ -357,6 +387,27 @@ const getDefaultMockClient = (): MockClient => ({
   getPortfolioTotalWorkItemAgeOverTime: async () => ({
     ok: true,
     value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
+  }),
+  getTeamCumulativeStateTime: async () => ({ ok: true, value: { states: [] } }),
+  getTeamCumulativeStateTimeItems: async () => ({
+    ok: true,
+    value: { state: "", items: [] },
+  }),
+  getTeamCumulativeStateTimeCandidates: async () => ({
+    ok: true,
+    value: { items: [] },
+  }),
+  getPortfolioCumulativeStateTime: async () => ({
+    ok: true,
+    value: { states: [] },
+  }),
+  getPortfolioCumulativeStateTimeItems: async () => ({
+    ok: true,
+    value: { state: "", items: [] },
+  }),
+  getPortfolioCumulativeStateTimeCandidates: async () => ({
+    ok: true,
+    value: { items: [] },
   }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
@@ -1629,6 +1680,80 @@ describe("runCliCommand", () => {
     // Only the throughput client method was called
     expect(getTeamThroughput).toHaveBeenCalledOnce();
     expect(getTeamWip).not.toHaveBeenCalled();
+  });
+
+  it("bundles bar, candidates and drill-down for --metrics cumulativeStateTime and passes state + item-ids", async () => {
+    const bar = { states: [{ state: "Doing", totalDays: 12 }] };
+    const candidates = { items: [{ workItemId: 3, referenceId: "A-3" }] };
+    const items = {
+      state: "Doing",
+      items: [{ workItemId: 3, daysContributed: 12 }],
+    };
+    const getTeamCumulativeStateTime = vi.fn(async () => ({
+      ok: true as const,
+      value: bar,
+    }));
+    const getTeamCumulativeStateTimeCandidates = vi.fn(async () => ({
+      ok: true as const,
+      value: candidates,
+    }));
+    const getTeamCumulativeStateTimeItems = vi.fn(async () => ({
+      ok: true as const,
+      value: items,
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamCumulativeStateTime,
+        getTeamCumulativeStateTimeCandidates,
+        getTeamCumulativeStateTimeItems,
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "metrics",
+        "team",
+        "--id",
+        "1",
+        "--json",
+        "--metrics",
+        "cumulativeStateTime",
+        "--state",
+        "Doing",
+        "--item-ids",
+        "3,5",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      readonly cumulativeStateTime: {
+        readonly bar: unknown;
+        readonly candidates: unknown;
+        readonly items: unknown;
+      };
+    };
+    expect(payload.cumulativeStateTime.bar).toEqual(bar);
+    expect(payload.cumulativeStateTime.candidates).toEqual(candidates);
+    expect(payload.cumulativeStateTime.items).toEqual(items);
+    expect(getTeamCumulativeStateTime).toHaveBeenCalledWith(
+      1,
+      expect.anything(),
+      [3, 5],
+    );
+    expect(getTeamCumulativeStateTimeItems).toHaveBeenCalledWith(
+      1,
+      "Doing",
+      expect.anything(),
+      [3, 5],
+    );
   });
 
   it("returns only the requested metrics when --metrics has multiple values", async () => {

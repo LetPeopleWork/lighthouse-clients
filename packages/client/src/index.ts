@@ -927,6 +927,50 @@ export type TotalWorkItemAgeOverTimeResult = {
   readonly daily: readonly DailyTotalWorkItemAge[];
 };
 
+export type CumulativeStateTimeStateRow = {
+  readonly state: string;
+  readonly workflowOrder: number;
+  readonly totalDays: number;
+  readonly completedContributionDays: number;
+  readonly ongoingContributionDays: number;
+  readonly itemCount: number;
+  readonly completedItemCount: number;
+  readonly ongoingItemCount: number;
+  readonly meanDays: number;
+  readonly medianDays: number | null;
+};
+
+export type CumulativeStateTimeResult = {
+  readonly states: readonly CumulativeStateTimeStateRow[];
+};
+
+export type CumulativeStateTimeItemRow = {
+  readonly workItemId: number;
+  readonly referenceId: string;
+  readonly title: string;
+  readonly type: string;
+  readonly state: string;
+  readonly stateCategory: string;
+  readonly url: string | null;
+  readonly daysContributed: number;
+};
+
+export type CumulativeStateTimeItemsResult = {
+  readonly state: string;
+  readonly items: readonly CumulativeStateTimeItemRow[];
+};
+
+export type CumulativeStateTimeCandidateRow = {
+  readonly workItemId: number;
+  readonly referenceId: string;
+  readonly title: string;
+  readonly workItemType: string;
+};
+
+export type CumulativeStateTimeCandidatesResult = {
+  readonly items: readonly CumulativeStateTimeCandidateRow[];
+};
+
 export type LighthouseClient = {
   readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
   readonly getVersion: () => Promise<LighthouseApiResult<string>>;
@@ -1071,6 +1115,36 @@ export type LighthouseClient = {
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<TotalWorkItemAgeOverTimeResult>>;
+  readonly getTeamCumulativeStateTime: (
+    teamId: number,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => Promise<LighthouseApiResult<CumulativeStateTimeResult>>;
+  readonly getTeamCumulativeStateTimeItems: (
+    teamId: number,
+    state: string,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => Promise<LighthouseApiResult<CumulativeStateTimeItemsResult>>;
+  readonly getTeamCumulativeStateTimeCandidates: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<CumulativeStateTimeCandidatesResult>>;
+  readonly getPortfolioCumulativeStateTime: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => Promise<LighthouseApiResult<CumulativeStateTimeResult>>;
+  readonly getPortfolioCumulativeStateTimeItems: (
+    portfolioId: number,
+    state: string,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => Promise<LighthouseApiResult<CumulativeStateTimeItemsResult>>;
+  readonly getPortfolioCumulativeStateTimeCandidates: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<CumulativeStateTimeCandidatesResult>>;
 
   // Features
   readonly getFeaturesByIds: (
@@ -1368,6 +1442,11 @@ const getMetricsDateRangeQuery = (range: MetricsDateRange): string =>
 
 const getMetricsAsOfDateQuery = (asOfDate: string): string =>
   `asOfDate=${encodeURIComponent(asOfDate)}`;
+
+const getItemIdsQuerySuffix = (itemIds?: readonly number[]): string =>
+  itemIds && itemIds.length > 0
+    ? itemIds.map((id) => `&itemIds=${encodeURIComponent(id)}`).join("")
+    : "";
 
 const getViewQuerySuffix = (view?: ThroughputFilterView): string =>
   view === "filtered" ? "&view=filtered" : "";
@@ -1867,6 +1946,84 @@ export const createLighthouseClient = (
         wipResult.value,
       ),
     };
+  },
+  getTeamCumulativeStateTime: async (
+    teamId: number,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<CumulativeStateTimeResult>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/cumulativeStateTime?${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamCumulativeStateTimeItems: async (
+    teamId: number,
+    state: string,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<CumulativeStateTimeItemsResult>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/cumulativeStateTime/items?state=${encodeURIComponent(state)}&${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+      { method: "GET" },
+    );
+  },
+  getTeamCumulativeStateTimeCandidates: async (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<CumulativeStateTimeCandidatesResult>(
+      configuration,
+      dependencies,
+      `/v1/teams/${teamId}/metrics/cumulativeStateTime/candidates?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioCumulativeStateTime: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<CumulativeStateTimeResult>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime?${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioCumulativeStateTimeItems: async (
+    portfolioId: number,
+    state: string,
+    range?: MetricsDateRange,
+    itemIds?: readonly number[],
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<CumulativeStateTimeItemsResult>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime/items?state=${encodeURIComponent(state)}&${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+      { method: "GET" },
+    );
+  },
+  getPortfolioCumulativeStateTimeCandidates: async (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => {
+    const r = getResolvedMetricsDateRange(range);
+    return requestJson<CumulativeStateTimeCandidatesResult>(
+      configuration,
+      dependencies,
+      `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime/candidates?${getMetricsDateRangeQuery(r)}`,
+      { method: "GET" },
+    );
   },
   getFeaturesByIds: async (ids: readonly number[]) => {
     const queryString = ids

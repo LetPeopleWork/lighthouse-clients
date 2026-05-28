@@ -44,6 +44,12 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_delivery_list",
       "lighthouse_forecast_manual",
       "lighthouse_forecast_backtest",
+      "lighthouse_team_metrics_cumulativeStateTime",
+      "lighthouse_team_metrics_cumulativeStateTimeItems",
+      "lighthouse_team_metrics_cumulativeStateTimeCandidates",
+      "lighthouse_portfolio_metrics_cumulativeStateTime",
+      "lighthouse_portfolio_metrics_cumulativeStateTimeItems",
+      "lighthouse_portfolio_metrics_cumulativeStateTimeCandidates",
     ]);
   });
 
@@ -298,6 +304,53 @@ describe("createMcpCoreRuntime", () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain(encode(throughputData));
+  });
+
+  it("calls team cumulativeStateTime tool and passes itemIds through", async () => {
+    const calls: { id: number; itemIds?: readonly number[] }[] = [];
+    const bar = { states: [{ state: "Doing", totalDays: 5 }] };
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          getTeamCumulativeStateTime: async (
+            id: number,
+            _range?: unknown,
+            itemIds?: readonly number[],
+          ) => {
+            calls.push({ id, itemIds });
+            return { ok: true as const, value: bar };
+          },
+        }) as never,
+    });
+
+    const result = await runtime.callTool(
+      "lighthouse_team_metrics_cumulativeStateTime",
+      { id: 9, itemIds: [4, 2] },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain(encode(bar));
+    expect(calls).toEqual([{ id: 9, itemIds: [4, 2] }]);
+  });
+
+  it("rejects the cumulativeStateTimeItems tool when state is missing", async () => {
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          getTeamCumulativeStateTimeItems: async () => ({
+            ok: true as const,
+            value: { state: "", items: [] },
+          }),
+        }) as never,
+    });
+
+    const result = await runtime.callTool(
+      "lighthouse_team_metrics_cumulativeStateTimeItems",
+      { id: 9 },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain("state");
   });
 
   it("calls forecast manual tool", async () => {
@@ -882,7 +935,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(22);
+    expect(registered).toHaveLength(28);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",
