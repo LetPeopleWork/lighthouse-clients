@@ -1,5 +1,29 @@
 # @letpeoplework/lighthouse-cli
 
+## 1.2.0
+
+### Minor Changes
+
+- [`7f33beb`](https://github.com/LetPeopleWork/lighthouse-clients/commit/7f33beb0b9f243493778b1e2fc9fdc29f641d71a) Thanks [@huserben](https://github.com/huserben)! - Add cumulative-state-time metrics support across the client, CLI, and MCP surfaces.
+
+  Wraps the six Lighthouse `cumulativeStateTime` endpoints (bar data, per-state
+  item drill-down, and picker candidates — team and portfolio scoped):
+
+  - **client**: `getTeamCumulativeStateTime`, `getTeamCumulativeStateTimeItems`,
+    `getTeamCumulativeStateTimeCandidates` and the portfolio equivalents, plus
+    typed result models. Bar and items accept an optional `itemIds` subset; items
+    takes a `state`.
+  - **cli**: new `cumulativeStateTime` value for `lh metrics team|portfolio --metrics`,
+    bundling bar + candidates (+ per-state drill-down when `--state` is given);
+    `--item-ids <id,...>` narrows the bars to a subset.
+  - **mcp**: six new read-only tools
+    (`lighthouse_{team,portfolio}_metrics_cumulativeStateTime[Items|Candidates]`).
+
+### Patch Changes
+
+- Updated dependencies [[`7f33beb`](https://github.com/LetPeopleWork/lighthouse-clients/commit/7f33beb0b9f243493778b1e2fc9fdc29f641d71a), [`5b622f7`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5b622f7d495cf5d3e5c600c5855ce00a7c4846b9)]:
+  - @letpeoplework/lighthouse-client@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
