@@ -1527,576 +1527,719 @@ const deriveTotalWorkItemAgeOverTime = (
   return { startDate, endDate, daily };
 };
 
+/**
+ * Server-version gating for endpoints that did not exist in older Lighthouse
+ * releases. At development time the NEXT release number is unknown, so each
+ * feature records the LAST released version that did NOT have it; the server
+ * must report a version STRICTLY NEWER than that baseline for the feature to be
+ * callable. Update the baseline to the current latest release whenever a new
+ * server-dependent feature is wrapped.
+ */
+const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
+  cumulativeStateTime: "v26.5.24.10",
+} as const;
+
+type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
+
+/**
+ * Parses a Lighthouse version string ("v26.5.24.10", "26.5.24") into numeric
+ * segments, or null when it is not plain dotted-numeric (e.g. "DEV"/local
+ * builds) — in which case the caller must not block.
+ */
+const parseServerVersion = (raw: string): readonly number[] | null => {
+  const trimmed = raw.trim().replace(/^v/iu, "");
+  if (trimmed.length === 0) {
+    return null;
+  }
+  const segments = trimmed.split(".");
+  const parsed: number[] = [];
+  for (const segment of segments) {
+    if (!/^\d+$/u.test(segment)) {
+      return null;
+    }
+    parsed.push(Number(segment));
+  }
+  return parsed.length > 0 ? parsed : null;
+};
+
+/**
+ * Returns true when `candidate` is strictly newer than `baseline`, false when
+ * it is equal-or-older, and null when either string is unparseable (treat as
+ * "unknown — do not block").
+ */
+export const isServerVersionNewerThan = (
+  candidate: string,
+  baseline: string,
+): boolean | null => {
+  const left = parseServerVersion(candidate);
+  const right = parseServerVersion(baseline);
+  if (left === null || right === null) {
+    return null;
+  }
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const l = left[index] ?? 0;
+    const r = right[index] ?? 0;
+    if (l !== r) {
+      return l > r;
+    }
+  }
+  return false;
+};
+
 export const createLighthouseClient = (
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies = {},
-): LighthouseClient => ({
-  checkConnectivity: async () => {
-    const fetchDependency = getFetchDependency(dependencies);
+): LighthouseClient => {
+  let cachedServerVersion: string | null | undefined;
 
-    return validateLighthouseConnectivity(
-      configuration.connection,
-      {
-        fetch: fetchDependency,
+  const getCachedServerVersion = async (): Promise<string | null> => {
+    if (cachedServerVersion === undefined) {
+      const result = await requestText(
+        configuration,
+        dependencies,
+        "/v1/version/current",
+      );
+      cachedServerVersion = result.ok ? result.value : null;
+    }
+    return cachedServerVersion;
+  };
+
+  const ensureServerSupports = async (
+    feature: GatedFeature,
+  ): Promise<{
+    readonly ok: false;
+    readonly error: LighthouseApiError;
+  } | null> => {
+    const version = await getCachedServerVersion();
+    if (version === null) {
+      return null;
+    }
+    const baseline = FEATURE_REQUIRES_SERVER_NEWER_THAN[feature];
+    const newer = isServerVersionNewerThan(version, baseline);
+    if (newer === null || newer) {
+      return null;
+    }
+    return {
+      ok: false,
+      error: {
+        category: "misconfigured",
+        reason: `This Lighthouse server (${version}) does not support "${feature}" — it requires a version newer than ${baseline}. Upgrade Lighthouse to use this client feature.`,
       },
-      getRequestInit(configuration.auth),
-    );
-  },
-  getVersion: async () =>
-    requestText(configuration, dependencies, "/v1/version/current"),
-  listWorkTrackingConnections: async () =>
-    requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      "/v1/worktrackingsystemconnections",
-      {
+    };
+  };
+
+  return {
+    checkConnectivity: async () => {
+      const fetchDependency = getFetchDependency(dependencies);
+
+      return validateLighthouseConnectivity(
+        configuration.connection,
+        {
+          fetch: fetchDependency,
+        },
+        getRequestInit(configuration.auth),
+      );
+    },
+    getVersion: async () =>
+      requestText(configuration, dependencies, "/v1/version/current"),
+    listWorkTrackingConnections: async () =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        "/v1/worktrackingsystemconnections",
+        {
+          method: "GET",
+        },
+      ),
+    getWorkTrackingConnection: async (connectionId: number) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/worktrackingsystemconnections/${connectionId}`,
+        {
+          method: "GET",
+        },
+      ),
+    createWorkTrackingConnection: async (payload: LighthouseWritePayload) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        "/v1/worktrackingsystemconnections",
+        {
+          method: "POST",
+          body: payload,
+        },
+      ),
+    updateWorkTrackingConnection: async (
+      connectionId: number,
+      payload: LighthouseWritePayload,
+    ) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/worktrackingsystemconnections/${connectionId}`,
+        {
+          method: "PUT",
+          body: payload,
+        },
+      ),
+    deleteWorkTrackingConnection: async (connectionId: number) =>
+      requestNoContent(
+        configuration,
+        dependencies,
+        `/v1/worktrackingsystemconnections/${connectionId}`,
+        {
+          method: "DELETE",
+        },
+      ),
+    listTeams: async () =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        "/v1/teams",
+        {
+          method: "GET",
+        },
+      ),
+    getTeam: async (teamId: number) =>
+      requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "GET",
-      },
-    ),
-  getWorkTrackingConnection: async (connectionId: number) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/worktrackingsystemconnections/${connectionId}`,
-      {
-        method: "GET",
-      },
-    ),
-  createWorkTrackingConnection: async (payload: LighthouseWritePayload) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      "/v1/worktrackingsystemconnections",
-      {
+      }),
+    createTeam: async (payload: LighthouseWritePayload) =>
+      requestJson<unknown>(configuration, dependencies, "/v1/teams", {
         method: "POST",
         body: payload,
-      },
-    ),
-  updateWorkTrackingConnection: async (
-    connectionId: number,
-    payload: LighthouseWritePayload,
-  ) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/worktrackingsystemconnections/${connectionId}`,
-      {
+      }),
+    updateTeam: async (teamId: number, payload: LighthouseWritePayload) =>
+      requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "PUT",
         body: payload,
-      },
-    ),
-  deleteWorkTrackingConnection: async (connectionId: number) =>
-    requestNoContent(
-      configuration,
-      dependencies,
-      `/v1/worktrackingsystemconnections/${connectionId}`,
-      {
+      }),
+    deleteTeam: async (teamId: number) =>
+      requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "DELETE",
-      },
-    ),
-  listTeams: async () =>
-    requestJson<readonly unknown[]>(configuration, dependencies, "/v1/teams", {
-      method: "GET",
-    }),
-  getTeam: async (teamId: number) =>
-    requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
-      method: "GET",
-    }),
-  createTeam: async (payload: LighthouseWritePayload) =>
-    requestJson<unknown>(configuration, dependencies, "/v1/teams", {
-      method: "POST",
-      body: payload,
-    }),
-  updateTeam: async (teamId: number, payload: LighthouseWritePayload) =>
-    requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
-      method: "PUT",
-      body: payload,
-    }),
-  deleteTeam: async (teamId: number) =>
-    requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
-      method: "DELETE",
-    }),
-  refreshTeam: async (teamId: number) =>
-    requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
-      method: "POST",
-    }),
-  listPortfolios: async () =>
-    requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      "/v1/portfolios",
-      {
-        method: "GET",
-      },
-    ),
-  getPortfolio: async (portfolioId: number) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}`,
-      {
-        method: "GET",
-      },
-    ),
-  createPortfolio: async (payload: LighthouseWritePayload) =>
-    requestJson<unknown>(configuration, dependencies, "/v1/portfolios", {
-      method: "POST",
-      body: payload,
-    }),
-  updatePortfolio: async (
-    portfolioId: number,
-    payload: LighthouseWritePayload,
-  ) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}`,
-      {
-        method: "PUT",
-        body: payload,
-      },
-    ),
-  deletePortfolio: async (portfolioId: number) =>
-    requestNoContent(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}`,
-      {
-        method: "DELETE",
-      },
-    ),
-  refreshPortfolio: async (portfolioId: number) =>
-    requestNoContent(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/refresh`,
-      {
+      }),
+    refreshTeam: async (teamId: number) =>
+      requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "POST",
-      },
-    ),
-  getTeamThroughput: async (
-    teamId: number,
-    range?: MetricsDateRange,
-    view?: ThroughputFilterView,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/throughput?${getMetricsDateRangeQuery(r)}${getViewQuerySuffix(view)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamArrivals: async (teamId: number, range?: MetricsDateRange) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/arrivals?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamWipOverTime: async (teamId: number, range?: MetricsDateRange) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamWip: async (teamId: number, asOfDate: string) =>
-    requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/wip?${getMetricsAsOfDateQuery(asOfDate)}`,
-      { method: "GET" },
-    ),
-  getTeamCycleTimePercentiles: async (
-    teamId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamCycleTimeData: async (teamId: number, range?: MetricsDateRange) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/cycleTimeData?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamPredictabilityScore: async (
-    teamId: number,
-    range?: MetricsDateRange,
-    view?: ThroughputFilterView,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}${getViewQuerySuffix(view)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamTotalWorkItemAge: async (teamId: number, asOfDate: string) =>
-    requestJson<number>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
-      { method: "GET" },
-    ),
-  getTeamTotalWorkItemAgeInfo: async (
-    teamId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamWorkItemAgeOverTime: async (
-    teamId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    const wipResult = await requestJson<WipRunChartData>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-    if (!wipResult.ok) {
-      return wipResult;
-    }
-    return {
-      ok: true as const,
-      value: deriveWorkItemAgeOverTime(r.startDate, r.endDate, wipResult.value),
-    };
-  },
-  getTeamTotalWorkItemAgeOverTime: async (
-    teamId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    const wipResult = await requestJson<WipRunChartData>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-    if (!wipResult.ok) {
-      return wipResult;
-    }
-    return {
-      ok: true as const,
-      value: deriveTotalWorkItemAgeOverTime(
-        r.startDate,
-        r.endDate,
-        wipResult.value,
+      }),
+    listPortfolios: async () =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        "/v1/portfolios",
+        {
+          method: "GET",
+        },
       ),
-    };
-  },
-  getPortfolioThroughput: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/throughput?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioCycleTimePercentiles: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioArrivals: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/arrivals?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioWipOverTime: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioWip: async (portfolioId: number, asOfDate: string) =>
-    requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/wip?${getMetricsAsOfDateQuery(asOfDate)}`,
-      { method: "GET" },
-    ),
-  getPortfolioCycleTimeData: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/cycleTimeData?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioPredictabilityScore: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioTotalWorkItemAge: async (portfolioId: number, asOfDate: string) =>
-    requestJson<number>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
-      { method: "GET" },
-    ),
-  getPortfolioTotalWorkItemAgeInfo: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioWorkItemAgeOverTime: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    const wipResult = await requestJson<WipRunChartData>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-    if (!wipResult.ok) {
-      return wipResult;
-    }
-    return {
-      ok: true as const,
-      value: deriveWorkItemAgeOverTime(r.startDate, r.endDate, wipResult.value),
-    };
-  },
-  getPortfolioTotalWorkItemAgeOverTime: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    const wipResult = await requestJson<WipRunChartData>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-    if (!wipResult.ok) {
-      return wipResult;
-    }
-    return {
-      ok: true as const,
-      value: deriveTotalWorkItemAgeOverTime(
-        r.startDate,
-        r.endDate,
-        wipResult.value,
+    getPortfolio: async (portfolioId: number) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}`,
+        {
+          method: "GET",
+        },
       ),
-    };
-  },
-  getTeamCumulativeStateTime: async (
-    teamId: number,
-    range?: MetricsDateRange,
-    itemIds?: readonly number[],
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<CumulativeStateTimeResult>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/cumulativeStateTime?${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamCumulativeStateTimeItems: async (
-    teamId: number,
-    state: string,
-    range?: MetricsDateRange,
-    itemIds?: readonly number[],
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<CumulativeStateTimeItemsResult>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/cumulativeStateTime/items?state=${encodeURIComponent(state)}&${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
-      { method: "GET" },
-    );
-  },
-  getTeamCumulativeStateTimeCandidates: async (
-    teamId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<CumulativeStateTimeCandidatesResult>(
-      configuration,
-      dependencies,
-      `/v1/teams/${teamId}/metrics/cumulativeStateTime/candidates?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioCumulativeStateTime: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-    itemIds?: readonly number[],
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<CumulativeStateTimeResult>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime?${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioCumulativeStateTimeItems: async (
-    portfolioId: number,
-    state: string,
-    range?: MetricsDateRange,
-    itemIds?: readonly number[],
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<CumulativeStateTimeItemsResult>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime/items?state=${encodeURIComponent(state)}&${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
-      { method: "GET" },
-    );
-  },
-  getPortfolioCumulativeStateTimeCandidates: async (
-    portfolioId: number,
-    range?: MetricsDateRange,
-  ) => {
-    const r = getResolvedMetricsDateRange(range);
-    return requestJson<CumulativeStateTimeCandidatesResult>(
-      configuration,
-      dependencies,
-      `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime/candidates?${getMetricsDateRangeQuery(r)}`,
-      { method: "GET" },
-    );
-  },
-  getFeaturesByIds: async (ids: readonly number[]) => {
-    const queryString = ids
-      .map((id) => `ids=${encodeURIComponent(id)}`)
-      .join("&");
-    return requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/features?${queryString}`,
-      { method: "GET" },
-    );
-  },
-  getFeaturesByReferences: async (refs: readonly string[]) => {
-    const queryString = refs
-      .map((r) => `featureReferences=${encodeURIComponent(r)}`)
-      .join("&");
-    return requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/features/references?${queryString}`,
-      { method: "GET" },
-    );
-  },
-  getFeatureWorkItems: async (featureId: number) =>
-    requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/features/${featureId}/workitems`,
-      { method: "GET" },
-    ),
-  listDeliveries: async (portfolioId: number) =>
-    requestJson<readonly unknown[]>(
-      configuration,
-      dependencies,
-      `/v1/deliveries/portfolio/${portfolioId}`,
-      { method: "GET" },
-    ),
-  createDelivery: async (
-    portfolioId: number,
-    payload: LighthouseWritePayload,
-  ) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/deliveries/portfolio/${portfolioId}`,
-      { method: "POST", body: payload },
-    ),
-  updateDelivery: async (deliveryId: number, payload: LighthouseWritePayload) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/deliveries/${deliveryId}`,
-      { method: "PUT", body: payload },
-    ),
-  deleteDelivery: async (deliveryId: number) =>
-    requestNoContent(
-      configuration,
-      dependencies,
-      `/v1/deliveries/${deliveryId}`,
-      { method: "DELETE" },
-    ),
-  runManualForecast: async (teamId: number, payload: ManualForecastInput) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/forecast/manual/${teamId}`,
-      { method: "POST", body: payload },
-    ),
-  runBacktest: async (teamId: number, payload: BacktestInput) =>
-    requestJson<unknown>(
-      configuration,
-      dependencies,
-      `/v1/forecast/backtest/${teamId}`,
-      { method: "POST", body: payload },
-    ),
-});
+    createPortfolio: async (payload: LighthouseWritePayload) =>
+      requestJson<unknown>(configuration, dependencies, "/v1/portfolios", {
+        method: "POST",
+        body: payload,
+      }),
+    updatePortfolio: async (
+      portfolioId: number,
+      payload: LighthouseWritePayload,
+    ) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}`,
+        {
+          method: "PUT",
+          body: payload,
+        },
+      ),
+    deletePortfolio: async (portfolioId: number) =>
+      requestNoContent(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}`,
+        {
+          method: "DELETE",
+        },
+      ),
+    refreshPortfolio: async (portfolioId: number) =>
+      requestNoContent(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/refresh`,
+        {
+          method: "POST",
+        },
+      ),
+    getTeamThroughput: async (
+      teamId: number,
+      range?: MetricsDateRange,
+      view?: ThroughputFilterView,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/throughput?${getMetricsDateRangeQuery(r)}${getViewQuerySuffix(view)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamArrivals: async (teamId: number, range?: MetricsDateRange) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/arrivals?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamWipOverTime: async (teamId: number, range?: MetricsDateRange) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamWip: async (teamId: number, asOfDate: string) =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/wip?${getMetricsAsOfDateQuery(asOfDate)}`,
+        { method: "GET" },
+      ),
+    getTeamCycleTimePercentiles: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamCycleTimeData: async (teamId: number, range?: MetricsDateRange) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/cycleTimeData?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamPredictabilityScore: async (
+      teamId: number,
+      range?: MetricsDateRange,
+      view?: ThroughputFilterView,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}${getViewQuerySuffix(view)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamTotalWorkItemAge: async (teamId: number, asOfDate: string) =>
+      requestJson<number>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
+        { method: "GET" },
+      ),
+    getTeamTotalWorkItemAgeInfo: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamWorkItemAgeOverTime: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      const wipResult = await requestJson<WipRunChartData>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+      if (!wipResult.ok) {
+        return wipResult;
+      }
+      return {
+        ok: true as const,
+        value: deriveWorkItemAgeOverTime(
+          r.startDate,
+          r.endDate,
+          wipResult.value,
+        ),
+      };
+    },
+    getTeamTotalWorkItemAgeOverTime: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      const wipResult = await requestJson<WipRunChartData>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+      if (!wipResult.ok) {
+        return wipResult;
+      }
+      return {
+        ok: true as const,
+        value: deriveTotalWorkItemAgeOverTime(
+          r.startDate,
+          r.endDate,
+          wipResult.value,
+        ),
+      };
+    },
+    getPortfolioThroughput: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/throughput?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioCycleTimePercentiles: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioArrivals: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/arrivals?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioWipOverTime: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioWip: async (portfolioId: number, asOfDate: string) =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/wip?${getMetricsAsOfDateQuery(asOfDate)}`,
+        { method: "GET" },
+      ),
+    getPortfolioCycleTimeData: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/cycleTimeData?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioPredictabilityScore: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/multiitemforecastpredictabilityscore?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioTotalWorkItemAge: async (
+      portfolioId: number,
+      asOfDate: string,
+    ) =>
+      requestJson<number>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAge?${getMetricsAsOfDateQuery(asOfDate)}`,
+        { method: "GET" },
+      ),
+    getPortfolioTotalWorkItemAgeInfo: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/totalWorkItemAgeInfo?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioWorkItemAgeOverTime: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      const wipResult = await requestJson<WipRunChartData>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+      if (!wipResult.ok) {
+        return wipResult;
+      }
+      return {
+        ok: true as const,
+        value: deriveWorkItemAgeOverTime(
+          r.startDate,
+          r.endDate,
+          wipResult.value,
+        ),
+      };
+    },
+    getPortfolioTotalWorkItemAgeOverTime: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const r = getResolvedMetricsDateRange(range);
+      const wipResult = await requestJson<WipRunChartData>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/wipOverTime?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+      if (!wipResult.ok) {
+        return wipResult;
+      }
+      return {
+        ok: true as const,
+        value: deriveTotalWorkItemAgeOverTime(
+          r.startDate,
+          r.endDate,
+          wipResult.value,
+        ),
+      };
+    },
+    getTeamCumulativeStateTime: async (
+      teamId: number,
+      range?: MetricsDateRange,
+      itemIds?: readonly number[],
+    ) => {
+      const unsupported = await ensureServerSupports("cumulativeStateTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<CumulativeStateTimeResult>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/cumulativeStateTime?${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamCumulativeStateTimeItems: async (
+      teamId: number,
+      state: string,
+      range?: MetricsDateRange,
+      itemIds?: readonly number[],
+    ) => {
+      const unsupported = await ensureServerSupports("cumulativeStateTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<CumulativeStateTimeItemsResult>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/cumulativeStateTime/items?state=${encodeURIComponent(state)}&${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamCumulativeStateTimeCandidates: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const unsupported = await ensureServerSupports("cumulativeStateTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<CumulativeStateTimeCandidatesResult>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/cumulativeStateTime/candidates?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioCumulativeStateTime: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+      itemIds?: readonly number[],
+    ) => {
+      const unsupported = await ensureServerSupports("cumulativeStateTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<CumulativeStateTimeResult>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime?${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioCumulativeStateTimeItems: async (
+      portfolioId: number,
+      state: string,
+      range?: MetricsDateRange,
+      itemIds?: readonly number[],
+    ) => {
+      const unsupported = await ensureServerSupports("cumulativeStateTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<CumulativeStateTimeItemsResult>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime/items?state=${encodeURIComponent(state)}&${getMetricsDateRangeQuery(r)}${getItemIdsQuerySuffix(itemIds)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioCumulativeStateTimeCandidates: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const unsupported = await ensureServerSupports("cumulativeStateTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<CumulativeStateTimeCandidatesResult>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/cumulativeStateTime/candidates?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getFeaturesByIds: async (ids: readonly number[]) => {
+      const queryString = ids
+        .map((id) => `ids=${encodeURIComponent(id)}`)
+        .join("&");
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/features?${queryString}`,
+        { method: "GET" },
+      );
+    },
+    getFeaturesByReferences: async (refs: readonly string[]) => {
+      const queryString = refs
+        .map((r) => `featureReferences=${encodeURIComponent(r)}`)
+        .join("&");
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/features/references?${queryString}`,
+        { method: "GET" },
+      );
+    },
+    getFeatureWorkItems: async (featureId: number) =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/features/${featureId}/workitems`,
+        { method: "GET" },
+      ),
+    listDeliveries: async (portfolioId: number) =>
+      requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/deliveries/portfolio/${portfolioId}`,
+        { method: "GET" },
+      ),
+    createDelivery: async (
+      portfolioId: number,
+      payload: LighthouseWritePayload,
+    ) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/deliveries/portfolio/${portfolioId}`,
+        { method: "POST", body: payload },
+      ),
+    updateDelivery: async (
+      deliveryId: number,
+      payload: LighthouseWritePayload,
+    ) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/deliveries/${deliveryId}`,
+        { method: "PUT", body: payload },
+      ),
+    deleteDelivery: async (deliveryId: number) =>
+      requestNoContent(
+        configuration,
+        dependencies,
+        `/v1/deliveries/${deliveryId}`,
+        { method: "DELETE" },
+      ),
+    runManualForecast: async (teamId: number, payload: ManualForecastInput) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/forecast/manual/${teamId}`,
+        { method: "POST", body: payload },
+      ),
+    runBacktest: async (teamId: number, payload: BacktestInput) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/forecast/backtest/${teamId}`,
+        { method: "POST", body: payload },
+      ),
+  };
+};
