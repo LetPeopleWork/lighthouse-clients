@@ -134,6 +134,7 @@ type McpRuntimeClient = {
       | "misconfigured"
       | "unauthorized"
       | "dependency-failure"
+      | "concurrency-conflict"
       | "unexpected";
     readonly reason?: string;
   }>;

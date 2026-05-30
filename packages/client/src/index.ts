@@ -29,6 +29,7 @@ export type ConnectivityCategory =
   | "misconfigured"
   | "unauthorized"
   | "dependency-failure"
+  | "concurrency-conflict"
   | "unexpected";
 
 export type StandaloneDiscoveryContract = {
@@ -1272,6 +1273,67 @@ const toApiError = (
   statusCode,
 });
 
+const CONCURRENCY_CONFLICT_STATUS = 409;
+
+const CONCURRENCY_CONFLICT_GUIDANCE =
+  "This edit conflicts because the item was changed by someone else. Re-fetch the current settings to obtain the latest concurrency token, then re-apply your change.";
+
+const getProblemDetailsMessage = (body: unknown): string | undefined => {
+  if (!isObjectRecord(body)) {
+    return undefined;
+  }
+
+  for (const key of ["detail", "title", "message"]) {
+    const value = body[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+};
+
+const getResponseBody = async (
+  response: ConnectivityFetchResponse,
+): Promise<unknown> => {
+  try {
+    if (response.json !== undefined) {
+      return await response.json();
+    }
+
+    return JSON.parse(await response.text());
+  } catch {
+    return undefined;
+  }
+};
+
+const toConcurrencyConflictError = (
+  serverMessage: string | undefined,
+): LighthouseApiError => ({
+  category: "concurrency-conflict",
+  reason:
+    serverMessage === undefined
+      ? CONCURRENCY_CONFLICT_GUIDANCE
+      : `${serverMessage} ${CONCURRENCY_CONFLICT_GUIDANCE}`,
+  statusCode: CONCURRENCY_CONFLICT_STATUS,
+});
+
+const toResponseError = async (
+  response: ConnectivityFetchResponse,
+): Promise<LighthouseApiError> => {
+  if (response.status === CONCURRENCY_CONFLICT_STATUS) {
+    const serverMessage = getProblemDetailsMessage(
+      await getResponseBody(response),
+    );
+    return toConcurrencyConflictError(serverMessage);
+  }
+
+  return toApiError(
+    response.status,
+    `Request failed with status ${response.status}.`,
+  );
+};
+
 const requestText = async (
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies,
@@ -1296,12 +1358,7 @@ const requestText = async (
       getRequestInit(configuration.auth),
     );
     if (!response.ok) {
-      return getErrorResult(
-        toApiError(
-          response.status,
-          `Request failed with status ${response.status}.`,
-        ),
-      );
+      return getErrorResult(await toResponseError(response));
     }
 
     return {
@@ -1349,12 +1406,7 @@ const requestJson = async <TValue>(
       getRequestInit(configuration.auth, requestOptions),
     );
     if (!response.ok) {
-      return getErrorResult(
-        toApiError(
-          response.status,
-          `Request failed with status ${response.status}.`,
-        ),
-      );
+      return getErrorResult(await toResponseError(response));
     }
 
     if (response.json === undefined) {
@@ -1410,12 +1462,7 @@ const requestNoContent = async (
       getRequestInit(configuration.auth, requestOptions),
     );
     if (!response.ok) {
-      return getErrorResult(
-        toApiError(
-          response.status,
-          `Request failed with status ${response.status}.`,
-        ),
-      );
+      return getErrorResult(await toResponseError(response));
     }
 
     return {

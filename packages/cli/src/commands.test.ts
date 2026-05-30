@@ -81,10 +81,20 @@ type MockClient = {
   readonly updatePortfolio: (
     id: number,
     payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
+  ) => Promise<
+    | {
+        readonly ok: true;
+        readonly value: unknown;
+      }
+    | {
+        readonly ok: false;
+        readonly error: {
+          readonly category: string;
+          readonly reason: string;
+          readonly statusCode?: number;
+        };
+      }
+  >;
   readonly deletePortfolio: (id: number) => Promise<{
     readonly ok: true;
     readonly value: undefined;
@@ -1317,6 +1327,40 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(updatePortfolio).toHaveBeenCalledWith(7, { name: "Portfolio B" });
+  });
+
+  it("surfaces a concurrency conflict from a portfolio update with retry guidance", async () => {
+    const updatePortfolio = vi.fn(async () => ({
+      ok: false as const,
+      error: {
+        category: "concurrency-conflict",
+        reason:
+          "This portfolio was changed by someone else. Re-fetch the current settings to obtain the latest concurrency token, then re-apply your change.",
+        statusCode: 409,
+      },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        updatePortfolio,
+      },
+      readTextFile: async () => '{"name":"Portfolio B"}',
+    });
+
+    const result = await runCliCommand(
+      ["portfolio", "update", "--id", "7", "--payload-file", "payload.json"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("concurrency-conflict");
+    expect(result.stderr).toContain("changed by someone else");
+    expect(result.stderr.toLowerCase()).toContain("re-fetch");
   });
 
   it("gets bundled team metrics with explicit dates", async () => {

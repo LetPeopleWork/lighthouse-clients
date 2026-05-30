@@ -1768,4 +1768,163 @@ describe("createLighthouseClient", () => {
     expect(body.applyFilterOverride).toBe(false);
     expect(body.historicalStartDate).toBe("2025-10-01");
   });
+
+  const getConflictClient = (
+    conflictResponse: MockResponse,
+  ): ReturnType<typeof createLighthouseClient> => {
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      conflictResponse,
+    ]);
+
+    return createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+  };
+
+  const editConflictResponse: MockResponse = {
+    ok: false,
+    status: 409,
+    text: async () =>
+      JSON.stringify({
+        code: "concurrency-conflict",
+        detail: "This team was changed by someone else.",
+      }),
+    json: async () => ({
+      code: "concurrency-conflict",
+      detail: "This team was changed by someone else.",
+    }),
+  };
+
+  const configEdits: ReadonlyArray<{
+    readonly name: string;
+    readonly run: (
+      client: ReturnType<typeof createLighthouseClient>,
+    ) => Promise<{
+      readonly ok: boolean;
+      readonly error?: { readonly category: string; readonly reason: string };
+    }>;
+  }> = [
+    {
+      name: "updateTeam",
+      run: (client) => client.updateTeam(7, { name: "Team Seven" }),
+    },
+    {
+      name: "updatePortfolio",
+      run: (client) => client.updatePortfolio(7, { name: "Portfolio Seven" }),
+    },
+    {
+      name: "updateDelivery",
+      run: (client) => client.updateDelivery(7, { name: "Delivery Seven" }),
+    },
+  ];
+
+  for (const edit of configEdits) {
+    it(`surfaces an HTTP 409 from ${edit.name} as a distinct concurrency-conflict error`, async () => {
+      const client = getConflictClient(editConflictResponse);
+
+      const result = await edit.run(client);
+
+      expect(result.ok).toBe(false);
+      if (result.ok || result.error === undefined) {
+        throw new Error("Expected a concurrency-conflict error result");
+      }
+
+      expect(result.error.category).toBe("concurrency-conflict");
+      expect(result.error.reason).toContain(
+        "This team was changed by someone else.",
+      );
+      expect(result.error.reason.toLowerCase()).toContain("re-fetch");
+    });
+  }
+
+  it("keeps the concurrency-conflict guidance when the 409 body has no ProblemDetails message", async () => {
+    const client = getConflictClient({
+      ok: false,
+      status: 409,
+      text: async () => "",
+      json: async () => {
+        throw new Error("no json body");
+      },
+    });
+
+    const result = await client.updateTeam(7, { name: "Team Seven" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("Expected a concurrency-conflict error result");
+    }
+
+    expect(result.error.category).toBe("concurrency-conflict");
+    expect(result.error.statusCode).toBe(409);
+    expect(result.error.reason.toLowerCase()).toContain("re-fetch");
+  });
+
+  it("leaves non-409 write failures on their existing generic category", async () => {
+    const client = getConflictClient({
+      ok: false,
+      status: 500,
+      text: async () => "Server error",
+      json: async () => ({ message: "Server error" }),
+    });
+
+    const result = await client.updateTeam(7, { name: "Team Seven" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("Expected an error result");
+    }
+
+    expect(result.error.category).toBe("dependency-failure");
+    expect(result.error.category).not.toBe("concurrency-conflict");
+  });
+
+  it("round-trips a concurrencyToken in the write payload without a schema change", async () => {
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ id: 7, concurrencyToken: "abc" }),
+        json: async () => ({ id: 7, concurrencyToken: "abc" }),
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.updateTeam(7, {
+      name: "Team Seven",
+      concurrencyToken: "abc",
+    });
+
+    expect(result.ok).toBe(true);
+    const body = JSON.parse(
+      String(fetchMock.calls[1]?.init?.body ?? "{}"),
+    ) as Record<string, unknown>;
+    expect(body.concurrencyToken).toBe("abc");
+  });
 });
