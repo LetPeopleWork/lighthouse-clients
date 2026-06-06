@@ -83,6 +83,10 @@ type CliDomainClientLike = Pick<
   | "createDelivery"
   | "updateDelivery"
   | "deleteDelivery"
+  | "getRecurringBlackoutRules"
+  | "createRecurringBlackoutRule"
+  | "updateRecurringBlackoutRule"
+  | "deleteRecurringBlackoutRule"
   | "runManualForecast"
   | "runBacktest"
 >;
@@ -1122,6 +1126,18 @@ const getMetricsGroupHelpText = (): string =>
 const getDeliveryGroupHelpText = (): string =>
   ["Usage:", "  lh delivery list --portfolio-id <id>"].join("\n");
 
+const getBlackoutGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh blackout list",
+    "  lh blackout create (--payload-json <json> | --payload-file <path>)",
+    "  lh blackout update --id <id> (--payload-json <json> | --payload-file <path>)",
+    "  lh blackout delete --id <id>",
+    "",
+    "  Recurring blackout rules require Lighthouse newer than v26.5.29.5.",
+    "  Payload: { weekdays, intervalWeeks, start, end, description }.",
+  ].join("\n");
+
 const getForecastGroupHelpText = (): string =>
   [
     "Usage:",
@@ -1177,6 +1193,7 @@ const getUsageText = async (
     "  portfolio",
     "  metrics",
     "  delivery",
+    "  blackout",
     "  forecast",
     "  worktracking",
     "  feature",
@@ -2045,6 +2062,93 @@ const runDeliveryGroup = async (
   );
 };
 
+const runBlackoutGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getBlackoutGroupHelpText());
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const client = dependencies.createClient(connectionOrError);
+
+  const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
+    list: async () =>
+      mapApiResultToCliResult(
+        await client.getRecurringBlackoutRules(),
+        outputFormat,
+      ),
+    create: async () => {
+      const payloadOrError = await getJsonPayload(
+        args,
+        dependencies,
+        "blackout create",
+      );
+      if (isCliCommandResult(payloadOrError)) {
+        return payloadOrError;
+      }
+
+      return mapApiResultToCliResult(
+        await client.createRecurringBlackoutRule(payloadOrError),
+        outputFormat,
+      );
+    },
+    update: async () => {
+      const ruleId = getRequiredIdOption(args, "--id");
+      if (ruleId === null) {
+        return getErrorResult("Missing required --id for blackout update.");
+      }
+
+      const payloadOrError = await getJsonPayload(
+        args,
+        dependencies,
+        "blackout update",
+      );
+      if (isCliCommandResult(payloadOrError)) {
+        return payloadOrError;
+      }
+
+      return mapApiResultToCliResult(
+        await client.updateRecurringBlackoutRule(ruleId, payloadOrError),
+        outputFormat,
+      );
+    },
+    delete: async () => {
+      const ruleId = getRequiredIdOption(args, "--id");
+      if (ruleId === null) {
+        return getErrorResult("Missing required --id for blackout delete.");
+      }
+
+      const result = await client.deleteRecurringBlackoutRule(ruleId);
+      if (!result.ok) {
+        return getErrorResult(
+          `${result.error.category}: ${result.error.reason}`,
+        );
+      }
+
+      return getSuccessResult(`Recurring blackout rule deleted: ${ruleId}`);
+    },
+  };
+
+  const selectedHandler = actionHandlers[action];
+  if (selectedHandler === undefined) {
+    return getUnknownSubcommandResult(
+      getBlackoutGroupHelpText(),
+      "blackout",
+      action,
+    );
+  }
+
+  return selectedHandler();
+};
+
 const runForecastGroup = async (
   action: string | undefined,
   args: readonly string[],
@@ -2207,6 +2311,10 @@ export const runCliCommand = async (
 
   if (scope === "delivery") {
     return runDeliveryGroup(action, args, outputFormat, dependencies);
+  }
+
+  if (scope === "blackout") {
+    return runBlackoutGroup(action, args, outputFormat, dependencies);
   }
 
   if (scope === "forecast") {

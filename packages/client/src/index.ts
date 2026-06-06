@@ -972,6 +972,33 @@ export type CumulativeStateTimeCandidatesResult = {
   readonly items: readonly CumulativeStateTimeCandidateRow[];
 };
 
+export type DayOfWeek =
+  | "Sunday"
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday";
+
+export type RecurringBlackoutRule = {
+  readonly id: number;
+  readonly weekdays: readonly DayOfWeek[];
+  readonly intervalWeeks: number;
+  readonly start: string;
+  readonly end: string | null;
+  readonly description: string;
+  readonly summary: string;
+};
+
+export type RecurringBlackoutRuleInput = {
+  readonly weekdays: readonly DayOfWeek[];
+  readonly intervalWeeks: number;
+  readonly start: string;
+  readonly end: string | null;
+  readonly description: string;
+};
+
 export type LighthouseClient = {
   readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
   readonly getVersion: () => Promise<LighthouseApiResult<string>>;
@@ -1172,6 +1199,21 @@ export type LighthouseClient = {
   ) => Promise<LighthouseApiResult<unknown>>;
   readonly deleteDelivery: (
     deliveryId: number,
+  ) => Promise<LighthouseApiResult<undefined>>;
+
+  // Recurring Blackout Rules
+  readonly getRecurringBlackoutRules: () => Promise<
+    LighthouseApiResult<readonly RecurringBlackoutRule[]>
+  >;
+  readonly createRecurringBlackoutRule: (
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<RecurringBlackoutRule>>;
+  readonly updateRecurringBlackoutRule: (
+    id: number,
+    payload: LighthouseWritePayload,
+  ) => Promise<LighthouseApiResult<RecurringBlackoutRule>>;
+  readonly deleteRecurringBlackoutRule: (
+    id: number,
   ) => Promise<LighthouseApiResult<undefined>>;
 
   // Forecasts
@@ -1584,6 +1626,7 @@ const deriveTotalWorkItemAgeOverTime = (
  */
 const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   cumulativeStateTime: "v26.5.24.10",
+  recurringBlackoutRules: "v26.5.29.5",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2274,6 +2317,57 @@ export const createLighthouseClient = (
         `/v1/deliveries/${deliveryId}`,
         { method: "DELETE" },
       ),
+    getRecurringBlackoutRules: async () => {
+      const unsupported = await ensureServerSupports("recurringBlackoutRules");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<readonly RecurringBlackoutRule[]>(
+        configuration,
+        dependencies,
+        "/v1/recurring-blackout-rules",
+        { method: "GET" },
+      );
+    },
+    createRecurringBlackoutRule: async (payload: LighthouseWritePayload) => {
+      const unsupported = await ensureServerSupports("recurringBlackoutRules");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<RecurringBlackoutRule>(
+        configuration,
+        dependencies,
+        "/v1/recurring-blackout-rules",
+        { method: "POST", body: payload },
+      );
+    },
+    updateRecurringBlackoutRule: async (
+      id: number,
+      payload: LighthouseWritePayload,
+    ) => {
+      const unsupported = await ensureServerSupports("recurringBlackoutRules");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<RecurringBlackoutRule>(
+        configuration,
+        dependencies,
+        `/v1/recurring-blackout-rules/${id}`,
+        { method: "PUT", body: payload },
+      );
+    },
+    deleteRecurringBlackoutRule: async (id: number) => {
+      const unsupported = await ensureServerSupports("recurringBlackoutRules");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestNoContent(
+        configuration,
+        dependencies,
+        `/v1/recurring-blackout-rules/${id}`,
+        { method: "DELETE" },
+      );
+    },
     runManualForecast: async (teamId: number, payload: ManualForecastInput) =>
       requestJson<unknown>(
         configuration,

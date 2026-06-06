@@ -141,6 +141,8 @@ Blackout Periods (holidays, company off-days) are excluded from simulations. Sim
 
 In charts, blackout periods appear as hatched overlays so you can distinguish expected zero-throughput days from unexpected ones.
 
+Recurring blackout rules cover non-working days that repeat on a schedule rather than one-off dates. A rule picks one or more weekdays, an every-X-weeks interval, a start date, and an optional open end (no end date means it repeats indefinitely). Each occurrence the rule generates is treated exactly like a one-off blackout day downstream: simulated days that land on it are skipped and the forecast advances to the next working day. They are a Premium, system-admin feature, but once configured they require no per-forecast handling — forecasts skip them automatically just like manual blackout dates.
+
 ---
 
 ## Widget Reference

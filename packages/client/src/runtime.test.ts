@@ -1927,4 +1927,198 @@ describe("createLighthouseClient", () => {
     ) as Record<string, unknown>;
     expect(body.concurrencyToken).toBe("abc");
   });
+
+  const supportedServerVersion = "v26.5.29.6";
+
+  const recurringRule = {
+    id: 3,
+    weekdays: ["Monday", "Wednesday"],
+    intervalWeeks: 2,
+    start: "2026-06-01",
+    end: null,
+    description: "Sprint review days",
+    summary: "Every 2 weeks on Mon, Wed from 2026-06-01",
+  };
+
+  const recurringRuleInput = {
+    weekdays: ["Monday", "Wednesday"] as const,
+    intervalWeeks: 2,
+    start: "2026-06-01",
+    end: null,
+    description: "Sprint review days",
+  };
+
+  const versionResponse = (value: string): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => value,
+    json: async () => value,
+  });
+
+  const getRecurringClient = (
+    responses: readonly MockResponse[],
+  ): {
+    readonly client: ReturnType<typeof createLighthouseClient>;
+    readonly fetchMock: FetchMock;
+  } => {
+    const fetchMock = getFetchSequenceMock(responses);
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+    return { client, fetchMock };
+  };
+
+  const getFeatureCall = (fetchMock: FetchMock): FetchCall | undefined =>
+    fetchMock.calls.find((call) => !call.url.endsWith("/v1/version/current"));
+
+  it("lists recurring blackout rules on a supported server", async () => {
+    const { client, fetchMock } = getRecurringClient([
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify([recurringRule]),
+        json: async () => [recurringRule],
+      },
+    ]);
+
+    const result = await client.getRecurringBlackoutRules();
+
+    expect(result).toEqual({ ok: true, value: [recurringRule] });
+    const featureCall = getFeatureCall(fetchMock);
+    expect(featureCall?.url).toBe(
+      "http://localhost:5000/api/v1/recurring-blackout-rules",
+    );
+    expect(featureCall?.init?.method).toBe("GET");
+  });
+
+  it("creates a recurring blackout rule on a supported server", async () => {
+    const { client, fetchMock } = getRecurringClient([
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      {
+        ok: true,
+        status: 201,
+        text: async () => JSON.stringify(recurringRule),
+        json: async () => recurringRule,
+      },
+    ]);
+
+    const result = await client.createRecurringBlackoutRule(recurringRuleInput);
+
+    expect(result).toEqual({ ok: true, value: recurringRule });
+    const featureCall = getFeatureCall(fetchMock);
+    expect(featureCall?.url).toBe(
+      "http://localhost:5000/api/v1/recurring-blackout-rules",
+    );
+    expect(featureCall?.init?.method).toBe("POST");
+    const body = JSON.parse(String(featureCall?.init?.body ?? "{}")) as Record<
+      string,
+      unknown
+    >;
+    expect(body.weekdays).toEqual(["Monday", "Wednesday"]);
+    expect(body.intervalWeeks).toBe(2);
+    expect(body).not.toHaveProperty("id");
+    expect(body).not.toHaveProperty("summary");
+  });
+
+  it("updates a recurring blackout rule on a supported server", async () => {
+    const { client, fetchMock } = getRecurringClient([
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(recurringRule),
+        json: async () => recurringRule,
+      },
+    ]);
+
+    const result = await client.updateRecurringBlackoutRule(
+      3,
+      recurringRuleInput,
+    );
+
+    expect(result).toEqual({ ok: true, value: recurringRule });
+    const featureCall = getFeatureCall(fetchMock);
+    expect(featureCall?.url).toBe(
+      "http://localhost:5000/api/v1/recurring-blackout-rules/3",
+    );
+    expect(featureCall?.init?.method).toBe("PUT");
+  });
+
+  it("deletes a recurring blackout rule on a supported server", async () => {
+    const { client, fetchMock } = getRecurringClient([
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      versionResponse(supportedServerVersion),
+      { ok: true, status: 204, text: async () => "", json: async () => ({}) },
+    ]);
+
+    const result = await client.deleteRecurringBlackoutRule(3);
+
+    expect(result).toEqual({ ok: true, value: undefined });
+    const featureCall = getFeatureCall(fetchMock);
+    expect(featureCall?.url).toBe(
+      "http://localhost:5000/api/v1/recurring-blackout-rules/3",
+    );
+    expect(featureCall?.init?.method).toBe("DELETE");
+  });
+
+  const recurringGatedCalls: ReadonlyArray<{
+    readonly name: string;
+    readonly run: (
+      client: ReturnType<typeof createLighthouseClient>,
+    ) => Promise<{
+      readonly ok: boolean;
+      readonly error?: { readonly category: string; readonly reason: string };
+    }>;
+  }> = [
+    {
+      name: "getRecurringBlackoutRules",
+      run: (client) => client.getRecurringBlackoutRules(),
+    },
+    {
+      name: "createRecurringBlackoutRule",
+      run: (client) => client.createRecurringBlackoutRule(recurringRuleInput),
+    },
+    {
+      name: "updateRecurringBlackoutRule",
+      run: (client) =>
+        client.updateRecurringBlackoutRule(3, recurringRuleInput),
+    },
+    {
+      name: "deleteRecurringBlackoutRule",
+      run: (client) => client.deleteRecurringBlackoutRule(3),
+    },
+  ];
+
+  for (const gated of recurringGatedCalls) {
+    it(`blocks ${gated.name} on a server that is not newer than the baseline`, async () => {
+      const { client, fetchMock } = getRecurringClient([
+        versionResponse("v26.5.29.5"),
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(false);
+      if (result.ok || result.error === undefined) {
+        throw new Error("Expected an unsupported-server error result");
+      }
+      expect(result.error.category).toBe("misconfigured");
+      expect(result.error.reason).toContain("recurringBlackoutRules");
+      expect(result.error.reason.toLowerCase()).toContain("upgrade lighthouse");
+      expect(getFeatureCall(fetchMock)).toBeUndefined();
+    });
+  }
 });

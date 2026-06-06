@@ -50,4 +50,10 @@ describe("isServerVersionNewerThan (server-version gating)", () => {
     expect(isServerVersionNewerThan("", "v26.5.24.10")).toBeNull();
     expect(isServerVersionNewerThan("v26.5.24.10", "local")).toBeNull();
   });
+
+  it("gates recurringBlackoutRules on its v26.5.29.5 baseline", () => {
+    expect(isServerVersionNewerThan("v26.5.29.6", "v26.5.29.5")).toBe(true);
+    expect(isServerVersionNewerThan("v26.5.29.5", "v26.5.29.5")).toBe(false);
+    expect(isServerVersionNewerThan("v26.5.29.4", "v26.5.29.5")).toBe(false);
+  });
 });

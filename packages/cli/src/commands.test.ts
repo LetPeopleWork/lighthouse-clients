@@ -293,6 +293,25 @@ type MockClient = {
     readonly ok: true;
     readonly value: undefined;
   }>;
+  readonly getRecurringBlackoutRules: () => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
+  readonly createRecurringBlackoutRule: (payload: unknown) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly updateRecurringBlackoutRule: (
+    id: number,
+    payload: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: unknown;
+  }>;
+  readonly deleteRecurringBlackoutRule: (id: number) => Promise<{
+    readonly ok: true;
+    readonly value: undefined;
+  }>;
   readonly runManualForecast: (
     teamId: number,
     payload: unknown,
@@ -426,6 +445,16 @@ const getDefaultMockClient = (): MockClient => ({
   createDelivery: async () => ({ ok: true, value: {} }),
   updateDelivery: async () => ({ ok: true, value: {} }),
   deleteDelivery: async () => ({ ok: true, value: undefined }),
+  getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+  createRecurringBlackoutRule: async (payload: unknown) => ({
+    ok: true,
+    value: payload,
+  }),
+  updateRecurringBlackoutRule: async (id: number, payload: unknown) => ({
+    ok: true,
+    value: { id, ...((payload as Record<string, unknown>) ?? {}) },
+  }),
+  deleteRecurringBlackoutRule: async () => ({ ok: true, value: undefined }),
   runManualForecast: async () => ({ ok: true, value: {} }),
   runBacktest: async () => ({ ok: true, value: {} }),
 });
@@ -2523,5 +2552,133 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("--portfolio-id");
+  });
+
+  it("lists recurring blackout rules", async () => {
+    const rules = [{ id: 3, description: "Sprint review" }];
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getRecurringBlackoutRules: async () => ({ ok: true, value: rules }),
+      },
+    });
+
+    const result = await runCliCommand(["blackout", "list"], dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Sprint review");
+  });
+
+  it("creates a recurring blackout rule from a JSON payload", async () => {
+    const createRecurringBlackoutRule = vi.fn(async () => ({
+      ok: true as const,
+      value: { id: 4 },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: { ...getDefaultMockClient(), createRecurringBlackoutRule },
+    });
+
+    const result = await runCliCommand(
+      [
+        "blackout",
+        "create",
+        "--payload-json",
+        JSON.stringify({
+          weekdays: ["Monday"],
+          intervalWeeks: 2,
+          start: "2026-06-01",
+          end: null,
+          description: "Recurring",
+        }),
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const [payload] = createRecurringBlackoutRule.mock.calls[0] ?? [];
+    expect((payload as { description?: string }).description).toBe("Recurring");
+  });
+
+  it("updates a recurring blackout rule by id", async () => {
+    const updateRecurringBlackoutRule = vi.fn(async () => ({
+      ok: true as const,
+      value: { id: 7 },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: { ...getDefaultMockClient(), updateRecurringBlackoutRule },
+    });
+
+    const result = await runCliCommand(
+      [
+        "blackout",
+        "update",
+        "--id",
+        "7",
+        "--payload-json",
+        JSON.stringify({
+          weekdays: ["Friday"],
+          intervalWeeks: 1,
+          start: "2026-06-01",
+          end: null,
+          description: "Updated",
+        }),
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const [id] = updateRecurringBlackoutRule.mock.calls[0] ?? [];
+    expect(id).toBe(7);
+  });
+
+  it("deletes a recurring blackout rule by id", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["blackout", "delete", "--id", "9"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("9");
+  });
+
+  it("reports a missing id for blackout update", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+    });
+
+    const result = await runCliCommand(
+      ["blackout", "update", "--payload-json", "{}"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--id");
   });
 });

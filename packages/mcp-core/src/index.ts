@@ -52,6 +52,10 @@ export type McpToolDefinition = {
     | "lighthouse_feature_get"
     | "lighthouse_feature_workitems"
     | "lighthouse_delivery_list"
+    | "lighthouse_blackout_list"
+    | "lighthouse_blackout_create"
+    | "lighthouse_blackout_update"
+    | "lighthouse_blackout_delete"
     | "lighthouse_forecast_manual"
     | "lighthouse_forecast_backtest";
   readonly description: string;
@@ -447,6 +451,39 @@ type McpRuntimeClient = {
         readonly error: { readonly category: string; readonly reason: string };
       }
   >;
+  readonly getRecurringBlackoutRules: () => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly createRecurringBlackoutRule: (
+    payload: Readonly<Record<string, unknown>>,
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly updateRecurringBlackoutRule: (
+    id: number,
+    payload: Readonly<Record<string, unknown>>,
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly deleteRecurringBlackoutRule: (id: number) => Promise<
+    | { readonly ok: true; readonly value: undefined }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
   readonly runManualForecast: (
     teamId: number,
     payload: {
@@ -490,6 +527,42 @@ export type McpCoreRuntime = {
     argumentsPayload: unknown,
   ) => Promise<McpToolResult>;
 };
+
+const recurringBlackoutRuleProperties = {
+  weekdays: {
+    type: "array",
+    items: {
+      type: "string",
+      enum: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+    },
+    description: "Weekdays the rule applies to.",
+  },
+  intervalWeeks: {
+    type: "integer",
+    description: "Repeat every N weeks (1 = every week).",
+  },
+  start: {
+    type: "string",
+    description: "Rule start date in ISO format (YYYY-MM-DD).",
+  },
+  end: {
+    type: ["string", "null"],
+    description:
+      "Optional end date in ISO format (YYYY-MM-DD), or null for an open end.",
+  },
+  description: {
+    type: "string",
+    description: "Human-readable description of the rule.",
+  },
+} as const;
 
 const toolDefinitions: readonly McpToolDefinition[] = [
   {
@@ -677,6 +750,45 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_delivery_list",
     description: "List deliveries for a portfolio by portfolio ID.",
+    inputSchema: idInputSchema,
+  },
+  {
+    name: "lighthouse_blackout_list",
+    description:
+      "List the recurring blackout rules (recurring non-working days excluded from forecasts). Requires Lighthouse newer than v26.5.29.5.",
+    inputSchema: emptyInputSchema,
+  },
+  {
+    name: "lighthouse_blackout_create",
+    description:
+      "Create a recurring blackout rule (weekdays + every-N-weeks interval + start date + optional open end). Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...recurringBlackoutRuleProperties,
+      },
+      required: ["weekdays", "intervalWeeks", "start", "description"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_blackout_update",
+    description:
+      "Update a recurring blackout rule by ID. Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...recurringBlackoutRuleProperties,
+      },
+      required: ["id", "weekdays", "intervalWeeks", "start", "description"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_blackout_delete",
+    description:
+      "Delete a recurring blackout rule by ID. Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5.",
     inputSchema: idInputSchema,
   },
   {
@@ -948,6 +1060,24 @@ const isoDateStringSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/u, "Expected ISO date in YYYY-MM-DD format.");
 
+const weekdaySchema = z.enum([
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+]);
+
+const recurringBlackoutRuleInputSchema = z.object({
+  weekdays: z.array(weekdaySchema),
+  intervalWeeks: z.number().int(),
+  start: isoDateStringSchema,
+  end: isoDateStringSchema.nullable().optional(),
+  description: z.string(),
+});
+
 const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   lighthouse_health_check: z.object({}),
   lighthouse_version_get: z.object({}),
@@ -1037,6 +1167,12 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   }),
   lighthouse_feature_workitems: z.object({ id: z.number().int() }),
   lighthouse_delivery_list: z.object({ id: z.number().int() }),
+  lighthouse_blackout_list: z.object({}),
+  lighthouse_blackout_create: recurringBlackoutRuleInputSchema,
+  lighthouse_blackout_update: recurringBlackoutRuleInputSchema.extend({
+    id: z.number().int(),
+  }),
+  lighthouse_blackout_delete: z.object({ id: z.number().int() }),
   lighthouse_forecast_manual: z.object({
     id: z.number().int(),
     remainingItems: z.number().int().optional(),
@@ -1054,7 +1190,12 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
 };
 
 const isReadOnlyTool = (toolName: McpToolDefinition["name"]): boolean =>
-  !toolName.endsWith("_refresh");
+  !(
+    toolName.endsWith("_refresh") ||
+    toolName.endsWith("_create") ||
+    toolName.endsWith("_update") ||
+    toolName.endsWith("_delete")
+  );
 
 export const createMcpCoreRuntime = (
   dependencies: McpCoreRuntimeDependencies,
@@ -1535,6 +1676,65 @@ export const createMcpCoreRuntime = (
       }
       return getErrorToolResult(
         `delivery: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    // ── Recurring blackout-rule tools ────────────────────────────────────────
+
+    if (name === "lighthouse_blackout_list") {
+      const result = await client.getRecurringBlackoutRules();
+      if (result.ok) {
+        return getSuccessToolResult(
+          `recurringBlackoutRules: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `blackout: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_blackout_create") {
+      const payload = isObjectRecord(argumentsPayload) ? argumentsPayload : {};
+      const result = await client.createRecurringBlackoutRule(payload);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `recurringBlackoutRule: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `blackout: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_blackout_update") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("blackout: invalid id (rule id required)");
+      }
+      const payload = isObjectRecord(argumentsPayload) ? argumentsPayload : {};
+      const { id: _ignoredId, ...rulePayload } = payload;
+      const result = await client.updateRecurringBlackoutRule(id, rulePayload);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `recurringBlackoutRule: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `blackout: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_blackout_delete") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("blackout: invalid id (rule id required)");
+      }
+      const result = await client.deleteRecurringBlackoutRule(id);
+      if (result.ok) {
+        return getSuccessToolResult(`recurringBlackoutRule deleted: ${id}`);
+      }
+      return getErrorToolResult(
+        `blackout: ${result.error.category} (${result.error.reason})`,
       );
     }
 

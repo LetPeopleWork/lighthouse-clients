@@ -42,6 +42,10 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_feature_get",
       "lighthouse_feature_workitems",
       "lighthouse_delivery_list",
+      "lighthouse_blackout_list",
+      "lighthouse_blackout_create",
+      "lighthouse_blackout_update",
+      "lighthouse_blackout_delete",
       "lighthouse_forecast_manual",
       "lighthouse_forecast_backtest",
       "lighthouse_team_metrics_cumulativeStateTime",
@@ -444,6 +448,172 @@ describe("createMcpCoreRuntime", () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain("Release 1");
+  });
+
+  it("calls recurring blackout-rule list tool", async () => {
+    const rules = [
+      {
+        id: 3,
+        weekdays: ["Monday"],
+        intervalWeeks: 2,
+        start: "2026-06-01",
+        end: null,
+        description: "Sprint review",
+        summary: "Every 2 weeks on Mon from 2026-06-01",
+      },
+    ];
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+        getRecurringBlackoutRules: async () => ({ ok: true, value: rules }),
+        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        deleteRecurringBlackoutRule: async () => ({
+          ok: true,
+          value: undefined,
+        }),
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse_blackout_list", {});
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain("Sprint review");
+  });
+
+  it("calls recurring blackout-rule create tool and forwards the payload", async () => {
+    let received: unknown;
+    const created = {
+      id: 4,
+      weekdays: ["Monday", "Wednesday"],
+      intervalWeeks: 1,
+      start: "2026-06-01",
+      end: null,
+      description: "Recurring",
+      summary: "Every week on Mon, Wed from 2026-06-01",
+    };
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+        getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+        createRecurringBlackoutRule: async (payload) => {
+          received = payload;
+          return { ok: true, value: created };
+        },
+        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        deleteRecurringBlackoutRule: async () => ({
+          ok: true,
+          value: undefined,
+        }),
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse_blackout_create", {
+      weekdays: ["Monday", "Wednesday"],
+      intervalWeeks: 1,
+      start: "2026-06-01",
+      end: null,
+      description: "Recurring",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(received).toEqual({
+      weekdays: ["Monday", "Wednesday"],
+      intervalWeeks: 1,
+      start: "2026-06-01",
+      end: null,
+      description: "Recurring",
+    });
+  });
+
+  it("calls recurring blackout-rule update tool with the id stripped from the payload", async () => {
+    let receivedId: number | undefined;
+    let receivedPayload: Record<string, unknown> | undefined;
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+        getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        updateRecurringBlackoutRule: async (id, payload) => {
+          receivedId = id;
+          receivedPayload = payload as Record<string, unknown>;
+          return { ok: true, value: { id } };
+        },
+        deleteRecurringBlackoutRule: async () => ({
+          ok: true,
+          value: undefined,
+        }),
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse_blackout_update", {
+      id: 7,
+      weekdays: ["Friday"],
+      intervalWeeks: 3,
+      start: "2026-06-01",
+      end: "2026-12-31",
+      description: "Updated",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(receivedId).toBe(7);
+    expect(receivedPayload).not.toHaveProperty("id");
+    expect(receivedPayload?.description).toBe("Updated");
+  });
+
+  it("calls recurring blackout-rule delete tool", async () => {
+    let deletedId: number | undefined;
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+        getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        deleteRecurringBlackoutRule: async (id) => {
+          deletedId = id;
+          return { ok: true, value: undefined };
+        },
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse_blackout_delete", {
+      id: 9,
+    });
+
+    expect(result.isError).toBe(false);
+    expect(deletedId).toBe(9);
+  });
+
+  it("reports the upgrade error when the server gates recurring blackout rules", async () => {
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v26.5.29.5" }),
+        getRecurringBlackoutRules: async () => ({
+          ok: false,
+          error: {
+            category: "misconfigured",
+            reason:
+              'does not support "recurringBlackoutRules" — Upgrade Lighthouse',
+          },
+        }),
+        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+        deleteRecurringBlackoutRule: async () => ({
+          ok: true,
+          value: undefined,
+        }),
+      }),
+    });
+
+    const result = await runtime.callTool("lighthouse_blackout_list", {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain("misconfigured");
   });
 
   it("calls team workItemAge metrics tool", async () => {
@@ -935,7 +1105,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(28);
+    expect(registered).toHaveLength(32);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",
