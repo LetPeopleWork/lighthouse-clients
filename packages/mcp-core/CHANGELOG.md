@@ -1,5 +1,55 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 1.3.0
+
+### Minor Changes
+
+- [`1e4f59e`](https://github.com/LetPeopleWork/lighthouse-clients/commit/1e4f59ef92d4176cb3c559bc169401d8552cec0c) Thanks [@huserben](https://github.com/huserben)! - Add recurring blackout-rule support across the client, CLI, and MCP surfaces.
+
+  Wraps the new Lighthouse `recurring-blackout-rules` endpoint family — recurring
+  non-working days (pick weekdays, an every-X-weeks interval, a start date, and an
+  optional open end) that forecasts skip automatically, just like one-off blackout
+  dates.
+
+  - **client**: `getRecurringBlackoutRules`, `createRecurringBlackoutRule`,
+    `updateRecurringBlackoutRule`, and `deleteRecurringBlackoutRule`, with the
+    `RecurringBlackoutRule` / `DayOfWeek` / `RecurringBlackoutRuleInput` types.
+  - **cli**: a `blackout` command group — `list`, `create`, `update`, `delete`.
+  - **mcp**: four tools — `lighthouse_blackout_list`, `lighthouse_blackout_create`,
+    `lighthouse_blackout_update`, `lighthouse_blackout_delete` — exposed through
+    the HTTP and stdio servers.
+
+  These methods are server-version-gated: the endpoint family did not exist before,
+  so on a Lighthouse server that is not newer than `v26.5.29.5` (the last release
+  without it) the client returns a clear "upgrade Lighthouse" error instead of an
+  opaque 404, and makes no write request. Dev and unparseable server versions are
+  never blocked. Creating, updating, and deleting rules is a Premium, system-admin
+  operation on the server; the clients forward the caller's auth and surface a 403
+  normally.
+
+### Patch Changes
+
+- [`70a4177`](https://github.com/LetPeopleWork/lighthouse-clients/commit/70a4177e05475185ae29a6623d5e551923fbc22d) Thanks [@huserben](https://github.com/huserben)! - Surface HTTP 409 optimistic-concurrency conflicts from config-edit writes as a
+  distinct, recognizable error.
+
+  When a config-edit request (e.g. `updateTeam`, `updatePortfolio`,
+  `updateDelivery`) hits an aggregate that another admin changed concurrently, the
+  Lighthouse server now answers with HTTP 409 and a `concurrency-conflict`
+  ProblemDetails body. The client maps that response to a dedicated
+  `concurrency-conflict` error category (`statusCode: 409`) whose `reason`
+  preserves the server's message and appends actionable guidance: re-fetch the
+  current settings to obtain the latest concurrency token, then re-apply the
+  change. The CLI and MCP error surfaces present that guidance verbatim instead of
+  an opaque "request failed" message.
+
+  The change is purely additive and tolerant of older servers: a server that never
+  emits 409 exercises none of the new path, and the optimistic-concurrency token
+  round-trips inside the existing pass-through write payload, so no schema change
+  or version gate is required. Non-409 failures keep their existing categories.
+
+- Updated dependencies [[`70a4177`](https://github.com/LetPeopleWork/lighthouse-clients/commit/70a4177e05475185ae29a6623d5e551923fbc22d), [`1e4f59e`](https://github.com/LetPeopleWork/lighthouse-clients/commit/1e4f59ef92d4176cb3c559bc169401d8552cec0c)]:
+  - @letpeoplework/lighthouse-client@1.3.0
+
 ## 1.2.0
 
 ### Minor Changes
