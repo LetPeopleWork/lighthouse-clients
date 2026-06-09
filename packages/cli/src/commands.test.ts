@@ -159,6 +159,13 @@ type MockClient = {
     readonly ok: true;
     readonly value: unknown;
   }>;
+  readonly getTeamWorkItemAgePercentiles: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
+  }>;
   readonly getTeamTotalWorkItemAgeOverTime: (
     id: number,
     range?: unknown,
@@ -221,6 +228,13 @@ type MockClient = {
   ) => Promise<{
     readonly ok: true;
     readonly value: unknown;
+  }>;
+  readonly getPortfolioWorkItemAgePercentiles: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{
+    readonly ok: true;
+    readonly value: readonly unknown[];
   }>;
   readonly getPortfolioTotalWorkItemAgeOverTime: (
     id: number,
@@ -386,6 +400,7 @@ const getDefaultMockClient = (): MockClient => ({
     ok: true,
     value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
   }),
+  getTeamWorkItemAgePercentiles: async () => ({ ok: true, value: [] }),
   getTeamTotalWorkItemAgeOverTime: async () => ({
     ok: true,
     value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
@@ -413,6 +428,7 @@ const getDefaultMockClient = (): MockClient => ({
     ok: true,
     value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },
   }),
+  getPortfolioWorkItemAgePercentiles: async () => ({ ok: true, value: [] }),
   getPortfolioTotalWorkItemAgeOverTime: async () => ({
     ok: true,
     value: { startDate: "2026-01-01", endDate: "2026-03-31", daily: [] },

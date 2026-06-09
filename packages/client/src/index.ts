@@ -1075,6 +1075,10 @@ export type LighthouseClient = {
     range?: MetricsDateRange,
     definitionId?: number,
   ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getTeamWorkItemAgePercentiles: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
   readonly getTeamCycleTimeData: (
     teamId: number,
     range?: MetricsDateRange,
@@ -1100,6 +1104,10 @@ export type LighthouseClient = {
     portfolioId: number,
     range?: MetricsDateRange,
     definitionId?: number,
+  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  readonly getPortfolioWorkItemAgePercentiles: (
+    portfolioId: number,
+    range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<readonly unknown[]>>;
   readonly getPortfolioArrivals: (
     portfolioId: number,
@@ -1634,6 +1642,7 @@ const deriveTotalWorkItemAgeOverTime = (
 const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   cumulativeStateTime: "v26.5.24.10",
   recurringBlackoutRules: "v26.5.29.5",
+  workItemAgePercentiles: "v26.6.7.1",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -1926,6 +1935,22 @@ export const createLighthouseClient = (
         { method: "GET" },
       );
     },
+    getTeamWorkItemAgePercentiles: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const unsupported = await ensureServerSupports("workItemAgePercentiles");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/workItemAgePercentiles?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
     getTeamCycleTimeData: async (teamId: number, range?: MetricsDateRange) => {
       const r = getResolvedMetricsDateRange(range);
       return requestJson<readonly unknown[]>(
@@ -2035,6 +2060,22 @@ export const createLighthouseClient = (
         configuration,
         dependencies,
         `/v1/portfolios/${portfolioId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}${getDefinitionIdQuerySuffix(definitionId)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioWorkItemAgePercentiles: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const unsupported = await ensureServerSupports("workItemAgePercentiles");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly unknown[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/workItemAgePercentiles?${getMetricsDateRangeQuery(r)}`,
         { method: "GET" },
       );
     },

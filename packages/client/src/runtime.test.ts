@@ -2122,3 +2122,148 @@ describe("createLighthouseClient", () => {
     });
   }
 });
+
+describe("createLighthouseClient work-item-age percentiles", () => {
+  const ageBaselineVersion = "v26.6.7.1";
+  const supportedAgeVersion = "v26.6.8.0";
+  const percentiles = [
+    { percentile: 50, value: 5 },
+    { percentile: 85, value: 11 },
+  ];
+
+  const ageVersionResponse = (value: string): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => value,
+    json: async () => value,
+  });
+
+  const getAgeClient = (
+    responses: readonly MockResponse[],
+  ): {
+    readonly client: ReturnType<typeof createLighthouseClient>;
+    readonly fetchMock: FetchMock;
+  } => {
+    const fetchMock = getFetchSequenceMock(responses);
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+    return { client, fetchMock };
+  };
+
+  const getAgeFeatureCall = (fetchMock: FetchMock): FetchCall | undefined =>
+    fetchMock.calls.find((call) => !call.url.endsWith("/v1/version/current"));
+
+  const percentilesResponse: MockResponse = {
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(percentiles),
+    json: async () => percentiles,
+  };
+
+  it("gets team work-item-age percentiles with a date range on a supported server", async () => {
+    const { client, fetchMock } = getAgeClient([
+      ageVersionResponse(supportedAgeVersion),
+      percentilesResponse,
+    ]);
+
+    const result = await client.getTeamWorkItemAgePercentiles(3, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: percentiles });
+    expect(getAgeFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/teams/3/metrics/workItemAgePercentiles?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("gets portfolio work-item-age percentiles with a date range on a supported server", async () => {
+    const { client, fetchMock } = getAgeClient([
+      ageVersionResponse(supportedAgeVersion),
+      percentilesResponse,
+    ]);
+
+    const result = await client.getPortfolioWorkItemAgePercentiles(7, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: percentiles });
+    expect(getAgeFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/portfolios/7/metrics/workItemAgePercentiles?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  const ageGatedCalls: ReadonlyArray<{
+    readonly name: string;
+    readonly run: (
+      client: ReturnType<typeof createLighthouseClient>,
+    ) => Promise<{
+      readonly ok: boolean;
+      readonly error?: { readonly category: string; readonly reason: string };
+    }>;
+  }> = [
+    {
+      name: "getTeamWorkItemAgePercentiles",
+      run: (client) => client.getTeamWorkItemAgePercentiles(3),
+    },
+    {
+      name: "getPortfolioWorkItemAgePercentiles",
+      run: (client) => client.getPortfolioWorkItemAgePercentiles(7),
+    },
+  ];
+
+  for (const gated of ageGatedCalls) {
+    it(`blocks ${gated.name} on a server that is not newer than the baseline`, async () => {
+      const { client, fetchMock } = getAgeClient([
+        ageVersionResponse(ageBaselineVersion),
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(false);
+      if (result.ok || result.error === undefined) {
+        throw new Error("Expected an unsupported-server error result");
+      }
+      expect(result.error.category).toBe("misconfigured");
+      expect(result.error.reason).toContain("workItemAgePercentiles");
+      expect(result.error.reason.toLowerCase()).toContain("upgrade lighthouse");
+      expect(getAgeFeatureCall(fetchMock)).toBeUndefined();
+    });
+
+    it(`proceeds with ${gated.name} on a server newer than the baseline`, async () => {
+      const { client, fetchMock } = getAgeClient([
+        ageVersionResponse(supportedAgeVersion),
+        percentilesResponse,
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(true);
+      expect(getAgeFeatureCall(fetchMock)?.url).toContain(
+        "/metrics/workItemAgePercentiles",
+      );
+    });
+
+    it(`proceeds with ${gated.name} on a dev/unparseable server version`, async () => {
+      const { client, fetchMock } = getAgeClient([
+        ageVersionResponse("DEV"),
+        percentilesResponse,
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(true);
+      expect(getAgeFeatureCall(fetchMock)?.url).toContain(
+        "/metrics/workItemAgePercentiles",
+      );
+    });
+  }
+});

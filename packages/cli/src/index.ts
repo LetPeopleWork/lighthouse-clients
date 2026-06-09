@@ -61,6 +61,7 @@ type CliDomainClientLike = Pick<
   | "getTeamPredictabilityScore"
   | "getTeamWorkItemAgeOverTime"
   | "getTeamTotalWorkItemAgeOverTime"
+  | "getTeamWorkItemAgePercentiles"
   | "getPortfolioThroughput"
   | "getPortfolioCycleTimePercentiles"
   | "getPortfolioArrivals"
@@ -70,6 +71,7 @@ type CliDomainClientLike = Pick<
   | "getPortfolioPredictabilityScore"
   | "getPortfolioWorkItemAgeOverTime"
   | "getPortfolioTotalWorkItemAgeOverTime"
+  | "getPortfolioWorkItemAgePercentiles"
   | "getTeamCumulativeStateTime"
   | "getTeamCumulativeStateTimeItems"
   | "getTeamCumulativeStateTimeCandidates"
@@ -1302,6 +1304,7 @@ const buildMetricsPayload = async (
     cycleTimeDataResult,
     predictabilityScoreResult,
     workItemAgeOverTimeResult,
+    workItemAgePercentilesResult,
     totalWorkItemAgeOverTimeResult,
     cumulativeStateTimeResult,
     cumulativeCandidatesResult,
@@ -1359,6 +1362,11 @@ const buildMetricsPayload = async (
         ? client.getTeamWorkItemAgeOverTime(entityId, range)
         : client.getPortfolioWorkItemAgeOverTime(entityId, range),
     ),
+    maybeFetch(needs("workItemAge"), () =>
+      isTeam
+        ? client.getTeamWorkItemAgePercentiles(entityId, range)
+        : client.getPortfolioWorkItemAgePercentiles(entityId, range),
+    ),
     maybeFetch(needs("totalWorkItemAge"), () =>
       isTeam
         ? client.getTeamTotalWorkItemAgeOverTime(entityId, range)
@@ -1409,6 +1417,9 @@ const buildMetricsPayload = async (
   const cycleTimeDataValue = resolveOrSkip(cycleTimeDataResult);
   const predictabilityScoreValue = resolveOrSkip(predictabilityScoreResult);
   const workItemAgeOverTimeValue = resolveOrSkip(workItemAgeOverTimeResult);
+  const workItemAgePercentilesValue = resolveOrSkip(
+    workItemAgePercentilesResult,
+  );
   const totalWorkItemAgeOverTimeValue = resolveOrSkip(
     totalWorkItemAgeOverTimeResult,
   );
@@ -1495,6 +1506,12 @@ const buildMetricsPayload = async (
         ? (workItemAgeOverTimeValue ??
           getMetricUnavailableValue(unavailableReason))
         : workItemAgeOverTimeValue;
+    payload.workItemAgePercentiles =
+      workItemAgePercentilesValue === null ||
+      isMetricErrorValue(workItemAgePercentilesValue)
+        ? (workItemAgePercentilesValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : { values: workItemAgePercentilesValue };
   }
 
   if (needs("totalWorkItemAge")) {

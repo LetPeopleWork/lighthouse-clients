@@ -34,6 +34,8 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_portfolio_refresh",
       "lighthouse_team_metrics_throughput",
       "lighthouse_team_metrics_cycleTimePercentiles",
+      "lighthouse_team_metrics_workItemAgePercentiles",
+      "lighthouse_portfolio_metrics_workItemAgePercentiles",
       "lighthouse_portfolio_metrics_throughput",
       "lighthouse_team_metrics_workItemAge",
       "lighthouse_team_metrics_totalWorkItemAge",
@@ -782,6 +784,111 @@ describe("createMcpCoreRuntime", () => {
     expect(result.content[0]?.text).toContain("Feature B");
   });
 
+  it("calls team workItemAgePercentiles metrics tool", async () => {
+    const percentiles = [{ percentile: 85, value: 11 }];
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getTeamWorkItemAgePercentiles: async () => ({
+          ok: true,
+          value: percentiles,
+        }),
+        getPortfolioWorkItemAgePercentiles: async () => ({
+          ok: true,
+          value: [],
+        }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+        getPortfolioTotalWorkItemAgeOverTime: async () => ({
+          ok: true,
+          value: {},
+        }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: [] }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: {} }),
+        runBacktest: async () => ({ ok: true, value: {} }),
+      }),
+    });
+
+    const result = await runtime.callTool(
+      "lighthouse_team_metrics_workItemAgePercentiles",
+      { id: 5 },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain("team workItemAgePercentiles");
+  });
+
+  it("calls portfolio workItemAgePercentiles metrics tool", async () => {
+    const percentiles = [{ percentile: 50, value: 4 }];
+    const runtime = createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+        listTeams: async () => ({ ok: true, value: [] }),
+        getTeam: async () => ({ ok: true, value: {} }),
+        refreshTeam: async () => ({ ok: true, value: undefined }),
+        listPortfolios: async () => ({ ok: true, value: [] }),
+        getPortfolio: async () => ({ ok: true, value: {} }),
+        refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+        getTeamWorkItemAgePercentiles: async () => ({ ok: true, value: [] }),
+        getPortfolioWorkItemAgePercentiles: async () => ({
+          ok: true,
+          value: percentiles,
+        }),
+        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+        getPortfolioTotalWorkItemAgeOverTime: async () => ({
+          ok: true,
+          value: {},
+        }),
+        getFeaturesByIds: async () => ({ ok: true, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+        listDeliveries: async () => ({ ok: true, value: [] }),
+        createDelivery: async () => ({ ok: true, value: {} }),
+        updateDelivery: async () => ({ ok: true, value: {} }),
+        deleteDelivery: async () => ({ ok: true, value: undefined }),
+        runManualForecast: async () => ({ ok: true, value: {} }),
+        runBacktest: async () => ({ ok: true, value: {} }),
+      }),
+    });
+
+    const result = await runtime.callTool(
+      "lighthouse_portfolio_metrics_workItemAgePercentiles",
+      { id: 9 },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain(
+      "portfolio workItemAgePercentiles",
+    );
+  });
+
   it("calls portfolio totalWorkItemAge metrics tool", async () => {
     const totalAgeData = {
       startDate: "2026-01-01",
@@ -1105,7 +1212,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(32);
+    expect(registered).toHaveLength(34);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",

@@ -38,6 +38,8 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_refresh"
     | "lighthouse_team_metrics_throughput"
     | "lighthouse_team_metrics_cycleTimePercentiles"
+    | "lighthouse_team_metrics_workItemAgePercentiles"
+    | "lighthouse_portfolio_metrics_workItemAgePercentiles"
     | "lighthouse_team_metrics_workItemAge"
     | "lighthouse_team_metrics_totalWorkItemAge"
     | "lighthouse_portfolio_metrics_throughput"
@@ -274,6 +276,26 @@ type McpRuntimeClient = {
     id: number,
     range?: { readonly startDate: string; readonly endDate: string },
     definitionId?: number,
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamWorkItemAgePercentiles: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioWorkItemAgePercentiles: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
   ) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
     | {
@@ -648,6 +670,34 @@ const toolDefinitions: readonly McpToolDefinition[] = [
           description:
             "Optional named cycle time definition ID; omit for the default cycle time.",
         },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_workItemAgePercentiles",
+    description:
+      "Get work-item age percentiles for a team by ID, optionally filtered by start and end dates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_workItemAgePercentiles",
+    description:
+      "Get work-item age percentiles for a portfolio by ID, optionally filtered by start and end dates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
       },
       required: ["id"],
       additionalProperties: false,
@@ -1123,6 +1173,16 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     endDate: isoDateStringSchema.optional(),
     definitionId: z.number().int().optional(),
   }),
+  lighthouse_team_metrics_workItemAgePercentiles: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_portfolio_metrics_workItemAgePercentiles: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
   lighthouse_team_metrics_workItemAge: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
@@ -1412,6 +1472,40 @@ export const createMcpCoreRuntime = (
       }
       return getErrorToolResult(
         `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_workItemAgePercentiles") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getTeamWorkItemAgePercentiles(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team workItemAgePercentiles: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_workItemAgePercentiles") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getPortfolioWorkItemAgePercentiles(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio workItemAgePercentiles: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
       );
     }
 
