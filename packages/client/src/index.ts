@@ -1073,6 +1073,7 @@ export type LighthouseClient = {
   readonly getTeamCycleTimePercentiles: (
     teamId: number,
     range?: MetricsDateRange,
+    definitionId?: number,
   ) => Promise<LighthouseApiResult<readonly unknown[]>>;
   readonly getTeamCycleTimeData: (
     teamId: number,
@@ -1098,6 +1099,7 @@ export type LighthouseClient = {
   readonly getPortfolioCycleTimePercentiles: (
     portfolioId: number,
     range?: MetricsDateRange,
+    definitionId?: number,
   ) => Promise<LighthouseApiResult<readonly unknown[]>>;
   readonly getPortfolioArrivals: (
     portfolioId: number,
@@ -1540,6 +1542,11 @@ const getItemIdsQuerySuffix = (itemIds?: readonly number[]): string =>
 const getViewQuerySuffix = (view?: ThroughputFilterView): string =>
   view === "filtered" ? "&view=filtered" : "";
 
+const getDefinitionIdQuerySuffix = (definitionId?: number): string =>
+  definitionId !== undefined
+    ? `&definitionId=${encodeURIComponent(definitionId)}`
+    : "";
+
 type WipItemDto = {
   readonly id: number;
   readonly name: string;
@@ -1909,12 +1916,13 @@ export const createLighthouseClient = (
     getTeamCycleTimePercentiles: async (
       teamId: number,
       range?: MetricsDateRange,
+      definitionId?: number,
     ) => {
       const r = getResolvedMetricsDateRange(range);
       return requestJson<readonly unknown[]>(
         configuration,
         dependencies,
-        `/v1/teams/${teamId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
+        `/v1/teams/${teamId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}${getDefinitionIdQuerySuffix(definitionId)}`,
         { method: "GET" },
       );
     },
@@ -2020,12 +2028,13 @@ export const createLighthouseClient = (
     getPortfolioCycleTimePercentiles: async (
       portfolioId: number,
       range?: MetricsDateRange,
+      definitionId?: number,
     ) => {
       const r = getResolvedMetricsDateRange(range);
       return requestJson<readonly unknown[]>(
         configuration,
         dependencies,
-        `/v1/portfolios/${portfolioId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}`,
+        `/v1/portfolios/${portfolioId}/metrics/cycleTimePercentiles?${getMetricsDateRangeQuery(r)}${getDefinitionIdQuerySuffix(definitionId)}`,
         { method: "GET" },
       );
     },

@@ -277,6 +277,28 @@ const parseThroughputFilterOption = (
 };
 
 /**
+ * Parses `--definition-id <number>` to scope cycle-time percentiles to a named
+ * cycle time (premium). Omitted → undefined (the default cycle time).
+ */
+const parseDefinitionIdOption = (
+  args: readonly string[],
+):
+  | { readonly definitionId: number | undefined }
+  | { readonly error: string } => {
+  const value = getOptionValue(args, "--definition-id");
+  if (value === undefined) {
+    return { definitionId: undefined };
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return {
+      error: `Invalid --definition-id value: ${value}. Expected a positive integer.`,
+    };
+  }
+  return { definitionId: parsed };
+};
+
+/**
  * Parses `--filter <raw|filtered|team>` for forecast commands.
  * Maps the user-visible word to the wire `applyFilterOverride` field:
  * - omitted | "team" → undefined (respect the team's setting)
@@ -1119,6 +1141,7 @@ const getMetricsGroupHelpText = (): string =>
     "  --filter (team scope only): `filtered` applies the team's forecast-exclusion rule to throughput + predictability score (Lighthouse v26.5.24.10+). Default is `raw`.",
     "  --item-ids <id,...> (cumulativeStateTime only): narrow the bars to a subset of work items.",
     "  --state <name> (cumulativeStateTime only): also include the per-item drill-down for that state.",
+    "  --definition-id <id> (cycleTime only): return percentiles for a named cycle time (premium) instead of the default cycle time.",
     "",
     `Allowed metrics: ${ALLOWED_METRIC_DISPLAY}`,
   ].join("\n");
@@ -1248,6 +1271,7 @@ const buildMetricsPayload = async (
   cumulativeOptions?: {
     readonly state?: string;
     readonly itemIds?: readonly number[];
+    readonly definitionId?: number;
   },
 ): Promise<Record<string, unknown>> => {
   const unavailableReason =
@@ -1307,8 +1331,16 @@ const buildMetricsPayload = async (
     ),
     maybeFetch(needs("cycleTime"), () =>
       isTeam
-        ? client.getTeamCycleTimePercentiles(entityId, range)
-        : client.getPortfolioCycleTimePercentiles(entityId, range),
+        ? client.getTeamCycleTimePercentiles(
+            entityId,
+            range,
+            cumulativeOptions?.definitionId,
+          )
+        : client.getPortfolioCycleTimePercentiles(
+            entityId,
+            range,
+            cumulativeOptions?.definitionId,
+          ),
     ),
     maybeFetch(needs("cycleTime"), () =>
       isTeam
@@ -1905,6 +1937,11 @@ const runMetricsGroup = async (
     return itemIdsOrError;
   }
 
+  const definitionIdOrError = parseDefinitionIdOption(args);
+  if ("error" in definitionIdOrError) {
+    return getErrorResult(definitionIdOrError.error);
+  }
+
   const payload = await buildMetricsPayload(
     action,
     entityId,
@@ -1915,6 +1952,7 @@ const runMetricsGroup = async (
     {
       state: getOptionValue(args, "--state"),
       itemIds: itemIdsOrError,
+      definitionId: definitionIdOrError.definitionId,
     },
   );
   return mapApiResultToCliResult({ ok: true, value: payload }, outputFormat);

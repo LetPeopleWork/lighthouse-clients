@@ -273,6 +273,7 @@ type McpRuntimeClient = {
   readonly getTeamCycleTimePercentiles: (
     id: number,
     range?: { readonly startDate: string; readonly endDate: string },
+    definitionId?: number,
   ) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
     | {
@@ -636,12 +637,17 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_cycleTimePercentiles",
     description:
-      "Get cycle-time percentiles for a team by ID, optionally filtered by start and end dates.",
+      "Get cycle-time percentiles for a team by ID, optionally filtered by start and end dates. Pass definitionId to get the percentiles for a named cycle time (premium) instead of the default cycle time.",
     inputSchema: {
       type: "object",
       properties: {
         ...idInputSchema.properties,
         ...dateRangeProperties,
+        definitionId: {
+          type: "number",
+          description:
+            "Optional named cycle time definition ID; omit for the default cycle time.",
+        },
       },
       required: ["id"],
       additionalProperties: false,
@@ -987,6 +993,22 @@ const getNumericId = (argumentsPayload: unknown): number | null => {
   return null;
 };
 
+const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
+  if (
+    typeof argumentsPayload !== "object" ||
+    argumentsPayload === null ||
+    Array.isArray(argumentsPayload)
+  ) {
+    return undefined;
+  }
+
+  const value = (argumentsPayload as { readonly definitionId?: unknown })
+    .definitionId;
+  return typeof value === "number" && Number.isInteger(value)
+    ? value
+    : undefined;
+};
+
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 };
@@ -1099,6 +1121,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
+    definitionId: z.number().int().optional(),
   }),
   lighthouse_team_metrics_workItemAge: z.object({
     id: z.number().int(),
@@ -1376,7 +1399,12 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamCycleTimePercentiles(id, range);
+      const definitionId = getDefinitionId(argumentsPayload);
+      const result = await client.getTeamCycleTimePercentiles(
+        id,
+        range,
+        definitionId,
+      );
       if (result.ok) {
         return getSuccessToolResult(
           `team cycleTimePercentiles: ${encodePayload(result.value)}`,
