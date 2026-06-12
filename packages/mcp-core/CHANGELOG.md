@@ -1,5 +1,35 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 1.4.0
+
+### Minor Changes
+
+- [`c462875`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c4628751c08cf3e1cc46906a4abe1d81f76f41db) Thanks [@huserben](https://github.com/huserben)! - Support named cycle times (premium) on cycle-time percentiles.
+
+  `getTeamCycleTimePercentiles` / `getPortfolioCycleTimePercentiles` gain an optional
+  `definitionId` argument that returns the percentiles for a named cycle time instead of
+  the default cycle time. The CLI exposes it as `--definition-id <id>` on `lh metrics ...`
+  (cycleTime metric), and the MCP `lighthouse_team_metrics_cycleTimePercentiles` tool gains
+  an optional `definitionId`. The change is additive — an older Lighthouse server ignores
+  the parameter and returns the default percentiles, so no version gate is required. The
+  per-item named durations already flow through `cycleTimeData` unchanged.
+
+- [`f8d5d04`](https://github.com/LetPeopleWork/lighthouse-clients/commit/f8d5d0495d5c93d158a580abaca15b9f6c3d514e) Thanks [@huserben](https://github.com/huserben)! - Add version-gated work-item-age percentiles (team + portfolio).
+
+  `getTeamWorkItemAgePercentiles` / `getPortfolioWorkItemAgePercentiles` wrap the new
+  `/metrics/workItemAgePercentiles` endpoint. The CLI surfaces the percentiles under the
+  `workItemAge` metric (new `workItemAgePercentiles` payload key), and the MCP gains
+  `lighthouse_team_metrics_workItemAgePercentiles` /
+  `lighthouse_portfolio_metrics_workItemAgePercentiles` tools. The endpoint requires a
+  Lighthouse server newer than `v26.6.7.1`; older servers fail fast with an
+  "upgrade Lighthouse" error and never issue the request, while dev/unparseable versions
+  are allowed through.
+
+### Patch Changes
+
+- Updated dependencies [[`c462875`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c4628751c08cf3e1cc46906a4abe1d81f76f41db), [`f8d5d04`](https://github.com/LetPeopleWork/lighthouse-clients/commit/f8d5d0495d5c93d158a580abaca15b9f6c3d514e)]:
+  - @letpeoplework/lighthouse-client@1.4.0
+
 ## 1.3.0
 
 ### Minor Changes
