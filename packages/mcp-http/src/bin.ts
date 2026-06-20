@@ -1,7 +1,10 @@
 import { realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
-import { createLighthouseClient } from "@letpeoplework/lighthouse-client";
+import {
+  type LighthouseClientAuth,
+  createLighthouseClient,
+} from "@letpeoplework/lighthouse-client";
 import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -25,14 +28,63 @@ export type McpHttpServerHandle = {
 export const renderMcpHttpBanner = (url: string): string =>
   `Lighthouse MCP HTTP server running at ${url}`;
 
+const BEARER_PREFIX = "Bearer ";
+
+const firstHeaderValue = (
+  value: string | readonly string[] | undefined,
+): string | undefined => {
+  const raw = Array.isArray(value) ? value[0] : (value as string | undefined);
+  const trimmed = raw?.trim();
+  return trimmed !== undefined && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const parseBearerToken = (value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!value.toLowerCase().startsWith(BEARER_PREFIX.toLowerCase())) {
+    return undefined;
+  }
+
+  const token = value.slice(BEARER_PREFIX.length).trim();
+  return token.length > 0 ? token : undefined;
+};
+
+/**
+ * Derives the Lighthouse auth for a single inbound MCP request. The caller's own
+ * credential (an `X-Api-Key` header, or an `Authorization: Bearer` token) takes
+ * precedence so every caller drives Lighthouse as themselves — no shared baked
+ * key. The container's configured key (if any) remains as the legacy
+ * single-container / dev fallback for callers that send no credential.
+ */
+export const resolveRequestAuth = (
+  headers: NodeJS.Dict<string | string[]>,
+  fallbackApiKey: string | undefined,
+): LighthouseClientAuth => {
+  const callerApiKey = firstHeaderValue(headers["x-api-key"]);
+  if (callerApiKey !== undefined) {
+    return { kind: "api-key", value: callerApiKey };
+  }
+
+  const callerBearer = parseBearerToken(
+    firstHeaderValue(headers.authorization),
+  );
+  if (callerBearer !== undefined) {
+    return { kind: "bearer-token", token: callerBearer };
+  }
+
+  const fallback = fallbackApiKey?.trim();
+  if (fallback !== undefined && fallback.length > 0) {
+    return { kind: "api-key", value: fallback };
+  }
+
+  return { kind: "none" };
+};
+
 export const startMcpHttpServer = async (
   options: McpHttpServerOptions,
 ): Promise<McpHttpServerHandle> => {
-  const getAuth = () =>
-    options.apiKey === undefined
-      ? { kind: "none" as const }
-      : { kind: "api-key" as const, value: options.apiKey };
-
   const insecureHttpsDispatcher = new Agent({
     connect: { rejectUnauthorized: false },
   });
@@ -62,6 +114,8 @@ export const startMcpHttpServer = async (
         version: SERVER_VERSION,
       });
 
+      const requestAuth = resolveRequestAuth(req.headers, options.apiKey);
+
       registerMcpTools(server, {
         createClient: () =>
           createLighthouseClient(
@@ -70,7 +124,7 @@ export const startMcpHttpServer = async (
                 kind: "explicit",
                 lighthouseUrl: options.lighthouseUrl,
               },
-              auth: getAuth(),
+              auth: requestAuth,
             },
             { fetch: insecureFetch },
           ),
