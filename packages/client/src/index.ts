@@ -1639,10 +1639,11 @@ const deriveTotalWorkItemAgeOverTime = (
  * callable. Update the baseline to the current latest release whenever a new
  * server-dependent feature is wrapped.
  */
-const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
+export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   cumulativeStateTime: "v26.5.24.10",
   recurringBlackoutRules: "v26.5.29.5",
   workItemAgePercentiles: "v26.6.7.1",
+  mcpOAuthPassThrough: "v26.6.16.14",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;

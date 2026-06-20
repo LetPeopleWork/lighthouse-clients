@@ -2,8 +2,10 @@ import { realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import {
+  FEATURE_REQUIRES_SERVER_NEWER_THAN,
   type LighthouseClientAuth,
   createLighthouseClient,
+  isServerVersionNewerThan,
 } from "@letpeoplework/lighthouse-client";
 import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -13,12 +15,21 @@ import { Agent, fetch as undiciFetch } from "undici";
 const SERVER_NAME = "@letpeoplework/lighthouse-mcp-http";
 const SERVER_VERSION = "0.1.0";
 
+export type McpOAuthConfig = {
+  readonly issuer: string;
+  readonly resource: string;
+};
+
 export type McpHttpServerOptions = {
   readonly lighthouseUrl: string;
   readonly host: string;
   readonly port: number;
   readonly apiKey?: string;
+  readonly oauth?: McpOAuthConfig;
 };
+
+export const PROTECTED_RESOURCE_METADATA_PATH =
+  "/.well-known/oauth-protected-resource";
 
 export type McpHttpServerHandle = {
   readonly url: string;
@@ -82,6 +93,97 @@ export const resolveRequestAuth = (
   return { kind: "none" };
 };
 
+export type ProtectedResourceMetadata = {
+  readonly resource: string;
+  readonly authorization_servers: readonly string[];
+  readonly bearer_methods_supported: readonly string[];
+};
+
+/**
+ * RFC 9728 OAuth 2.0 Protected Resource Metadata for the MCP HTTP server. It
+ * names the IdP (the same OIDC provider Lighthouse trusts) as the authorization
+ * server and the Lighthouse API audience as the resource, so an MCP client
+ * discovers where to run its OAuth flow and which audience to request a token
+ * for (RFC 8707 resource indicator).
+ */
+export const buildProtectedResourceMetadata = (
+  oauth: McpOAuthConfig,
+): ProtectedResourceMetadata => ({
+  resource: oauth.resource,
+  authorization_servers: [oauth.issuer],
+  bearer_methods_supported: ["header"],
+});
+
+/**
+ * When OAuth is enabled, an MCP request carrying no caller credential must be
+ * challenged (401 + WWW-Authenticate) so the client starts its OAuth flow rather
+ * than silently driving Lighthouse anonymously.
+ */
+export const shouldChallengeForOAuth = (
+  headers: NodeJS.Dict<string | string[]>,
+  oauthEnabled: boolean,
+): boolean => {
+  if (!oauthEnabled) {
+    return false;
+  }
+
+  const hasApiKey = firstHeaderValue(headers["x-api-key"]) !== undefined;
+  const hasBearer =
+    parseBearerToken(firstHeaderValue(headers.authorization)) !== undefined;
+  return !hasApiKey && !hasBearer;
+};
+
+/**
+ * Reads the MCP OAuth configuration from the environment. Both the issuer (the
+ * OIDC provider Lighthouse trusts) and the resource (the Lighthouse API
+ * audience) must be set together to enable OAuth; absent both, OAuth is off and
+ * the server keeps its credential-forwarding / baked-key behaviour unchanged.
+ */
+export const resolveOAuthConfigFromEnv = (
+  env: NodeJS.ProcessEnv,
+): { readonly oauth?: McpOAuthConfig; readonly error?: string } => {
+  const issuer = env.LIGHTHOUSE_OAUTH_ISSUER?.trim();
+  const resource = env.LIGHTHOUSE_OAUTH_RESOURCE?.trim();
+
+  if (!issuer && !resource) {
+    return {};
+  }
+
+  if (!issuer || !resource) {
+    return {
+      error:
+        "Both LIGHTHOUSE_OAUTH_ISSUER and LIGHTHOUSE_OAUTH_RESOURCE must be set to enable MCP OAuth.",
+    };
+  }
+
+  return { oauth: { issuer, resource } };
+};
+
+/**
+ * MCP OAuth pass-through needs a Lighthouse server that validates IdP JWT bearer
+ * tokens (ADR-079), which only exists in releases newer than the registry
+ * baseline. Block OAuth mode against an older server with a clear upgrade
+ * message; never block when the version is unknown or a dev/unparseable build.
+ */
+export const evaluateOAuthVersionGate = (
+  serverVersion: string | null,
+  baseline: string = FEATURE_REQUIRES_SERVER_NEWER_THAN.mcpOAuthPassThrough,
+): { readonly ok: true } | { readonly ok: false; readonly error: string } => {
+  if (serverVersion === null) {
+    return { ok: true };
+  }
+
+  const newer = isServerVersionNewerThan(serverVersion, baseline);
+  if (newer === null || newer) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    error: `This Lighthouse server (${serverVersion}) does not support MCP OAuth — it requires a version newer than ${baseline}. Upgrade Lighthouse, or run the MCP server without OAuth (X-Api-Key).`,
+  };
+};
+
 export const startMcpHttpServer = async (
   options: McpHttpServerOptions,
 ): Promise<McpHttpServerHandle> => {
@@ -100,6 +202,8 @@ export const startMcpHttpServer = async (
     ) as unknown as Promise<Response>;
   };
 
+  const oauth = options.oauth;
+
   // Each request gets its own McpServer + transport (stateless/sessionless)
   const httpServer = createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/health") {
@@ -108,7 +212,27 @@ export const startMcpHttpServer = async (
       return;
     }
 
+    if (
+      oauth !== undefined &&
+      req.method === "GET" &&
+      req.url === PROTECTED_RESOURCE_METADATA_PATH
+    ) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(buildProtectedResourceMetadata(oauth)));
+      return;
+    }
+
     if (req.method === "POST" && (req.url === "/mcp" || req.url === "/")) {
+      if (shouldChallengeForOAuth(req.headers, oauth !== undefined)) {
+        const metadataUrl = `http://${req.headers.host}${PROTECTED_RESOURCE_METADATA_PATH}`;
+        res.writeHead(401, {
+          "content-type": "application/json",
+          "www-authenticate": `Bearer resource_metadata="${metadataUrl}"`,
+        });
+        res.end(JSON.stringify({ error: "Authentication required" }));
+        return;
+      }
+
       const server = new McpServer({
         name: SERVER_NAME,
         version: SERVER_VERSION,
@@ -187,11 +311,33 @@ export const runMcpHttpRuntime = async (
     return 1;
   }
 
+  const oauthResult = resolveOAuthConfigFromEnv(env);
+  if (oauthResult.error !== undefined) {
+    writeError(oauthResult.error);
+    return 1;
+  }
+
+  if (oauthResult.oauth !== undefined) {
+    const versionClient = createLighthouseClient({
+      connection: { kind: "explicit", lighthouseUrl },
+      auth: { kind: "none" },
+    });
+    const versionResult = await versionClient.getVersion();
+    const gate = evaluateOAuthVersionGate(
+      versionResult.ok ? versionResult.value : null,
+    );
+    if (!gate.ok) {
+      writeError(gate.error);
+      return 1;
+    }
+  }
+
   const server = await startMcpHttpServer({
     lighthouseUrl,
     host,
     port: parsedPort,
     apiKey: env.LIGHTHOUSE_API_KEY,
+    oauth: oauthResult.oauth,
   });
 
   write(renderMcpHttpBanner(server.url));
