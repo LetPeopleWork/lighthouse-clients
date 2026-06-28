@@ -1,5 +1,12 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 1.4.1
+
+### Patch Changes
+
+- Updated dependencies [[`c2efcf1`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c2efcf1dede34a766b26f50003ec0bf2dbd698ab)]:
+  - @letpeoplework/lighthouse-client@1.5.0
+
 ## 1.4.0
 
 ### Minor Changes
