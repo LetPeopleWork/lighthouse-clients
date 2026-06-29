@@ -1,6 +1,6 @@
 {
   "name": "@letpeoplework/lighthouse-mcp-http",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Streamable HTTP transport runtime for Lighthouse MCP",
   "repository": "https://github.com/LetPeopleWork/lighthouse-clients",
   "type": "module",
