@@ -1,5 +1,19 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 1.3.1
+
+### Patch Changes
+
+- [`96da0a7`](https://github.com/LetPeopleWork/lighthouse-clients/commit/96da0a7483ffaaea62f4f5feff4281af738cce61) Thanks [@huserben](https://github.com/huserben)! - Fix MCP OAuth auto-discovery behind a TLS-terminating, prefix-routing ingress.
+  The `WWW-Authenticate` `resource_metadata` URL now honours `X-Forwarded-Proto`
+  (advertising `https` behind the ingress instead of a hardcoded `http`) and
+  `X-Forwarded-Host`, and is mounted under the same base path the MCP request
+  arrived on. When the request comes in under the `/mcp` mount the metadata is
+  advertised — and served — at `/mcp/.well-known/oauth-protected-resource`, so an
+  external MCP client (e.g. Claude Desktop) can reach it through an ingress that
+  routes only `/mcp` to the MCP server. Direct-to-service behaviour (http, root
+  path) is unchanged.
+
 ## 1.3.0
 
 ### Minor Changes
