@@ -32,9 +32,13 @@ export const PROTECTED_RESOURCE_METADATA_PATH =
   "/.well-known/oauth-protected-resource";
 
 /**
- * The single path the chart's ingress routes to the MCP server (prefix match).
- * Behind the ingress every MCP request — the POST and the well-known metadata
- * GET — arrives under this mount; direct-to-service requests arrive at the root.
+ * The path the MCP server is mounted on behind the ingress (the POST endpoint).
+ * Per RFC 9728 the protected-resource metadata for a resource served at this path
+ * lives at the ROOT-anchored well-known with the path appended as a suffix —
+ * `/.well-known/oauth-protected-resource/mcp` — NOT under the mount
+ * (`/mcp/.well-known/...`). Spec-compliant MCP clients construct that root path
+ * themselves and ignore the `WWW-Authenticate` hint, so we serve it there and the
+ * chart ingress routes `/.well-known/oauth-protected-resource` to this server.
  */
 export const MCP_MOUNT_PATH = "/mcp";
 
@@ -122,26 +126,30 @@ export const buildProtectedResourceMetadata = (
 });
 
 /**
- * True when the request targets the RFC 9728 protected-resource metadata,
- * whether it arrived at the host root (direct-to-service) or under the `/mcp`
- * mount (behind a prefix-routed ingress). The chart routes only `/mcp` to this
- * server, so the metadata must also be reachable at `/mcp/.well-known/...`.
+ * True when the request targets the RFC 9728 protected-resource metadata. The
+ * well-known segment is anchored at the host root with the resource path appended
+ * as a suffix, so behind the `/mcp` mount the metadata is at
+ * `/.well-known/oauth-protected-resource/mcp`; direct-to-service (root-mounted)
+ * deployments use the bare `/.well-known/oauth-protected-resource`. Both are
+ * accepted so the server works behind the ingress and when hit directly.
  */
 export const isProtectedResourceMetadataPath = (
   requestUrl: string | undefined,
 ): boolean =>
   requestUrl === PROTECTED_RESOURCE_METADATA_PATH ||
-  requestUrl === `${MCP_MOUNT_PATH}${PROTECTED_RESOURCE_METADATA_PATH}`;
+  requestUrl === `${PROTECTED_RESOURCE_METADATA_PATH}${MCP_MOUNT_PATH}`;
 
 /**
  * Computes the absolute URL an MCP client should fetch for the protected-resource
- * metadata (the `resource_metadata` of the 401 `WWW-Authenticate` challenge). It
- * must survive a TLS-terminating, prefix-routing ingress (ADO #5362):
+ * metadata (the `resource_metadata` of the 401 `WWW-Authenticate` challenge),
+ * matching the RFC 9728 path a spec-compliant client constructs from the server
+ * URL. It must survive a TLS-terminating, prefix-routing ingress (ADO #5362):
  *  - scheme honours `X-Forwarded-Proto` (https behind the ingress), else the
  *    http the server actually speaks direct-to-service;
  *  - host honours `X-Forwarded-Host`, else the request `Host`;
- *  - the path is mounted under the same base the MCP request arrived on (`/mcp`
- *    behind the ingress, root when hit directly), so it stays reachable.
+ *  - the well-known is root-anchored with the mount path appended as a suffix
+ *    (`/.well-known/oauth-protected-resource/mcp` behind the ingress, bare when
+ *    the request hit the root directly).
  */
 export const resolveProtectedResourceMetadataUrl = (
   headers: NodeJS.Dict<string | string[]>,
@@ -161,8 +169,8 @@ export const resolveProtectedResourceMetadataUrl = (
     forwardedHost !== undefined && forwardedHost.length > 0
       ? forwardedHost
       : (firstHeaderValue(headers.host) ?? "localhost");
-  const basePath = requestUrl === MCP_MOUNT_PATH ? MCP_MOUNT_PATH : "";
-  return `${scheme}://${host}${basePath}${PROTECTED_RESOURCE_METADATA_PATH}`;
+  const pathSuffix = requestUrl === MCP_MOUNT_PATH ? MCP_MOUNT_PATH : "";
+  return `${scheme}://${host}${PROTECTED_RESOURCE_METADATA_PATH}${pathSuffix}`;
 };
 
 /**

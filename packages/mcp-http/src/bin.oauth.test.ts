@@ -88,20 +88,21 @@ describe("resolveOAuthConfigFromEnv", () => {
 });
 
 describe("resolveProtectedResourceMetadataUrl (RFC 9728 discovery, ADO #5362)", () => {
-  it("advertises https + the /mcp mount path behind a TLS ingress", () => {
-    // Regression: behind the chart's TLS ingress (routes only /mcp), the old
-    // hardcoded `http://host/.well-known/...` was wrong scheme + unreachable.
+  it("advertises https + the root-anchored well-known with /mcp suffix behind a TLS ingress", () => {
+    // RFC 9728: the metadata for a resource at /mcp lives at the ROOT well-known
+    // with the path appended — /.well-known/oauth-protected-resource/mcp — which
+    // is what a spec-compliant client (mcp-remote / MCP SDK) constructs and fetches.
     const url = resolveProtectedResourceMetadataUrl(
       { host: "lighthouse.local", "x-forwarded-proto": "https" },
       "/mcp",
     );
 
     expect(url).toBe(
-      "https://lighthouse.local/mcp/.well-known/oauth-protected-resource",
+      "https://lighthouse.local/.well-known/oauth-protected-resource/mcp",
     );
   });
 
-  it("preserves direct-to-service behaviour (http + root path)", () => {
+  it("preserves direct-to-service behaviour (http + bare root well-known)", () => {
     const url = resolveProtectedResourceMetadataUrl(
       { host: "localhost:3000" },
       "/",
@@ -123,7 +124,7 @@ describe("resolveProtectedResourceMetadataUrl (RFC 9728 discovery, ADO #5362)", 
     );
 
     expect(url).toBe(
-      "https://lighthouse.local/mcp/.well-known/oauth-protected-resource",
+      "https://lighthouse.local/.well-known/oauth-protected-resource/mcp",
     );
   });
 
@@ -134,28 +135,36 @@ describe("resolveProtectedResourceMetadataUrl (RFC 9728 discovery, ADO #5362)", 
     );
 
     expect(url).toBe(
-      "https://lighthouse.local/mcp/.well-known/oauth-protected-resource",
+      "https://lighthouse.local/.well-known/oauth-protected-resource/mcp",
     );
   });
 });
 
 describe("isProtectedResourceMetadataPath (ADO #5362)", () => {
-  it("matches the host-root well-known path (direct-to-service)", () => {
+  it("matches the bare root well-known path (direct-to-service)", () => {
     expect(
       isProtectedResourceMetadataPath("/.well-known/oauth-protected-resource"),
     ).toBe(true);
   });
 
-  it("matches the /mcp-mounted well-known path (behind the ingress)", () => {
+  it("matches the root well-known with /mcp suffix (behind the ingress)", () => {
     expect(
       isProtectedResourceMetadataPath(
-        "/mcp/.well-known/oauth-protected-resource",
+        "/.well-known/oauth-protected-resource/mcp",
       ),
     ).toBe(true);
   });
 
   it("does not match the MCP POST mount itself", () => {
     expect(isProtectedResourceMetadataPath("/mcp")).toBe(false);
+  });
+
+  it("does not match the non-standard under-mount path", () => {
+    expect(
+      isProtectedResourceMetadataPath(
+        "/mcp/.well-known/oauth-protected-resource",
+      ),
+    ).toBe(false);
   });
 
   it("does not match an unrelated path", () => {
