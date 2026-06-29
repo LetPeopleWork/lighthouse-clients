@@ -31,6 +31,13 @@ export type McpHttpServerOptions = {
 export const PROTECTED_RESOURCE_METADATA_PATH =
   "/.well-known/oauth-protected-resource";
 
+/**
+ * The single path the chart's ingress routes to the MCP server (prefix match).
+ * Behind the ingress every MCP request — the POST and the well-known metadata
+ * GET — arrives under this mount; direct-to-service requests arrive at the root.
+ */
+export const MCP_MOUNT_PATH = "/mcp";
+
 export type McpHttpServerHandle = {
   readonly url: string;
   readonly close: () => Promise<void>;
@@ -113,6 +120,50 @@ export const buildProtectedResourceMetadata = (
   authorization_servers: [oauth.issuer],
   bearer_methods_supported: ["header"],
 });
+
+/**
+ * True when the request targets the RFC 9728 protected-resource metadata,
+ * whether it arrived at the host root (direct-to-service) or under the `/mcp`
+ * mount (behind a prefix-routed ingress). The chart routes only `/mcp` to this
+ * server, so the metadata must also be reachable at `/mcp/.well-known/...`.
+ */
+export const isProtectedResourceMetadataPath = (
+  requestUrl: string | undefined,
+): boolean =>
+  requestUrl === PROTECTED_RESOURCE_METADATA_PATH ||
+  requestUrl === `${MCP_MOUNT_PATH}${PROTECTED_RESOURCE_METADATA_PATH}`;
+
+/**
+ * Computes the absolute URL an MCP client should fetch for the protected-resource
+ * metadata (the `resource_metadata` of the 401 `WWW-Authenticate` challenge). It
+ * must survive a TLS-terminating, prefix-routing ingress (ADO #5362):
+ *  - scheme honours `X-Forwarded-Proto` (https behind the ingress), else the
+ *    http the server actually speaks direct-to-service;
+ *  - host honours `X-Forwarded-Host`, else the request `Host`;
+ *  - the path is mounted under the same base the MCP request arrived on (`/mcp`
+ *    behind the ingress, root when hit directly), so it stays reachable.
+ */
+export const resolveProtectedResourceMetadataUrl = (
+  headers: NodeJS.Dict<string | string[]>,
+  requestUrl: string | undefined,
+): string => {
+  const forwardedProto = firstHeaderValue(headers["x-forwarded-proto"])
+    ?.split(",")[0]
+    ?.trim();
+  const scheme =
+    forwardedProto !== undefined && forwardedProto.length > 0
+      ? forwardedProto
+      : "http";
+  const forwardedHost = firstHeaderValue(headers["x-forwarded-host"])
+    ?.split(",")[0]
+    ?.trim();
+  const host =
+    forwardedHost !== undefined && forwardedHost.length > 0
+      ? forwardedHost
+      : (firstHeaderValue(headers.host) ?? "localhost");
+  const basePath = requestUrl === MCP_MOUNT_PATH ? MCP_MOUNT_PATH : "";
+  return `${scheme}://${host}${basePath}${PROTECTED_RESOURCE_METADATA_PATH}`;
+};
 
 /**
  * When OAuth is enabled, an MCP request carrying no caller credential must be
@@ -215,7 +266,7 @@ export const startMcpHttpServer = async (
     if (
       oauth !== undefined &&
       req.method === "GET" &&
-      req.url === PROTECTED_RESOURCE_METADATA_PATH
+      isProtectedResourceMetadataPath(req.url)
     ) {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(buildProtectedResourceMetadata(oauth)));
@@ -224,7 +275,10 @@ export const startMcpHttpServer = async (
 
     if (req.method === "POST" && (req.url === "/mcp" || req.url === "/")) {
       if (shouldChallengeForOAuth(req.headers, oauth !== undefined)) {
-        const metadataUrl = `http://${req.headers.host}${PROTECTED_RESOURCE_METADATA_PATH}`;
+        const metadataUrl = resolveProtectedResourceMetadataUrl(
+          req.headers,
+          req.url,
+        );
         res.writeHead(401, {
           "content-type": "application/json",
           "www-authenticate": `Bearer resource_metadata="${metadataUrl}"`,

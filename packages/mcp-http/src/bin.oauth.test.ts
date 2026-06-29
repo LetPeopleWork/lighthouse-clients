@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildProtectedResourceMetadata,
   evaluateOAuthVersionGate,
+  isProtectedResourceMetadataPath,
   resolveOAuthConfigFromEnv,
+  resolveProtectedResourceMetadataUrl,
   shouldChallengeForOAuth,
 } from "./bin";
 
@@ -82,6 +84,82 @@ describe("resolveOAuthConfigFromEnv", () => {
 
     expect(result.oauth).toBeUndefined();
     expect(result.error).toContain("LIGHTHOUSE_OAUTH_ISSUER");
+  });
+});
+
+describe("resolveProtectedResourceMetadataUrl (RFC 9728 discovery, ADO #5362)", () => {
+  it("advertises https + the /mcp mount path behind a TLS ingress", () => {
+    // Regression: behind the chart's TLS ingress (routes only /mcp), the old
+    // hardcoded `http://host/.well-known/...` was wrong scheme + unreachable.
+    const url = resolveProtectedResourceMetadataUrl(
+      { host: "lighthouse.local", "x-forwarded-proto": "https" },
+      "/mcp",
+    );
+
+    expect(url).toBe(
+      "https://lighthouse.local/mcp/.well-known/oauth-protected-resource",
+    );
+  });
+
+  it("preserves direct-to-service behaviour (http + root path)", () => {
+    const url = resolveProtectedResourceMetadataUrl(
+      { host: "localhost:3000" },
+      "/",
+    );
+
+    expect(url).toBe(
+      "http://localhost:3000/.well-known/oauth-protected-resource",
+    );
+  });
+
+  it("honours X-Forwarded-Host over the request Host", () => {
+    const url = resolveProtectedResourceMetadataUrl(
+      {
+        host: "lighthouse-mcp.svc",
+        "x-forwarded-host": "lighthouse.local",
+        "x-forwarded-proto": "https",
+      },
+      "/mcp",
+    );
+
+    expect(url).toBe(
+      "https://lighthouse.local/mcp/.well-known/oauth-protected-resource",
+    );
+  });
+
+  it("takes the first hop of a comma-joined X-Forwarded-Proto", () => {
+    const url = resolveProtectedResourceMetadataUrl(
+      { host: "lighthouse.local", "x-forwarded-proto": "https, http" },
+      "/mcp",
+    );
+
+    expect(url).toBe(
+      "https://lighthouse.local/mcp/.well-known/oauth-protected-resource",
+    );
+  });
+});
+
+describe("isProtectedResourceMetadataPath (ADO #5362)", () => {
+  it("matches the host-root well-known path (direct-to-service)", () => {
+    expect(
+      isProtectedResourceMetadataPath("/.well-known/oauth-protected-resource"),
+    ).toBe(true);
+  });
+
+  it("matches the /mcp-mounted well-known path (behind the ingress)", () => {
+    expect(
+      isProtectedResourceMetadataPath(
+        "/mcp/.well-known/oauth-protected-resource",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not match the MCP POST mount itself", () => {
+    expect(isProtectedResourceMetadataPath("/mcp")).toBe(false);
+  });
+
+  it("does not match an unrelated path", () => {
+    expect(isProtectedResourceMetadataPath("/other")).toBe(false);
   });
 });
 
