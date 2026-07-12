@@ -1,5 +1,22 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 1.5.0
+
+### Minor Changes
+
+- [`5b8f305`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5b8f305c33c5029bbde42fc9d02f1e39f03d8c9c) Thanks [@huserben](https://github.com/huserben)! - Expose blocked items to the clients (Lighthouse Epic 5074).
+
+  - **Client**: new version-gated `getTeamBlockedCountHistory` / `getPortfolioBlockedCountHistory` methods returning the blocked-items-over-time trend (`BlockedCountSnapshot[]`). Gated on a Lighthouse server newer than `v26.7.3.1`.
+  - **CLI**: new `blocked` metric for the `metrics` command (`--metrics blocked`) surfacing the blocked-over-time history; replaces the former static "unavailable" placeholder.
+  - **MCP**: new `lighthouse_team_metrics_blockedCountHistory` and `lighthouse_portfolio_metrics_blockedCountHistory` tools.
+
+  To see what is blocked _right now_ and for how long, read the current WIP snapshot — each item carries `isBlocked` and, when blocked, a `blockedSince` timestamp (server newer than `v26.7.3.1`).
+
+### Patch Changes
+
+- Updated dependencies [[`5b8f305`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5b8f305c33c5029bbde42fc9d02f1e39f03d8c9c)]:
+  - @letpeoplework/lighthouse-client@1.6.0
+
 ## 1.4.1
 
 ### Patch Changes
