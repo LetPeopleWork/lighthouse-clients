@@ -928,6 +928,21 @@ export type TotalWorkItemAgeOverTimeResult = {
   readonly daily: readonly DailyTotalWorkItemAge[];
 };
 
+/**
+ * One captured point on the blocked-items-over-time trend: how many items were
+ * blocked on {@link recordedAt}. Returned by the team/portfolio
+ * `blockedCountHistory` metric. `recordedAt` is an ISO date string.
+ *
+ * The complementary "what is blocked right now, and for how long" view rides on
+ * the existing WIP snapshot (`getTeamWip` / `getPortfolioWip`): from Lighthouse
+ * newer than v26.7.3.1 each WIP work item carries `isBlocked` and, when blocked,
+ * a `blockedSince` timestamp.
+ */
+export type BlockedCountSnapshot = {
+  readonly recordedAt: string;
+  readonly blockedCount: number;
+};
+
 export type CumulativeStateTimeStateRow = {
   readonly state: string;
   readonly workflowOrder: number;
@@ -1153,6 +1168,14 @@ export type LighthouseClient = {
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<TotalWorkItemAgeOverTimeResult>>;
+  readonly getTeamBlockedCountHistory: (
+    teamId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly BlockedCountSnapshot[]>>;
+  readonly getPortfolioBlockedCountHistory: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+  ) => Promise<LighthouseApiResult<readonly BlockedCountSnapshot[]>>;
   readonly getTeamCumulativeStateTime: (
     teamId: number,
     range?: MetricsDateRange,
@@ -1644,6 +1667,7 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   recurringBlackoutRules: "v26.5.29.5",
   workItemAgePercentiles: "v26.6.7.1",
   mcpOAuthPassThrough: "v26.6.16.14",
+  blockedCountHistory: "v26.7.3.1",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2202,6 +2226,38 @@ export const createLighthouseClient = (
           wipResult.value,
         ),
       };
+    },
+    getTeamBlockedCountHistory: async (
+      teamId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const unsupported = await ensureServerSupports("blockedCountHistory");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly BlockedCountSnapshot[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/blockedCountHistory?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioBlockedCountHistory: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+    ) => {
+      const unsupported = await ensureServerSupports("blockedCountHistory");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly BlockedCountSnapshot[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/blockedCountHistory?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
     },
     getTeamCumulativeStateTime: async (
       teamId: number,

@@ -72,6 +72,8 @@ type CliDomainClientLike = Pick<
   | "getPortfolioWorkItemAgeOverTime"
   | "getPortfolioTotalWorkItemAgeOverTime"
   | "getPortfolioWorkItemAgePercentiles"
+  | "getTeamBlockedCountHistory"
+  | "getPortfolioBlockedCountHistory"
   | "getTeamCumulativeStateTime"
   | "getTeamCumulativeStateTimeItems"
   | "getTeamCumulativeStateTimeCandidates"
@@ -357,6 +359,7 @@ const METRIC_KEYS = [
   "arrivals",
   "predictabilityScore",
   "cumulativeStateTime",
+  "blocked",
 ] as const;
 
 type MetricKey = (typeof METRIC_KEYS)[number];
@@ -376,6 +379,9 @@ const METRIC_ALIASES: Record<string, MetricKey> = {
   predictabilityScore: "predictabilityScore",
   cumulativestatetime: "cumulativeStateTime",
   cumulativeStateTime: "cumulativeStateTime",
+  blocked: "blocked",
+  blockedcounthistory: "blocked",
+  blockedCountHistory: "blocked",
 };
 
 const ALLOWED_METRIC_DISPLAY = METRIC_KEYS.join(", ");
@@ -1309,6 +1315,7 @@ const buildMetricsPayload = async (
     cumulativeStateTimeResult,
     cumulativeCandidatesResult,
     cumulativeItemsResult,
+    blockedCountHistoryResult,
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
@@ -1407,6 +1414,11 @@ const buildMetricsPayload = async (
               cumulativeOptions?.itemIds,
             ),
     ),
+    maybeFetch(needs("blocked"), () =>
+      isTeam
+        ? client.getTeamBlockedCountHistory(entityId, range)
+        : client.getPortfolioBlockedCountHistory(entityId, range),
+    ),
   ]);
 
   const throughputValue = resolveOrSkip(throughputResult);
@@ -1426,6 +1438,7 @@ const buildMetricsPayload = async (
   const cumulativeStateTimeValue = resolveOrSkip(cumulativeStateTimeResult);
   const cumulativeCandidatesValue = resolveOrSkip(cumulativeCandidatesResult);
   const cumulativeItemsValue = resolveOrSkip(cumulativeItemsResult);
+  const blockedCountHistoryValue = resolveOrSkip(blockedCountHistoryResult);
 
   const currentItems =
     currentWipValue === null
@@ -1444,8 +1457,23 @@ const buildMetricsPayload = async (
   // Static unavailable sections are only included in the full (unfiltered) payload
   // to avoid cluttering single-metric responses with unrelated keys.
   if (all) {
-    payload.blocked = getMetricUnavailableValue(unavailableReason);
     payload.workDistribution = getMetricUnavailableValue(unavailableReason);
+  }
+
+  if (needs("blocked")) {
+    // Blocked-over-time trend. The complementary "what is blocked right now"
+    // view rides on the wip section: each current WIP item carries isBlocked
+    // and, when blocked, a blockedSince timestamp (server newer than v26.7.3.1).
+    payload.blocked =
+      blockedCountHistoryValue === null ||
+      isMetricErrorValue(blockedCountHistoryValue)
+        ? (blockedCountHistoryValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            history: blockedCountHistoryValue,
+          };
   }
 
   if (needs("wip")) {

@@ -36,6 +36,8 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_team_metrics_cycleTimePercentiles",
       "lighthouse_team_metrics_workItemAgePercentiles",
       "lighthouse_portfolio_metrics_workItemAgePercentiles",
+      "lighthouse_team_metrics_blockedCountHistory",
+      "lighthouse_portfolio_metrics_blockedCountHistory",
       "lighthouse_portfolio_metrics_throughput",
       "lighthouse_team_metrics_workItemAge",
       "lighthouse_team_metrics_totalWorkItemAge",
@@ -889,6 +891,62 @@ describe("createMcpCoreRuntime", () => {
     );
   });
 
+  it("calls team and portfolio blockedCountHistory metrics tools and passes the date range", async () => {
+    const history = [{ recordedAt: "2026-01-01", blockedCount: 3 }];
+    const calls: Array<{
+      readonly scope: string;
+      readonly id: number;
+      readonly range: unknown;
+    }> = [];
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          getTeamBlockedCountHistory: async (id: number, range: unknown) => {
+            calls.push({ scope: "team", id, range });
+            return { ok: true as const, value: history };
+          },
+          getPortfolioBlockedCountHistory: async (
+            id: number,
+            range: unknown,
+          ) => {
+            calls.push({ scope: "portfolio", id, range });
+            return { ok: true as const, value: history };
+          },
+        }) as never,
+    });
+
+    const teamResult = await runtime.callTool(
+      "lighthouse_team_metrics_blockedCountHistory",
+      { id: 5, startDate: "2026-01-01", endDate: "2026-03-31" },
+    );
+    expect(teamResult.isError).toBe(false);
+    expect(teamResult.content[0]?.text).toContain("team blockedCountHistory");
+
+    const portfolioResult = await runtime.callTool(
+      "lighthouse_portfolio_metrics_blockedCountHistory",
+      { id: 9, startDate: "2026-01-01", endDate: "2026-03-31" },
+    );
+    expect(portfolioResult.isError).toBe(false);
+    expect(portfolioResult.content[0]?.text).toContain(
+      "portfolio blockedCountHistory",
+    );
+
+    expect(calls).toEqual([
+      {
+        scope: "team",
+        id: 5,
+        range: { startDate: "2026-01-01", endDate: "2026-03-31" },
+      },
+      {
+        scope: "portfolio",
+        id: 9,
+        range: { startDate: "2026-01-01", endDate: "2026-03-31" },
+      },
+    ]);
+  });
+
   it("calls portfolio totalWorkItemAge metrics tool", async () => {
     const totalAgeData = {
       startDate: "2026-01-01",
@@ -1212,7 +1270,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(34);
+    expect(registered).toHaveLength(36);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",

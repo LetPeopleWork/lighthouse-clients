@@ -2267,3 +2267,148 @@ describe("createLighthouseClient work-item-age percentiles", () => {
     });
   }
 });
+
+describe("createLighthouseClient blocked-count history", () => {
+  const blockedBaselineVersion = "v26.7.3.1";
+  const supportedBlockedVersion = "v26.7.4.0";
+  const history = [
+    { recordedAt: "2026-01-01", blockedCount: 3 },
+    { recordedAt: "2026-01-02", blockedCount: 1 },
+  ];
+
+  const blockedVersionResponse = (value: string): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => value,
+    json: async () => value,
+  });
+
+  const getBlockedClient = (
+    responses: readonly MockResponse[],
+  ): {
+    readonly client: ReturnType<typeof createLighthouseClient>;
+    readonly fetchMock: FetchMock;
+  } => {
+    const fetchMock = getFetchSequenceMock(responses);
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+    return { client, fetchMock };
+  };
+
+  const getBlockedFeatureCall = (fetchMock: FetchMock): FetchCall | undefined =>
+    fetchMock.calls.find((call) => !call.url.endsWith("/v1/version/current"));
+
+  const historyResponse: MockResponse = {
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(history),
+    json: async () => history,
+  };
+
+  it("gets team blocked-count history with a date range on a supported server", async () => {
+    const { client, fetchMock } = getBlockedClient([
+      blockedVersionResponse(supportedBlockedVersion),
+      historyResponse,
+    ]);
+
+    const result = await client.getTeamBlockedCountHistory(3, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: history });
+    expect(getBlockedFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/teams/3/metrics/blockedCountHistory?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("gets portfolio blocked-count history with a date range on a supported server", async () => {
+    const { client, fetchMock } = getBlockedClient([
+      blockedVersionResponse(supportedBlockedVersion),
+      historyResponse,
+    ]);
+
+    const result = await client.getPortfolioBlockedCountHistory(7, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+
+    expect(result).toEqual({ ok: true, value: history });
+    expect(getBlockedFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/portfolios/7/metrics/blockedCountHistory?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  const blockedGatedCalls: ReadonlyArray<{
+    readonly name: string;
+    readonly run: (
+      client: ReturnType<typeof createLighthouseClient>,
+    ) => Promise<{
+      readonly ok: boolean;
+      readonly error?: { readonly category: string; readonly reason: string };
+    }>;
+  }> = [
+    {
+      name: "getTeamBlockedCountHistory",
+      run: (client) => client.getTeamBlockedCountHistory(3),
+    },
+    {
+      name: "getPortfolioBlockedCountHistory",
+      run: (client) => client.getPortfolioBlockedCountHistory(7),
+    },
+  ];
+
+  for (const gated of blockedGatedCalls) {
+    it(`blocks ${gated.name} on a server that is not newer than the baseline`, async () => {
+      const { client, fetchMock } = getBlockedClient([
+        blockedVersionResponse(blockedBaselineVersion),
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(false);
+      if (result.ok || result.error === undefined) {
+        throw new Error("Expected an unsupported-server error result");
+      }
+      expect(result.error.category).toBe("misconfigured");
+      expect(result.error.reason).toContain("blockedCountHistory");
+      expect(result.error.reason.toLowerCase()).toContain("upgrade lighthouse");
+      expect(getBlockedFeatureCall(fetchMock)).toBeUndefined();
+    });
+
+    it(`proceeds with ${gated.name} on a server newer than the baseline`, async () => {
+      const { client, fetchMock } = getBlockedClient([
+        blockedVersionResponse(supportedBlockedVersion),
+        historyResponse,
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(true);
+      expect(getBlockedFeatureCall(fetchMock)?.url).toContain(
+        "/metrics/blockedCountHistory",
+      );
+    });
+
+    it(`proceeds with ${gated.name} on a dev/unparseable server version`, async () => {
+      const { client, fetchMock } = getBlockedClient([
+        blockedVersionResponse("DEV"),
+        historyResponse,
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(true);
+      expect(getBlockedFeatureCall(fetchMock)?.url).toContain(
+        "/metrics/blockedCountHistory",
+      );
+    });
+  }
+});

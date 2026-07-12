@@ -204,7 +204,8 @@ lh metrics portfolio --id <portfolio-id> [--start-date <date>] [--end-date <date
 						  Use --metrics to select one or more specific metrics;
 						  omit to get all. Allowed values:
 						  throughput, wip, cycleTime, workItemAge,
-						  totalWorkItemAge, arrivals, predictabilityScore
+						  totalWorkItemAge, arrivals, predictabilityScore,
+						  cumulativeStateTime, blocked
 lh feature get --ids <id1,id2,...>           Get features by IDs
 lh feature get --refs <ref1,ref2,...>        Get features by references
 lh feature workitems --id <feature-id>       Get work items for a feature

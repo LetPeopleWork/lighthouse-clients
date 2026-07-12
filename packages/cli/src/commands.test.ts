@@ -273,6 +273,14 @@ type MockClient = {
     id: number,
     range?: unknown,
   ) => Promise<{ readonly ok: true; readonly value: unknown }>;
+  readonly getTeamBlockedCountHistory: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
+  readonly getPortfolioBlockedCountHistory: (
+    id: number,
+    range?: unknown,
+  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
   readonly getFeaturesByIds: (ids: readonly number[]) => Promise<{
     readonly ok: true;
     readonly value: readonly unknown[];
@@ -454,6 +462,8 @@ const getDefaultMockClient = (): MockClient => ({
     ok: true,
     value: { items: [] },
   }),
+  getTeamBlockedCountHistory: async () => ({ ok: true, value: [] }),
+  getPortfolioBlockedCountHistory: async () => ({ ok: true, value: [] }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),
@@ -1516,7 +1526,7 @@ describe("runCliCommand", () => {
     expect(payload.scope).toBe("team");
     expect(payload.id).toBe(1);
     expect((payload.throughput.total as number) ?? 0).toBe(3);
-    expect(payload.blocked.status).toBe("unavailable");
+    expect(payload.blocked.history).toEqual([]);
     expect((payload.wip.current as Record<string, unknown>).count).toBe(1);
     expect(payload.predictabilityScore).toEqual({ score: 1.25 });
     expect(
@@ -1769,6 +1779,67 @@ describe("runCliCommand", () => {
     // Only the throughput client method was called
     expect(getTeamThroughput).toHaveBeenCalledOnce();
     expect(getTeamWip).not.toHaveBeenCalled();
+  });
+
+  it("returns the blocked-over-time history for --metrics blocked and passes the date range", async () => {
+    const history = [
+      { recordedAt: "2026-01-01", blockedCount: 4 },
+      { recordedAt: "2026-01-02", blockedCount: 2 },
+    ];
+    const getTeamBlockedCountHistory = vi.fn(async () => ({
+      ok: true as const,
+      value: history,
+    }));
+    const getTeamThroughput = vi.fn(async () => ({
+      ok: true as const,
+      value: { total: 0, workItemsPerUnitOfTime: {} },
+    }));
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getTeamBlockedCountHistory,
+        getTeamThroughput,
+      },
+    });
+
+    const result = await runCliCommand(
+      [
+        "metrics",
+        "team",
+        "--id",
+        "1",
+        "--json",
+        "--metrics",
+        "blocked",
+        "--start-date",
+        "2026-01-01",
+        "--end-date",
+        "2026-03-31",
+      ],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      readonly blocked: Record<string, unknown>;
+    } & Record<string, unknown>;
+    expect(payload.blocked.history).toEqual(history);
+    expect(payload.blocked.startDate).toBe("2026-01-01");
+    expect(payload.blocked.endDate).toBe("2026-03-31");
+    // Unrequested metrics absent
+    expect(payload.throughput).toBeUndefined();
+    expect(payload.wip).toBeUndefined();
+    // Only the blocked-history client method was called
+    expect(getTeamBlockedCountHistory).toHaveBeenCalledWith(1, {
+      startDate: "2026-01-01",
+      endDate: "2026-03-31",
+    });
+    expect(getTeamThroughput).not.toHaveBeenCalled();
   });
 
   it("bundles bar, candidates and drill-down for --metrics cumulativeStateTime and passes state + item-ids", async () => {

@@ -45,6 +45,8 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_metrics_throughput"
     | "lighthouse_portfolio_metrics_workItemAge"
     | "lighthouse_portfolio_metrics_totalWorkItemAge"
+    | "lighthouse_team_metrics_blockedCountHistory"
+    | "lighthouse_portfolio_metrics_blockedCountHistory"
     | "lighthouse_team_metrics_cumulativeStateTime"
     | "lighthouse_team_metrics_cumulativeStateTimeItems"
     | "lighthouse_team_metrics_cumulativeStateTimeCandidates"
@@ -348,6 +350,26 @@ type McpRuntimeClient = {
     range?: { readonly startDate: string; readonly endDate: string },
   ) => Promise<
     | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamBlockedCountHistory: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioBlockedCountHistory: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
     | {
         readonly ok: false;
         readonly error: { readonly category: string; readonly reason: string };
@@ -693,6 +715,34 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     name: "lighthouse_portfolio_metrics_workItemAgePercentiles",
     description:
       "Get work-item age percentiles for a portfolio by ID, optionally filtered by start and end dates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_blockedCountHistory",
+    description:
+      "Get the blocked-items-over-time trend for a team by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the team's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_blockedCountHistory",
+    description:
+      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the portfolio's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1183,6 +1233,16 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
   }),
+  lighthouse_team_metrics_blockedCountHistory: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_portfolio_metrics_blockedCountHistory: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
   lighthouse_team_metrics_workItemAge: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
@@ -1502,6 +1562,40 @@ export const createMcpCoreRuntime = (
       if (result.ok) {
         return getSuccessToolResult(
           `portfolio workItemAgePercentiles: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_blockedCountHistory") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getTeamBlockedCountHistory(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team blockedCountHistory: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_blockedCountHistory") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getPortfolioBlockedCountHistory(id, range);
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio blockedCountHistory: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(
