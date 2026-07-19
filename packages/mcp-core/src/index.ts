@@ -700,7 +700,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_workItemAgePercentiles",
     description:
-      "Get work-item age percentiles for a team by ID, optionally filtered by start and end dates.",
+      "Get work-item age percentiles for a team by ID, optionally filtered by start and end dates. Ages are measured as of the last day of the selected range, not as of today — a historical range reports how old the items were at the end of that period, so do not present the result as the team's current ages unless the range ends today.",
     inputSchema: {
       type: "object",
       properties: {
@@ -714,7 +714,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_workItemAgePercentiles",
     description:
-      "Get work-item age percentiles for a portfolio by ID, optionally filtered by start and end dates.",
+      "Get work-item age percentiles for a portfolio by ID, optionally filtered by start and end dates. Ages are measured as of the last day of the selected range, not as of today — a historical range reports how old the items were at the end of that period, so do not present the result as the portfolio's current ages unless the range ends today.",
     inputSchema: {
       type: "object",
       properties: {
