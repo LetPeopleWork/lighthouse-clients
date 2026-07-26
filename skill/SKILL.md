@@ -347,6 +347,9 @@ Use the dedicated tools to retrieve work item age data:
 - `lighthouse_portfolio_metrics_workItemAge({id: <portfolio_id>})` — per-item daily ages for portfolio WIP
 - `lighthouse_portfolio_metrics_totalWorkItemAge({id: <portfolio_id>})` — daily total age for portfolio WIP
 - `lighthouse_team_metrics_blockedCountHistory({id: <team_id>})` — how many items were blocked on each captured day (blocked-over-time trend); portfolio twin `lighthouse_portfolio_metrics_blockedCountHistory`. For what is blocked right now and for how long, read current WIP — blocked items carry `isBlocked` + `blockedSince`.
+- `lighthouse_team_metrics_percentilesOverTime({id: <team_id>, metricType: "CycleTime"|"WorkItemAge", horizon: 30|60|90})` — the dated p50/p70/p85/p95 quartet per recorded day; portfolio twin `lighthouse_portfolio_metrics_percentilesOverTime`. Pass an explicit `horizon` with `CycleTime`: the rows carry no horizon field, so omitting it interleaves 30/60/90 indistinguishably. `WorkItemAge` is always as-of-today and ignores a horizon.
+- `lighthouse_team_metrics_processBehaviorOverTime({id: <team_id>, metricType: "Throughput"|"WorkItemAge"|"Wip"|"CycleTime"|"Arrivals"})` — the dated UNPL/Average/LNPL triple per recorded day; portfolio twin `lighthouse_portfolio_metrics_processBehaviorOverTime`, which additionally accepts `"FeatureSize"` (portfolio-only).
+- Both over-time series are **forward-only**: Lighthouse records from the day the feature was deployed and never backfills, so an empty series on a recently upgraded server is honest emptiness, not a failure. Process-behaviour days without a usable baseline are omitted rather than zeroed — an empty series never means "a process pinned at zero". Say so plainly rather than reporting no data as a fault.
 
 All accept optional `startDate` / `endDate` parameters. Results include a `daily` array of `{ date, items[{id, name, referenceId, age}] }` (per-item) or `{ date, totalAge, itemCount }` (total).
 

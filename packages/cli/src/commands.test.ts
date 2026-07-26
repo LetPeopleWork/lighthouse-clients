@@ -281,6 +281,28 @@ type MockClient = {
     id: number,
     range?: unknown,
   ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
+  readonly getTeamPercentilesOverTime: (
+    id: number,
+    range?: unknown,
+    metricType?: unknown,
+    horizon?: number,
+  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
+  readonly getPortfolioPercentilesOverTime: (
+    id: number,
+    range?: unknown,
+    metricType?: unknown,
+    horizon?: number,
+  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
+  readonly getTeamProcessBehaviorOverTime: (
+    id: number,
+    range?: unknown,
+    metricType?: unknown,
+  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
+  readonly getPortfolioProcessBehaviorOverTime: (
+    id: number,
+    range?: unknown,
+    metricType?: unknown,
+  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
   readonly getFeaturesByIds: (ids: readonly number[]) => Promise<{
     readonly ok: true;
     readonly value: readonly unknown[];
@@ -464,6 +486,10 @@ const getDefaultMockClient = (): MockClient => ({
   }),
   getTeamBlockedCountHistory: async () => ({ ok: true, value: [] }),
   getPortfolioBlockedCountHistory: async () => ({ ok: true, value: [] }),
+  getTeamPercentilesOverTime: async () => ({ ok: true, value: [] }),
+  getPortfolioPercentilesOverTime: async () => ({ ok: true, value: [] }),
+  getTeamProcessBehaviorOverTime: async () => ({ ok: true, value: [] }),
+  getPortfolioProcessBehaviorOverTime: async () => ({ ok: true, value: [] }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),

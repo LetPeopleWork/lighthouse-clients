@@ -74,6 +74,10 @@ type CliDomainClientLike = Pick<
   | "getPortfolioWorkItemAgePercentiles"
   | "getTeamBlockedCountHistory"
   | "getPortfolioBlockedCountHistory"
+  | "getTeamPercentilesOverTime"
+  | "getPortfolioPercentilesOverTime"
+  | "getTeamProcessBehaviorOverTime"
+  | "getPortfolioProcessBehaviorOverTime"
   | "getTeamCumulativeStateTime"
   | "getTeamCumulativeStateTimeItems"
   | "getTeamCumulativeStateTimeCandidates"
@@ -350,6 +354,14 @@ const getLastDaysMetricsDateRange = (days: number): MetricsDateRange => {
 
 // ── Metrics filter ───────────────────────────────────────────────────────────
 
+/**
+ * The cycle-time horizon the CLI asks for. The percentiles-over-time row shape
+ * carries no horizon field, so requesting cycle time without one returns 30/60
+ * and 90 interleaved with no way to separate them. 30 matches the dashboard's
+ * own default view.
+ */
+const CLI_PERCENTILES_OVER_TIME_HORIZON = 30;
+
 const METRIC_KEYS = [
   "throughput",
   "wip",
@@ -360,6 +372,8 @@ const METRIC_KEYS = [
   "predictabilityScore",
   "cumulativeStateTime",
   "blocked",
+  "percentilesOverTime",
+  "processBehaviorOverTime",
 ] as const;
 
 type MetricKey = (typeof METRIC_KEYS)[number];
@@ -382,6 +396,11 @@ const METRIC_ALIASES: Record<string, MetricKey> = {
   blocked: "blocked",
   blockedcounthistory: "blocked",
   blockedCountHistory: "blocked",
+  percentilesovertime: "percentilesOverTime",
+  percentilesOverTime: "percentilesOverTime",
+  processbehaviorovertime: "processBehaviorOverTime",
+  processBehaviorOverTime: "processBehaviorOverTime",
+  pbcovertime: "processBehaviorOverTime",
 };
 
 const ALLOWED_METRIC_DISPLAY = METRIC_KEYS.join(", ");
@@ -1316,6 +1335,8 @@ const buildMetricsPayload = async (
     cumulativeCandidatesResult,
     cumulativeItemsResult,
     blockedCountHistoryResult,
+    percentilesOverTimeResult,
+    processBehaviorOverTimeResult,
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
@@ -1419,6 +1440,30 @@ const buildMetricsPayload = async (
         ? client.getTeamBlockedCountHistory(entityId, range)
         : client.getPortfolioBlockedCountHistory(entityId, range),
     ),
+    maybeFetch(needs("percentilesOverTime"), () =>
+      isTeam
+        ? client.getTeamPercentilesOverTime(
+            entityId,
+            range,
+            "CycleTime",
+            CLI_PERCENTILES_OVER_TIME_HORIZON,
+          )
+        : client.getPortfolioPercentilesOverTime(
+            entityId,
+            range,
+            "CycleTime",
+            CLI_PERCENTILES_OVER_TIME_HORIZON,
+          ),
+    ),
+    maybeFetch(needs("processBehaviorOverTime"), () =>
+      isTeam
+        ? client.getTeamProcessBehaviorOverTime(entityId, range, "Throughput")
+        : client.getPortfolioProcessBehaviorOverTime(
+            entityId,
+            range,
+            "Throughput",
+          ),
+    ),
   ]);
 
   const throughputValue = resolveOrSkip(throughputResult);
@@ -1439,6 +1484,10 @@ const buildMetricsPayload = async (
   const cumulativeCandidatesValue = resolveOrSkip(cumulativeCandidatesResult);
   const cumulativeItemsValue = resolveOrSkip(cumulativeItemsResult);
   const blockedCountHistoryValue = resolveOrSkip(blockedCountHistoryResult);
+  const percentilesOverTimeValue = resolveOrSkip(percentilesOverTimeResult);
+  const processBehaviorOverTimeValue = resolveOrSkip(
+    processBehaviorOverTimeResult,
+  );
 
   const currentItems =
     currentWipValue === null
@@ -1473,6 +1522,42 @@ const buildMetricsPayload = async (
             startDate: range.startDate,
             endDate: range.endDate,
             history: blockedCountHistoryValue,
+          };
+  }
+
+  if (needs("percentilesOverTime")) {
+    // Forward-only: Lighthouse records from the day the feature was deployed and
+    // never backfills, so an empty history is honest, not an error. The horizon
+    // is pinned because the row shape carries no horizon field — an unfiltered
+    // cycle-time request would interleave 30/60/90 indistinguishably.
+    payload.percentilesOverTime =
+      percentilesOverTimeValue === null ||
+      isMetricErrorValue(percentilesOverTimeValue)
+        ? (percentilesOverTimeValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            metricType: "CycleTime",
+            horizon: CLI_PERCENTILES_OVER_TIME_HORIZON,
+            history: percentilesOverTimeValue,
+          };
+  }
+
+  if (needs("processBehaviorOverTime")) {
+    // Forward-only, and days without a usable baseline are absent rather than
+    // recorded as a zeroed triple — so an empty history means "nothing recorded
+    // yet", never "a process pinned at zero".
+    payload.processBehaviorOverTime =
+      processBehaviorOverTimeValue === null ||
+      isMetricErrorValue(processBehaviorOverTimeValue)
+        ? (processBehaviorOverTimeValue ??
+          getMetricUnavailableValue(unavailableReason))
+        : {
+            startDate: range.startDate,
+            endDate: range.endDate,
+            metricType: "Throughput",
+            history: processBehaviorOverTimeValue,
           };
   }
 

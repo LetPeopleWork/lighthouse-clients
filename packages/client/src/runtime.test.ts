@@ -2412,3 +2412,166 @@ describe("createLighthouseClient blocked-count history", () => {
     });
   }
 });
+
+describe("createLighthouseClient over-time series", () => {
+  // Both surfaces ship in the same server release, so they share this baseline.
+  const overTimeBaselineVersion = "v26.7.11.4";
+  const supportedOverTimeVersion = "v26.7.12.0";
+
+  const percentiles = [
+    {
+      recordedAt: "2026-01-01",
+      metricType: "CycleTime",
+      p50: 4,
+      p70: 7,
+      p85: 11,
+      p95: 16,
+    },
+  ];
+  const limits = [{ recordedAt: "2026-01-01", unpl: 19, average: 12, lnpl: 5 }];
+
+  const overTimeVersionResponse = (value: string): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => value,
+    json: async () => value,
+  });
+
+  const payloadResponse = (payload: unknown): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(payload),
+    json: async () => payload,
+  });
+
+  const getOverTimeClient = (
+    responses: readonly MockResponse[],
+  ): {
+    readonly client: ReturnType<typeof createLighthouseClient>;
+    readonly fetchMock: FetchMock;
+  } => {
+    const fetchMock = getFetchSequenceMock(responses);
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+    return { client, fetchMock };
+  };
+
+  const getOverTimeFeatureCall = (
+    fetchMock: FetchMock,
+  ): FetchCall | undefined =>
+    fetchMock.calls.find((call) => !call.url.endsWith("/v1/version/current"));
+
+  const range = { startDate: "2026-01-01", endDate: "2026-03-31" };
+
+  it("sends the cycle-time horizon and family on the team percentiles series", async () => {
+    const { client, fetchMock } = getOverTimeClient([
+      overTimeVersionResponse(supportedOverTimeVersion),
+      payloadResponse(percentiles),
+    ]);
+
+    const result = await client.getTeamPercentilesOverTime(
+      3,
+      range,
+      "CycleTime",
+      60,
+    );
+
+    expect(result).toEqual({ ok: true, value: percentiles });
+    expect(getOverTimeFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/teams/3/metrics/percentiles-over-time?startDate=2026-01-01&endDate=2026-03-31&metricType=CycleTime&horizon=60",
+    );
+  });
+
+  it("omits the family and horizon entirely when they are not given, so the server default stands", async () => {
+    const { client, fetchMock } = getOverTimeClient([
+      overTimeVersionResponse(supportedOverTimeVersion),
+      payloadResponse(percentiles),
+    ]);
+
+    await client.getPortfolioPercentilesOverTime(7, range);
+
+    expect(getOverTimeFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/portfolios/7/metrics/percentiles-over-time?startDate=2026-01-01&endDate=2026-03-31",
+    );
+  });
+
+  it("sends the family on the team process-behaviour series", async () => {
+    const { client, fetchMock } = getOverTimeClient([
+      overTimeVersionResponse(supportedOverTimeVersion),
+      payloadResponse(limits),
+    ]);
+
+    const result = await client.getTeamProcessBehaviorOverTime(
+      3,
+      range,
+      "Arrivals",
+    );
+
+    expect(result).toEqual({ ok: true, value: limits });
+    expect(getOverTimeFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/teams/3/metrics/process-behavior-over-time?startDate=2026-01-01&endDate=2026-03-31&type=Arrivals",
+    );
+  });
+
+  it("sends the portfolio-only Feature Size family on the portfolio series", async () => {
+    const { client, fetchMock } = getOverTimeClient([
+      overTimeVersionResponse(supportedOverTimeVersion),
+      payloadResponse(limits),
+    ]);
+
+    await client.getPortfolioProcessBehaviorOverTime(7, range, "FeatureSize");
+
+    expect(getOverTimeFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/portfolios/7/metrics/process-behavior-over-time?startDate=2026-01-01&endDate=2026-03-31&type=FeatureSize",
+    );
+  });
+
+  const overTimeGatedCalls: ReadonlyArray<{
+    readonly name: string;
+    readonly run: (
+      client: ReturnType<typeof createLighthouseClient>,
+    ) => Promise<{
+      readonly ok: boolean;
+      readonly error?: { readonly category: string; readonly reason: string };
+    }>;
+  }> = [
+    {
+      name: "getTeamPercentilesOverTime",
+      run: (client) => client.getTeamPercentilesOverTime(3),
+    },
+    {
+      name: "getPortfolioPercentilesOverTime",
+      run: (client) => client.getPortfolioPercentilesOverTime(7),
+    },
+    {
+      name: "getTeamProcessBehaviorOverTime",
+      run: (client) => client.getTeamProcessBehaviorOverTime(3),
+    },
+    {
+      name: "getPortfolioProcessBehaviorOverTime",
+      run: (client) => client.getPortfolioProcessBehaviorOverTime(7),
+    },
+  ];
+
+  for (const gated of overTimeGatedCalls) {
+    it(`refuses ${gated.name} on a server at the baseline version`, async () => {
+      const { client, fetchMock } = getOverTimeClient([
+        overTimeVersionResponse(overTimeBaselineVersion),
+      ]);
+
+      const result = await gated.run(client);
+
+      expect(result.ok).toBe(false);
+      // The gate must short-circuit BEFORE the request, or an older server
+      // answers 404 and the caller cannot tell "too old" from "no data".
+      expect(getOverTimeFeatureCall(fetchMock)).toBeUndefined();
+    });
+  }
+});

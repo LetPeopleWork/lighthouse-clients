@@ -943,6 +943,73 @@ export type BlockedCountSnapshot = {
   readonly blockedCount: number;
 };
 
+/**
+ * Percentile family recorded by the percentiles-over-time pipeline. Sent as the
+ * `metricType` query parameter, and echoed back on every returned row.
+ */
+export type PercentilesOverTimeMetricType = "CycleTime" | "WorkItemAge";
+
+/**
+ * One captured day on the percentiles-over-time trend: the percentile quartet
+ * recorded for {@link recordedAt} (an ISO date string, one row per calendar day,
+ * ascending).
+ *
+ * Recording is FORWARD-ONLY — Lighthouse starts capturing the day the feature is
+ * first deployed and never backfills history it did not observe, so a freshly
+ * upgraded server legitimately returns an empty array until the first refresh.
+ *
+ * `CycleTime` is recorded per horizon (30/60/90 days); `WorkItemAge` is always
+ * "as of today" and therefore has no horizon dimension, so a horizon sent
+ * alongside it is ignored in favour of the horizon-less series.
+ *
+ * SHARP EDGE: a `CycleTime` request that omits `horizon` is not filtered to one
+ * horizon — it returns every recorded horizon interleaved, and because this row
+ * shape carries no horizon field they cannot be told apart. Pass an explicit
+ * horizon whenever you ask for `CycleTime`.
+ */
+export type PercentilesOverTimeSnapshot = {
+  readonly recordedAt: string;
+  readonly metricType: PercentilesOverTimeMetricType;
+  readonly p50: number;
+  readonly p70: number;
+  readonly p85: number;
+  readonly p95: number;
+};
+
+/**
+ * Process-behaviour family recorded by the natural-process-limits over-time
+ * pipeline. Sent as the `type` query parameter.
+ *
+ * `FeatureSize` is PORTFOLIO-ONLY: it has no team-level equivalent, so a team
+ * never records it. The server answers a team asking for it with an empty
+ * series rather than an error.
+ */
+export type ProcessBehaviorMetricType =
+  | "Throughput"
+  | "WorkItemAge"
+  | "Wip"
+  | "CycleTime"
+  | "Arrivals"
+  | "FeatureSize";
+
+/**
+ * One captured day on the process-behaviour-over-time trend: the natural process
+ * limit triple recorded for {@link recordedAt} (an ISO date string, one row per
+ * calendar day, ascending). The family is carried by the request's `type`
+ * parameter, not repeated per row.
+ *
+ * Recording is FORWARD-ONLY, and a day is only recorded when the underlying
+ * chart had a usable baseline — days where it did not are absent from the
+ * series rather than present as a zeroed triple, so an empty array means
+ * "nothing recorded yet", never "a process pinned at zero".
+ */
+export type ProcessBehaviorSnapshot = {
+  readonly recordedAt: string;
+  readonly unpl: number;
+  readonly average: number;
+  readonly lnpl: number;
+};
+
 export type CumulativeStateTimeStateRow = {
   readonly state: string;
   readonly workflowOrder: number;
@@ -1176,6 +1243,28 @@ export type LighthouseClient = {
     portfolioId: number,
     range?: MetricsDateRange,
   ) => Promise<LighthouseApiResult<readonly BlockedCountSnapshot[]>>;
+  readonly getTeamPercentilesOverTime: (
+    teamId: number,
+    range?: MetricsDateRange,
+    metricType?: PercentilesOverTimeMetricType,
+    horizon?: number,
+  ) => Promise<LighthouseApiResult<readonly PercentilesOverTimeSnapshot[]>>;
+  readonly getPortfolioPercentilesOverTime: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+    metricType?: PercentilesOverTimeMetricType,
+    horizon?: number,
+  ) => Promise<LighthouseApiResult<readonly PercentilesOverTimeSnapshot[]>>;
+  readonly getTeamProcessBehaviorOverTime: (
+    teamId: number,
+    range?: MetricsDateRange,
+    metricType?: ProcessBehaviorMetricType,
+  ) => Promise<LighthouseApiResult<readonly ProcessBehaviorSnapshot[]>>;
+  readonly getPortfolioProcessBehaviorOverTime: (
+    portfolioId: number,
+    range?: MetricsDateRange,
+    metricType?: ProcessBehaviorMetricType,
+  ) => Promise<LighthouseApiResult<readonly ProcessBehaviorSnapshot[]>>;
   readonly getTeamCumulativeStateTime: (
     teamId: number,
     range?: MetricsDateRange,
@@ -1578,6 +1667,31 @@ const getDefinitionIdQuerySuffix = (definitionId?: number): string =>
     ? `&definitionId=${encodeURIComponent(definitionId)}`
     : "";
 
+/**
+ * `metricType` defaults server-side to CycleTime, and `horizon` only applies to
+ * CycleTime — Work Item Age is always "as of today", so the server ignores a
+ * horizon sent with it. Both are omitted rather than defaulted here, so an
+ * unspecified call keeps the server's own default.
+ */
+const getPercentilesOverTimeQuerySuffix = (
+  metricType?: PercentilesOverTimeMetricType,
+  horizon?: number,
+): string => {
+  const metricTypePart =
+    metricType === undefined
+      ? ""
+      : `&metricType=${encodeURIComponent(metricType)}`;
+  const horizonPart =
+    horizon === undefined ? "" : `&horizon=${encodeURIComponent(horizon)}`;
+  return `${metricTypePart}${horizonPart}`;
+};
+
+/** Omitted rather than defaulted, so the server's own default (Throughput) stands. */
+const getProcessBehaviorTypeQuerySuffix = (
+  metricType?: ProcessBehaviorMetricType,
+): string =>
+  metricType === undefined ? "" : `&type=${encodeURIComponent(metricType)}`;
+
 type WipItemDto = {
   readonly id: number;
   readonly name: string;
@@ -1668,6 +1782,8 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   workItemAgePercentiles: "v26.6.7.1",
   mcpOAuthPassThrough: "v26.6.16.14",
   blockedCountHistory: "v26.7.3.1",
+  percentilesOverTime: "v26.7.11.4",
+  processBehaviorOverTime: "v26.7.11.4",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2256,6 +2372,76 @@ export const createLighthouseClient = (
         configuration,
         dependencies,
         `/v1/portfolios/${portfolioId}/metrics/blockedCountHistory?${getMetricsDateRangeQuery(r)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamPercentilesOverTime: async (
+      teamId: number,
+      range?: MetricsDateRange,
+      metricType?: PercentilesOverTimeMetricType,
+      horizon?: number,
+    ) => {
+      const unsupported = await ensureServerSupports("percentilesOverTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly PercentilesOverTimeSnapshot[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/percentiles-over-time?${getMetricsDateRangeQuery(r)}${getPercentilesOverTimeQuerySuffix(metricType, horizon)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioPercentilesOverTime: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+      metricType?: PercentilesOverTimeMetricType,
+      horizon?: number,
+    ) => {
+      const unsupported = await ensureServerSupports("percentilesOverTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly PercentilesOverTimeSnapshot[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/percentiles-over-time?${getMetricsDateRangeQuery(r)}${getPercentilesOverTimeQuerySuffix(metricType, horizon)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamProcessBehaviorOverTime: async (
+      teamId: number,
+      range?: MetricsDateRange,
+      metricType?: ProcessBehaviorMetricType,
+    ) => {
+      const unsupported = await ensureServerSupports("processBehaviorOverTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly ProcessBehaviorSnapshot[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/process-behavior-over-time?${getMetricsDateRangeQuery(r)}${getProcessBehaviorTypeQuerySuffix(metricType)}`,
+        { method: "GET" },
+      );
+    },
+    getPortfolioProcessBehaviorOverTime: async (
+      portfolioId: number,
+      range?: MetricsDateRange,
+      metricType?: ProcessBehaviorMetricType,
+    ) => {
+      const unsupported = await ensureServerSupports("processBehaviorOverTime");
+      if (unsupported) {
+        return unsupported;
+      }
+      const r = getResolvedMetricsDateRange(range);
+      return requestJson<readonly ProcessBehaviorSnapshot[]>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/process-behavior-over-time?${getMetricsDateRangeQuery(r)}${getProcessBehaviorTypeQuerySuffix(metricType)}`,
         { method: "GET" },
       );
     },

@@ -47,6 +47,10 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_metrics_totalWorkItemAge"
     | "lighthouse_team_metrics_blockedCountHistory"
     | "lighthouse_portfolio_metrics_blockedCountHistory"
+    | "lighthouse_team_metrics_percentilesOverTime"
+    | "lighthouse_portfolio_metrics_percentilesOverTime"
+    | "lighthouse_team_metrics_processBehaviorOverTime"
+    | "lighthouse_portfolio_metrics_processBehaviorOverTime"
     | "lighthouse_team_metrics_cumulativeStateTime"
     | "lighthouse_team_metrics_cumulativeStateTimeItems"
     | "lighthouse_team_metrics_cumulativeStateTimeCandidates"
@@ -106,6 +110,36 @@ const throughputFilterViewProperty = {
     enum: ["raw", "filtered"],
     description:
       'Forecast-filter view (Lighthouse v26.5.24.10+). "filtered" applies the team\'s exclusion rule to throughput. Omit or "raw" returns unfiltered data.',
+  },
+} as const;
+
+const percentilesOverTimeProperties = {
+  metricType: {
+    type: "string",
+    enum: ["CycleTime", "WorkItemAge"],
+    description:
+      'Percentile family to read. Defaults to "CycleTime" when omitted.',
+  },
+  horizon: {
+    type: "number",
+    description:
+      "Cycle-time horizon in days (30, 60 or 90). Ignored for WorkItemAge, which is always as-of-today and has no horizon dimension.",
+  },
+} as const;
+
+const processBehaviorOverTimeProperties = {
+  metricType: {
+    type: "string",
+    enum: [
+      "Throughput",
+      "WorkItemAge",
+      "Wip",
+      "CycleTime",
+      "Arrivals",
+      "FeatureSize",
+    ],
+    description:
+      'Process-behaviour family to read. Defaults to "Throughput" when omitted. "FeatureSize" is portfolio-only — a team never records it and returns an empty series.',
   },
 } as const;
 
@@ -368,6 +402,64 @@ type McpRuntimeClient = {
   readonly getPortfolioBlockedCountHistory: (
     id: number,
     range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamPercentilesOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+    metricType?: "CycleTime" | "WorkItemAge",
+    horizon?: number,
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioPercentilesOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+    metricType?: "CycleTime" | "WorkItemAge",
+    horizon?: number,
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamProcessBehaviorOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+    metricType?:
+      | "Throughput"
+      | "WorkItemAge"
+      | "Wip"
+      | "CycleTime"
+      | "Arrivals"
+      | "FeatureSize",
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioProcessBehaviorOverTime: (
+    id: number,
+    range?: { readonly startDate: string; readonly endDate: string },
+    metricType?:
+      | "Throughput"
+      | "WorkItemAge"
+      | "Wip"
+      | "CycleTime"
+      | "Arrivals"
+      | "FeatureSize",
   ) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
     | {
@@ -748,6 +840,66 @@ const toolDefinitions: readonly McpToolDefinition[] = [
       properties: {
         ...idInputSchema.properties,
         ...dateRangeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_percentilesOverTime",
+    description:
+      "Get the percentiles-over-time trend for a team by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only — Lighthouse never backfills days it did not observe, so a recently upgraded server returns an empty series until it has recorded some. Use metricType to pick the family and horizon to pick the cycle-time window.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+        ...percentilesOverTimeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_percentilesOverTime",
+    description:
+      "Get the percentiles-over-time trend for a portfolio by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only — Lighthouse never backfills days it did not observe, so a recently upgraded server returns an empty series until it has recorded some. Use metricType to pick the family and horizon to pick the cycle-time window.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+        ...percentilesOverTimeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_metrics_processBehaviorOverTime",
+    description:
+      "Get the process-behaviour-limits-over-time trend for a team by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only, and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+        ...processBehaviorOverTimeProperties,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_portfolio_metrics_processBehaviorOverTime",
+    description:
+      "Get the process-behaviour-limits-over-time trend for a portfolio by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only, and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero. FeatureSize is available here and not on teams.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...idInputSchema.properties,
+        ...dateRangeProperties,
+        ...processBehaviorOverTimeProperties,
       },
       required: ["id"],
       additionalProperties: false,
@@ -1168,6 +1320,47 @@ const getThroughputFilterView = (
   return view === "raw" || view === "filtered" ? view : undefined;
 };
 
+const percentilesOverTimeMetricTypes = ["CycleTime", "WorkItemAge"] as const;
+
+type PercentilesOverTimeMetricTypeArgument =
+  (typeof percentilesOverTimeMetricTypes)[number];
+
+const getPercentilesOverTimeMetricType = (
+  argumentsPayload: unknown,
+): PercentilesOverTimeMetricTypeArgument | undefined => {
+  const raw = getStringArgument(argumentsPayload, "metricType");
+  return percentilesOverTimeMetricTypes.find((candidate) => candidate === raw);
+};
+
+const processBehaviorMetricTypes = [
+  "Throughput",
+  "WorkItemAge",
+  "Wip",
+  "CycleTime",
+  "Arrivals",
+  "FeatureSize",
+] as const;
+
+type ProcessBehaviorMetricTypeArgument =
+  (typeof processBehaviorMetricTypes)[number];
+
+const getProcessBehaviorMetricType = (
+  argumentsPayload: unknown,
+): ProcessBehaviorMetricTypeArgument | undefined => {
+  const raw = getStringArgument(argumentsPayload, "metricType");
+  return processBehaviorMetricTypes.find((candidate) => candidate === raw);
+};
+
+const getHorizonArgument = (argumentsPayload: unknown): number | undefined => {
+  if (!isObjectRecord(argumentsPayload)) {
+    return undefined;
+  }
+  const horizon = argumentsPayload.horizon;
+  return typeof horizon === "number" && Number.isInteger(horizon)
+    ? horizon
+    : undefined;
+};
+
 const getApplyFilterOverride = (
   argumentsPayload: unknown,
 ): boolean | undefined => {
@@ -1242,6 +1435,50 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_team_metrics_percentilesOverTime: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    metricType: z.enum(["CycleTime", "WorkItemAge"]).optional(),
+    horizon: z.number().int().optional(),
+  }),
+  lighthouse_portfolio_metrics_percentilesOverTime: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    metricType: z.enum(["CycleTime", "WorkItemAge"]).optional(),
+    horizon: z.number().int().optional(),
+  }),
+  lighthouse_team_metrics_processBehaviorOverTime: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    metricType: z
+      .enum([
+        "Throughput",
+        "WorkItemAge",
+        "Wip",
+        "CycleTime",
+        "Arrivals",
+        "FeatureSize",
+      ])
+      .optional(),
+  }),
+  lighthouse_portfolio_metrics_processBehaviorOverTime: z.object({
+    id: z.number().int(),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+    metricType: z
+      .enum([
+        "Throughput",
+        "WorkItemAge",
+        "Wip",
+        "CycleTime",
+        "Arrivals",
+        "FeatureSize",
+      ])
+      .optional(),
   }),
   lighthouse_team_metrics_workItemAge: z.object({
     id: z.number().int(),
@@ -1596,6 +1833,92 @@ export const createMcpCoreRuntime = (
       if (result.ok) {
         return getSuccessToolResult(
           `portfolio blockedCountHistory: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_percentilesOverTime") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getTeamPercentilesOverTime(
+        id,
+        range,
+        getPercentilesOverTimeMetricType(argumentsPayload),
+        getHorizonArgument(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team percentilesOverTime: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_percentilesOverTime") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getPortfolioPercentilesOverTime(
+        id,
+        range,
+        getPercentilesOverTimeMetricType(argumentsPayload),
+        getHorizonArgument(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio percentilesOverTime: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_processBehaviorOverTime") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getTeamProcessBehaviorOverTime(
+        id,
+        range,
+        getProcessBehaviorMetricType(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `team processBehaviorOverTime: ${encodePayload(result.value)}`,
+        );
+      }
+      return getErrorToolResult(
+        `team metrics: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_processBehaviorOverTime") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const range = getDateRange(argumentsPayload);
+      const result = await client.getPortfolioProcessBehaviorOverTime(
+        id,
+        range,
+        getProcessBehaviorMetricType(argumentsPayload),
+      );
+      if (result.ok) {
+        return getSuccessToolResult(
+          `portfolio processBehaviorOverTime: ${encodePayload(result.value)}`,
         );
       }
       return getErrorToolResult(

@@ -38,6 +38,10 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_portfolio_metrics_workItemAgePercentiles",
       "lighthouse_team_metrics_blockedCountHistory",
       "lighthouse_portfolio_metrics_blockedCountHistory",
+      "lighthouse_team_metrics_percentilesOverTime",
+      "lighthouse_portfolio_metrics_percentilesOverTime",
+      "lighthouse_team_metrics_processBehaviorOverTime",
+      "lighthouse_portfolio_metrics_processBehaviorOverTime",
       "lighthouse_portfolio_metrics_throughput",
       "lighthouse_team_metrics_workItemAge",
       "lighthouse_team_metrics_totalWorkItemAge",
@@ -891,6 +895,155 @@ describe("createMcpCoreRuntime", () => {
     );
   });
 
+  it("calls the over-time tools and passes family and horizon through", async () => {
+    const percentiles = [
+      {
+        recordedAt: "2026-01-01",
+        metricType: "CycleTime",
+        p50: 4,
+        p70: 7,
+        p85: 11,
+        p95: 16,
+      },
+    ];
+    const limits = [
+      { recordedAt: "2026-01-01", unpl: 19, average: 12, lnpl: 5 },
+    ];
+    const calls: Array<{
+      readonly scope: string;
+      readonly id: number;
+      readonly range: unknown;
+      readonly metricType: unknown;
+      readonly horizon?: unknown;
+    }> = [];
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          getTeamPercentilesOverTime: async (
+            id: number,
+            range: unknown,
+            metricType: unknown,
+            horizon: unknown,
+          ) => {
+            calls.push({ scope: "team-p", id, range, metricType, horizon });
+            return { ok: true as const, value: percentiles };
+          },
+          getPortfolioPercentilesOverTime: async (
+            id: number,
+            range: unknown,
+            metricType: unknown,
+            horizon: unknown,
+          ) => {
+            calls.push({
+              scope: "portfolio-p",
+              id,
+              range,
+              metricType,
+              horizon,
+            });
+            return { ok: true as const, value: percentiles };
+          },
+          getTeamProcessBehaviorOverTime: async (
+            id: number,
+            range: unknown,
+            metricType: unknown,
+          ) => {
+            calls.push({ scope: "team-pbc", id, range, metricType });
+            return { ok: true as const, value: limits };
+          },
+          getPortfolioProcessBehaviorOverTime: async (
+            id: number,
+            range: unknown,
+            metricType: unknown,
+          ) => {
+            calls.push({ scope: "portfolio-pbc", id, range, metricType });
+            return { ok: true as const, value: limits };
+          },
+        }) as never,
+    });
+
+    const range = { startDate: "2026-01-01", endDate: "2026-03-31" };
+
+    const teamPercentiles = await runtime.callTool(
+      "lighthouse_team_metrics_percentilesOverTime",
+      { id: 5, ...range, metricType: "WorkItemAge" },
+    );
+    expect(teamPercentiles.isError).toBe(false);
+    expect(teamPercentiles.content[0]?.text).toContain(
+      "team percentilesOverTime",
+    );
+
+    await runtime.callTool("lighthouse_portfolio_metrics_percentilesOverTime", {
+      id: 9,
+      ...range,
+      metricType: "CycleTime",
+      horizon: 60,
+    });
+
+    const teamLimits = await runtime.callTool(
+      "lighthouse_team_metrics_processBehaviorOverTime",
+      { id: 5, ...range, metricType: "Arrivals" },
+    );
+    expect(teamLimits.isError).toBe(false);
+    expect(teamLimits.content[0]?.text).toContain(
+      "team processBehaviorOverTime",
+    );
+
+    await runtime.callTool(
+      "lighthouse_portfolio_metrics_processBehaviorOverTime",
+      { id: 9, ...range, metricType: "FeatureSize" },
+    );
+
+    expect(calls).toEqual([
+      {
+        scope: "team-p",
+        id: 5,
+        range,
+        metricType: "WorkItemAge",
+        horizon: undefined,
+      },
+      {
+        scope: "portfolio-p",
+        id: 9,
+        range,
+        metricType: "CycleTime",
+        horizon: 60,
+      },
+      { scope: "team-pbc", id: 5, range, metricType: "Arrivals" },
+      { scope: "portfolio-pbc", id: 9, range, metricType: "FeatureSize" },
+    ]);
+  });
+
+  it("drops an unrecognised over-time family instead of forwarding it", async () => {
+    const calls: Array<{ readonly metricType: unknown }> = [];
+    const runtime = createMcpCoreRuntime({
+      createClient: () =>
+        ({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          getTeamProcessBehaviorOverTime: async (
+            _id: number,
+            _range: unknown,
+            metricType: unknown,
+          ) => {
+            calls.push({ metricType });
+            return { ok: true as const, value: [] };
+          },
+        }) as never,
+    });
+
+    // An unknown family must not reach the server as-is: it would come back a
+    // 400 that reads like a Lighthouse fault rather than a bad tool argument.
+    await runtime.callTool("lighthouse_team_metrics_processBehaviorOverTime", {
+      id: 5,
+      metricType: "NotAFamily",
+    });
+
+    expect(calls).toEqual([{ metricType: undefined }]);
+  });
+
   it("calls team and portfolio blockedCountHistory metrics tools and passes the date range", async () => {
     const history = [{ recordedAt: "2026-01-01", blockedCount: 3 }];
     const calls: Array<{
@@ -1270,7 +1423,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(36);
+    expect(registered).toHaveLength(40);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",
