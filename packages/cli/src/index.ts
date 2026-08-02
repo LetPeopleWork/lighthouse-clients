@@ -2232,6 +2232,13 @@ const runDeliveryGroup = async (
     }
 
     const detail = getOptionValue(args, "--detail");
+    // Trailing --detail reads as absent, which would quietly print the summary the caller just
+    // asked to step past. Review 2026-08-02.
+    if (args.includes("--detail") && detail === undefined) {
+      return getErrorResult(
+        "Missing value for --detail in delivery metrics. Supported: epics.",
+      );
+    }
     if (detail !== undefined && detail !== "epics") {
       return getErrorResult(
         `Unknown --detail value "${detail}" for delivery metrics. Supported: epics.`,

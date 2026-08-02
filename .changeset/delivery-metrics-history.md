@@ -15,7 +15,9 @@ terminal or an assistant.
   (the last release without the endpoint). The per-epic `totalItems` and `isUsingDefaultSize`
   are optional, so a server that predates them parses cleanly and simply reports no sizes.
   `summariseDeliveryMetricsHistory` projects a history to one row per day.
-- cli: `lh delivery metrics --delivery-id <id> [--detail epics]`.
+- cli: `lh delivery metrics --delivery-id <id> [--detail epics]`. A `--detail` with no value is
+  refused rather than treated as absent, which would have printed the summary the caller asked
+  to step past.
 - mcp-core: read-only `lighthouse_delivery_metrics`.
 
 The CLI and the MCP tool summarise by default: a 90-day window over fifteen epics is well

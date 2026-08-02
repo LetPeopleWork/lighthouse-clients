@@ -2414,6 +2414,18 @@ describe("runCliCommand", () => {
     expect(result.stderr).toContain("--delivery-id");
   });
 
+  it("refuses a trailing --detail rather than quietly summarising", async () => {
+    const { dependencies } = getDeliveryMetricsDependencies();
+
+    const result = await runCliCommand(
+      ["delivery", "metrics", "--delivery-id", "42", "--detail"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--detail");
+  });
+
   it("names the supported --detail values when given an unknown one", async () => {
     const { dependencies } = getDeliveryMetricsDependencies();
 
