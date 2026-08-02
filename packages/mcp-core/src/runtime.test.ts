@@ -2,6 +2,12 @@ import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import { createMcpCoreRuntime, registerMcpTools } from "./index";
 
+const emptyDeliveryHistory = {
+  deliveryDate: "2026-06-30T00:00:00Z",
+  firstSnapshotDate: null,
+  points: [],
+};
+
 describe("createMcpCoreRuntime", () => {
   it("lists baseline Lighthouse tools", () => {
     const runtime = createMcpCoreRuntime({
@@ -50,6 +56,7 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_feature_get",
       "lighthouse_feature_workitems",
       "lighthouse_delivery_list",
+      "lighthouse_delivery_metrics",
       "lighthouse_blackout_list",
       "lighthouse_blackout_create",
       "lighthouse_blackout_update",
@@ -201,6 +208,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -255,6 +266,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -301,6 +316,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -397,6 +416,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -442,6 +465,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: deliveries }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -456,6 +483,163 @@ describe("createMcpCoreRuntime", () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain("Release 1");
+  });
+
+  const deliveryHistoryWithEpics = {
+    deliveryDate: "2026-06-30T00:00:00Z",
+    firstSnapshotDate: "2026-06-01T00:00:00Z",
+    points: [
+      {
+        date: "2026-06-01T00:00:00Z",
+        targetDateAtSnapshot: "2026-06-30T00:00:00Z",
+        totalWork: 20,
+        doneWork: 4,
+        remainingWork: 16,
+        estimatedItemCount: 6,
+        forecastHowMany: 12,
+        likelihoodPercentage: 70,
+        whenDistribution: [
+          { probability: 0.5, expectedDate: "2026-06-28T00:00:00Z" },
+        ],
+        featureBreakdown: [
+          {
+            referenceId: "EPIC-A",
+            name: "Checkout",
+            completion: 25,
+            likelihood: 80,
+            totalItems: 8,
+            isUsingDefaultSize: false,
+          },
+        ],
+      },
+    ],
+  };
+
+  const getDeliveryMetricsRuntime = (
+    result:
+      | {
+          readonly ok: true;
+          readonly value: typeof deliveryHistoryWithEpics;
+        }
+      | {
+          readonly ok: false;
+          readonly error: {
+            readonly category: string;
+            readonly reason: string;
+          };
+        },
+  ) =>
+    createMcpCoreRuntime({
+      createClient: () => ({
+        checkConnectivity: async () => ({ category: "success" }),
+        getVersion: async () => ({ ok: true as const, value: "v1.0.0" }),
+        listWorkTrackingConnections: async () => ({
+          ok: true as const,
+          value: [],
+        }),
+        getWorkTrackingConnection: async () => ({
+          ok: true as const,
+          value: {},
+        }),
+        listTeams: async () => ({ ok: true as const, value: [] }),
+        getTeam: async () => ({ ok: true as const, value: {} }),
+        refreshTeam: async () => ({ ok: true as const, value: undefined }),
+        listPortfolios: async () => ({ ok: true as const, value: [] }),
+        getPortfolio: async () => ({ ok: true as const, value: {} }),
+        refreshPortfolio: async () => ({ ok: true as const, value: undefined }),
+        getTeamThroughput: async () => ({ ok: true as const, value: {} }),
+        getTeamCycleTimePercentiles: async () => ({
+          ok: true as const,
+          value: [],
+        }),
+        getPortfolioThroughput: async () => ({ ok: true as const, value: {} }),
+        getTeamWorkItemAgeOverTime: async () => ({
+          ok: true as const,
+          value: {},
+        }),
+        getTeamTotalWorkItemAgeOverTime: async () => ({
+          ok: true as const,
+          value: {},
+        }),
+        getPortfolioWorkItemAgeOverTime: async () => ({
+          ok: true as const,
+          value: {},
+        }),
+        getPortfolioTotalWorkItemAgeOverTime: async () => ({
+          ok: true as const,
+          value: {},
+        }),
+        getFeaturesByIds: async () => ({ ok: true as const, value: [] }),
+        getFeaturesByReferences: async () => ({ ok: true as const, value: [] }),
+        getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
+        listDeliveries: async () => ({ ok: true as const, value: [] }),
+        getDeliveryMetricsHistory: async () => result,
+        createDelivery: async () => ({ ok: true as const, value: {} }),
+        updateDelivery: async () => ({ ok: true as const, value: {} }),
+        deleteDelivery: async () => ({ ok: true as const, value: undefined }),
+        runManualForecast: async () => ({ ok: true as const, value: {} }),
+        runBacktest: async () => ({ ok: true as const, value: {} }),
+      }),
+    });
+
+  it("summarises a delivery's history by default, leaving the heavy shapes out", async () => {
+    const runtime = getDeliveryMetricsRuntime({
+      ok: true,
+      value: deliveryHistoryWithEpics,
+    });
+
+    const result = await runtime.callTool("lighthouse_delivery_metrics", {
+      id: 42,
+    });
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain("epicCount");
+    expect(result.content[0]?.text).not.toContain("EPIC-A");
+    expect(result.content[0]?.text).not.toContain("whenDistribution");
+  });
+
+  it("returns the whole payload when detail is epics", async () => {
+    const runtime = getDeliveryMetricsRuntime({
+      ok: true,
+      value: deliveryHistoryWithEpics,
+    });
+
+    const result = await runtime.callTool("lighthouse_delivery_metrics", {
+      id: 42,
+      detail: "epics",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain("EPIC-A");
+    expect(result.content[0]?.text).toContain("isUsingDefaultSize");
+  });
+
+  it("reports an unsupported server rather than an empty trend", async () => {
+    const runtime = getDeliveryMetricsRuntime({
+      ok: false,
+      error: {
+        category: "misconfigured",
+        reason: "deliveryMetricsHistory requires a newer Lighthouse",
+      },
+    });
+
+    const result = await runtime.callTool("lighthouse_delivery_metrics", {
+      id: 42,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain("deliveryMetricsHistory");
+  });
+
+  it("rejects a delivery metrics call with no id", async () => {
+    const runtime = getDeliveryMetricsRuntime({
+      ok: true,
+      value: deliveryHistoryWithEpics,
+    });
+
+    const result = await runtime.callTool("lighthouse_delivery_metrics", {});
+
+    expect(result.isError).toBe(true);
   });
 
   it("calls recurring blackout-rule list tool", async () => {
@@ -664,6 +848,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -716,6 +904,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -773,6 +965,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -826,6 +1022,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -876,6 +1076,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -1132,6 +1336,10 @@ describe("createMcpCoreRuntime", () => {
         getFeaturesByReferences: async () => ({ ok: true, value: [] }),
         getFeatureWorkItems: async () => ({ ok: true, value: [] }),
         listDeliveries: async () => ({ ok: true, value: [] }),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: emptyDeliveryHistory,
+        }),
         createDelivery: async () => ({ ok: true, value: {} }),
         updateDelivery: async () => ({ ok: true, value: {} }),
         deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -1214,6 +1422,10 @@ describe("createMcpCoreRuntime", () => {
           }),
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({ ok: true as const, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true as const,
+            value: emptyDeliveryHistory,
+          }),
           createDelivery: async () => ({ ok: true as const, value: {} }),
           updateDelivery: async () => ({ ok: true as const, value: {} }),
           deleteDelivery: async () => ({
@@ -1291,6 +1503,10 @@ describe("createMcpCoreRuntime", () => {
           }),
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({ ok: true as const, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true as const,
+            value: emptyDeliveryHistory,
+          }),
           createDelivery: async () => ({ ok: true as const, value: {} }),
           updateDelivery: async () => ({ ok: true as const, value: {} }),
           deleteDelivery: async () => ({
@@ -1412,6 +1628,10 @@ describe("registerMcpTools", () => {
           }),
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({ ok: true as const, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true as const,
+            value: emptyDeliveryHistory,
+          }),
           createDelivery: async () => ({ ok: true as const, value: {} }),
           updateDelivery: async () => ({ ok: true as const, value: {} }),
           deleteDelivery: async () => ({
@@ -1423,7 +1643,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(40);
+    expect(registered).toHaveLength(41);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",

@@ -944,6 +944,85 @@ export type BlockedCountSnapshot = {
 };
 
 /**
+ * One epic as it stood on the day a delivery snapshot was taken.
+ *
+ * `likelihood` is null when the epic cannot be forecast (ADR-112). `totalItems` and
+ * `isUsingDefaultSize` are absent from every snapshot recorded before Lighthouse began writing
+ * sizes, so both are optional and a missing value means "not recorded", never zero.
+ */
+export type DeliveryFeatureMetric = {
+  readonly referenceId: string;
+  readonly name: string;
+  readonly completion: number;
+  readonly likelihood: number | null;
+  readonly totalItems?: number | null;
+  readonly isUsingDefaultSize?: boolean | null;
+};
+
+/** One point on a delivery's forecast distribution: the chance of finishing by a date. */
+export type DeliveryWhenDistributionPoint = {
+  readonly probability: number;
+  readonly expectedDate: string;
+};
+
+/** A delivery as it stood on one recorded day. Dates are ISO strings. */
+export type DeliveryMetricsHistoryPoint = {
+  readonly date: string;
+  readonly targetDateAtSnapshot: string | null;
+  readonly totalWork: number;
+  readonly doneWork: number;
+  readonly remainingWork: number;
+  readonly estimatedItemCount: number | null;
+  readonly forecastHowMany: number | null;
+  readonly likelihoodPercentage: number | null;
+  readonly whenDistribution: readonly DeliveryWhenDistributionPoint[] | null;
+  readonly featureBreakdown: readonly DeliveryFeatureMetric[];
+};
+
+/** The whole recorded trend for one delivery. Forward-only: it starts at the first snapshot. */
+export type DeliveryMetricsHistory = {
+  readonly deliveryDate: string;
+  readonly firstSnapshotDate: string | null;
+  readonly points: readonly DeliveryMetricsHistoryPoint[];
+};
+
+/**
+ * One day of a delivery, without the per-epic breakdown or the forecast distribution.
+ *
+ * A ninety-day window over fifteen epics is well over a thousand breakdown objects plus a
+ * distribution per day — more than an assistant should be handed by default (ADR-121), and more
+ * than a terminal can show. {@link summariseDeliveryMetricsHistory} projects to this.
+ */
+export type DeliveryMetricsHistorySummaryRow = {
+  readonly date: string;
+  readonly totalWork: number;
+  readonly doneWork: number;
+  readonly remainingWork: number;
+  readonly epicCount: number;
+  readonly estimatedItemCount: number | null;
+  readonly likelihoodPercentage: number | null;
+};
+
+/**
+ * Projects a delivery history to one row per recorded day. Pure.
+ *
+ * The client itself returns the payload whole: dropping data is the caller's choice, so the CLI and
+ * the MCP tool apply this by default and step around it when asked for per-epic detail.
+ */
+export const summariseDeliveryMetricsHistory = (
+  history: DeliveryMetricsHistory,
+): readonly DeliveryMetricsHistorySummaryRow[] =>
+  history.points.map((point) => ({
+    date: point.date,
+    totalWork: point.totalWork,
+    doneWork: point.doneWork,
+    remainingWork: point.remainingWork,
+    epicCount: point.featureBreakdown.length,
+    estimatedItemCount: point.estimatedItemCount,
+    likelihoodPercentage: point.likelihoodPercentage,
+  }));
+
+/**
  * Percentile family recorded by the percentiles-over-time pipeline. Sent as the
  * `metricType` query parameter, and echoed back on every returned row.
  */
@@ -1322,6 +1401,9 @@ export type LighthouseClient = {
   readonly deleteDelivery: (
     deliveryId: number,
   ) => Promise<LighthouseApiResult<undefined>>;
+  readonly getDeliveryMetricsHistory: (
+    deliveryId: number,
+  ) => Promise<LighthouseApiResult<DeliveryMetricsHistory>>;
 
   // Recurring Blackout Rules
   readonly getRecurringBlackoutRules: () => Promise<
@@ -1784,6 +1866,9 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   blockedCountHistory: "v26.7.3.1",
   percentilesOverTime: "v26.7.11.4",
   processBehaviorOverTime: "v26.7.11.4",
+  // The endpoint landed in v26.6.7.1. The per-epic size fields came much later and are optional on
+  // the wire, so a server between the two answers fine — it just reports no sizes.
+  deliveryMetricsHistory: "v26.5.29.5",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2610,6 +2695,18 @@ export const createLighthouseClient = (
         `/v1/deliveries/${deliveryId}`,
         { method: "DELETE" },
       ),
+    getDeliveryMetricsHistory: async (deliveryId: number) => {
+      const unsupported = await ensureServerSupports("deliveryMetricsHistory");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<DeliveryMetricsHistory>(
+        configuration,
+        dependencies,
+        `/v1/deliveries/${deliveryId}/metrics-history`,
+        { method: "GET" },
+      );
+    },
     getRecurringBlackoutRules: async () => {
       const unsupported = await ensureServerSupports("recurringBlackoutRules");
       if (unsupported) {

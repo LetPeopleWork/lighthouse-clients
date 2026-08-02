@@ -211,6 +211,9 @@ lh feature get --ids <id1,id2,...>           Get features by IDs
 lh feature get --refs <ref1,ref2,...>        Get features by references
 lh feature workitems --id <feature-id>       Get work items for a feature
 lh delivery list --portfolio-id <portfolio-id>
+lh delivery metrics --delivery-id <delivery-id> [--detail epics]
+                                             One row per recorded day; --detail epics
+                                             adds the per-epic breakdown
 lh forecast manual --team-id <team-id> [--remaining <n>] [--target-date <date>]
 lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> --hist-start-date <date> --hist-end-date <date>
 ```

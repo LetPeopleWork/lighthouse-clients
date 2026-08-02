@@ -319,6 +319,11 @@ type MockClient = {
     readonly ok: true;
     readonly value: readonly unknown[];
   }>;
+  readonly getDeliveryMetricsHistory: (deliveryId: number) => Promise<{
+    readonly ok: boolean;
+    readonly value?: unknown;
+    readonly error?: { readonly category: string; readonly reason: string };
+  }>;
   readonly createDelivery: (
     portfolioId: number,
     payload: unknown,
@@ -494,6 +499,14 @@ const getDefaultMockClient = (): MockClient => ({
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),
   listDeliveries: async () => ({ ok: true, value: [] }),
+  getDeliveryMetricsHistory: async () => ({
+    ok: true,
+    value: {
+      deliveryDate: "2026-06-30T00:00:00Z",
+      firstSnapshotDate: null,
+      points: [],
+    },
+  }),
   createDelivery: async () => ({ ok: true, value: {} }),
   updateDelivery: async () => ({ ok: true, value: {} }),
   deleteDelivery: async () => ({ ok: true, value: undefined }),
@@ -2316,6 +2329,137 @@ describe("runCliCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Release 1");
+  });
+
+  const deliveryHistory = {
+    deliveryDate: "2026-06-30T00:00:00Z",
+    firstSnapshotDate: "2026-06-01T00:00:00Z",
+    points: [
+      {
+        date: "2026-06-01T00:00:00Z",
+        targetDateAtSnapshot: "2026-06-30T00:00:00Z",
+        totalWork: 20,
+        doneWork: 4,
+        remainingWork: 16,
+        estimatedItemCount: 6,
+        forecastHowMany: 12,
+        likelihoodPercentage: 70,
+        whenDistribution: [
+          { probability: 0.5, expectedDate: "2026-06-28T00:00:00Z" },
+        ],
+        featureBreakdown: [
+          {
+            referenceId: "EPIC-A",
+            name: "Checkout",
+            completion: 25,
+            likelihood: 80,
+            totalItems: 8,
+            isUsingDefaultSize: false,
+          },
+        ],
+      },
+    ],
+  };
+
+  const getDeliveryMetricsDependencies = () =>
+    getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getDeliveryMetricsHistory: async () => ({
+          ok: true,
+          value: deliveryHistory,
+        }),
+      },
+    });
+
+  it("summarises a delivery's history to one row per day by default", async () => {
+    const { dependencies } = getDeliveryMetricsDependencies();
+
+    const result = await runCliCommand(
+      ["delivery", "metrics", "--delivery-id", "42"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("epicCount");
+    // The two heavy shapes stay out unless asked for.
+    expect(result.stdout).not.toContain("EPIC-A");
+    expect(result.stdout).not.toContain("whenDistribution");
+  });
+
+  it("hands over the per-epic detail when it is asked for", async () => {
+    const { dependencies } = getDeliveryMetricsDependencies();
+
+    const result = await runCliCommand(
+      ["delivery", "metrics", "--delivery-id", "42", "--detail", "epics"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("EPIC-A");
+    expect(result.stdout).toContain("isUsingDefaultSize");
+  });
+
+  it("refuses a delivery metrics call with no delivery id", async () => {
+    const { dependencies } = getDeliveryMetricsDependencies();
+
+    const result = await runCliCommand(["delivery", "metrics"], dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--delivery-id");
+  });
+
+  it("names the supported --detail values when given an unknown one", async () => {
+    const { dependencies } = getDeliveryMetricsDependencies();
+
+    const result = await runCliCommand(
+      ["delivery", "metrics", "--delivery-id", "42", "--detail", "everything"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("epics");
+  });
+
+  it("passes an unsupported-server refusal straight through", async () => {
+    const { dependencies } = getDependencies({
+      connection: {
+        mode: "server",
+        endpointUrl: "http://localhost:5000",
+        authMode: "disabled",
+      },
+      client: {
+        ...getDefaultMockClient(),
+        getDeliveryMetricsHistory: async () => ({
+          ok: false,
+          error: {
+            category: "misconfigured",
+            reason: "deliveryMetricsHistory requires a newer Lighthouse",
+          },
+        }),
+      },
+    });
+
+    const result = await runCliCommand(
+      ["delivery", "metrics", "--delivery-id", "42"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("deliveryMetricsHistory");
+  });
+
+  it("lists the metrics command in the delivery group help", async () => {
+    const { dependencies } = getDeliveryMetricsDependencies();
+
+    const result = await runCliCommand(["delivery"], dependencies);
+
+    expect(result.stdout).toContain("lh delivery metrics --delivery-id");
   });
 
   it("runs a manual forecast for a team", async () => {

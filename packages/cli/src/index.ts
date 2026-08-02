@@ -7,6 +7,7 @@ import {
   type LighthouseClient,
   type MetricsDateRange,
   createLighthouseClient,
+  summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
   DEFAULT_OUTPUT_FORMAT,
@@ -88,6 +89,7 @@ type CliDomainClientLike = Pick<
   | "getFeaturesByReferences"
   | "getFeatureWorkItems"
   | "listDeliveries"
+  | "getDeliveryMetricsHistory"
   | "createDelivery"
   | "updateDelivery"
   | "deleteDelivery"
@@ -1174,7 +1176,15 @@ const getMetricsGroupHelpText = (): string =>
   ].join("\n");
 
 const getDeliveryGroupHelpText = (): string =>
-  ["Usage:", "  lh delivery list --portfolio-id <id>"].join("\n");
+  [
+    "Usage:",
+    "  lh delivery list --portfolio-id <id>",
+    "  lh delivery metrics --delivery-id <id> [--detail epics]",
+    "",
+    "  metrics prints one row per recorded day. --detail epics adds the per-epic",
+    "  breakdown and the forecast distribution, which are far larger.",
+    "  Requires Lighthouse newer than v26.5.29.5.",
+  ].join("\n");
 
 const getBlackoutGroupHelpText = (): string =>
   [
@@ -2205,11 +2215,43 @@ const runDeliveryGroup = async (
     return getSuccessResult(getDeliveryGroupHelpText());
   }
 
-  if (action !== "list") {
+  if (action !== "list" && action !== "metrics") {
     return getUnknownSubcommandResult(
       getDeliveryGroupHelpText(),
       "delivery",
       action,
+    );
+  }
+
+  if (action === "metrics") {
+    const deliveryId = getRequiredIdOption(args, "--delivery-id");
+    if (deliveryId === null) {
+      return getErrorResult(
+        "Missing required --delivery-id for delivery metrics.",
+      );
+    }
+
+    const detail = getOptionValue(args, "--detail");
+    if (detail !== undefined && detail !== "epics") {
+      return getErrorResult(
+        `Unknown --detail value "${detail}" for delivery metrics. Supported: epics.`,
+      );
+    }
+
+    const connectionOrError = await requireConnection(dependencies);
+    if (isCliCommandResult(connectionOrError)) {
+      return connectionOrError;
+    }
+
+    const client = dependencies.createClient(connectionOrError);
+    const result = await client.getDeliveryMetricsHistory(deliveryId);
+    if (!result.ok || detail === "epics") {
+      return mapApiResultToCliResult(result, outputFormat);
+    }
+
+    return mapApiResultToCliResult(
+      { ok: true, value: summariseDeliveryMetricsHistory(result.value) },
+      outputFormat,
     );
   }
 

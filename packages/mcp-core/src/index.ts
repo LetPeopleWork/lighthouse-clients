@@ -1,3 +1,7 @@
+import {
+  type DeliveryMetricsHistory,
+  summariseDeliveryMetricsHistory,
+} from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { encode } from "@toon-format/toon";
 import { z } from "zod";
@@ -60,6 +64,7 @@ export type McpToolDefinition = {
     | "lighthouse_feature_get"
     | "lighthouse_feature_workitems"
     | "lighthouse_delivery_list"
+    | "lighthouse_delivery_metrics"
     | "lighthouse_blackout_list"
     | "lighthouse_blackout_create"
     | "lighthouse_blackout_update"
@@ -561,6 +566,13 @@ type McpRuntimeClient = {
         readonly error: { readonly category: string; readonly reason: string };
       }
   >;
+  readonly getDeliveryMetricsHistory: (deliveryId: number) => Promise<
+    | { readonly ok: true; readonly value: DeliveryMetricsHistory }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
   readonly createDelivery: (
     portfolioId: number,
     payload: Readonly<Record<string, unknown>>,
@@ -1009,6 +1021,25 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     name: "lighthouse_delivery_list",
     description: "List deliveries for a portfolio by portfolio ID.",
     inputSchema: idInputSchema,
+  },
+  {
+    name: "lighthouse_delivery_metrics",
+    description:
+      'Get a delivery\'s recorded trend by delivery ID: one row per day with total, done and remaining work, the epic count and the likelihood. Set detail to "epics" for the per-epic breakdown and the forecast distribution, which are far larger. Forward-only, so it starts at the first recorded snapshot. Requires Lighthouse newer than v26.5.29.5.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "number", description: "Delivery ID." },
+        detail: {
+          type: "string",
+          enum: ["epics"],
+          description:
+            'Omit for one row per day. "epics" returns the whole recorded payload.',
+        },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
   },
   {
     name: "lighthouse_blackout_list",
@@ -1547,6 +1578,10 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   }),
   lighthouse_feature_workitems: z.object({ id: z.number().int() }),
   lighthouse_delivery_list: z.object({ id: z.number().int() }),
+  lighthouse_delivery_metrics: z.object({
+    id: z.number().int(),
+    detail: z.literal("epics").optional(),
+  }),
   lighthouse_blackout_list: z.object({}),
   lighthouse_blackout_create: recurringBlackoutRuleInputSchema,
   lighthouse_blackout_update: recurringBlackoutRuleInputSchema.extend({
@@ -2215,6 +2250,32 @@ export const createMcpCoreRuntime = (
       }
       return getErrorToolResult(
         `delivery: ${result.error.category} (${result.error.reason})`,
+      );
+    }
+
+    if (name === "lighthouse_delivery_metrics") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult(
+          "delivery metrics: invalid id (delivery id required)",
+        );
+      }
+      const wantsEpics =
+        (argumentsPayload as { readonly detail?: unknown } | null)?.detail ===
+        "epics";
+      const result = await client.getDeliveryMetricsHistory(id);
+      if (!result.ok) {
+        return getErrorToolResult(
+          `delivery metrics: ${result.error.category} (${result.error.reason})`,
+        );
+      }
+      // Summarised by default (ADR-121): a 90-day window over fifteen epics is more breakdown
+      // objects than an assistant should be handed to answer "how has the scope moved?".
+      const payload = wantsEpics
+        ? result.value
+        : summariseDeliveryMetricsHistory(result.value);
+      return getSuccessToolResult(
+        `delivery metrics: ${encodePayload(payload)}`,
       );
     }
 

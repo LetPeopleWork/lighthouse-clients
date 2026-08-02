@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type StandaloneDiscoveryContract,
   createLighthouseClient,
+  summariseDeliveryMetricsHistory,
 } from "./index";
 
 type MockResponse = {
@@ -2411,6 +2412,201 @@ describe("createLighthouseClient blocked-count history", () => {
       );
     });
   }
+});
+
+describe("createLighthouseClient delivery metrics history", () => {
+  const deliveryBaselineVersion = "v26.5.29.5";
+  const supportedDeliveryVersion = "v26.6.7.1";
+
+  const deliveryVersionResponse = (version: string): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => version,
+    json: async () => version,
+  });
+
+  const getDeliveryClient = (
+    responses: readonly MockResponse[],
+  ): {
+    readonly client: ReturnType<typeof createLighthouseClient>;
+    readonly fetchMock: FetchMock;
+  } => {
+    const fetchMock = getFetchSequenceMock(responses);
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+    return { client, fetchMock };
+  };
+
+  const getDeliveryFeatureCall = (
+    fetchMock: FetchMock,
+  ): FetchCall | undefined =>
+    fetchMock.calls.find((call) => !call.url.endsWith("/v1/version/current"));
+
+  /** A server that already writes per-epic sizes. */
+  const historyWithSizes = {
+    deliveryDate: "2026-06-30T00:00:00Z",
+    firstSnapshotDate: "2026-06-01T00:00:00Z",
+    points: [
+      {
+        date: "2026-06-01T00:00:00Z",
+        targetDateAtSnapshot: "2026-06-30T00:00:00Z",
+        totalWork: 20,
+        doneWork: 4,
+        remainingWork: 16,
+        estimatedItemCount: 6,
+        forecastHowMany: 12,
+        likelihoodPercentage: 70,
+        whenDistribution: [
+          { probability: 0.5, expectedDate: "2026-06-28T00:00:00Z" },
+        ],
+        featureBreakdown: [
+          {
+            referenceId: "EPIC-A",
+            name: "Checkout",
+            completion: 25,
+            likelihood: 80,
+            totalItems: 8,
+            isUsingDefaultSize: false,
+          },
+          {
+            referenceId: "EPIC-B",
+            name: "Search",
+            completion: 0,
+            likelihood: null,
+            totalItems: 12,
+            isUsingDefaultSize: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  const historyResponseOf = (value: unknown): MockResponse => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(value),
+    json: async () => value,
+  });
+
+  it("gets a delivery's recorded history on a supported server", async () => {
+    const { client, fetchMock } = getDeliveryClient([
+      deliveryVersionResponse(supportedDeliveryVersion),
+      historyResponseOf(historyWithSizes),
+    ]);
+
+    const result = await client.getDeliveryMetricsHistory(42);
+
+    expect(result).toEqual({ ok: true, value: historyWithSizes });
+    expect(getDeliveryFeatureCall(fetchMock)?.url).toBe(
+      "http://localhost:5000/api/v1/deliveries/42/metrics-history",
+    );
+  });
+
+  it("reads a server that predates per-epic sizes (AC-6.6)", async () => {
+    // Every snapshot taken before Lighthouse began writing sizes carries the original four fields
+    // only. Absent must stay absent — reading it as 0 would draw an epic that shrank to nothing.
+    const legacyBreakdown = {
+      ...historyWithSizes,
+      points: [
+        {
+          ...historyWithSizes.points[0],
+          featureBreakdown: [
+            {
+              referenceId: "EPIC-A",
+              name: "Checkout",
+              completion: 25,
+              likelihood: 80,
+            },
+          ],
+        },
+      ],
+    };
+    const { client } = getDeliveryClient([
+      deliveryVersionResponse(supportedDeliveryVersion),
+      historyResponseOf(legacyBreakdown),
+    ]);
+
+    const result = await client.getDeliveryMetricsHistory(42);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected the legacy payload to parse");
+    }
+    const epic = result.value.points[0].featureBreakdown[0];
+    expect(epic.totalItems).toBeUndefined();
+    expect(epic.isUsingDefaultSize).toBeUndefined();
+  });
+
+  it("blocks the call on a server that is not newer than the baseline", async () => {
+    const { client, fetchMock } = getDeliveryClient([
+      deliveryVersionResponse(deliveryBaselineVersion),
+    ]);
+
+    const result = await client.getDeliveryMetricsHistory(42);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("Expected an unsupported-server error result");
+    }
+    expect(result.error.category).toBe("misconfigured");
+    expect(result.error.reason).toContain("deliveryMetricsHistory");
+    expect(result.error.reason.toLowerCase()).toContain("upgrade lighthouse");
+    expect(getDeliveryFeatureCall(fetchMock)).toBeUndefined();
+  });
+
+  it("proceeds on a dev/unparseable server version", async () => {
+    const { client, fetchMock } = getDeliveryClient([
+      deliveryVersionResponse("DEV"),
+      historyResponseOf(historyWithSizes),
+    ]);
+
+    const result = await client.getDeliveryMetricsHistory(42);
+
+    expect(result.ok).toBe(true);
+    expect(getDeliveryFeatureCall(fetchMock)?.url).toContain(
+      "/metrics-history",
+    );
+  });
+
+  it("summarises a day to one row, counting its epics", () => {
+    const rows = summariseDeliveryMetricsHistory(historyWithSizes);
+
+    expect(rows).toEqual([
+      {
+        date: "2026-06-01T00:00:00Z",
+        totalWork: 20,
+        doneWork: 4,
+        remainingWork: 16,
+        epicCount: 2,
+        estimatedItemCount: 6,
+        likelihoodPercentage: 70,
+      },
+    ]);
+  });
+
+  it("drops the breakdown and the distribution, which are what make the payload big", () => {
+    const [row] = summariseDeliveryMetricsHistory(historyWithSizes);
+
+    expect(row).not.toHaveProperty("featureBreakdown");
+    expect(row).not.toHaveProperty("whenDistribution");
+  });
+
+  it("summarises an empty history to no rows", () => {
+    expect(
+      summariseDeliveryMetricsHistory({
+        deliveryDate: "2026-06-30T00:00:00Z",
+        firstSnapshotDate: null,
+        points: [],
+      }),
+    ).toEqual([]);
+  });
 });
 
 describe("createLighthouseClient over-time series", () => {
