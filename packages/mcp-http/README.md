@@ -21,12 +21,23 @@ The HTTP runtime exposes Lighthouse as MCP tools for:
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `LIGHTHOUSE_URL` | Yes | Lighthouse base URL used by the MCP runtime. |
-| `LIGHTHOUSE_API_KEY` | No | API key used for outbound Lighthouse requests. |
+| `LIGHTHOUSE_API_KEY` | No | Fallback API key for callers that send no credential of their own. |
 | `LIGHTHOUSE_BEARER_TOKEN` | No | Bearer token used for outbound Lighthouse requests. |
 | `HOST` | No | Bind host. Defaults to `127.0.0.1`. |
 | `PORT` | No | Bind port. Defaults to `3333`. |
 
-Set either `LIGHTHOUSE_API_KEY` or `LIGHTHOUSE_BEARER_TOKEN` when the target Lighthouse instance requires authentication.
+Set either `LIGHTHOUSE_API_KEY` or `LIGHTHOUSE_BEARER_TOKEN` when the target Lighthouse instance requires authentication and callers do not bring their own credential.
+
+### Caller credentials
+
+A credential on the inbound MCP request takes precedence over the configured fallback, so each caller drives Lighthouse as themselves instead of sharing one baked key:
+
+| Inbound header | Used as |
+| --- | --- |
+| `X-Api-Key: <key>` | Lighthouse API key |
+| `Authorization: Bearer <token>` | Lighthouse bearer token |
+
+When neither header is present, the server falls back to `LIGHTHOUSE_API_KEY` / `LIGHTHOUSE_BEARER_TOKEN`. Send API keys in `X-Api-Key` — an API key placed in `Authorization` is treated as a bearer token and rejected.
 
 ## Run Locally
 
@@ -74,7 +85,7 @@ Add the server URL to `.vscode/mcp.json` in your workspace or to your user MCP c
 
 Notes:
 
-- The HTTP runtime itself reads Lighthouse credentials from its own environment. You do not need to repeat `LIGHTHOUSE_API_KEY` in the VS Code MCP client configuration unless you add your own gateway or proxy in front of the MCP server.
+- With no credential in the client configuration, the runtime falls back to the credentials in its own environment. To have VS Code call Lighthouse under a specific key instead, send it as an `X-Api-Key` request header.
 - After saving `mcp.json`, start or restart the server from the MCP commands in VS Code.
 
 ## Claude Code
