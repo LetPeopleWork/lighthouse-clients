@@ -1,5 +1,13 @@
 # @letpeoplework/lighthouse-mcp-stdio
 
+## 1.2.6
+
+### Patch Changes
+
+- Updated dependencies [[`1ceb8e6`](https://github.com/LetPeopleWork/lighthouse-clients/commit/1ceb8e6bdc6dea7fea52c462efc11195b37e250b)]:
+  - @letpeoplework/lighthouse-client@1.8.1
+  - @letpeoplework/lighthouse-mcp-core@1.7.1
+
 ## 1.2.5
 
 ### Patch Changes

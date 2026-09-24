@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-client
 
+## 1.8.1
+
+### Patch Changes
+
+- [`1ceb8e6`](https://github.com/LetPeopleWork/lighthouse-clients/commit/1ceb8e6bdc6dea7fea52c462efc11195b37e250b) Thanks [@huserben](https://github.com/huserben)! - The over-time series no longer claim Lighthouse "never backfills". A System Admin can now switch on filling in past days (a Preview, off by default); on such a server a read that finds missing days starts filling them in the background, so a later call may return more days. The client docs, CLI comments, MCP tool descriptions and the skill now say what is true either way. No request or response shape changed.
+
 ## 1.8.0
 
 ### Minor Changes
