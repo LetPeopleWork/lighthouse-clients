@@ -860,7 +860,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_percentilesOverTime",
     description:
-      "Get the percentiles-over-time trend for a team by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only — Lighthouse never backfills days it did not observe, so a recently upgraded server returns an empty series until it has recorded some. Use metricType to pick the family and horizon to pick the cycle-time window.",
+      "Get the percentiles-over-time trend for a team by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. By default Lighthouse only returns days it recorded, so a recently upgraded server returns an empty series until it has recorded some; where a System Admin has switched on filling in past days (a Preview), the read starts filling missing days in the background and a later call may return more. Use metricType to pick the family and horizon to pick the cycle-time window.",
     inputSchema: {
       type: "object",
       properties: {
@@ -875,7 +875,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_percentilesOverTime",
     description:
-      "Get the percentiles-over-time trend for a portfolio by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only — Lighthouse never backfills days it did not observe, so a recently upgraded server returns an empty series until it has recorded some. Use metricType to pick the family and horizon to pick the cycle-time window.",
+      "Get the percentiles-over-time trend for a portfolio by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. By default Lighthouse only returns days it recorded, so a recently upgraded server returns an empty series until it has recorded some; where a System Admin has switched on filling in past days (a Preview), the read starts filling missing days in the background and a later call may return more. Use metricType to pick the family and horizon to pick the cycle-time window.",
     inputSchema: {
       type: "object",
       properties: {
@@ -890,7 +890,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_processBehaviorOverTime",
     description:
-      "Get the process-behaviour-limits-over-time trend for a team by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only, and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero.",
+      "Get the process-behaviour-limits-over-time trend for a team by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Days are recorded on refresh (and, where a System Admin has switched on filling in past days, filled in the background after a read), and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero.",
     inputSchema: {
       type: "object",
       properties: {
@@ -905,7 +905,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_processBehaviorOverTime",
     description:
-      "Get the process-behaviour-limits-over-time trend for a portfolio by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Recording is forward-only, and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero. FeatureSize is available here and not on teams.",
+      "Get the process-behaviour-limits-over-time trend for a portfolio by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Days are recorded on refresh (and, where a System Admin has switched on filling in past days, filled in the background after a read), and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero. FeatureSize is available here and not on teams.",
     inputSchema: {
       type: "object",
       properties: {

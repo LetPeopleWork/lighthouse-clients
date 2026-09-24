@@ -1536,8 +1536,8 @@ const buildMetricsPayload = async (
   }
 
   if (needs("percentilesOverTime")) {
-    // Forward-only: Lighthouse records from the day the feature was deployed and
-    // never backfills, so an empty history is honest, not an error. The horizon
+    // An empty history is honest, not an error: Lighthouse only has the days it
+    // recorded, plus any it filled in where that Preview is switched on. The horizon
     // is pinned because the row shape carries no horizon field — an unfiltered
     // cycle-time request would interleave 30/60/90 indistinguishably.
     payload.percentilesOverTime =
@@ -1555,7 +1555,7 @@ const buildMetricsPayload = async (
   }
 
   if (needs("processBehaviorOverTime")) {
-    // Forward-only, and days without a usable baseline are absent rather than
+    // Days without a usable baseline are absent rather than
     // recorded as a zeroed triple — so an empty history means "nothing recorded
     // yet", never "a process pinned at zero".
     payload.processBehaviorOverTime =

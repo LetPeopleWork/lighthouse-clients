@@ -1033,9 +1033,11 @@ export type PercentilesOverTimeMetricType = "CycleTime" | "WorkItemAge";
  * recorded for {@link recordedAt} (an ISO date string, one row per calendar day,
  * ascending).
  *
- * Recording is FORWARD-ONLY — Lighthouse starts capturing the day the feature is
- * first deployed and never backfills history it did not observe, so a freshly
- * upgraded server legitimately returns an empty array until the first refresh.
+ * Lighthouse records a day when it refreshes. By default it never fills in a day
+ * it did not record, so a freshly upgraded server legitimately returns an empty
+ * array until the first refresh. A System Admin can switch on filling in past
+ * days (a Preview, off by default); then a read that finds missing days starts
+ * working them out in the background, and a later read may return more rows.
  *
  * `CycleTime` is recorded per horizon (30/60/90 days); `WorkItemAge` is always
  * "as of today" and therefore has no horizon dimension, so a horizon sent
@@ -1077,7 +1079,9 @@ export type ProcessBehaviorMetricType =
  * calendar day, ascending). The family is carried by the request's `type`
  * parameter, not repeated per row.
  *
- * Recording is FORWARD-ONLY, and a day is only recorded when the underlying
+ * Days are recorded on refresh, and — where a System Admin has switched on
+ * filling in past days — worked out in the background after a read that found
+ * them missing. Either way a day is only present when the underlying
  * chart had a usable baseline — days where it did not are absent from the
  * series rather than present as a zeroed triple, so an empty array means
  * "nothing recorded yet", never "a process pinned at zero".
