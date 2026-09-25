@@ -164,7 +164,7 @@ jobs:
             release-assets/lighthouse-skill.zip
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
