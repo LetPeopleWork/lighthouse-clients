@@ -5,7 +5,7 @@
   "dependencyDashboard": true,
   "minimumReleaseAge": "7 days",
   "internalChecksFilter": "strict",
-  "platformAutomerge": false,
+  "platformAutomerge": true,
   "packageRules": [
     {
       "description": "Patch and minor updates merge themselves once CI is green; majors stay open for a human.",
