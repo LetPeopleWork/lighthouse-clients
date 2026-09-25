@@ -18,7 +18,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "build": "tsdown",
     "clean": "rimraf dist"
   },
   "publishConfig": {

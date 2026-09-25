@@ -1,19 +1,23 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig([
   {
     entry: { index: "src/index.ts" },
     format: ["esm", "cjs"],
-    dts: true,
+    dts: { sourcemap: false },
+    sourcemap: false,
     clean: true,
+    fixedExtension: false,
     tsconfig: "tsconfig.build.json",
   },
   {
     entry: { bin: "src/bin.ts" },
     format: ["esm"],
-    dts: true,
+    dts: { sourcemap: false },
+    sourcemap: false,
+    clean: false,
+    fixedExtension: false,
     tsconfig: "tsconfig.build.json",
-    noExternal: [/@letpeoplework\/.*/],
     banner: {
       js: "#!/usr/bin/env node",
     },
