@@ -2,10 +2,10 @@ import { realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import {
-  FEATURE_REQUIRES_SERVER_NEWER_THAN,
-  type LighthouseClientAuth,
   createLighthouseClient,
+  FEATURE_REQUIRES_SERVER_NEWER_THAN,
   isServerVersionNewerThan,
+  type LighthouseClientAuth,
 } from "@letpeoplework/lighthouse-client";
 import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

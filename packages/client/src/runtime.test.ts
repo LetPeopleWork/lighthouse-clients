@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  type StandaloneDiscoveryContract,
   createLighthouseClient,
+  type StandaloneDiscoveryContract,
   summariseDeliveryMetricsHistory,
 } from "./index";
 

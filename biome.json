@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -8,15 +8,16 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended"
     }
   },
   "files": {
-    "ignore": [
-      "**/dist/**",
-      "**/dist-types/**",
-      "**/*.tsbuildinfo",
-      "**/package.json"
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/dist-types",
+      "!**/*.tsbuildinfo",
+      "!**/package.json"
     ]
   }
 }

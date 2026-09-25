@@ -28,7 +28,7 @@
     "pre-commit": "pnpm run ci && node scripts/check-changeset.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.0.0",
     "@changesets/changelog-github": "^1.0.0",
     "@changesets/cli": "^3.0.0",
     "@types/node": "^24.0.0",
