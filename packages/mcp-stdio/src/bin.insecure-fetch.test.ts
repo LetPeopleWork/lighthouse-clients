@@ -6,27 +6,24 @@ vi.mock("undici", async (importOriginal) => {
   const OriginalAgent = mod.Agent;
   return {
     ...mod,
-    Agent: vi
-      .fn()
-      .mockImplementation(
-        (opts: ConstructorParameters<typeof OriginalAgent>[0]) =>
-          new OriginalAgent(opts),
-      ),
+    Agent: vi.fn(class extends OriginalAgent {}),
   };
 });
 
 vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+  StdioServerTransport: vi.fn(class {}),
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", async (importOriginal) => {
   const mod = await importOriginal<Record<string, unknown>>();
   return {
     ...mod,
-    McpServer: vi.fn().mockImplementation(() => ({
-      connect: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn().mockResolvedValue(undefined),
-    })),
+    McpServer: vi.fn(
+      class {
+        connect = vi.fn().mockResolvedValue(undefined);
+        close = vi.fn().mockResolvedValue(undefined);
+      },
+    ),
   };
 });
 
