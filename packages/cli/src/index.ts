@@ -3,19 +3,19 @@ import {
   type CliServerConnection,
   type CliStandaloneConnection,
   type ConnectivityValidationResult,
+  createLighthouseClient,
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
-  createLighthouseClient,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
   DEFAULT_OUTPUT_FORMAT,
-  OUTPUT_FORMAT_FLAGS,
-  type OutputFormat,
   formatPayload,
   isOutputFormat,
   isOutputFormatFlag,
+  OUTPUT_FORMAT_FLAGS,
+  type OutputFormat,
 } from "./output";
 
 export type CliPackageContract = {
@@ -240,12 +240,6 @@ type DailyCountPoint = {
   readonly count: number;
 };
 
-type DailyValuePoint = {
-  readonly date: string;
-  readonly value: number;
-  readonly workItemIds: readonly number[];
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
@@ -262,7 +256,6 @@ const getRequiredTextOption = (
 };
 
 type ThroughputFilterCliValue = "raw" | "filtered";
-type ForecastFilterCliValue = "raw" | "filtered" | "team";
 
 /**
  * Parses `--filter <raw|filtered>` for metrics commands.
@@ -620,63 +613,6 @@ const getDailyCountSeries = (
     })
     .filter((entry): entry is DailyCountPoint => entry !== null)
     .sort((left, right) => left.date.localeCompare(right.date));
-};
-
-const getDailyValueSeriesFromInfo = (
-  value: unknown,
-): readonly DailyValuePoint[] => {
-  if (!isRecord(value) || !isRecord(value.comparison)) {
-    return [];
-  }
-  const { comparison } = value;
-  const points: DailyValuePoint[] = [];
-  if (typeof comparison.previousLabel === "string") {
-    const numVal = Number.parseFloat(String(comparison.previousValue ?? "0"));
-    points.push({
-      date: comparison.previousLabel,
-      value: Number.isFinite(numVal) ? numVal : 0,
-      workItemIds: [],
-    });
-  }
-  if (typeof comparison.currentLabel === "string") {
-    const numVal = Number.parseFloat(String(comparison.currentValue ?? "0"));
-    points.push({
-      date: comparison.currentLabel,
-      value: Number.isFinite(numVal) ? numVal : 0,
-      workItemIds: [],
-    });
-  }
-  return points;
-};
-
-const getDailyValueSeries = (value: unknown): readonly DailyValuePoint[] => {
-  if (!isRecord(value) || !Array.isArray(value.dataPoints)) {
-    return [];
-  }
-
-  return value.dataPoints
-    .map((dataPoint) => {
-      if (!isRecord(dataPoint) || typeof dataPoint.xValue !== "string") {
-        return null;
-      }
-
-      const workItemIds: readonly number[] = Array.isArray(
-        dataPoint.workItemIds,
-      )
-        ? dataPoint.workItemIds.filter(
-            (entry): entry is number => typeof entry === "number",
-          )
-        : [];
-
-      const point: DailyValuePoint = {
-        date: dataPoint.xValue,
-        value: typeof dataPoint.yValue === "number" ? dataPoint.yValue : 0,
-        workItemIds,
-      };
-
-      return point;
-    })
-    .filter((entry): entry is DailyValuePoint => entry !== null);
 };
 
 const getChartTotal = (

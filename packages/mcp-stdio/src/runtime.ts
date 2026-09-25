@@ -1,6 +1,6 @@
 import {
-  type LighthouseConnectionConfiguration,
   createLighthouseClient,
+  type LighthouseConnectionConfiguration,
   loadStandaloneDiscoveryContract,
 } from "@letpeoplework/lighthouse-client";
 import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";

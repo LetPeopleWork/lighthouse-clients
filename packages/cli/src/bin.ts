@@ -14,7 +14,7 @@ import {
 } from "@letpeoplework/lighthouse-client";
 import { Agent, fetch as undiciFetch } from "undici";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
-import { type OutputFormat, isOutputFormat } from "./output";
+import { isOutputFormat, type OutputFormat } from "./output";
 
 export const renderCliBanner = (): string => "Lighthouse CLI";
 
