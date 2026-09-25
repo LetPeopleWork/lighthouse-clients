@@ -42,8 +42,8 @@ importers:
         specifier: workspace:*
         version: link:../client
       '@toon-format/toon':
-        specifier: ^2.1.0
-        version: 2.3.1
+        specifier: ^4.0.0
+        version: 4.1.1
       undici:
         specifier: ^8.1.0
         version: 8.10.2
@@ -59,8 +59,8 @@ importers:
         specifier: ^1.26.0
         version: 1.30.0(zod@4.6.5)
       '@toon-format/toon':
-        specifier: ^2.1.0
-        version: 2.3.1
+        specifier: ^4.0.0
+        version: 4.1.1
       zod:
         specifier: ^4.0.0
         version: 4.6.5
@@ -873,8 +873,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@toon-format/toon@2.3.1':
-    resolution: {integrity: sha512-sWqEMeAJGMda9qRrfPKrX3C4c33CO9SJuvJzzrcBEn5sbDB+k6pSLkDsfN0rVnLQwR97MV3sDgVbcxQNsq8xVw==}
+  '@toon-format/toon@4.1.1':
+    resolution: {integrity: sha512-SGCkS7IjVpwRmGPgnY8ENKpAf0EdAnZDOQkvFW0d2cgOpdn9FEFl7sTgryESyypXrWr0YajHGpwsAUX4zw9ZvA==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -2528,7 +2528,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.63.5':
     optional: true
 
-  '@toon-format/toon@2.3.1': {}
+  '@toon-format/toon@4.1.1': {}
 
   '@types/chai@5.2.3':
     dependencies:
