@@ -58,6 +58,10 @@ jobs:
       - verify
     if: github.ref == 'refs/heads/main'
     environment: Release
+    # A newer push to main supersedes a release still awaiting approval, so approving never ships a stale commit.
+    concurrency:
+      group: release
+      cancel-in-progress: false
 
     outputs:
       cli_version: ${{ steps.get_versions.outputs.cli_version }}
