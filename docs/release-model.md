@@ -44,6 +44,13 @@ These same checks run automatically as a strict pre-commit gate via `pnpm ci`.
 To skip the hook in exceptional cases (e.g., WIP commits to a local branch), set
 `SKIP_SIMPLE_GIT_HOOKS=1` before your `git commit` command.
 
+## Dependency Updates
+Renovate (`renovate.json`) keeps npm packages, GitHub Actions and the mcp-http base image current:
+- A new version is only proposed once it has been published for 7 days, so a compromised release has time to be caught and pulled before it reaches this repo.
+- Patch and minor updates merge themselves once CI is green. Majors and security fixes open as PRs and wait for a maintainer.
+- Update PRs carry no changeset. They ship with the next release of the affected package; when a fix must go out sooner, add a changeset by hand and cut a release.
+- The Dependency Dashboard issue lists pending, open and held-back updates.
+
 ## Notes
 CI release automation and publication credentials are handled by workflows in `.github/workflows/`.
 Runtime deployment details are documented in `docs/deployment.md`.
