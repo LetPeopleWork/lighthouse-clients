@@ -5,12 +5,7 @@ import { startMcpHttpServer } from "./bin";
 vi.mock("undici", async (importOriginal) => {
   const mod = await importOriginal<typeof import("undici")>();
   const OriginalAgent = mod.Agent;
-  const MockAgent = vi
-    .fn()
-    .mockImplementation(
-      (opts: ConstructorParameters<typeof OriginalAgent>[0]) =>
-        new OriginalAgent(opts),
-    );
+  const MockAgent = vi.fn(class extends OriginalAgent {});
   return {
     ...mod,
     Agent: MockAgent,
