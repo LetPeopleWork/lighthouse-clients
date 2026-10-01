@@ -215,7 +215,7 @@ importers:
         version: link:../client
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
-        version: 1.30.0(zod@4.6.5)
+        version: 1.30.1(zod@4.6.5)
       '@toon-format/toon':
         specifier: ^4.0.0
         version: 4.1.1
@@ -233,7 +233,7 @@ importers:
         version: link:../mcp-core
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
-        version: 1.30.0(zod@4.6.5)
+        version: 1.30.1(zod@4.6.5)
       undici:
         specifier: ^8.1.0
         version: 8.11.0
@@ -248,7 +248,7 @@ importers:
         version: link:../mcp-core
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
-        version: 1.30.0(zod@4.6.5)
+        version: 1.30.1(zod@4.6.5)
       undici:
         specifier: ^8.1.0
         version: 8.11.0
@@ -417,8 +417,8 @@ packages:
     resolution: {integrity: sha512-6QEf6yqFbETdwGITKq57aYoPfX/3K8XFNwsAlx0C1M7o8cb79sv1M3w+tWuWvIcSbNqrLF7OD7YpZMVVz335hQ==}
     engines: {node: '>=20.0.0'}
 
-  '@modelcontextprotocol/sdk@1.30.0':
-    resolution: {integrity: sha512-xKd8OIzlqNzcqcNumGAa6g+PW2kjD5vrpcKOnfldAUPP3j7lnqMPwlTXQm8gF+UwH72z0lqaRbjr9hqGz0eITA==}
+  '@modelcontextprotocol/sdk@1.30.1':
+    resolution: {integrity: sha512-H2HxLvC3HDNybePJaLdSrU1hhUK5iQw+WvV1b01myFyI7sdVGe1u/IPTE5D9fGCiJDVtgMV/lmFkQXLmQyIFYA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -1837,7 +1837,7 @@ snapshots:
       tinyglobby: 0.2.17
       yaml: 2.9.1
 
-  '@modelcontextprotocol/sdk@1.30.0(zod@4.6.5)':
+  '@modelcontextprotocol/sdk@1.30.1(zod@4.6.5)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.8)
       ajv: 8.20.0
