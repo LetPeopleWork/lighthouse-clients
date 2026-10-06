@@ -2,8 +2,8 @@
 "@letpeoplework/lighthouse-client": minor
 "@letpeoplework/lighthouse-cli": minor
 "@letpeoplework/lighthouse-mcp-core": minor
-"@letpeoplework/lighthouse-mcp-stdio": patch
-"@letpeoplework/lighthouse-mcp-http": patch
+"@letpeoplework/lighthouse-mcp-stdio": minor
+"@letpeoplework/lighthouse-mcp-http": minor
 ---
 
 See how the refinement votes stand, and vote, from the terminal and from an assistant
@@ -42,7 +42,8 @@ upgrade and is never asked.
   however each was given the URL (`HTTPS://Lighthouse.example:443/` and `https://lighthouse.example/api` are
   one Lighthouse).
   mcp-http, shared by many people, refuses votes on a Lighthouse without sign-in and points to the web page,
-  `lh` or a local MCP server.
+  `lh` or a local MCP server. With sign-in it votes only with the caller's own API key or token; a request
+  that would fall back to the server's `LIGHTHOUSE_API_KEY` is refused, so nobody votes as the operator.
 - The client gains `castRefinementVote`, `addRefinementComment`, `takeBackRefinementVote` (with the `answer` it saw),
   `getRefinementLog` (a Work Item's sizing log, the caller's own entries marked `isMine`), a `voterKey` option
   on `getTeamRefinement`, `mintVoterKey`, `createFileVoterKeyStore` and the shared vote wording. A refusal's

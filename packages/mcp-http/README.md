@@ -14,7 +14,7 @@ The HTTP runtime exposes Lighthouse as MCP tools for:
 - Team and portfolio metrics.
 - Feature, delivery, and forecast operations.
 - A Team's refinement need (`lighthouse_team_refinement_get`): how many Work Items to refine before the next Refinement, with the sentence the web page states as `summary`.
-- Refinement votes: `lighthouse_team_refinement_vote`, `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack` record the caller's own vote, comment or take-back on a Work Item in refinement, as their own credential. They need a Lighthouse with sign-in: this server is shared and cannot tell one person from another without it, so on a Lighthouse without sign-in it refuses all three and points to the web page, `lh` or a local stdio server.
+- Refinement votes: `lighthouse_team_refinement_vote`, `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack` record the caller's own vote, comment or take-back on a Work Item in refinement, as their own credential. They need a Lighthouse with sign-in: this server is shared and cannot tell one person from another without it, so on a Lighthouse without sign-in it refuses all three and points to the web page, `lh` or a local stdio server. With sign-in, each request must carry the caller's own credential (`X-Api-Key` or `Authorization: Bearer`): a request that would fall back to the server's `LIGHTHOUSE_API_KEY` is refused, so nobody votes as the operator.
 
 ## Runtime Configuration
 

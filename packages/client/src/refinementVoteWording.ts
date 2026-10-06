@@ -144,6 +144,8 @@ export type VoteRefusalWording = {
   readonly terms: Pick<RefinementTerms, "workItem" | "refinement">;
   /** What to say when Lighthouse needs a name, which each surface asks for its own way. */
   readonly nameRequired: string;
+  /** What to say when Lighthouse needs a voter key, for a surface that keeps none to send. */
+  readonly keyRequired?: string;
 };
 
 /**
@@ -153,7 +155,7 @@ export type VoteRefusalWording = {
  */
 export const describeVoteRefusal = (
   error: LighthouseApiError,
-  { terms, nameRequired }: VoteRefusalWording,
+  { terms, nameRequired, keyRequired }: VoteRefusalWording,
 ): string => {
   if (error.statusCode === TOO_MANY_REQUESTS) {
     return "Too many votes or comments from this client. Try again in a minute.";
@@ -163,6 +165,9 @@ export const describeVoteRefusal = (
   }
   if (error.problemCode === "voter-name-required") {
     return nameRequired;
+  }
+  if (error.problemCode === "voter-key-required" && keyRequired !== undefined) {
+    return keyRequired;
   }
   if (isNameTooLong(error)) {
     return error.problemTitle ?? "";
@@ -178,8 +183,10 @@ export const readVoteRefusal = async (
   source: RefinementTermsSource,
   error: LighthouseApiError,
   nameRequired: string,
+  keyRequired?: string,
 ): Promise<string> =>
   describeVoteRefusal(error, {
     terms: await readRefinementTerms(source),
     nameRequired,
+    keyRequired,
   });

@@ -9,6 +9,11 @@ import { type McpHttpServerHandle, startMcpHttpServer } from "./bin";
 const NO_SHARED_VOTES =
   "Votes through the shared Lighthouse MCP server need sign-in, and this Lighthouse runs without it. Vote from the web page, the lh command line or an MCP server on your own machine.";
 
+// With sign-in, a caller who sends no credential of their own would otherwise vote as whoever owns the
+// server's fallback key.
+const NO_OWN_CREDENTIAL =
+  "Votes through the shared Lighthouse MCP server need your own API key or sign-in; this request has none.";
+
 type Seen = {
   readonly method: string;
   readonly url: string;
@@ -35,7 +40,19 @@ const pdfExport = {
 };
 
 // A Lighthouse that says whether it runs with sign-in and records every request it gets.
-const startLighthouse = async (signIn: boolean) => {
+type LighthouseSetup = {
+  readonly signIn: boolean;
+  /** Answers its auth-mode question with a server error, so the shared server cannot tell. */
+  readonly authModeUnreadable?: boolean;
+  /** How it answers a vote, comment or take-back, instead of recording it. */
+  readonly writeRefusal?: { readonly status: number; readonly body: unknown };
+};
+
+const startLighthouse = async ({
+  signIn,
+  authModeUnreadable = false,
+  writeRefusal,
+}: LighthouseSetup) => {
   const seen: Seen[] = [];
   const server: Server = createServer((req, res) => {
     let body = "";
@@ -55,6 +72,11 @@ const startLighthouse = async (signIn: boolean) => {
         res.end("v26.10.7.1");
         return;
       }
+      if (path.endsWith("/v1/auth/mode") && authModeUnreadable) {
+        res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({ title: "Something went wrong." }));
+        return;
+      }
       if (path.endsWith("/v1/auth/mode")) {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ mode: signIn ? "Enabled" : "Disabled" }));
@@ -68,6 +90,18 @@ const startLighthouse = async (signIn: boolean) => {
             voterIdentity: signIn ? "Account" : "SelfDeclared",
           }),
         );
+        return;
+      }
+      if (path.endsWith("/v1/terminology/all")) {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end("[]");
+        return;
+      }
+      if (req.method !== "GET" && writeRefusal !== undefined) {
+        res.writeHead(writeRefusal.status, {
+          "content-type": "application/problem+json",
+        });
+        res.end(JSON.stringify(writeRefusal.body));
         return;
       }
       res.writeHead(200, { "content-type": "application/json" });
@@ -128,9 +162,15 @@ describe("votes through the shared MCP server", () => {
   let lighthouse: Awaited<ReturnType<typeof startLighthouse>> | undefined;
   let mcp: McpHttpServerHandle | undefined;
 
-  const start = async (signIn: boolean) => {
-    lighthouse = await startLighthouse(signIn);
+  const start = async (
+    setup: boolean | LighthouseSetup,
+    operatorsApiKey?: string,
+  ) => {
+    lighthouse = await startLighthouse(
+      typeof setup === "boolean" ? { signIn: setup } : setup,
+    );
     mcp = await startMcpHttpServer({
+      apiKey: operatorsApiKey,
       lighthouseUrl: lighthouse.url,
       host: "127.0.0.1",
       port: 0,
@@ -181,6 +221,79 @@ describe("votes through the shared MCP server", () => {
       expect(lighthouse.writes()).toEqual([]);
     },
   );
+
+  // @error @real-io
+  it.each([
+    {
+      tool: "lighthouse_team_refinement_vote",
+      argumentsPayload: { id: 3, workItem: "GR-051", answer: "Yes" },
+    },
+    {
+      tool: "lighthouse_team_refinement_comment",
+      argumentsPayload: {
+        id: 3,
+        workItem: "GR-051",
+        comment: "Which export formats?",
+      },
+    },
+    {
+      tool: "lighthouse_team_refinement_voteTakeBack",
+      argumentsPayload: { id: 3, workItem: "GR-051" },
+    },
+  ])(
+    "with sign-in, refuses $tool from a caller with no credential of their own, rather than vote as the operator's key",
+    async ({ tool, argumentsPayload }) => {
+      const { lighthouse, mcp } = await start(true, "the-operators-api-key");
+
+      const result = await callTool(mcp.url, tool, argumentsPayload);
+
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toContain(NO_OWN_CREDENTIAL);
+      expect(lighthouse.writes()).toEqual([]);
+    },
+  );
+
+  // @real-io
+  it("with sign-in, votes as the caller's own key even where the server has an operator's key to fall back on", async () => {
+    const { lighthouse, mcp } = await start(true, "the-operators-api-key");
+
+    const result = await callTool(
+      mcp.url,
+      "lighthouse_team_refinement_vote",
+      { id: 3, workItem: "GR-051", answer: "Yes" },
+      { "x-api-key": "anas-personal-api-key" },
+    );
+
+    expect(result.isError).toBe(false);
+    const [vote] = lighthouse.writes();
+    expect(vote.headers["x-api-key"]).toBe("anas-personal-api-key");
+  });
+
+  // @error @real-io
+  it("says votes need sign-in when it could not tell the auth mode and Lighthouse asks for a voter key", async () => {
+    const { mcp } = await start({
+      signIn: false,
+      authModeUnreadable: true,
+      writeRefusal: {
+        status: 400,
+        body: {
+          status: 400,
+          title: "A vote or comment needs the key the sender's browser keeps.",
+          code: "voter-key-required",
+        },
+      },
+    });
+
+    const result = await callTool(
+      mcp.url,
+      "lighthouse_team_refinement_vote",
+      { id: 3, workItem: "GR-051", answer: "Yes", voterName: "Ana Lima" },
+      { "x-api-key": "anas-personal-api-key" },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toBe(`vote: ${NO_SHARED_VOTES}`);
+  });
 
   // @driving_port @real-io
   it("with sign-in, records the vote as the caller's own credential, through an assistant, with no voter key", async () => {

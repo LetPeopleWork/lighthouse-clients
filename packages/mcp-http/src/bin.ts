@@ -182,16 +182,14 @@ export const resolveProtectedResourceMetadataUrl = (
 export const shouldChallengeForOAuth = (
   headers: NodeJS.Dict<string | string[]>,
   oauthEnabled: boolean,
-): boolean => {
-  if (!oauthEnabled) {
-    return false;
-  }
+): boolean => oauthEnabled && !hasCallersOwnCredential(headers);
 
-  const hasApiKey = firstHeaderValue(headers["x-api-key"]) !== undefined;
-  const hasBearer =
-    parseBearerToken(firstHeaderValue(headers.authorization)) !== undefined;
-  return !hasApiKey && !hasBearer;
-};
+/** Whether the request carries a credential of the caller's own, rather than relying on the server's. */
+export const hasCallersOwnCredential = (
+  headers: NodeJS.Dict<string | string[]>,
+): boolean =>
+  firstHeaderValue(headers["x-api-key"]) !== undefined ||
+  parseBearerToken(firstHeaderValue(headers.authorization)) !== undefined;
 
 /**
  * Reads the MCP OAuth configuration from the environment. Both the issuer (the
@@ -247,16 +245,24 @@ export const evaluateOAuthVersionGate = (
 export const NO_SHARED_VOTES =
   "Votes through the shared Lighthouse MCP server need sign-in, and this Lighthouse runs without it. Vote from the web page, the lh command line or an MCP server on your own machine.";
 
+export const NO_OWN_CREDENTIAL =
+  "Votes through the shared Lighthouse MCP server need your own API key or sign-in; this request has none.";
+
 /**
  * This server is shared and keeps no voter key for anyone, so without sign-in it cannot tell one voter
- * from another. With sign-in, or when the mode cannot be read, Lighthouse itself decides.
+ * from another. With sign-in a vote is the credential's, so a request without one of its own would vote
+ * as whoever owns the server's fallback key. When the mode cannot be read, Lighthouse itself decides.
  */
 export const refuseVotingWithoutSignIn = async (
   lighthouseUrl: string,
   fetch: typeof globalThis.fetch,
+  hasOwnCredential: boolean,
 ): Promise<string | null> => {
   const { mode } = await queryServerAuthMode(lighthouseUrl, { fetch });
-  return mode === "disabled" ? NO_SHARED_VOTES : null;
+  if (mode === "disabled") {
+    return NO_SHARED_VOTES;
+  }
+  return hasOwnCredential ? null : NO_OWN_CREDENTIAL;
 };
 
 export const startMcpHttpServer = async (
@@ -331,7 +337,12 @@ export const startMcpHttpServer = async (
             { fetch: insecureFetch },
           ),
         refuseVoting: () =>
-          refuseVotingWithoutSignIn(options.lighthouseUrl, insecureFetch),
+          refuseVotingWithoutSignIn(
+            options.lighthouseUrl,
+            insecureFetch,
+            hasCallersOwnCredential(req.headers),
+          ),
+        voterKeyRequired: NO_SHARED_VOTES,
       });
 
       const transport = new StreamableHTTPServerTransport({

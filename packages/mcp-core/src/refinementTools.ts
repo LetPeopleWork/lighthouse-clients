@@ -39,6 +39,8 @@ export type RefinementToolDependencies = {
   readonly voterKeyStore?: McpVoterKeyStore;
   /** Why this server may not vote, comment or take back right now, or null when it may. */
   readonly refuseVoting?: () => Promise<string | null>;
+  /** What to say when Lighthouse asks for a voter key, on a server that keeps none to send. */
+  readonly voterKeyRequired?: string;
 };
 
 type ToolError = { readonly category: string; readonly reason: string };
@@ -228,9 +230,10 @@ const getVoteRefusalToolResult = async (
   label: string,
   error: LighthouseApiError,
   client: RefinementToolClient,
+  dependencies: RefinementToolDependencies,
 ): Promise<McpToolResult> =>
   getErrorToolResult(
-    `${label}: ${await readVoteRefusal(client, error, ASK_FOR_THE_NAME)}`,
+    `${label}: ${await readVoteRefusal(client, error, ASK_FOR_THE_NAME, dependencies.voterKeyRequired)}`,
   );
 
 // With sign-in Lighthouse knows the voter from the credential, so the server sends neither name nor key.
@@ -241,13 +244,14 @@ const isSignedIn = (refinement: Pick<TeamRefinement, "voterIdentity">) =>
 const readRefinementFor = async (
   label: string,
   client: RefinementToolClient,
+  dependencies: RefinementToolDependencies,
   teamId: number,
   voterKey?: string,
 ): Promise<TeamRefinement | McpToolResult> => {
   const refinement = await client.getTeamRefinement(teamId, { voterKey });
   return refinement.ok
     ? refinement.value
-    : getVoteRefusalToolResult(label, refinement.error, client);
+    : getVoteRefusalToolResult(label, refinement.error, client, dependencies);
 };
 
 type WriteVoter = {
@@ -263,7 +267,12 @@ const resolveWriteVoter = async (
   dependencies: RefinementToolDependencies,
   teamId: number,
 ): Promise<WriteVoter | McpToolResult> => {
-  const refinement = await readRefinementFor(label, client, teamId);
+  const refinement = await readRefinementFor(
+    label,
+    client,
+    dependencies,
+    teamId,
+  );
   if (isToolResult(refinement)) {
     return refinement;
   }
@@ -282,10 +291,11 @@ const getRefinementWriteToolResult = async (
   label: string,
   result: LighthouseApiResult<VotedRow>,
   client: RefinementToolClient,
+  dependencies: RefinementToolDependencies,
   describe: (row: VotedRow) => string,
 ): Promise<McpToolResult> => {
   if (!result.ok) {
-    return getVoteRefusalToolResult(label, result.error, client);
+    return getVoteRefusalToolResult(label, result.error, client, dependencies);
   }
   const written = { summary: describe(result.value), ...result.value };
   return getSuccessToolResult(`${label}: ${encodePayload(written)}`);
@@ -370,12 +380,17 @@ const castVote: RefinementTool = async (
     target.workItem,
     { answer, channel: CHANNEL, comment, ...voter },
   );
-  return getRefinementWriteToolResult("vote", result, client, (row) =>
-    describeRecordedVote(
-      { workItem: target.workItem, voterName: voter.voterName },
-      answer,
-      row,
-    ),
+  return getRefinementWriteToolResult(
+    "vote",
+    result,
+    client,
+    dependencies,
+    (row) =>
+      describeRecordedVote(
+        { workItem: target.workItem, voterName: voter.voterName },
+        answer,
+        row,
+      ),
   );
 };
 
@@ -413,11 +428,16 @@ const addComment: RefinementTool = async (
     target.workItem,
     { comment, channel: CHANNEL, ...voter },
   );
-  return getRefinementWriteToolResult("comment", result, client, () =>
-    describeRecordedComment({
-      workItem: target.workItem,
-      voterName: voter.voterName,
-    }),
+  return getRefinementWriteToolResult(
+    "comment",
+    result,
+    client,
+    dependencies,
+    () =>
+      describeRecordedComment({
+        workItem: target.workItem,
+        voterName: voter.voterName,
+      }),
   );
 };
 
@@ -441,6 +461,7 @@ const takeBackVote: RefinementTool = async (
   const refinement = await readRefinementFor(
     "takeBack",
     client,
+    dependencies,
     target.teamId,
     keptVoterKey,
   );
@@ -470,8 +491,13 @@ const takeBackVote: RefinementTool = async (
       answer: myVote,
     },
   );
-  return getRefinementWriteToolResult("takeBack", result, client, (takenBack) =>
-    describeTakenBack({ workItem: target.workItem, voterName }, takenBack),
+  return getRefinementWriteToolResult(
+    "takeBack",
+    result,
+    client,
+    dependencies,
+    (takenBack) =>
+      describeTakenBack({ workItem: target.workItem, voterName }, takenBack),
   );
 };
 
