@@ -13,6 +13,7 @@ The HTTP runtime exposes Lighthouse as MCP tools for:
 - Team and portfolio refresh operations.
 - Team and portfolio metrics.
 - Feature, delivery, and forecast operations.
+- A Team's refinement need (`lighthouse_team_refinement_get`): how many Work Items to refine before the next Refinement, with the sentence the web page states as `summary`.
 
 ## Runtime Configuration
 

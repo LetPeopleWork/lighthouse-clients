@@ -277,6 +277,7 @@ lh delivery list --portfolio-id <id>
 lh delivery metrics --delivery-id <id> [--detail epics]
 lh worktracking list
 lh feature list
+lh refinement get --team-id <id>   # how many Work Items to refine before the next Refinement
 lh health check
 lh config output
 lh config output set --format json
@@ -321,6 +322,7 @@ Users ask naturally ("tell me about the Mars Colonization feature"). Claude hand
 | Feature details | `lighthouse_portfolio_list` (features listed inline) | `lighthouse_feature_get` with `{ids: [...]}` |
 | Feature work items | `lighthouse_portfolio_list` → feature IDs | `lighthouse_feature_workitems` with `{id: <feature_id>}` |
 | Team details | `lighthouse_team_list` | `lighthouse_team_get` with `{id: <team_id>}` |
+| How much a team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the team sees on its Refinement tab |
 
 ### `lighthouse_feature_get` — correct usage
 

@@ -210,6 +210,10 @@ lh metrics portfolio --id <portfolio-id> [--start-date <date>] [--end-date <date
 lh feature get --ids <id1,id2,...>           Get features by IDs
 lh feature get --refs <ref1,ref2,...>        Get features by references
 lh feature workitems --id <feature-id>       Get work items for a feature
+lh refinement get --team-id <team-id>        How many Work Items to refine before the
+                                             next Refinement, in the web's words, and
+                                             the Work Items in refinement (Lighthouse
+                                             newer than v26.10.3.6)
 lh delivery list --portfolio-id <portfolio-id>
 lh delivery metrics --delivery-id <delivery-id> [--detail epics]
                                              One row per recorded day; --detail epics
