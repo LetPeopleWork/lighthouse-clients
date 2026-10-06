@@ -956,10 +956,18 @@ describe("lh refinement get", () => {
     expect(result.stdout.split("\n")).toEqual([
       "Usage:",
       "  lh refinement get --team-id <id>",
+      "  lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]",
+      "  lh refinement comment --team-id <id> --work-item <ref> --text <text> [--as <name>]",
+      "  lh refinement take-back --team-id <id> --work-item <ref>",
       "",
       "  get states how many Work Items the Team needs ready for the next Refinement and",
-      "  lists the Work Items in refinement, in the instance's own terms. --json and --toon",
-      "  return the facts unchanged. Requires Lighthouse newer than v26.10.3.6.",
+      "  lists the Work Items in refinement with how their votes stand, in the instance's own",
+      "  terms. --json and --toon return the facts unchanged.",
+      "",
+      "  vote, comment and take-back add to a Work Item what the Refinement tab does. Without",
+      "  sign-in, give your name with --as or store it once: lh config voter set --name <name>.",
+      '  A "Yes, if…" (yes-but) needs its condition in --comment. A vote can be taken back',
+      "  from the client that cast it. Requires Lighthouse newer than v26.10.3.6.",
     ]);
   });
 

@@ -4,12 +4,21 @@ import {
   type CliStandaloneConnection,
   type ConnectivityValidationResult,
   createLighthouseClient,
+  describeNothingToTakeBack,
+  describeRecordedComment,
+  describeRecordedVote,
+  describeTakenBack,
+  describeVoteRefusal,
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
+  mintVoterKey,
+  type RefinementAnswer,
+  readRefinementTerms,
   readRefinementWording,
   STANDALONE_VOTER_KEY_SCOPE,
   summariseDeliveryMetricsHistory,
+  type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import {
   DEFAULT_OUTPUT_FORMAT,
@@ -52,6 +61,9 @@ type CliDomainClientLike = Pick<
   | "deleteTeam"
   | "refreshTeam"
   | "getTeamRefinement"
+  | "castRefinementVote"
+  | "addRefinementComment"
+  | "takeBackRefinementVote"
   | "getTerminology"
   | "listPortfolios"
   | "getPortfolio"
@@ -1189,10 +1201,18 @@ const getRefinementGroupHelpText = (): string =>
   [
     "Usage:",
     "  lh refinement get --team-id <id>",
+    "  lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]",
+    "  lh refinement comment --team-id <id> --work-item <ref> --text <text> [--as <name>]",
+    "  lh refinement take-back --team-id <id> --work-item <ref>",
     "",
     "  get states how many Work Items the Team needs ready for the next Refinement and",
-    "  lists the Work Items in refinement, in the instance's own terms. --json and --toon",
-    "  return the facts unchanged. Requires Lighthouse newer than v26.10.3.6.",
+    "  lists the Work Items in refinement with how their votes stand, in the instance's own",
+    "  terms. --json and --toon return the facts unchanged.",
+    "",
+    "  vote, comment and take-back add to a Work Item what the Refinement tab does. Without",
+    "  sign-in, give your name with --as or store it once: lh config voter set --name <name>.",
+    '  A "Yes, if…" (yes-but) needs its condition in --comment. A vote can be taken back',
+    "  from the client that cast it. Requires Lighthouse newer than v26.10.3.6.",
   ].join("\n");
 
 const getHealthGroupHelpText = (): string =>
@@ -2446,10 +2466,13 @@ const runConfigGroup = async (
 
 const parseTeamIdOption = (
   args: readonly string[],
+  command: string,
 ): number | CliCommandResult => {
   const value = getOptionValue(args, "--team-id");
   if (value === undefined) {
-    return getErrorResult("Missing required --team-id for refinement get.");
+    return getErrorResult(
+      `Missing required --team-id for refinement ${command}.`,
+    );
   }
   if (!/^\d+$/u.test(value)) {
     return getErrorResult(
@@ -2477,7 +2500,7 @@ const runRefinementGet = async (
   connection: CliConnection,
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
-  const teamId = parseTeamIdOption(args);
+  const teamId = parseTeamIdOption(args, "get");
   if (isCliCommandResult(teamId)) {
     return teamId;
   }
@@ -2508,6 +2531,246 @@ const runRefinementGet = async (
   );
 };
 
+const GIVE_YOUR_NAME =
+  'Give your name with --as "<name>", or store it once: lh config voter set --name "<name>".';
+
+const CLI_ANSWERS = new Map<string, RefinementAnswer>([
+  ["yes", "Yes"],
+  ["yes-but", "YesBut"],
+  ["no", "No"],
+]);
+
+const getNonBlankOption = (
+  args: readonly string[],
+  optionName: string,
+): string | undefined => {
+  const value = getOptionValue(args, optionName)?.trim();
+  return value === undefined || value.length === 0 ? undefined : value;
+};
+
+type VoteTarget = {
+  readonly teamId: number;
+  readonly workItem: string;
+};
+
+const parseVoteTarget = (
+  args: readonly string[],
+  command: string,
+): VoteTarget | CliCommandResult => {
+  const teamId = parseTeamIdOption(args, command);
+  if (isCliCommandResult(teamId)) {
+    return teamId;
+  }
+  const workItem = getNonBlankOption(args, "--work-item");
+  if (workItem === undefined) {
+    return getErrorResult(
+      `Missing required --work-item for refinement ${command}.`,
+    );
+  }
+  return { teamId, workItem };
+};
+
+// With sign-in Lighthouse knows the voter from the credential, so the client sends neither name nor key.
+const isSignedIn = (connection: CliConnection): boolean =>
+  connection.mode === "server" && connection.authMode === "required";
+
+const keepVoterKey = async (
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+): Promise<string> => {
+  const kept = await loadKeptVoterKey(connection, dependencies);
+  if (kept !== undefined) {
+    return kept;
+  }
+  const minted = mintVoterKey();
+  await dependencies.saveVoterKey?.(voterKeyScopeOf(connection), minted);
+  return minted;
+};
+
+type WriteVoter = {
+  readonly voterName?: string;
+  readonly voterKey?: string;
+};
+
+const resolveWriteVoter = async (
+  args: readonly string[],
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+): Promise<WriteVoter | CliCommandResult> => {
+  if (isSignedIn(connection)) {
+    return {};
+  }
+  const voterName =
+    getNonBlankOption(args, "--as") ??
+    (await dependencies.loadVoterName?.()) ??
+    undefined;
+  if (voterName === undefined) {
+    return getErrorResult(GIVE_YOUR_NAME);
+  }
+  return {
+    voterName,
+    voterKey: await keepVoterKey(connection, dependencies),
+  };
+};
+
+const mapVoteResultToCliResult = async (
+  result: LighthouseApiResult<VotedRow>,
+  outputFormat: OutputFormat,
+  client: CliClientOperations,
+  describe: (row: VotedRow) => string,
+): Promise<CliCommandResult> => {
+  if (result.ok) {
+    return mapApiResultToCliResult(result, outputFormat, describe);
+  }
+  return getErrorResult(
+    describeVoteRefusal(result.error, {
+      terms: await readRefinementTerms(client),
+      nameRequired: GIVE_YOUR_NAME,
+    }),
+  );
+};
+
+const runRefinementVote = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const target = parseVoteTarget(args, "vote");
+  if (isCliCommandResult(target)) {
+    return target;
+  }
+  const answer = CLI_ANSWERS.get(getOptionValue(args, "--answer") ?? "");
+  if (answer === undefined) {
+    return getErrorResult(
+      "Missing or invalid --answer. Use one of: yes, yes-but, no.",
+    );
+  }
+  const comment = getNonBlankOption(args, "--comment");
+  if (answer === "YesBut" && comment === undefined) {
+    return getErrorResult(
+      'A "Yes, if…" needs its condition: add --comment "<what has to be true>"',
+    );
+  }
+  const voter = await resolveWriteVoter(args, connection, dependencies);
+  if (isCliCommandResult(voter)) {
+    return voter;
+  }
+
+  const client = dependencies.createClient(connection);
+  const result = await client.castRefinementVote(
+    target.teamId,
+    target.workItem,
+    { answer, channel: "Cli", comment, ...voter },
+  );
+  return mapVoteResultToCliResult(result, outputFormat, client, (row) =>
+    describeRecordedVote(
+      { workItem: target.workItem, voterName: voter.voterName },
+      answer,
+      row,
+    ),
+  );
+};
+
+const runRefinementComment = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const target = parseVoteTarget(args, "comment");
+  if (isCliCommandResult(target)) {
+    return target;
+  }
+  const comment = getNonBlankOption(args, "--text");
+  if (comment === undefined) {
+    return getErrorResult("Missing required --text for refinement comment.");
+  }
+  const voter = await resolveWriteVoter(args, connection, dependencies);
+  if (isCliCommandResult(voter)) {
+    return voter;
+  }
+
+  const client = dependencies.createClient(connection);
+  const result = await client.addRefinementComment(
+    target.teamId,
+    target.workItem,
+    { comment, channel: "Cli", ...voter },
+  );
+  return mapVoteResultToCliResult(result, outputFormat, client, () =>
+    describeRecordedComment({
+      workItem: target.workItem,
+      voterName: voter.voterName,
+    }),
+  );
+};
+
+/**
+ * Lighthouse answers a take-back that found nothing exactly like one that did, so the refinement is read
+ * first, and nothing is sent when this client has no vote on the Work Item.
+ */
+const runRefinementTakeBack = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  const target = parseVoteTarget(args, "take-back");
+  if (isCliCommandResult(target)) {
+    return target;
+  }
+  const nothingToTakeBack = getSuccessResult(
+    describeNothingToTakeBack(target.workItem),
+  );
+  const signedIn = isSignedIn(connection);
+  const voterKey = signedIn
+    ? undefined
+    : await loadKeptVoterKey(connection, dependencies);
+  if (!signedIn && voterKey === undefined) {
+    return nothingToTakeBack;
+  }
+
+  const client = dependencies.createClient(connection);
+  const refinement = await client.getTeamRefinement(target.teamId, {
+    voterKey,
+  });
+  if (!refinement.ok) {
+    return mapApiResultToCliResult(refinement, outputFormat);
+  }
+  const row = refinement.value.workItems.find(
+    (candidate) => candidate.referenceId === target.workItem,
+  );
+  if (row?.myVote == null) {
+    return nothingToTakeBack;
+  }
+
+  const voterName = signedIn
+    ? null
+    : ((await dependencies.loadVoterName?.()) ?? null);
+  const result = await client.takeBackRefinementVote(
+    target.teamId,
+    target.workItem,
+    { channel: "Cli", voterKey },
+  );
+  return mapVoteResultToCliResult(result, outputFormat, client, (takenBack) =>
+    describeTakenBack({ workItem: target.workItem, voterName }, takenBack),
+  );
+};
+
+type RefinementCommand = (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+) => Promise<CliCommandResult>;
+
+const REFINEMENT_COMMANDS: Readonly<Record<string, RefinementCommand>> = {
+  get: runRefinementGet,
+  vote: runRefinementVote,
+  comment: runRefinementComment,
+  "take-back": runRefinementTakeBack,
+};
+
 const runRefinementGroup = async (
   action: string | undefined,
   args: readonly string[],
@@ -2518,7 +2781,10 @@ const runRefinementGroup = async (
     return getSuccessResult(getRefinementGroupHelpText());
   }
 
-  if (action !== "get") {
+  const command = Object.hasOwn(REFINEMENT_COMMANDS, action)
+    ? REFINEMENT_COMMANDS[action]
+    : undefined;
+  if (command === undefined) {
     return getUnknownSubcommandResult(
       getRefinementGroupHelpText(),
       "refinement",
@@ -2531,7 +2797,7 @@ const runRefinementGroup = async (
     return connectionOrError;
   }
 
-  return runRefinementGet(args, outputFormat, connectionOrError, dependencies);
+  return command(args, outputFormat, connectionOrError, dependencies);
 };
 
 const runHealthGroup = async (

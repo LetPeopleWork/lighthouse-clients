@@ -506,7 +506,7 @@ describe("lh refinement get shows how the votes stand", () => {
 
 describe("lh refinement vote, comment and take-back", () => {
   // @walking_skeleton @driving_port
-  it.skip("records Ana's Yes, if… with its condition from her terminal, and tells her where GR-051 stands", async () => {
+  it("records Ana's Yes, if… with its condition from her terminal, and tells her where GR-051 stands", async () => {
     const lighthouse = aLighthouse({
       answers: {
         [`POST ${workItemPath("GR-051")}/votes`]: answering({
@@ -557,7 +557,7 @@ describe("lh refinement vote, comment and take-back", () => {
     expect(vote.headers[VOTER_KEY_HEADER]).toBe(minted);
   });
 
-  it.skip("tells Ana when her Yes is the one that made GR-073 Ready", async () => {
+  it("tells Ana when her Yes is the one that made GR-073 Ready", async () => {
     const lighthouse = aLighthouse({
       voter: { name: ANA_LIMA },
       answers: {
@@ -584,7 +584,7 @@ describe("lh refinement vote, comment and take-back", () => {
     );
   });
 
-  it.skip.each([
+  it.each([
     { stored: null, as: ANA_LIMA, sends: ANA_LIMA },
     { stored: ANA_LIMA, as: undefined, sends: ANA_LIMA },
     { stored: "Ana", as: ANA_LIMA, sends: ANA_LIMA },
@@ -623,7 +623,7 @@ describe("lh refinement vote, comment and take-back", () => {
     },
   );
 
-  it.skip("keeps the key it minted and votes with it again, and keeps another for another Lighthouse", async () => {
+  it("keeps the key it minted and votes with it again, and keeps another for another Lighthouse", async () => {
     const answers = {
       [`POST ${workItemPath("GR-051")}/votes`]: answering({
         ...pdfExport({ split: { yes: 1, yesBut: 0, no: 0 }, myVote: "Yes" }),
@@ -651,7 +651,7 @@ describe("lh refinement vote, comment and take-back", () => {
     expect(elsewhere.storedVoterKey(OTHER_LIGHTHOUSE_URL)).not.toBe(firstKey);
   });
 
-  it.skip("with sign-in on, votes as the account behind the key and sends no name", async () => {
+  it("with sign-in on, votes as the account behind the key and sends no name", async () => {
     const lighthouse = aLighthouse({
       signIn: true,
       voter: { name: ANA_LIMA },
@@ -682,7 +682,7 @@ describe("lh refinement vote, comment and take-back", () => {
   });
 
   // @error
-  it.skip.each([
+  it.each([
     {
       case: "a vote",
       args: onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
@@ -712,10 +712,7 @@ describe("lh refinement vote, comment and take-back", () => {
   );
 
   // @error
-  it.skip.each([
-    { condition: [] as string[] },
-    { condition: ["--comment", "  "] },
-  ])(
+  it.each([{ condition: [] as string[] }, { condition: ["--comment", "  "] }])(
     "refuses a Yes, if… without its condition ($condition) before asking Lighthouse",
     async ({ condition }) => {
       const lighthouse = aLighthouse({ voter: { name: ANA_LIMA } });
@@ -739,7 +736,7 @@ describe("lh refinement vote, comment and take-back", () => {
   );
 
   // @error
-  it.skip.each([
+  it.each([
     {
       names: "--team-id",
       args: ["refinement", "vote", "--work-item", "GR-051", "--answer", "yes"],
@@ -774,7 +771,7 @@ describe("lh refinement vote, comment and take-back", () => {
     },
   );
 
-  it.skip("records Ana's question on GR-054 as a comment from the command line", async () => {
+  it("records Ana's question on GR-054 as a comment from the command line", async () => {
     const lighthouse = aLighthouse({
       voter: { name: ANA_LIMA, keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } },
       answers: {
@@ -809,7 +806,7 @@ describe("lh refinement vote, comment and take-back", () => {
     expect(comment.headers[VOTER_KEY_HEADER]).toBe(ANAS_CLIENT_KEY);
   });
 
-  it.skip("takes back the vote Ana cast from this client, and tells her where GR-051 stands now", async () => {
+  it("takes back the vote Ana cast from this client, and tells her where GR-051 stands now", async () => {
     const lighthouse = aLighthouse({
       voter: { name: ANA_LIMA, keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } },
       answers: {
@@ -836,7 +833,7 @@ describe("lh refinement vote, comment and take-back", () => {
   });
 
   // @error
-  it.skip.each([
+  it.each([
     { situation: "this client has never voted here", keys: {} as KeptKeys },
     {
       situation: "this client's vote on GR-051 is already gone",
@@ -869,7 +866,7 @@ describe("lh refinement vote, comment and take-back", () => {
   );
 
   // @error
-  it.skip.each([
+  it.each([
     {
       refusal: refusing(
         409,
@@ -933,7 +930,7 @@ describe("lh refinement vote, comment and take-back", () => {
     },
   );
 
-  it.skip.each([
+  it.each([
     { flag: "--json", encodes: (facts: unknown) => JSON.stringify(facts) },
     { flag: "--toon", encodes: (facts: unknown) => encode(facts) },
   ])(
@@ -962,7 +959,7 @@ describe("lh refinement vote, comment and take-back", () => {
 });
 
 describe("lh config voter", () => {
-  it.skip("stores Ana's name once, shows it, and votes under it without --as", async () => {
+  it("stores Ana's name once, shows it, and votes under it without --as", async () => {
     const lighthouse = aLighthouse({
       answers: {
         [`POST ${workItemPath("GR-051")}/votes`]: answering({
@@ -1031,7 +1028,7 @@ describe("lh config voter", () => {
     },
   );
 
-  it.skip("lists the new commands in the refinement and config help", async () => {
+  it("lists the new commands in the refinement and config help", async () => {
     const lighthouse = aLighthouse();
 
     const refinementHelp = await runCliCommand(

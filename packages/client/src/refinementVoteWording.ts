@@ -1,4 +1,10 @@
-import type { RefinementAnswer, RefinementRow } from "./index";
+import type {
+  LighthouseApiError,
+  RefinementAnswer,
+  RefinementRow,
+  VotedRow,
+} from "./index";
+import type { RefinementTerms } from "./refinementWording";
 
 const ANSWER_WORDS: Readonly<Record<RefinementAnswer, string>> = {
   Yes: "Yes",
@@ -58,3 +64,90 @@ export const describeWarnings = (
   ]
     .filter((warning) => warning !== null)
     .join(", ");
+
+/** What a vote, comment or take-back is said about: the Work Item and, without sign-in, whose it is. */
+export type RecordedFor = {
+  readonly workItem: string;
+  readonly voterName?: string | null;
+};
+
+const whereItStands = (workItem: string, row: VotedRow): string =>
+  row.madeReady
+    ? `That made ${workItem} Ready.`
+    : `${workItem}: ${describeReadiness(row)}.`;
+
+const whose = (voterName: string | null | undefined): string =>
+  voterName == null ? "your" : `${voterName}'s`;
+
+/** "Recorded: Ana Lima — Yes, if… on GR-051. GR-051: 2 more Yes needed.", or "your Yes" with sign-in. */
+export const describeRecordedVote = (
+  { workItem, voterName }: RecordedFor,
+  answer: RefinementAnswer,
+  row: VotedRow,
+): string => {
+  const what =
+    voterName == null
+      ? `your ${describeAnswer(answer)}`
+      : `${voterName} — ${describeAnswer(answer)}`;
+  return `Recorded: ${what} on ${workItem}. ${whereItStands(workItem, row)}`;
+};
+
+/** "Recorded: Ana Lima's comment on GR-054." */
+export const describeRecordedComment = ({
+  workItem,
+  voterName,
+}: RecordedFor): string =>
+  `Recorded: ${whose(voterName)} comment on ${workItem}.`;
+
+/** "Took back Ana Lima's vote on GR-051. GR-051: 3 more Yes needed." */
+export const describeTakenBack = (
+  { workItem, voterName }: RecordedFor,
+  row: VotedRow,
+): string =>
+  `Took back ${whose(voterName)} vote on ${workItem}. ${whereItStands(workItem, row)}`;
+
+/** Said instead of taking back when this client has no vote on the Work Item to take back. */
+export const describeNothingToTakeBack = (workItem: string): string =>
+  `No vote of yours on ${workItem} to take back from this client.`;
+
+const TOO_MANY_REQUESTS = 429;
+
+const LONGEST_COMMENT = 2000;
+
+const REFUSALS_IN_WORDS: Readonly<Record<string, string>> = {
+  "comment-required": "A comment needs some text.",
+  "comment-too-long": `A comment is at most ${LONGEST_COMMENT} characters.`,
+  "vote-needs-a-person":
+    "This key belongs to no person, so it cannot vote. Use a personal API key.",
+};
+
+export type VoteRefusalWording = {
+  /** The instance's words for the Work Item and the refinement. */
+  readonly terms: Pick<RefinementTerms, "workItem" | "refinement">;
+  /** What to say when Lighthouse needs a name, which each surface asks for its own way. */
+  readonly nameRequired: string;
+};
+
+/**
+ * Why Lighthouse would not take a vote, comment or take-back, in words the voter can act on: the web's
+ * sentence where it has one, otherwise the refusal's own title, otherwise its category and reason.
+ */
+export const describeVoteRefusal = (
+  error: LighthouseApiError,
+  { terms, nameRequired }: VoteRefusalWording,
+): string => {
+  if (error.statusCode === TOO_MANY_REQUESTS) {
+    return "Too many votes or comments from this client. Try again in a minute.";
+  }
+  if (error.problemCode === "work-item-not-in-refinement") {
+    return `This ${terms.workItem.toLowerCase()} is no longer in ${terms.refinement.toLowerCase()}.`;
+  }
+  if (error.problemCode === "voter-name-required") {
+    return nameRequired;
+  }
+  return (
+    REFUSALS_IN_WORDS[error.problemCode ?? ""] ??
+    error.problemTitle ??
+    `${error.category}: ${error.reason}`
+  );
+};

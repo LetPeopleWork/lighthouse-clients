@@ -350,3 +350,11 @@ export const countNumberedRows = (refinement: TeamRefinement): number => {
     ? 0
     : Math.min(verdict.high, refinement.workItems.length);
 };
+
+/** The instance's words alone, the seeded ones standing in when terminology cannot be read. */
+export const readRefinementTerms = async (
+  source: Pick<LighthouseClient, "getTerminology">,
+): Promise<RefinementTerms> => {
+  const terminology = await source.getTerminology();
+  return resolveRefinementTerms(terminology.ok ? terminology.value : null);
+};
