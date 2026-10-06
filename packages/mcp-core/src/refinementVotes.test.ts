@@ -596,3 +596,32 @@ describe("the refinement write tools go by whom Lighthouse takes a vote from", (
     expect(assistant.writes()).toEqual([]);
   });
 });
+
+describe("the take-back tool names the vote it saw", () => {
+  it.each(["Yes", "YesBut", "No"] as const)(
+    "sends the %s it read as the user's, so a vote changed since from elsewhere stays",
+    async (myVote) => {
+      const assistant = anAssistantOn({
+        storedKey: ANAS_ASSISTANT_KEY,
+        answers: {
+          [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering({
+            voterIdentity: "SelfDeclared",
+            workItems: [pdfExport({ myVote })],
+          }),
+          [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(
+            pdfExport(),
+          ),
+        },
+      });
+
+      const result = await assistant.runtime.callTool(TAKE_BACK, {
+        id: GRAVITY_ID,
+        workItem: "GR-051",
+      });
+
+      expect(result.isError).toBe(false);
+      const [takeBack] = assistant.writes();
+      expect(new URL(takeBack.url).searchParams.get("answer")).toBe(myVote);
+    },
+  );
+});

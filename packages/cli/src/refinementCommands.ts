@@ -5,12 +5,12 @@ import {
   describeRecordedComment,
   describeRecordedVote,
   describeTakenBack,
-  holdsMyVoteOn,
   isMissingItsCondition,
   keepVoterKey,
   type LighthouseApiResult,
   type LighthouseClient,
   type LighthouseVoterKeyStore,
+  myVoteOn,
   type RefinementAnswer,
   readRefinementWording,
   readVoteRefusal,
@@ -369,7 +369,8 @@ const runRefinementTakeBack: RefinementCommand = async (
   if (isCliCommandResult(refinement)) {
     return refinement;
   }
-  if (!holdsMyVoteOn(refinement, target.workItem)) {
+  const myVote = myVoteOn(refinement, target.workItem);
+  if (myVote === null) {
     return nothingToTakeBack;
   }
 
@@ -380,7 +381,11 @@ const runRefinementTakeBack: RefinementCommand = async (
   const result = await client.takeBackRefinementVote(
     target.teamId,
     target.workItem,
-    { channel: CHANNEL, voterKey: signedIn ? undefined : keptVoterKey },
+    {
+      channel: CHANNEL,
+      voterKey: signedIn ? undefined : keptVoterKey,
+      answer: myVote,
+    },
   );
   return mapVoteResultToCliResult(result, outputFormat, client, (takenBack) =>
     describeTakenBack({ workItem: target.workItem, voterName }, takenBack),

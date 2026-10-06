@@ -5,7 +5,6 @@ import {
   describeRecordedVote,
   describeRefinementSummary,
   describeTakenBack,
-  holdsMyVoteOn,
   isMissingItsCondition,
   isRefinementAnswer,
   keepVoterKey,
@@ -13,6 +12,7 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type LighthouseVoterKeyStore,
+  myVoteOn,
   REFINEMENT_ANSWERS,
   type RefinementWordingSource,
   readRefinementWording,
@@ -445,7 +445,8 @@ const takeBackVote: RefinementTool = async (
   if (isToolResult(refinement)) {
     return refinement;
   }
-  if (!holdsMyVoteOn(refinement, target.workItem)) {
+  const myVote = myVoteOn(refinement, target.workItem);
+  if (myVote === null) {
     return nothingToTakeBack;
   }
 
@@ -455,6 +456,7 @@ const takeBackVote: RefinementTool = async (
     {
       channel: CHANNEL,
       voterKey: isSignedIn(refinement) ? undefined : keptVoterKey,
+      answer: myVote,
     },
   );
   return getRefinementWriteToolResult("takeBack", result, client, (takenBack) =>

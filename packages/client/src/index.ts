@@ -1228,6 +1228,8 @@ export type RefinementCommentInput = {
 export type RefinementTakeBackInput = {
   readonly channel: RefinementChannel;
   readonly voterKey?: string;
+  /** The answer the caller saw as theirs, so a vote changed since in another session is left standing. */
+  readonly answer?: RefinementAnswer;
 };
 
 export type TeamRefinement = {
@@ -2268,16 +2270,20 @@ export const createLighthouseClient = (
     takeBackRefinementVote: async (
       teamId: number,
       workItem: string,
-      { channel, voterKey }: RefinementTakeBackInput,
+      { channel, voterKey, answer }: RefinementTakeBackInput,
     ) => {
       const unsupported = await ensureServerSupports("refinementVotes");
       if (unsupported) {
         return unsupported;
       }
+      const query = new URLSearchParams({
+        channel,
+        ...(answer === undefined ? {} : { answer }),
+      });
       return requestJson<VotedRow>(
         configuration,
         dependencies,
-        `${refinementWorkItemRoute(teamId, workItem)}/votes/mine?channel=${encodeURIComponent(channel)}`,
+        `${refinementWorkItemRoute(teamId, workItem)}/votes/mine?${query}`,
         { method: "DELETE", headers: voterKeyHeaders(voterKey) },
       );
     },

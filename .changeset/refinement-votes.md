@@ -20,7 +20,8 @@ upgrade and is never asked.
 - `lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]`,
   `lh refinement comment … --text <text>` and `lh refinement take-back …` answer in one line, such as
   `Recorded: Ana Lima — Yes on GR-073. That made GR-073 Ready.` A "Yes, if…" needs its condition. Lighthouse's
-  refusals come back in plain words. `--json` and `--toon` return the Work Item as the vote left it.
+  refusals come back in plain words. `--json` and `--toon` return the Work Item as the vote left it. A
+  take-back names the answer it saw, so a vote changed since from somewhere else stays.
 - With sign-in, a vote is the signed-in account's; `lh` goes by what Lighthouse says, not by what was answered
   when the connection was saved. Without it, a vote carries the name given with `--as` or
   stored once with `lh config voter set --name <name>` (`lh config voter` shows it); `lh` never guesses a name.

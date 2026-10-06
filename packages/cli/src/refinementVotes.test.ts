@@ -1205,3 +1205,31 @@ describe("lh config voter", () => {
     expect(configHelp.stdout).toContain("lh config voter set --name <name>");
   });
 });
+
+describe("lh refinement take-back names the vote it saw", () => {
+  it.each(["Yes", "YesBut", "No"] as const)(
+    "sends the %s it read as Ana's, so a vote she changed since from elsewhere stays",
+    async (myVote) => {
+      const lighthouse = aLighthouse({
+        voter: { name: ANA_LIMA, keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } },
+        answers: {
+          [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering(
+            gravitysRefinement([pdfExport({ myVote })]),
+          ),
+          [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(
+            pdfExport(),
+          ),
+        },
+      });
+
+      const result = await runCliCommand(
+        onGravity("take-back", "--work-item", "GR-051"),
+        lighthouse.dependencies,
+      );
+
+      expect(result.exitCode).toBe(0);
+      const [takeBack] = lighthouse.writes();
+      expect(new URL(takeBack.url).searchParams.get("answer")).toBe(myVote);
+    },
+  );
+});

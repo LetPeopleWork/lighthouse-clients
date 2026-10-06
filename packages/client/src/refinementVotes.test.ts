@@ -255,3 +255,43 @@ describe("votes on Work Items in refinement through the client", () => {
     },
   );
 });
+
+describe("taking back a vote through the client", () => {
+  it.each(["Yes", "YesBut", "No"] as const)(
+    "names the answer it saw, %s, so a vote changed since in another session stays",
+    async (answer) => {
+      const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_VOTES, {
+        [`DELETE ${PDF_EXPORT_PATH}/votes/mine`]: answering(
+          pdfExportAsTheVoteLeftIt,
+        ),
+      });
+
+      const result = await lighthouse.client.takeBackRefinementVote(
+        GRAVITY_ID,
+        PDF_EXPORT,
+        { channel: "Assistant", voterKey: ANAS_CLIENT_KEY, answer },
+      );
+
+      expect(result.ok).toBe(true);
+      const [takeBack] = lighthouse.askedOtherThanTheVersion();
+      const query = new URL(takeBack.url).searchParams;
+      expect(query.get("answer")).toBe(answer);
+      expect(query.get("channel")).toBe("Assistant");
+    },
+  );
+
+  it("names no answer when it was given none", async () => {
+    const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_VOTES, {
+      [`DELETE ${PDF_EXPORT_PATH}/votes/mine`]: answering(
+        pdfExportAsTheVoteLeftIt,
+      ),
+    });
+
+    await lighthouse.client.takeBackRefinementVote(GRAVITY_ID, PDF_EXPORT, {
+      channel: "Cli",
+    });
+
+    const [takeBack] = lighthouse.askedOtherThanTheVersion();
+    expect(new URL(takeBack.url).searchParams.has("answer")).toBe(false);
+  });
+});
