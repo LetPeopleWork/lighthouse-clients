@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -830,6 +831,10 @@ export type LighthouseApiError = {
   readonly category: ConnectivityCategory;
   readonly reason: string;
   readonly statusCode?: number;
+  /** The `code` a refusal names, so a surface can put it into its own words. */
+  readonly problemCode?: string;
+  /** The refusal's title as Lighthouse states it. */
+  readonly problemTitle?: string;
 };
 
 export type LighthouseApiResult<TValue> =
@@ -1190,7 +1195,7 @@ export type RefinementRow = {
   readonly state: string;
   readonly parentReferenceId: string;
   readonly voteCount: number;
-  readonly myVote: "Yes" | "YesBut" | "No" | null;
+  readonly myVote: RefinementAnswer | null;
   readonly split: {
     readonly yes: number;
     readonly yesBut: number;
@@ -1206,6 +1211,40 @@ export type RefinementRow = {
   readonly signalsDisagree: boolean;
   readonly hasComments: boolean;
   readonly hasOpenQuestion: boolean;
+};
+
+export type RefinementAnswer = "Yes" | "YesBut" | "No";
+
+/** Where a vote, comment or take-back was sent from. */
+export type RefinementChannel = "Cli" | "Assistant";
+
+/** A Work Item in refinement as a vote, comment or take-back left it. */
+export type VotedRow = RefinementRow & {
+  readonly madeReady: boolean;
+};
+
+export type RefinementReadOptions = {
+  readonly voterKey?: string;
+};
+
+export type RefinementVoteInput = {
+  readonly answer: RefinementAnswer;
+  readonly channel: RefinementChannel;
+  readonly comment?: string;
+  readonly voterName?: string;
+  readonly voterKey?: string;
+};
+
+export type RefinementCommentInput = {
+  readonly comment: string;
+  readonly channel: RefinementChannel;
+  readonly voterName?: string;
+  readonly voterKey?: string;
+};
+
+export type RefinementTakeBackInput = {
+  readonly channel: RefinementChannel;
+  readonly voterKey?: string;
 };
 
 export type TeamRefinement = {
@@ -1269,7 +1308,23 @@ export type LighthouseClient = {
   readonly refreshTeam: (teamId: number) => Promise<LighthouseApiResult<void>>;
   readonly getTeamRefinement: (
     teamId: number,
+    options?: RefinementReadOptions,
   ) => Promise<LighthouseApiResult<TeamRefinement>>;
+  readonly castRefinementVote: (
+    teamId: number,
+    workItem: string,
+    vote: RefinementVoteInput,
+  ) => Promise<LighthouseApiResult<VotedRow>>;
+  readonly addRefinementComment: (
+    teamId: number,
+    workItem: string,
+    comment: RefinementCommentInput,
+  ) => Promise<LighthouseApiResult<VotedRow>>;
+  readonly takeBackRefinementVote: (
+    teamId: number,
+    workItem: string,
+    takeBack: RefinementTakeBackInput,
+  ) => Promise<LighthouseApiResult<VotedRow>>;
   readonly getTerminology: () => Promise<
     LighthouseApiResult<readonly TerminologyEntry[]>
   >;
@@ -1537,14 +1592,20 @@ const getAuthHeaders = (
   };
 };
 
+type RequestOptions = {
+  readonly method?: "GET" | "POST" | "PUT" | "DELETE";
+  readonly body?: unknown;
+  readonly headers?: Readonly<Record<string, string>>;
+};
+
 const getRequestInit = (
   auth: LighthouseClientAuth | undefined,
-  requestOptions?: {
-    readonly method?: "GET" | "POST" | "PUT" | "DELETE";
-    readonly body?: unknown;
-  },
+  requestOptions?: RequestOptions,
 ): RequestInit => {
-  const authHeaders = getAuthHeaders(auth);
+  const authHeaders = {
+    ...getAuthHeaders(auth),
+    ...requestOptions?.headers,
+  };
   const hasBody = requestOptions?.body !== undefined;
   const headers = hasBody
     ? {
@@ -1645,19 +1706,46 @@ const toConcurrencyConflictError = (
   statusCode: CONCURRENCY_CONFLICT_STATUS,
 });
 
+const getProblemString = (body: unknown, key: string): string | undefined => {
+  if (!isObjectRecord(body)) {
+    return undefined;
+  }
+  const value = body[key];
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+};
+
+const withProblem = (
+  error: LighthouseApiError,
+  body: unknown,
+): LighthouseApiError => {
+  const problemCode = getProblemString(body, "code");
+  const problemTitle = getProblemString(body, "title");
+  return {
+    ...error,
+    ...(problemCode === undefined ? {} : { problemCode }),
+    ...(problemTitle === undefined ? {} : { problemTitle }),
+  };
+};
+
 const toResponseError = async (
   response: ConnectivityFetchResponse,
 ): Promise<LighthouseApiError> => {
+  const body = await getResponseBody(response);
   if (response.status === CONCURRENCY_CONFLICT_STATUS) {
-    const serverMessage = getProblemDetailsMessage(
-      await getResponseBody(response),
+    return withProblem(
+      toConcurrencyConflictError(getProblemDetailsMessage(body)),
+      body,
     );
-    return toConcurrencyConflictError(serverMessage);
   }
 
-  return toApiError(
-    response.status,
-    `Request failed with status ${response.status}.`,
+  return withProblem(
+    toApiError(
+      response.status,
+      `Request failed with status ${response.status}.`,
+    ),
+    body,
   );
 };
 
@@ -1707,10 +1795,7 @@ const requestJson = async <TValue>(
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies,
   route: string,
-  requestOptions?: {
-    readonly method?: "GET" | "POST" | "PUT" | "DELETE";
-    readonly body?: unknown;
-  },
+  requestOptions?: RequestOptions,
 ): Promise<LighthouseApiResult<TValue>> => {
   const fetchDependency = getFetchDependency(dependencies);
   const connectivityResult = await validateLighthouseConnectivity(
@@ -1951,6 +2036,7 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   // the wire, so a server between the two answers fine — it just reports no sizes.
   deliveryMetricsHistory: "v26.5.29.5",
   teamRefinement: "v26.10.3.6",
+  refinementVotes: "v26.10.3.6",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2000,6 +2086,23 @@ export const isServerVersionNewerThan = (
   }
   return false;
 };
+
+/** The header a client sends its voter key in, so Lighthouse can tell its votes from anyone else's. */
+export const VOTER_KEY_HEADER = "X-Lighthouse-Voter-Key";
+
+const MINTED_VOTER_KEY_BYTES = 32;
+
+/** A fresh random voter key: 43 URL-safe characters from 32 random bytes. */
+export const mintVoterKey = (): string =>
+  randomBytes(MINTED_VOTER_KEY_BYTES).toString("base64url");
+
+const voterKeyHeaders = (
+  voterKey: string | undefined,
+): Readonly<Record<string, string>> =>
+  voterKey === undefined ? {} : { [VOTER_KEY_HEADER]: voterKey };
+
+const refinementWorkItemRoute = (teamId: number, workItem: string): string =>
+  `/v1/teams/${teamId}/refinement/work-items/${encodeURIComponent(workItem)}`;
 
 export const createLighthouseClient = (
   configuration: LighthouseClientConfiguration,
@@ -2138,7 +2241,10 @@ export const createLighthouseClient = (
       requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "POST",
       }),
-    getTeamRefinement: async (teamId: number) => {
+    getTeamRefinement: async (
+      teamId: number,
+      options?: RefinementReadOptions,
+    ) => {
       const unsupported = await ensureServerSupports("teamRefinement");
       if (unsupported) {
         return unsupported;
@@ -2147,7 +2253,55 @@ export const createLighthouseClient = (
         configuration,
         dependencies,
         `/v1/teams/${teamId}/refinement`,
-        { method: "GET" },
+        { method: "GET", headers: voterKeyHeaders(options?.voterKey) },
+      );
+    },
+    castRefinementVote: async (
+      teamId: number,
+      workItem: string,
+      { voterKey, ...vote }: RefinementVoteInput,
+    ) => {
+      const unsupported = await ensureServerSupports("refinementVotes");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<VotedRow>(
+        configuration,
+        dependencies,
+        `${refinementWorkItemRoute(teamId, workItem)}/votes`,
+        { method: "POST", body: vote, headers: voterKeyHeaders(voterKey) },
+      );
+    },
+    addRefinementComment: async (
+      teamId: number,
+      workItem: string,
+      { voterKey, ...comment }: RefinementCommentInput,
+    ) => {
+      const unsupported = await ensureServerSupports("refinementVotes");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<VotedRow>(
+        configuration,
+        dependencies,
+        `${refinementWorkItemRoute(teamId, workItem)}/comments`,
+        { method: "POST", body: comment, headers: voterKeyHeaders(voterKey) },
+      );
+    },
+    takeBackRefinementVote: async (
+      teamId: number,
+      workItem: string,
+      { channel, voterKey }: RefinementTakeBackInput,
+    ) => {
+      const unsupported = await ensureServerSupports("refinementVotes");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<VotedRow>(
+        configuration,
+        dependencies,
+        `${refinementWorkItemRoute(teamId, workItem)}/votes/mine?channel=${encodeURIComponent(channel)}`,
+        { method: "DELETE", headers: voterKeyHeaders(voterKey) },
       );
     },
     getTerminology: async () =>

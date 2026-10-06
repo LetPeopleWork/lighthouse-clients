@@ -98,7 +98,7 @@ const aLighthouseAnswering = (
 const PDF_EXPORT_PATH = `/v1/teams/${GRAVITY_ID}/refinement/work-items/${PDF_EXPORT}`;
 
 describe("votes on Work Items in refinement through the client", () => {
-  it.skip.each([
+  it.each([
     { voterKey: ANAS_CLIENT_KEY, sends: ANAS_CLIENT_KEY },
     { voterKey: undefined, sends: undefined },
   ])(
@@ -122,7 +122,7 @@ describe("votes on Work Items in refinement through the client", () => {
   );
 
   // @driving_port
-  it.skip("casts Ana's Yes, if… with its condition, from the command line, and hands back the row as the vote left it", async () => {
+  it("casts Ana's Yes, if… with its condition, from the command line, and hands back the row as the vote left it", async () => {
     const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_VOTES, {
       [`POST ${PDF_EXPORT_PATH}/votes`]: answering(pdfExportAsTheVoteLeftIt),
     });
@@ -157,7 +157,7 @@ describe("votes on Work Items in refinement through the client", () => {
     ]);
   });
 
-  it.skip("adds a comment without a vote, from an assistant", async () => {
+  it("adds a comment without a vote, from an assistant", async () => {
     const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_VOTES, {
       [`POST ${PDF_EXPORT_PATH}/comments`]: answering(pdfExportAsTheVoteLeftIt),
     });
@@ -184,7 +184,7 @@ describe("votes on Work Items in refinement through the client", () => {
     });
   });
 
-  it.skip("takes back the vote this client cast, naming the channel it takes it back from and no name", async () => {
+  it("takes back the vote this client cast, naming the channel it takes it back from and no name", async () => {
     const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_VOTES, {
       [`DELETE ${PDF_EXPORT_PATH}/votes/mine`]: answering({
         ...pdfExportAsTheVoteLeftIt,
@@ -209,7 +209,7 @@ describe("votes on Work Items in refinement through the client", () => {
     expect(takeBack.body).toBeUndefined();
   });
 
-  it.skip.each([
+  it.each([
     {
       write: "a vote",
       send: (client: ReturnType<typeof createLighthouseClient>) =>
