@@ -32,7 +32,7 @@ Needs a Lighthouse newer than v26.10.3.6; an older server is told to upgrade and
   `describeRefinementSummary` and friends state the need in them.
 
 This release also carries the runtime dependency updates held back since the last one:
-`@modelcontextprotocol/sdk` 1.30.0, `undici` 8.11, `zod` 4 and `@toon-format/toon` 4. The TOON
+`@modelcontextprotocol/sdk` 1.31.0, `undici` 8.11.2, `zod` 4 and `@toon-format/toon` 4. The TOON
 update changes what `--toon` and the MCP tool results look like in two places, while decoding to the
 same data: a list of records whose nested objects hold only plain values is now one table row per
 record (for example `split{yes,yesBut,no}` in the header), and an empty list prints as `[]`. A
