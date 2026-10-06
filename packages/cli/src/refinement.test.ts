@@ -127,6 +127,9 @@ const aLighthouse = (overrides: {
   readonly refinement?: ApiResult;
   readonly terminology?: ApiResult;
   readonly team?: ApiResult;
+  readonly beforeRefinementAnswers?: (
+    asked: readonly string[],
+  ) => Promise<void>;
 }) => {
   const asked: string[] = [];
   const client = {
@@ -138,6 +141,7 @@ const aLighthouse = (overrides: {
     },
     getTeamRefinement: async (teamId: number) => {
       asked.push(`refinement ${teamId}`);
+      await overrides.beforeRefinementAnswers?.(asked);
       return overrides.refinement ?? ok(gravitysRefinement());
     },
     getTerminology: async () => {
@@ -640,7 +644,7 @@ describe("lh refinement get", () => {
   ])(
     "hands over the facts unchanged with $flag",
     async ({ flag, rendered }) => {
-      const { dependencies } = aLighthouse({});
+      const { dependencies, asked } = aLighthouse({});
 
       const result = await runCliCommand(
         refinementOfGravity(flag),
@@ -649,8 +653,47 @@ describe("lh refinement get", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toBe(rendered);
+      expect(asked).toEqual([`refinement ${GRAVITY_ID}`]);
     },
   );
+
+  it("asks for the refinement, the Team and the terminology at once", async () => {
+    let askedWhileRefinementIsRead: readonly string[] = [];
+    const { dependencies } = aLighthouse({
+      beforeRefinementAnswers: async (asked) => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        askedWhileRefinementIsRead = [...asked];
+      },
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect([...askedWhileRefinementIsRead].sort()).toEqual([
+      `refinement ${GRAVITY_ID}`,
+      `team ${GRAVITY_ID}`,
+      "terminology",
+    ]);
+  });
+
+  it("reports a failed refinement read over a failed Team read", async () => {
+    const { dependencies } = aLighthouse({
+      refinement: {
+        ok: false,
+        error: { category: "unexpected", reason: "refinement unavailable" },
+      },
+      team: {
+        ok: false,
+        error: { category: "notFound", reason: "Team 3 does not exist" },
+      },
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("refinement unavailable");
+    expect(result.stderr).not.toContain("Team 3 does not exist");
+  });
 
   it.each([
     { args: ["refinement", "get"], says: "Missing required --team-id" },

@@ -2417,12 +2417,20 @@ const runRefinementGet = async (
     return teamId;
   }
 
-  const refinement = await client.getTeamRefinement(teamId);
-  if (!refinement.ok || outputFormat !== "pretty") {
-    return mapApiResultToCliResult(refinement, outputFormat);
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(
+      await client.getTeamRefinement(teamId),
+      outputFormat,
+    );
   }
 
-  const wording = await readRefinementWording(client, teamId);
+  const [refinement, wording] = await Promise.all([
+    client.getTeamRefinement(teamId),
+    readRefinementWording(client, teamId),
+  ]);
+  if (!refinement.ok) {
+    return mapApiResultToCliResult(refinement, outputFormat);
+  }
   if (!wording.ok) {
     return mapApiResultToCliResult(wording, outputFormat);
   }

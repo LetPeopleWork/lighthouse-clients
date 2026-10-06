@@ -1296,12 +1296,13 @@ const getTeamRefinementToolResult = async (
   client: McpRuntimeClient,
   teamId: number,
 ): Promise<McpToolResult> => {
-  const refinement = await client.getTeamRefinement(teamId);
+  const [refinement, wording] = await Promise.all([
+    client.getTeamRefinement(teamId),
+    readRefinementWording(client, teamId),
+  ]);
   if (!refinement.ok) {
     return getRefinementErrorToolResult(refinement.error);
   }
-
-  const wording = await readRefinementWording(client, teamId);
   if (!wording.ok) {
     return getRefinementErrorToolResult(wording.error);
   }
