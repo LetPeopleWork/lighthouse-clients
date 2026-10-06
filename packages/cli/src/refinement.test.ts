@@ -126,6 +126,7 @@ const ok = (value: unknown): ApiResult => ({ ok: true, value });
 const aLighthouse = (overrides: {
   readonly refinement?: ApiResult;
   readonly terminology?: ApiResult;
+  readonly team?: ApiResult;
 }) => {
   const asked: string[] = [];
   const client = {
@@ -133,7 +134,7 @@ const aLighthouse = (overrides: {
     getVersion: async () => ok("v26.10.7.1"),
     getTeam: async (teamId: number) => {
       asked.push(`team ${teamId}`);
-      return ok({ id: teamId, name: GRAVITY });
+      return overrides.team ?? ok({ id: teamId, name: GRAVITY });
     },
     getTeamRefinement: async (teamId: number) => {
       asked.push(`refinement ${teamId}`);
@@ -365,27 +366,13 @@ describe("lh refinement get", () => {
       heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
       hint: "Not enough data yet — need at least 5 days with completed items to forecast.",
     },
-    {
-      unavailableReason: "NoRefinementStates",
-      refinementConfigured: false,
-      nextRefinementDate: "2026-10-08",
-      heading: "Team Gravity · No Refinement states",
-      hint: "A Team admin needs to choose refinement states first",
-    },
   ])(
     "says why there is no number when the reason is $unavailableReason, and lists the Work Items without a line",
-    async ({
-      unavailableReason,
-      refinementConfigured,
-      nextRefinementDate,
-      heading,
-      hint,
-    }) => {
-      const workItems = refinementConfigured ? gravitysBacklog.slice(0, 2) : [];
+    async ({ unavailableReason, nextRefinementDate, heading, hint }) => {
+      const workItems = gravitysBacklog.slice(0, 2);
       const { dependencies } = aLighthouse({
         refinement: ok(
           gravitysRefinement({
-            refinementConfigured,
             nextRefinementDate,
             daysUntilNextRefinement: nextRefinementDate === null ? null : 2,
             workItems,
@@ -403,9 +390,84 @@ describe("lh refinement get", () => {
       expect(result.stdout).not.toContain(" ready — ");
       expect(result.stdout).not.toContain("needed before the next");
       expect(lines.filter((shown) => /^\d+ GR-/u.test(shown))).toEqual([]);
-      for (const listed of workItems) {
-        expect(result.stdout).toContain(listed.referenceId);
-      }
+      expect(lines.slice(-2)).toEqual([
+        "GR-051 PDF export GR-010 Refinement",
+        "GR-052 Saved filters GR-010 Refinement",
+      ]);
+    },
+  );
+
+  it("tells a Team without refinement states to choose some, rather than that nothing is in them", async () => {
+    const { dependencies } = aLighthouse({
+      refinement: ok(
+        gravitysRefinement({
+          refinementConfigured: false,
+          workItems: [],
+          need: {
+            verdict: null,
+            unavailableReason: "NoRefinementStates",
+            low: null,
+            high: null,
+          },
+        }),
+      ),
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)).toEqual([
+      "Team Gravity · No Refinement states",
+      "A Team admin needs to choose refinement states first",
+    ]);
+  });
+
+  it.each([
+    {
+      situation: "a verdict",
+      nextRefinementDate: "2026-10-08",
+      need: { verdict: "Below", unavailableReason: null, low: 5, high: 8 },
+      renamed: {},
+      says: "No Work Items in Refinement states right now",
+    },
+    {
+      situation: "no cadence",
+      nextRefinementDate: null,
+      need: {
+        verdict: null,
+        unavailableReason: "NoCadence",
+        low: null,
+        high: null,
+      },
+      renamed: {},
+      says: "No Work Items in Refinement states right now",
+    },
+    {
+      situation: "renamed terms",
+      nextRefinementDate: "2026-10-08",
+      need: { verdict: "Below", unavailableReason: null, low: 5, high: 8 },
+      renamed: { workItems: "Stories", refinement: "Grooming" },
+      says: "No Stories in Grooming states right now",
+    },
+  ])(
+    "says only '$says' when nothing is in refinement ($situation)",
+    async ({ nextRefinementDate, need, renamed, says }) => {
+      const { dependencies } = aLighthouse({
+        refinement: ok(
+          gravitysRefinement({
+            readyCount: 0,
+            nextRefinementDate,
+            workItems: [],
+            need,
+          }),
+        ),
+        terminology: ok(terminologyRenaming(renamed)),
+      });
+
+      const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+      expect(result.exitCode).toBe(0);
+      expect(shownLines(result.stdout)).toEqual([says]);
     },
   );
 

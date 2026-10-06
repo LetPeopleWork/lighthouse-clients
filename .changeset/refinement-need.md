@@ -18,7 +18,8 @@ Needs a Lighthouse newer than v26.10.3.6; an older server is told to upgrade and
   against the range the Team is likely to pull, and how many more to refine. It then lists the
   Work Items in refinement with the needed ones numbered and the "enough for the next Refinement"
   line where the web draws it. Without a number it says why: no Refinement cadence, not enough data
-  yet, or no refinement states. `--json` and `--toon` return the facts unchanged.
+  yet, or no refinement states. With nothing in refinement it says only "No Work Items in
+  Refinement states right now", as the web page does. `--json` and `--toon` return the facts unchanged.
 - The MCP tool `lighthouse_team_refinement_get` (input `{ id }`) returns the same facts plus a
   `summary` holding the sentence the web page states. Its description explains the verdict, the
   range and the cycle it covers.

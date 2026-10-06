@@ -1,3 +1,4 @@
+import { decode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import { createMcpCoreRuntime } from "./index";
 
@@ -91,14 +92,17 @@ const seededTerminology = [
 
 const ok = (value: unknown): ApiResult => ({ ok: true, value });
 
-const anAssistantOn = (refinement: ApiResult) => {
+const anAssistantOn = (
+  refinement: ApiResult,
+  team: ApiResult = ok({ id: GRAVITY_ID, name: "Team Gravity" }),
+) => {
   const asked: string[] = [];
   const client = {
     checkConnectivity: async () => ({ category: "success" }),
     getVersion: async () => ok("v26.10.7.1"),
     getTeam: async (teamId: number) => {
       asked.push(`team ${teamId}`);
-      return ok({ id: teamId, name: "Team Gravity" });
+      return team;
     },
     getTeamRefinement: async (teamId: number) => {
       asked.push(`refinement ${teamId}`);
@@ -112,6 +116,15 @@ const anAssistantOn = (refinement: ApiResult) => {
 
 const textOf = (result: Awaited<ReturnType<Runtime["callTool"]>>): string =>
   result.content.map((content) => content.text).join("\n");
+
+const PAYLOAD_LABEL = "refinement: ";
+
+// What an assistant reads back out of the tool's answer.
+const factsOf = (result: Awaited<ReturnType<Runtime["callTool"]>>) => {
+  const text = textOf(result);
+  expect(text.startsWith(PAYLOAD_LABEL)).toBe(true);
+  return decode(text.slice(PAYLOAD_LABEL.length)) as Record<string, unknown>;
+};
 
 describe("the refinement need tool", () => {
   it("is offered with a description that explains the verdict, the range and the cycle", () => {
@@ -160,6 +173,19 @@ describe("the refinement need tool", () => {
       "A Team admin can set a Refinement cadence to see how many Work Items are needed",
     );
     expect(text).not.toContain(" ready — ");
+  });
+
+  it("says only that nothing is in refinement when the list is empty", async () => {
+    const { runtime } = anAssistantOn(
+      ok({ ...gravitysRefinement(), readyCount: 0, workItems: [] }),
+    );
+
+    const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
+
+    expect(result.isError).toBe(false);
+    expect(factsOf(result).summary).toBe(
+      "No Work Items in Refinement states right now",
+    );
   });
 
   it.each([{ argumentsPayload: {} }, { argumentsPayload: { id: "gravity" } }])(

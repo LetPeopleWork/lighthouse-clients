@@ -234,11 +234,21 @@ const describeNeed = (
     : describeJudgedNeed(need);
 };
 
-/** The heading and the need sentence together, as the web page states them. */
+// A Team with refinement states but nothing in them gets this one sentence, without heading or need.
+const isNothingInRefinement = (refinement: TeamRefinement): boolean =>
+  !hasNoRefinementStates(refinement) && refinement.workItems.length === 0;
+
+/**
+ * The heading and the need sentence together, as the web page states them, or that nothing is in
+ * refinement right now.
+ */
 export const describeRefinementSummary = (
   refinement: TeamRefinement,
   wording: RefinementWording,
 ): string => {
+  if (isNothingInRefinement(refinement)) {
+    return `No ${wording.terms.workItems} in ${wording.terms.refinement} states right now`;
+  }
   const heading = describeHeading(refinement, wording);
   const need = describeNeed(refinement, wording);
   return need === null ? heading : `${heading}\n${need}`;
