@@ -111,6 +111,8 @@ See [packages/mcp-http/README.md](packages/mcp-http/README.md) for MCP client se
 
 ## Local Development
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for how the packages fit together, the conventions they share, and how to add a capability end to end.
+
 - Install dependencies: `pnpm install`
 - Run tests: `pnpm test`
 - Type-check all packages: `pnpm typecheck`
