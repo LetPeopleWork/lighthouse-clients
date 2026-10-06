@@ -1,6 +1,6 @@
 import { decode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
-import { createMcpCoreRuntime } from "./index";
+import { createMcpCoreRuntime, registerMcpTools } from "./index";
 
 type Runtime = ReturnType<typeof createMcpCoreRuntime>;
 type RuntimeClient = ReturnType<
@@ -318,5 +318,29 @@ describe("the refinement need tool", () => {
 
     expect(result.isError).toBe(true);
     expect(textOf(result)).toContain("Upgrade Lighthouse");
+  });
+
+  it("is registered with an MCP server as needing a whole-number Team id", () => {
+    const inputSchemas = new Map<
+      string,
+      { readonly safeParse: (value: unknown) => { readonly success: boolean } }
+    >();
+    const server = {
+      registerTool: (
+        name: string,
+        configuration: { readonly inputSchema: never },
+      ) => {
+        inputSchemas.set(name, configuration.inputSchema);
+      },
+    };
+
+    registerMcpTools(server as never, {
+      createClient: () => ({}) as never,
+    });
+
+    const inputSchema = inputSchemas.get(TOOL);
+    expect(inputSchema?.safeParse({ id: GRAVITY_ID }).success).toBe(true);
+    expect(inputSchema?.safeParse({}).success).toBe(false);
+    expect(inputSchema?.safeParse({ id: 3.5 }).success).toBe(false);
   });
 });

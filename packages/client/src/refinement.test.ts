@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createLighthouseClient } from "./index";
+import {
+  createLighthouseClient,
+  placeEnoughForLine,
+  type TeamRefinement,
+} from "./index";
 
 // Team Gravity on Tue 6 Oct: 3 Work Items ready against the 5–8 it is likely to pull from its next
 // Refinement on Thu 8 Oct to the one after. The facts exactly as the server sends them.
@@ -89,8 +93,13 @@ const aLighthouseAnswering = (
   answers: Readonly<Record<string, MockResponse>>,
 ) => {
   const requestedUrls: string[] = [];
-  const fetch = async (url: string): Promise<MockResponse> => {
+  const methods = new Map<string, string | undefined>();
+  const fetch = async (
+    url: string,
+    init?: { readonly method?: string },
+  ): Promise<MockResponse> => {
     requestedUrls.push(url);
+    methods.set(url, init?.method);
     if (url.endsWith(VERSION_PATH)) {
       return answering(serverVersion);
     }
@@ -107,7 +116,9 @@ const aLighthouseAnswering = (
   );
   const asksOtherThanTheVersion = () =>
     requestedUrls.filter((url) => !url.endsWith(VERSION_PATH));
-  return { client, asksOtherThanTheVersion };
+  const methodAskedFor = (path: string) =>
+    methods.get(`http://localhost:5000/api${path}`);
+  return { client, asksOtherThanTheVersion, methodAskedFor };
 };
 
 describe("the refinement need through the client", () => {
@@ -122,6 +133,7 @@ describe("the refinement need through the client", () => {
     expect(lighthouse.asksOtherThanTheVersion()).toEqual([
       "http://localhost:5000/api/v1/teams/3/refinement",
     ]);
+    expect(lighthouse.methodAskedFor("/v1/teams/3/refinement")).toBe("GET");
   });
 
   it("tells the caller to upgrade a Lighthouse that has no refinement yet, without asking it", async () => {
@@ -149,6 +161,23 @@ describe("the refinement need through the client", () => {
     const result = await lighthouse.client.getTerminology();
 
     expect(result).toEqual({ ok: true, value: renamedTerminology });
+    expect(lighthouse.methodAskedFor("/v1/terminology/all")).toBe("GET");
+  });
+
+  it("places no line among the listed Work Items when none is listed", () => {
+    const nothingListed = {
+      ...gravitysRefinement,
+      workItems: [],
+    } as unknown as TeamRefinement;
+
+    expect(
+      placeEnoughForLine(nothingListed, {
+        workItem: "Work Item",
+        workItems: "Work Items",
+        team: "Team",
+        refinement: "Refinement",
+      }),
+    ).toBeNull();
   });
 
   it("reports a failed terminology read as a failure the caller can fall back from", async () => {

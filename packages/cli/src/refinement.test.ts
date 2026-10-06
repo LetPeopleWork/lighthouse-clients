@@ -290,6 +290,22 @@ describe("lh refinement get", () => {
       isRefinementDay: true,
       says: "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the next Refinement. Refine 2 to 5 more.",
     },
+    {
+      verdict: "Below",
+      readyCount: 0,
+      low: 1,
+      high: 3,
+      isRefinementDay: false,
+      says: "0 ready — below the range of 1–3 Work Items Team Gravity is likely to pull until the Refinement after. Refine 1 to 3 more.",
+    },
+    {
+      verdict: "Below",
+      readyCount: 2,
+      low: 4,
+      high: 4,
+      isRefinementDay: false,
+      says: "2 ready — below the 4 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 more.",
+    },
   ])(
     "says '$says' for $readyCount ready against $low–$high ($verdict, Refinement day: $isRefinementDay)",
     async ({ verdict, readyCount, low, high, isRefinementDay, says }) => {
@@ -341,6 +357,13 @@ describe("lh refinement get", () => {
   it.each([
     {
       listed: 9,
+      high: 8,
+      numbered: 8,
+      lineFollows: "8 GR-073 Bulk import GR-012 Refinement",
+      lineSays: ENOUGH_FOR_THE_NEXT_REFINEMENT,
+    },
+    {
+      listed: 8,
       high: 8,
       numbered: 8,
       lineFollows: "8 GR-073 Bulk import GR-012 Refinement",
@@ -413,6 +436,13 @@ describe("lh refinement get", () => {
       nextRefinementDate: "2026-10-08",
       heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
       hint: "Not enough data yet — need at least 5 days with completed items to forecast.",
+    },
+    {
+      unavailableReason: "NoCadence",
+      refinementConfigured: true,
+      nextRefinementDate: "2026-10-08",
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+      hint: "A Team admin can set a Refinement cadence to see how many Work Items are needed",
     },
   ])(
     "says why there is no number when the reason is $unavailableReason, and lists the Work Items without a line",
@@ -520,6 +550,76 @@ describe("lh refinement get", () => {
     },
   );
 
+  it.each([
+    { missing: "the verdict", change: {}, need: { verdict: null } },
+    { missing: "the low end", change: {}, need: { low: null } },
+    { missing: "the high end", change: {}, need: { high: null } },
+    {
+      missing: "the low percentile",
+      change: {},
+      need: { lowPercentile: null },
+    },
+    {
+      missing: "a cycle start that is only a day",
+      change: {},
+      need: { cycleStart: "2026-10-08-01" },
+    },
+    {
+      missing: "a cycle end that is only a day",
+      change: {},
+      need: { cycleEnd: "12026-10-08" },
+    },
+    {
+      missing: "a cycle end in a month the calendar has",
+      change: {},
+      need: { cycleEnd: "2026-13-08" },
+    },
+    { missing: "the ready count", change: { readyCount: undefined }, need: {} },
+  ])(
+    "heads the list with only the next Refinement when a verdict comes without $missing",
+    async ({ change, need }) => {
+      const judged = gravitysRefinement();
+      const { dependencies } = aLighthouse({
+        refinement: ok({
+          ...judged,
+          ...change,
+          need: { ...judged.need, ...need },
+        }),
+      });
+
+      const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+      expect(result.exitCode).toBe(0);
+      expect(shownLines(result.stdout).slice(0, 2)).toEqual([
+        "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+        "# Work Item Parent State",
+      ]);
+    },
+  );
+
+  it("says why there is no number when a verdict comes with a reason there is none", async () => {
+    const { dependencies } = aLighthouse({
+      refinement: ok(
+        gravitysRefinement({
+          need: {
+            verdict: "Below",
+            unavailableReason: "InsufficientData",
+            low: 5,
+            high: 8,
+          },
+        }),
+      ),
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)[1]).toBe(
+      "Not enough data yet — need at least 5 days with completed items to forecast.",
+    );
+    expect(prose(result.stdout)).not.toContain("ready —");
+  });
+
   it("tells how to get a cadence when a verdict comes without a next Refinement", async () => {
     const { dependencies } = aLighthouse({
       refinement: ok(
@@ -539,30 +639,33 @@ describe("lh refinement get", () => {
     ]);
   });
 
-  it("tells a Team without refinement states to choose some, rather than that nothing is in them", async () => {
-    const { dependencies } = aLighthouse({
-      refinement: ok(
-        gravitysRefinement({
-          refinementConfigured: false,
-          workItems: [],
-          need: {
-            verdict: null,
-            unavailableReason: "NoRefinementStates",
-            low: null,
-            high: null,
-          },
-        }),
-      ),
-    });
+  it.each([{ refinementConfigured: false }, { refinementConfigured: true }])(
+    "tells a Team without refinement states to choose some, rather than that nothing is in them (configured: $refinementConfigured)",
+    async ({ refinementConfigured }) => {
+      const { dependencies } = aLighthouse({
+        refinement: ok(
+          gravitysRefinement({
+            refinementConfigured,
+            workItems: [],
+            need: {
+              verdict: null,
+              unavailableReason: "NoRefinementStates",
+              low: null,
+              high: null,
+            },
+          }),
+        ),
+      });
 
-    const result = await runCliCommand(refinementOfGravity(), dependencies);
+      const result = await runCliCommand(refinementOfGravity(), dependencies);
 
-    expect(result.exitCode).toBe(0);
-    expect(shownLines(result.stdout)).toEqual([
-      "Team Gravity · No Refinement states",
-      "A Team admin needs to choose refinement states first",
-    ]);
-  });
+      expect(result.exitCode).toBe(0);
+      expect(shownLines(result.stdout)).toEqual([
+        "Team Gravity · No Refinement states",
+        "A Team admin needs to choose refinement states first",
+      ]);
+    },
+  );
 
   it.each([
     {
@@ -609,7 +712,7 @@ describe("lh refinement get", () => {
       const result = await runCliCommand(refinementOfGravity(), dependencies);
 
       expect(result.exitCode).toBe(0);
-      expect(shownLines(result.stdout)).toEqual([says]);
+      expect(result.stdout).toBe(says);
     },
   );
 
@@ -679,7 +782,25 @@ describe("lh refinement get", () => {
     expect(prose(result.stdout)).toContain(
       "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
     );
+    expect(shownLines(result.stdout)).toContain("# Work Item Parent State");
     expect(result.stderr).toBe("");
+  });
+
+  it("names a Team that comes without a name by the seeded word for a Team when the terms cannot be read", async () => {
+    const { dependencies } = aLighthouse({
+      team: ok({ id: GRAVITY_ID }),
+      terminology: {
+        ok: false,
+        error: { category: "unexpected", reason: "terminology unavailable" },
+      },
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)[0]).toBe(
+      "Team 3 · Next Refinement: Thu 8 Oct · in 2 days",
+    );
   });
 
   it.each([
@@ -811,5 +932,110 @@ describe("lh refinement get", () => {
     expect(group.exitCode).toBe(0);
     expect(group.stdout).toContain("lh refinement get --team-id <id>");
     expect(shownLines(overview.stdout)).toContain("refinement");
+  });
+
+  it("explains the refinement group in its help", async () => {
+    const { dependencies } = aLighthouse({});
+
+    const result = await runCliCommand(["refinement"], dependencies);
+
+    expect(result.stdout.split("\n")).toEqual([
+      "Usage:",
+      "  lh refinement get --team-id <id>",
+      "",
+      "  get states how many Work Items the Team needs ready for the next Refinement and",
+      "  lists the Work Items in refinement, in the instance's own terms. --json and --toon",
+      "  return the facts unchanged. Requires Lighthouse newer than v26.10.3.6.",
+    ]);
+  });
+
+  it("refuses a refinement subcommand it does not know, without asking Lighthouse", async () => {
+    const { dependencies, asked } = aLighthouse({});
+
+    const result = await runCliCommand(
+      ["refinement", "list", "--team-id", String(GRAVITY_ID)],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Unknown refinement subcommand: list");
+    expect(asked).toEqual([]);
+  });
+
+  it("asks to connect first when no Lighthouse is connected", async () => {
+    const { dependencies, asked } = aLighthouse({});
+
+    const result = await runCliCommand(refinementOfGravity(), {
+      ...dependencies,
+      loadConnection: async () => null,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Not connected");
+    expect(asked).toEqual([]);
+  });
+
+  it.each(["3abc", "abc3"])(
+    "refuses --team-id %s without asking Lighthouse",
+    async (teamId) => {
+      const { dependencies, asked } = aLighthouse({});
+
+      const result = await runCliCommand(
+        ["refinement", "get", "--team-id", teamId],
+        dependencies,
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Invalid --team-id");
+      expect(asked).toEqual([]);
+    },
+  );
+
+  it("reads a Team whose id has more than one digit", async () => {
+    const { dependencies, asked } = aLighthouse({});
+
+    const result = await runCliCommand(
+      ["refinement", "get", "--team-id", "12"],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(asked).toContain("refinement 12");
+  });
+
+  it.each([
+    { team: null, shape: "nothing" },
+    { team: "Team Gravity", shape: "a bare string" },
+    { team: { id: GRAVITY_ID, name: 42 }, shape: "a name that is not text" },
+  ])(
+    "names the Team by the instance's word for a Team when the Team read carries $shape",
+    async ({ team }) => {
+      const { dependencies } = aLighthouse({ team: ok(team) });
+
+      const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+      expect(result.exitCode).toBe(0);
+      expect(shownLines(result.stdout)[0]).toBe(
+        "Team 3 · Next Refinement: Thu 8 Oct · in 2 days",
+      );
+    },
+  );
+
+  it("lines the Work Items up under their column headings, a blank line below the need", async () => {
+    const { dependencies } = aLighthouse({});
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    const printed = result.stdout.split("\n");
+    expect(printed[2]).toBe("");
+    const header = printed[3];
+    expect(header.startsWith("# ")).toBe(true);
+    const pdfExport = printed.find((line) => line.includes("GR-051")) ?? "";
+    const darkMode = printed.find((line) => line.includes("GR-080")) ?? "";
+    expect(pdfExport.indexOf("GR-051")).toBe(header.indexOf("Work Item"));
+    expect(pdfExport.indexOf("GR-010")).toBe(header.indexOf("Parent"));
+    expect(pdfExport.indexOf("Refinement")).toBe(header.indexOf("State"));
+    expect(darkMode.indexOf("GR-080")).toBe(header.indexOf("Work Item"));
+    expect(printed.filter((line) => /\s$/u.test(line))).toEqual([]);
   });
 });
