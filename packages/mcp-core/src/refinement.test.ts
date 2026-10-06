@@ -95,6 +95,7 @@ const ok = (value: unknown): ApiResult => ({ ok: true, value });
 const anAssistantOn = (
   refinement: ApiResult,
   team: ApiResult = ok({ id: GRAVITY_ID, name: "Team Gravity" }),
+  terminology: ApiResult = ok(seededTerminology),
 ) => {
   const asked: string[] = [];
   const client = {
@@ -108,7 +109,7 @@ const anAssistantOn = (
       asked.push(`refinement ${teamId}`);
       return refinement;
     },
-    getTerminology: async () => ok(seededTerminology),
+    getTerminology: async () => terminology,
   } as unknown as RuntimeClient;
   const runtime: Runtime = createMcpCoreRuntime({ createClient: () => client });
   return { runtime, asked };
@@ -185,6 +186,37 @@ describe("the refinement need tool", () => {
     expect(result.isError).toBe(false);
     expect(factsOf(result).summary).toBe(
       "No Work Items in Refinement states right now",
+    );
+  });
+
+  it("passes a failed read of the Team straight through", async () => {
+    const { runtime } = anAssistantOn(ok(gravitysRefinement()), {
+      ok: false,
+      error: { category: "notFound", reason: "Team 3 does not exist" },
+    });
+
+    const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toBe("refinement: notFound (Team 3 does not exist)");
+  });
+
+  it("names a Team that comes without a name by the instance's word for a Team", async () => {
+    const { runtime } = anAssistantOn(
+      ok(gravitysRefinement()),
+      ok({ id: GRAVITY_ID }),
+      ok(
+        seededTerminology.map((entry) =>
+          entry.key === "team" ? { ...entry, value: "Squad" } : entry,
+        ),
+      ),
+    );
+
+    const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
+
+    expect(result.isError).toBe(false);
+    expect(String(factsOf(result).summary).split("\n")[0]).toBe(
+      "Squad 3 · Next Refinement: Thu 8 Oct · in 2 days",
     );
   });
 

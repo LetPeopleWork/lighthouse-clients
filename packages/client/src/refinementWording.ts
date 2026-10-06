@@ -45,13 +45,17 @@ const resolveRefinementTerms = (
   };
 };
 
-const nameTheTeam = (team: unknown, teamId: number): string =>
+const nameTheTeam = (
+  team: unknown,
+  teamId: number,
+  terms: RefinementTerms,
+): string =>
   typeof team === "object" &&
   team !== null &&
   "name" in team &&
   typeof team.name === "string"
     ? team.name
-    : `Team ${teamId}`;
+    : `${terms.team} ${teamId}`;
 
 type Read<TValue, TError> =
   | { readonly ok: true; readonly value: TValue }
@@ -78,12 +82,12 @@ export const readRefinementWording = async <TError>(
   if (!team.ok) {
     return team;
   }
+  const terms = resolveRefinementTerms(
+    terminology.ok ? terminology.value : null,
+  );
   return {
     ok: true,
-    value: {
-      teamName: nameTheTeam(team.value, teamId),
-      terms: resolveRefinementTerms(terminology.ok ? terminology.value : null),
-    },
+    value: { teamName: nameTheTeam(team.value, teamId, terms), terms },
   };
 };
 

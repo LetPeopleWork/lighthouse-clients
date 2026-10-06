@@ -592,6 +592,35 @@ describe("lh refinement get", () => {
     expect(result.stderr).toContain("Upgrade Lighthouse");
   });
 
+  it("passes a failed read of the Team straight through", async () => {
+    const { dependencies } = aLighthouse({
+      team: {
+        ok: false,
+        error: { category: "notFound", reason: "Team 3 does not exist" },
+      },
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Team 3 does not exist");
+    expect(result.stdout).toBe("");
+  });
+
+  it("names a Team that comes without a name by the instance's word for a Team", async () => {
+    const { dependencies } = aLighthouse({
+      team: ok({ id: GRAVITY_ID }),
+      terminology: ok(terminologyRenaming({ team: "Squad" })),
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)[0]).toBe(
+      "Squad 3 · Next Refinement: Thu 8 Oct · in 2 days",
+    );
+  });
+
   it("lists the command in the refinement group help and the group in the overview", async () => {
     const { dependencies } = aLighthouse({});
 
