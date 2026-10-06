@@ -21,7 +21,8 @@ upgrade and is never asked.
   `lh refinement comment … --text <text>` and `lh refinement take-back …` answer in one line, such as
   `Recorded: Ana Lima — Yes on GR-073. That made GR-073 Ready.` A "Yes, if…" needs its condition. Lighthouse's
   refusals come back in plain words. `--json` and `--toon` return the Work Item as the vote left it.
-- With sign-in, a vote is the signed-in account's. Without it, a vote carries the name given with `--as` or
+- With sign-in, a vote is the signed-in account's; `lh` goes by what Lighthouse says, not by what was answered
+  when the connection was saved. Without it, a vote carries the name given with `--as` or
   stored once with `lh config voter set --name <name>` (`lh config voter` shows it); `lh` never guesses a name.
   The first vote mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the CLI
   config, so the vote can be taken back from that machine. The file is its owner's alone (on Linux and

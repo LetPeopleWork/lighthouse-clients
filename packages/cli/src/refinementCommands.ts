@@ -15,6 +15,7 @@ import {
   readRefinementWording,
   readVoteRefusal,
   STANDALONE_VOTER_KEY_SCOPE,
+  type TeamRefinement,
   type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -144,8 +145,35 @@ const loadKeptVoterKey = async (
   (await voterKeyStoreOf(connection, dependencies).load()) ?? undefined;
 
 // With sign-in Lighthouse knows the voter from the credential, so the client sends neither name nor key.
-const isSignedIn = (connection: CliConnection): boolean =>
-  connection.mode === "server" && connection.authMode === "required";
+// Lighthouse says which it is on every refinement it answers; what was answered when the connection was
+// saved may be wrong, or out of date.
+const isSignedIn = (refinement: Pick<TeamRefinement, "voterIdentity">) =>
+  refinement.voterIdentity === "Account";
+
+const readRefinement = async (
+  client: RefinementClient,
+  teamId: number,
+  outputFormat: OutputFormat,
+  voterKey?: string,
+): Promise<TeamRefinement | CliCommandResult> => {
+  const refinement = await client.getTeamRefinement(teamId, { voterKey });
+  return refinement.ok
+    ? refinement.value
+    : mapApiResultToCliResult(refinement, outputFormat);
+};
+
+const keepCliVoterKey = async (
+  connection: CliConnection,
+  dependencies: VoterDependencies,
+): Promise<string | CliCommandResult> => {
+  try {
+    return await keepVoterKey(voterKeyStoreOf(connection, dependencies));
+  } catch (error: unknown) {
+    return getErrorResult(
+      error instanceof Error ? error.message : "The voter key was not kept.",
+    );
+  }
+};
 
 type WriteVoter = {
   readonly voterName?: string;
@@ -154,10 +182,20 @@ type WriteVoter = {
 
 const resolveWriteVoter = async (
   args: readonly string[],
+  outputFormat: OutputFormat,
   connection: CliConnection,
-  dependencies: VoterDependencies,
+  dependencies: RefinementCommandDependencies,
+  teamId: number,
 ): Promise<WriteVoter | CliCommandResult> => {
-  if (isSignedIn(connection)) {
+  const refinement = await readRefinement(
+    dependencies.createClient(connection),
+    teamId,
+    outputFormat,
+  );
+  if (isCliCommandResult(refinement)) {
+    return refinement;
+  }
+  if (isSignedIn(refinement)) {
     return {};
   }
   const voterName =
@@ -167,10 +205,8 @@ const resolveWriteVoter = async (
   if (voterName === undefined) {
     return getErrorResult(GIVE_YOUR_NAME);
   }
-  return {
-    voterName,
-    voterKey: await keepVoterKey(voterKeyStoreOf(connection, dependencies)),
-  };
+  const voterKey = await keepCliVoterKey(connection, dependencies);
+  return isCliCommandResult(voterKey) ? voterKey : { voterName, voterKey };
 };
 
 const mapVoteResultToCliResult = async (
@@ -244,7 +280,13 @@ const runRefinementVote: RefinementCommand = async (
       describeMissingCondition('add --comment "<what has to be true>"'),
     );
   }
-  const voter = await resolveWriteVoter(args, connection, dependencies);
+  const voter = await resolveWriteVoter(
+    args,
+    outputFormat,
+    connection,
+    dependencies,
+    target.teamId,
+  );
   if (isCliCommandResult(voter)) {
     return voter;
   }
@@ -278,7 +320,13 @@ const runRefinementComment: RefinementCommand = async (
   if (comment === undefined) {
     return getErrorResult("Missing required --text for refinement comment.");
   }
-  const voter = await resolveWriteVoter(args, connection, dependencies);
+  const voter = await resolveWriteVoter(
+    args,
+    outputFormat,
+    connection,
+    dependencies,
+    target.teamId,
+  );
   if (isCliCommandResult(voter)) {
     return voter;
   }
@@ -310,32 +358,29 @@ const runRefinementTakeBack: RefinementCommand = async (
   const nothingToTakeBack = getSuccessResult(
     describeNothingToTakeBack(target.workItem),
   );
-  const signedIn = isSignedIn(connection);
-  const voterKey = signedIn
-    ? undefined
-    : await loadKeptVoterKey(connection, dependencies);
-  if (!signedIn && voterKey === undefined) {
-    return nothingToTakeBack;
-  }
-
+  const keptVoterKey = await loadKeptVoterKey(connection, dependencies);
   const client = dependencies.createClient(connection);
-  const refinement = await client.getTeamRefinement(target.teamId, {
-    voterKey,
-  });
-  if (!refinement.ok) {
-    return mapApiResultToCliResult(refinement, outputFormat);
+  const refinement = await readRefinement(
+    client,
+    target.teamId,
+    outputFormat,
+    keptVoterKey,
+  );
+  if (isCliCommandResult(refinement)) {
+    return refinement;
   }
-  if (!holdsMyVoteOn(refinement.value, target.workItem)) {
+  if (!holdsMyVoteOn(refinement, target.workItem)) {
     return nothingToTakeBack;
   }
 
+  const signedIn = isSignedIn(refinement);
   const voterName = signedIn
     ? null
     : ((await dependencies.loadVoterName?.()) ?? null);
   const result = await client.takeBackRefinementVote(
     target.teamId,
     target.workItem,
-    { channel: CHANNEL, voterKey },
+    { channel: CHANNEL, voterKey: signedIn ? undefined : keptVoterKey },
   );
   return mapVoteResultToCliResult(result, outputFormat, client, (takenBack) =>
     describeTakenBack({ workItem: target.workItem, voterName }, takenBack),

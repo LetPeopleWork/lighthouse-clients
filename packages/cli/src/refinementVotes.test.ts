@@ -99,11 +99,16 @@ const gravitysVotedBacklog = [
   }),
 ];
 
-const gravitysRefinement = (workItems: readonly unknown[]) => ({
+type VoterIdentity = "Account" | "SelfDeclared";
+
+const gravitysRefinement = (
+  workItems: readonly unknown[],
+  voterIdentity: VoterIdentity = "SelfDeclared",
+) => ({
   refinementConfigured: true,
   workItems,
   yardstick: { source: "Sle", days: 7, probability: 85 },
-  voterIdentity: "SelfDeclared",
+  voterIdentity,
   readyByVotesCount: 3,
   stagesConfigured: false,
   readyCount: 3,
@@ -196,9 +201,14 @@ const aLighthouse = (
     readonly signIn?: boolean;
     readonly voter?: Voter;
     readonly connectedTo?: string;
+    /** Whom Lighthouse takes a vote from, whatever was answered when the connection was saved. */
+    readonly voterIdentity?: VoterIdentity;
+    readonly keyFileRefusal?: string;
   } = {},
 ) => {
   const asked: Asked[] = [];
+  const voterIdentity =
+    options.voterIdentity ?? (options.signIn ? "Account" : "SelfDeclared");
   const answers: Record<string, MockResponse> = {
     [`GET /v1/teams/${GRAVITY_ID}`]: answering({
       id: GRAVITY_ID,
@@ -206,7 +216,7 @@ const aLighthouse = (
     }),
     "GET /v1/terminology/all": answering(seededTerminology),
     [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering(
-      gravitysRefinement(gravitysVotedBacklog),
+      gravitysRefinement(gravitysVotedBacklog, voterIdentity),
     ),
     ...options.answers,
   };
@@ -253,6 +263,9 @@ const aLighthouse = (
     loadVoterKey: async (lighthouseUrl: string) =>
       voterKeys.get(lighthouseUrl) ?? null,
     saveVoterKey: async (lighthouseUrl: string, key: string) => {
+      if (options.keyFileRefusal !== undefined) {
+        throw new Error(options.keyFileRefusal);
+      }
       voterKeys.set(lighthouseUrl, key);
     },
     readTextFile: async (filePath: string) => {
@@ -698,7 +711,7 @@ describe("lh refinement vote, comment and take-back", () => {
       ),
     },
   ])(
-    "refuses $case without a name before asking Lighthouse, and never makes one up",
+    "refuses $case without a name before sending it, and never makes one up",
     async ({ args }) => {
       const lighthouse = aLighthouse({ voter: { name: null } });
 
@@ -706,7 +719,7 @@ describe("lh refinement vote, comment and take-back", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain(GIVE_YOUR_NAME);
-      expect(lighthouse.asked).toEqual([]);
+      expect(lighthouse.writes()).toEqual([]);
       expect(lighthouse.storedVoterKey()).toBeUndefined();
     },
   );
@@ -956,6 +969,151 @@ describe("lh refinement vote, comment and take-back", () => {
       expect(result.stdout.trim()).toBe(encodes(asTheVoteLeftIt));
     },
   );
+});
+
+// Whether a vote is the signed-in account's is Lighthouse's to say, on every refinement it answers. The
+// y/N answered when the connection was saved may be wrong, or the instance may have changed since.
+describe("lh refinement writes go by whom Lighthouse takes a vote from", () => {
+  const anasYesOnPdfExport = {
+    [`POST ${workItemPath("GR-051")}/votes`]: answering({
+      ...pdfExport({ split: { yes: 1, yesBut: 0, no: 0 }, myVote: "Yes" }),
+      madeReady: false,
+    }),
+  };
+
+  // @driving_port
+  it("votes as the signed-in account, with no name and no key, when Lighthouse says so though the connection was saved without sign-in", async () => {
+    const lighthouse = aLighthouse({
+      signIn: false,
+      voterIdentity: "Account",
+      voter: { name: null },
+      answers: anasYesOnPdfExport,
+    });
+
+    const result = await runCliCommand(
+      onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      "Recorded: your Yes on GR-051. GR-051: 3 more Yes needed.",
+    );
+    const [vote] = lighthouse.writes();
+    expect(vote.body).toEqual({ answer: "Yes", channel: "Cli" });
+    expect(vote.headers[VOTER_KEY_HEADER]).toBeUndefined();
+    expect(lighthouse.storedVoterKey()).toBeUndefined();
+  });
+
+  // @error
+  it("asks for a name, and sends nothing, when Lighthouse runs without sign-in though the connection was saved with it", async () => {
+    const lighthouse = aLighthouse({
+      signIn: true,
+      voterIdentity: "SelfDeclared",
+      voter: { name: null },
+      answers: anasYesOnPdfExport,
+    });
+
+    const result = await runCliCommand(
+      onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(GIVE_YOUR_NAME);
+    expect(lighthouse.writes()).toEqual([]);
+    expect(lighthouse.storedVoterKey()).toBeUndefined();
+  });
+
+  it("votes under the name and a kept key when Lighthouse runs without sign-in though the connection was saved with it", async () => {
+    const lighthouse = aLighthouse({
+      signIn: true,
+      voterIdentity: "SelfDeclared",
+      voter: { name: ANA_LIMA },
+      answers: anasYesOnPdfExport,
+    });
+
+    const result = await runCliCommand(
+      onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    const [vote] = lighthouse.writes();
+    expect(vote.body).toEqual({
+      answer: "Yes",
+      channel: "Cli",
+      voterName: ANA_LIMA,
+    });
+    expect(vote.headers[VOTER_KEY_HEADER]).toBe(lighthouse.storedVoterKey());
+    expect(lighthouse.storedVoterKey()).toBeDefined();
+  });
+
+  it("takes back the signed-in account's vote, with no key, when Lighthouse says so though the connection was saved without sign-in", async () => {
+    const lighthouse = aLighthouse({
+      signIn: false,
+      voterIdentity: "Account",
+      voter: { name: null },
+      answers: {
+        [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(
+          pdfExport({ split: { yes: 0, yesBut: 1, no: 0 } }),
+        ),
+      },
+    });
+
+    const result = await runCliCommand(
+      onGravity("take-back", "--work-item", "GR-051"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      "Took back your vote on GR-051. GR-051: 3 more Yes needed.",
+    );
+    const [takeBack] = lighthouse.writes();
+    expect(takeBack.method).toBe("DELETE");
+    expect(takeBack.headers[VOTER_KEY_HEADER]).toBeUndefined();
+  });
+
+  // @error
+  it("says why it cannot keep a voter key, and sends nothing, when the key file cannot be written", async () => {
+    const theFileRefused =
+      "The voter key file /home/ana/.config/lighthouse-clients/voter-keys.json cannot be read; fix or remove it.";
+    const lighthouse = aLighthouse({
+      voter: { name: ANA_LIMA },
+      keyFileRefusal: theFileRefused,
+      answers: anasYesOnPdfExport,
+    });
+
+    const result = await runCliCommand(
+      onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(theFileRefused);
+    expect(lighthouse.writes()).toEqual([]);
+  });
+
+  // @error
+  it("passes on Lighthouse's answer when the refinement cannot be read, and sends nothing", async () => {
+    const lighthouse = aLighthouse({
+      voter: { name: ANA_LIMA },
+      answers: {
+        ...anasYesOnPdfExport,
+        [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering("not found", 404),
+      },
+    });
+
+    const result = await runCliCommand(
+      onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("404");
+    expect(lighthouse.writes()).toEqual([]);
+  });
 });
 
 describe("lh config voter", () => {
