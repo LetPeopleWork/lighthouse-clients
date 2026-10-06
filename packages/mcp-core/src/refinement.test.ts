@@ -189,6 +189,23 @@ describe("the refinement need tool", () => {
     );
   });
 
+  it("states no verdict when the facts come without a next Refinement", async () => {
+    const { runtime } = anAssistantOn(
+      ok({
+        ...gravitysRefinement(),
+        nextRefinementDate: null,
+        daysUntilNextRefinement: null,
+      }),
+    );
+
+    const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
+
+    expect(result.isError).toBe(false);
+    expect(factsOf(result).summary).toBe(
+      "Team Gravity · No Refinement cadence\nA Team admin can set a Refinement cadence to see how many Work Items are needed",
+    );
+  });
+
   it("passes a failed read of the Team straight through", async () => {
     const { runtime } = anAssistantOn(ok(gravitysRefinement()), {
       ok: false,

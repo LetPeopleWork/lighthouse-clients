@@ -397,6 +397,100 @@ describe("lh refinement get", () => {
     },
   );
 
+  it.each([
+    {
+      missing: "the next Refinement",
+      change: { nextRefinementDate: null, daysUntilNextRefinement: null },
+      need: {},
+      heading: "Team Gravity · No Refinement cadence",
+    },
+    {
+      missing: "a cycle start that is a day",
+      change: {},
+      need: { cycleStart: "not-a-day" },
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      missing: "a cycle end that is a day",
+      change: {},
+      need: { cycleEnd: "2026-02-30" },
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      missing: "the cycle end",
+      change: {},
+      need: { cycleEnd: null },
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      missing: "the low percentile",
+      change: {},
+      need: { lowPercentile: null },
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      missing: "the high percentile",
+      change: {},
+      need: { highPercentile: null },
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      missing: "the working days",
+      change: {},
+      need: { horizonWorkingDays: null },
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      missing: "the ready count",
+      change: { readyCount: undefined },
+      need: {},
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+  ])(
+    "shows no verdict, numbers and line when a verdict comes without $missing, as the web does",
+    async ({ change, need, heading }) => {
+      const judged = gravitysRefinement();
+      const { dependencies } = aLighthouse({
+        refinement: ok({
+          ...judged,
+          ...change,
+          need: { ...judged.need, ...need },
+        }),
+      });
+
+      const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+      expect(result.exitCode).toBe(0);
+      const lines = shownLines(result.stdout);
+      expect(lines[0]).toBe(heading);
+      expect(prose(result.stdout)).not.toContain("ready —");
+      expect(result.stdout).not.toContain("enough for the next");
+      expect(lines.filter((shown) => /^\d+ GR-/u.test(shown))).toEqual([]);
+      expect(lines.filter((shown) => shown.startsWith("GR-"))).toHaveLength(
+        gravitysBacklog.length,
+      );
+    },
+  );
+
+  it("tells how to get a cadence when a verdict comes without a next Refinement", async () => {
+    const { dependencies } = aLighthouse({
+      refinement: ok(
+        gravitysRefinement({
+          nextRefinementDate: null,
+          daysUntilNextRefinement: null,
+        }),
+      ),
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout).slice(0, 2)).toEqual([
+      "Team Gravity · No Refinement cadence",
+      "A Team admin can set a Refinement cadence to see how many Work Items are needed",
+    ]);
+  });
+
   it("tells a Team without refinement states to choose some, rather than that nothing is in them", async () => {
     const { dependencies } = aLighthouse({
       refinement: ok(

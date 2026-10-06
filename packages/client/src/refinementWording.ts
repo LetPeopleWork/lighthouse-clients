@@ -190,22 +190,54 @@ const describeHeading = (
 ): string =>
   `${wording.teamName} · ${describeNextRefinement(refinement, wording.terms)}`;
 
-const judgedNeedOf = (
-  refinement: TeamRefinement,
-  wording: RefinementWording,
-): JudgedNeed | null => {
-  const { verdict, low, high } = refinement.need;
-  if (verdict === null || low === null || high === null) {
+const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/u;
+
+// Rejects a day the calendar does not have, such as 2026-02-30, which Date would roll into March.
+const isCalendarDay = (value: string | null): boolean => {
+  if (value === null || !CALENDAR_DAY.test(value)) {
+    return false;
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+};
+
+/** A verdict with every fact it is said with. */
+type ShownVerdict = {
+  readonly verdict: "Below" | "In" | "Above";
+  readonly low: number;
+  readonly high: number;
+  readonly highPercentile: number;
+};
+
+type JudgedFacts = RefinementNeed & ShownVerdict;
+
+const isJudged = (need: RefinementNeed): need is JudgedFacts =>
+  need.verdict !== null &&
+  need.low !== null &&
+  need.high !== null &&
+  need.lowPercentile !== null &&
+  need.highPercentile !== null &&
+  need.horizonWorkingDays !== null &&
+  isCalendarDay(need.cycleStart) &&
+  isCalendarDay(need.cycleEnd);
+
+/** The verdict the web tab shows, or null when one of the facts it is said with is missing. */
+const shownVerdictOf = (refinement: TeamRefinement): ShownVerdict | null => {
+  const { need } = refinement;
+  if (
+    !isJudged(need) ||
+    refinement.readyCount === undefined ||
+    refinement.nextRefinementDate == null
+  ) {
     return null;
   }
-  return {
-    verdict,
-    readyCount: refinement.readyCount,
-    low,
-    high,
-    isRefinementDay: refinement.isRefinementDay,
-    wording,
-  };
+  const { verdict, low, high, highPercentile } = need;
+  return { verdict, low, high, highPercentile };
 };
 
 const describeWhyNoNumber = (
@@ -215,27 +247,40 @@ const describeWhyNoNumber = (
   if (hasNoRefinementStates(refinement)) {
     return `A ${terms.team} admin needs to choose ${terms.refinement.toLowerCase()} states first`;
   }
-  if (refinement.need.unavailableReason === "NoCadence") {
-    return `A ${terms.team} admin can set a ${terms.refinement} cadence to see how many ${terms.workItems} are needed`;
-  }
   if (refinement.need.unavailableReason === "InsufficientData") {
     return NOT_ENOUGH_DATA;
+  }
+  if (
+    refinement.need.unavailableReason === "NoCadence" ||
+    refinement.nextRefinementDate === null
+  ) {
+    return `A ${terms.team} admin can set a ${terms.refinement} cadence to see how many ${terms.workItems} are needed`;
   }
   return null;
 };
 
 /**
  * "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after.
- * Refine 2 to 5 more.", or, without a verdict, why there is no number.
+ * Refine 2 to 5 more.", or, without a verdict to show, why there is no number.
  */
 const describeNeed = (
   refinement: TeamRefinement,
   wording: RefinementWording,
 ): string | null => {
-  const need = judgedNeedOf(refinement, wording);
-  return need === null
-    ? describeWhyNoNumber(refinement, wording.terms)
-    : describeJudgedNeed(need);
+  const shown = shownVerdictOf(refinement);
+  if (
+    shown === null ||
+    hasNoRefinementStates(refinement) ||
+    refinement.need.unavailableReason !== null
+  ) {
+    return describeWhyNoNumber(refinement, wording.terms);
+  }
+  return describeJudgedNeed({
+    ...shown,
+    readyCount: refinement.readyCount,
+    isRefinementDay: refinement.isRefinementDay,
+    wording,
+  });
 };
 
 // A Team with refinement states but nothing in them gets this one sentence, without heading or need.
@@ -273,35 +318,35 @@ const describeAllNeeded = (listed: number, terms: RefinementTerms): string => {
 };
 
 const describeEnoughFor = (
-  need: RefinementNeed,
+  verdict: ShownVerdict,
   terms: RefinementTerms,
 ): string =>
-  `enough for the next ${terms.refinement} (${need.highPercentile}%) · not needed before then`;
+  `enough for the next ${terms.refinement} (${verdict.highPercentile}%) · not needed before then`;
 
 /**
  * The line follows the Work Item that makes up the number needed. When fewer are listed than that, it
  * follows the last one and says all of them are needed; when none are needed, it comes first. Without
- * a verdict there is no line.
+ * a verdict to show there is no line.
  */
 export const placeEnoughForLine = (
   refinement: TeamRefinement,
   terms: RefinementTerms,
 ): EnoughForLine | null => {
-  const { need } = refinement;
+  const verdict = shownVerdictOf(refinement);
   const listed = refinement.workItems.length;
-  if (need.verdict === null || need.high === null || listed === 0) {
+  if (verdict === null || listed === 0) {
     return null;
   }
-  if (listed < need.high) {
+  if (listed < verdict.high) {
     return { afterRows: listed, says: describeAllNeeded(listed, terms) };
   }
-  return { afterRows: need.high, says: describeEnoughFor(need, terms) };
+  return { afterRows: verdict.high, says: describeEnoughFor(verdict, terms) };
 };
 
 /** How many of the listed Work Items carry a number: those needed, while a verdict is shown. */
 export const countNumberedRows = (refinement: TeamRefinement): number => {
-  const { need } = refinement;
-  return need.verdict === null || need.high === null
+  const verdict = shownVerdictOf(refinement);
+  return verdict === null
     ? 0
-    : Math.min(need.high, refinement.workItems.length);
+    : Math.min(verdict.high, refinement.workItems.length);
 };
