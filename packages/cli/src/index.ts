@@ -58,6 +58,7 @@ type CliDomainClientLike = Pick<
   | "castRefinementVote"
   | "addRefinementComment"
   | "takeBackRefinementVote"
+  | "getRefinementLog"
   | "getTerminology"
   | "listPortfolios"
   | "getPortfolio"

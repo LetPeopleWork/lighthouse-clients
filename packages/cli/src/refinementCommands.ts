@@ -12,6 +12,7 @@ import {
   type LighthouseVoterKeyStore,
   myVoteOn,
   type RefinementAnswer,
+  readNameOfMyVote,
   readRefinementWording,
   readVoteRefusal,
   STANDALONE_VOTER_KEY_SCOPE,
@@ -47,6 +48,7 @@ type RefinementClient = Pick<
   | "castRefinementVote"
   | "addRefinementComment"
   | "takeBackRefinementVote"
+  | "getRefinementLog"
 >;
 
 type RefinementCommandDependencies = VoterDependencies & {
@@ -377,7 +379,12 @@ const runRefinementTakeBack: RefinementCommand = async (
   const signedIn = isSignedIn(refinement);
   const voterName = signedIn
     ? null
-    : ((await dependencies.loadVoterName?.()) ?? null);
+    : await readNameOfMyVote(
+        client,
+        target.teamId,
+        target.workItem,
+        keptVoterKey,
+      );
   const result = await client.takeBackRefinementVote(
     target.teamId,
     target.workItem,

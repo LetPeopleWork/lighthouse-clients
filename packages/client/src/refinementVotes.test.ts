@@ -295,3 +295,37 @@ describe("taking back a vote through the client", () => {
     expect(new URL(takeBack.url).searchParams.has("answer")).toBe(false);
   });
 });
+
+describe("reading a Work Item's sizing log through the client", () => {
+  it("reads the log with the client's voter key, so the caller's own entries are marked", async () => {
+    const log = {
+      entries: [
+        {
+          kind: "Vote",
+          answer: "YesBut",
+          comment: ONLY_IF_THE_PDF_EXPORT_MOVES_OUT,
+          voterName: "Ana Lima",
+          channel: "Cli",
+          recordedAt: "2026-10-06T09:00:00.000Z",
+          isMine: true,
+          isOpenQuestion: false,
+        },
+      ],
+      voters: { yes: [], yesBut: ["Ana Lima"], no: [] },
+    };
+    const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_VOTES, {
+      [`GET ${PDF_EXPORT_PATH}/log`]: answering(log),
+    });
+
+    const result = await lighthouse.client.getRefinementLog(
+      GRAVITY_ID,
+      PDF_EXPORT,
+      { voterKey: ANAS_CLIENT_KEY },
+    );
+
+    expect(result).toEqual({ ok: true, value: log });
+    const [read] = lighthouse.askedOtherThanTheVersion();
+    expect(read.method).toBe("GET");
+    expect(read.headers[VOTER_KEY_HEADER]).toBe(ANAS_CLIENT_KEY);
+  });
+});

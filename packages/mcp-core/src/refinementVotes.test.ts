@@ -625,3 +625,57 @@ describe("the take-back tool names the vote it saw", () => {
     },
   );
 });
+
+describe("the take-back tool names the vote as it was cast", () => {
+  it("names the vote by the name on the user's own latest vote in the Work Item's log", async () => {
+    const assistant = anAssistantOn({
+      storedKey: ANAS_ASSISTANT_KEY,
+      answers: {
+        [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering({
+          voterIdentity: "SelfDeclared",
+          workItems: [pdfExport({ myVote: "Yes" })],
+        }),
+        [`GET ${workItemPath("GR-051")}/log`]: answering({
+          entries: [
+            {
+              kind: "Vote",
+              answer: "Yes",
+              comment: null,
+              voterName: ANA_LIMA,
+              channel: "Assistant",
+              recordedAt: "2026-10-06T09:00:00.000Z",
+              isMine: true,
+              isOpenQuestion: false,
+            },
+            {
+              kind: "Vote",
+              answer: "No",
+              comment: null,
+              voterName: "Priya Shah",
+              channel: "Web",
+              recordedAt: "2026-10-06T09:05:00.000Z",
+              isMine: false,
+              isOpenQuestion: false,
+            },
+          ],
+          voters: { yes: [ANA_LIMA], yesBut: [], no: ["Priya Shah"] },
+        }),
+        [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(pdfExport()),
+      },
+    });
+
+    const result = await assistant.runtime.callTool(TAKE_BACK, {
+      id: GRAVITY_ID,
+      workItem: "GR-051",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(factsOf(result, "takeBack").summary).toBe(
+      "Took back Ana Lima's vote on GR-051. GR-051: 3 more Yes needed.",
+    );
+    const logRead = assistant.asked.find((request) =>
+      request.path.endsWith("/log"),
+    );
+    expect(logRead?.headers[VOTER_KEY_HEADER]).toBe(ANAS_ASSISTANT_KEY);
+  });
+});

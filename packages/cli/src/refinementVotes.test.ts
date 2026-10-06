@@ -186,6 +186,28 @@ const bodyOf = (init: RequestInit | undefined): unknown =>
 const workItemPath = (referenceId: string) =>
   `/v1/teams/${GRAVITY_ID}/refinement/work-items/${referenceId}`;
 
+type LogEntryFacts = {
+  readonly kind?: "Vote" | "Comment" | "Revocation";
+  readonly isMine?: boolean;
+};
+
+// One line of a Work Item's sizing log, as Lighthouse lists it: oldest first, the reader's own marked.
+const aVoteBy = (voterName: string, facts: LogEntryFacts = {}) => ({
+  kind: facts.kind ?? "Vote",
+  answer: facts.kind === undefined || facts.kind === "Vote" ? "Yes" : null,
+  comment: null,
+  voterName,
+  channel: "Cli",
+  recordedAt: "2026-10-06T09:00:00.000Z",
+  isMine: facts.isMine ?? false,
+  isOpenQuestion: false,
+});
+
+const theLogOf = (entries: readonly unknown[]) => ({
+  entries,
+  voters: { yes: [], yesBut: [], no: [] },
+});
+
 type KeptKeys = Readonly<Record<string, string>>;
 
 type Voter = {
@@ -823,6 +845,9 @@ describe("lh refinement vote, comment and take-back", () => {
     const lighthouse = aLighthouse({
       voter: { name: ANA_LIMA, keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } },
       answers: {
+        [`GET ${workItemPath("GR-051")}/log`]: answering(
+          theLogOf([aVoteBy(ANA_LIMA, { isMine: true })]),
+        ),
         [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(
           pdfExport({ split: { yes: 0, yesBut: 1, no: 0 }, missingVotes: 3 }),
         ),
@@ -1230,6 +1255,72 @@ describe("lh refinement take-back names the vote it saw", () => {
       expect(result.exitCode).toBe(0);
       const [takeBack] = lighthouse.writes();
       expect(new URL(takeBack.url).searchParams.get("answer")).toBe(myVote);
+    },
+  );
+});
+
+describe("lh refinement take-back names the vote as it was cast", () => {
+  const anasVoteOnPdfExport = (log: MockResponse) => ({
+    [`GET ${workItemPath("GR-051")}/log`]: log,
+    [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(
+      pdfExport({ split: { yes: 0, yesBut: 1, no: 0 }, missingVotes: 3 }),
+    ),
+  });
+
+  it("names the vote by the name on the caller's own latest vote, not by the name stored since", async () => {
+    const lighthouse = aLighthouse({
+      voter: { name: "Ana", keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } },
+      answers: anasVoteOnPdfExport(
+        answering(
+          theLogOf([
+            aVoteBy("A. Lima", { isMine: true }),
+            aVoteBy(ANA_LIMA, { isMine: true }),
+            aVoteBy(ANA_LIMA, { kind: "Comment", isMine: true }),
+            aVoteBy("Priya Shah"),
+          ]),
+        ),
+      ),
+    });
+
+    const result = await runCliCommand(
+      onGravity("take-back", "--work-item", "GR-051"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      "Took back Ana Lima's vote on GR-051. GR-051: 3 more Yes needed.",
+    );
+    const logRead = lighthouse.asked.find((request) =>
+      request.path.endsWith("/log"),
+    );
+    expect(logRead?.headers[VOTER_KEY_HEADER]).toBe(ANAS_CLIENT_KEY);
+  });
+
+  it.each([
+    { situation: "the log cannot be read", log: answering("not found", 404) },
+    {
+      situation: "the log shows no vote of the caller's",
+      log: answering(theLogOf([aVoteBy("Priya Shah")])),
+    },
+  ])(
+    "says 'your vote' when $situation, never a stored name it cannot vouch for",
+    async ({ log }) => {
+      const lighthouse = aLighthouse({
+        voter: { name: ANA_LIMA, keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } },
+        answers: anasVoteOnPdfExport(log),
+      });
+
+      const result = await runCliCommand(
+        onGravity("take-back", "--work-item", "GR-051"),
+        lighthouse.dependencies,
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe(
+        "Took back your vote on GR-051. GR-051: 3 more Yes needed.",
+      );
+      expect(lighthouse.writes()).toHaveLength(1);
     },
   );
 });

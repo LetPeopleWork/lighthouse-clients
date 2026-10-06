@@ -15,6 +15,7 @@ import {
   myVoteOn,
   REFINEMENT_ANSWERS,
   type RefinementWordingSource,
+  readNameOfMyVote,
   readRefinementWording,
   readVoteRefusal,
   type TeamRefinement,
@@ -49,6 +50,7 @@ export type RefinementToolClient = RefinementWordingSource<ToolError> &
     | "castRefinementVote"
     | "addRefinementComment"
     | "takeBackRefinementVote"
+    | "getRefinementLog"
     | "getTerminology"
   >;
 
@@ -450,17 +452,26 @@ const takeBackVote: RefinementTool = async (
     return nothingToTakeBack;
   }
 
+  const signedIn = isSignedIn(refinement);
+  const voterName = signedIn
+    ? null
+    : await readNameOfMyVote(
+        client,
+        target.teamId,
+        target.workItem,
+        keptVoterKey,
+      );
   const result = await client.takeBackRefinementVote(
     target.teamId,
     target.workItem,
     {
       channel: CHANNEL,
-      voterKey: isSignedIn(refinement) ? undefined : keptVoterKey,
+      voterKey: signedIn ? undefined : keptVoterKey,
       answer: myVote,
     },
   );
   return getRefinementWriteToolResult("takeBack", result, client, (takenBack) =>
-    describeTakenBack({ workItem: target.workItem }, takenBack),
+    describeTakenBack({ workItem: target.workItem, voterName }, takenBack),
   );
 };
 

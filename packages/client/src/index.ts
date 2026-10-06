@@ -1232,6 +1232,27 @@ export type RefinementTakeBackInput = {
   readonly answer?: RefinementAnswer;
 };
 
+/** One line of a Work Item's sizing log, oldest first; `isMine` marks the reader's own. */
+export type SizingLogEntry = {
+  readonly kind: "Vote" | "Comment" | "Revocation";
+  readonly answer: RefinementAnswer | null;
+  readonly comment: string | null;
+  readonly voterName: string;
+  readonly channel: string;
+  readonly recordedAt: string;
+  readonly isMine: boolean;
+  readonly isOpenQuestion: boolean;
+};
+
+export type SizingLog = {
+  readonly entries: readonly SizingLogEntry[];
+  readonly voters: {
+    readonly yes: readonly string[];
+    readonly yesBut: readonly string[];
+    readonly no: readonly string[];
+  };
+};
+
 export type TeamRefinement = {
   readonly refinementConfigured: boolean;
   readonly workItems: readonly RefinementRow[];
@@ -1310,6 +1331,11 @@ export type LighthouseClient = {
     workItem: string,
     takeBack: RefinementTakeBackInput,
   ) => Promise<LighthouseApiResult<VotedRow>>;
+  readonly getRefinementLog: (
+    teamId: number,
+    workItem: string,
+    options?: RefinementReadOptions,
+  ) => Promise<LighthouseApiResult<SizingLog>>;
   readonly getTerminology: () => Promise<
     LighthouseApiResult<readonly TerminologyEntry[]>
   >;
@@ -2285,6 +2311,22 @@ export const createLighthouseClient = (
         dependencies,
         `${refinementWorkItemRoute(teamId, workItem)}/votes/mine?${query}`,
         { method: "DELETE", headers: voterKeyHeaders(voterKey) },
+      );
+    },
+    getRefinementLog: async (
+      teamId: number,
+      workItem: string,
+      options?: RefinementReadOptions,
+    ) => {
+      const unsupported = await ensureServerSupports("refinementVotes");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<SizingLog>(
+        configuration,
+        dependencies,
+        `${refinementWorkItemRoute(teamId, workItem)}/log`,
+        { method: "GET", headers: voterKeyHeaders(options?.voterKey) },
       );
     },
     getTerminology: async () =>

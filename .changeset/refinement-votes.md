@@ -21,7 +21,8 @@ upgrade and is never asked.
   `lh refinement comment … --text <text>` and `lh refinement take-back …` answer in one line, such as
   `Recorded: Ana Lima — Yes on GR-073. That made GR-073 Ready.` A "Yes, if…" needs its condition. Lighthouse's
   refusals come back in plain words. `--json` and `--toon` return the Work Item as the vote left it. A
-  take-back names the answer it saw, so a vote changed since from somewhere else stays.
+  take-back names the answer it saw, so a vote changed since from somewhere else stays, and says whose vote it
+  took back by the name that vote was cast under ("your vote" with sign-in, or when the log cannot say).
 - With sign-in, a vote is the signed-in account's; `lh` goes by what Lighthouse says, not by what was answered
   when the connection was saved. Without it, a vote carries the name given with `--as` or
   stored once with `lh config voter set --name <name>` (`lh config voter` shows it); `lh` never guesses a name.
@@ -41,6 +42,7 @@ upgrade and is never asked.
   one Lighthouse).
   mcp-http, shared by many people, refuses votes on a Lighthouse without sign-in and points to the web page,
   `lh` or a local MCP server.
-- The client gains `castRefinementVote`, `addRefinementComment`, `takeBackRefinementVote`, a `voterKey` option
+- The client gains `castRefinementVote`, `addRefinementComment`, `takeBackRefinementVote` (with the `answer` it saw),
+  `getRefinementLog` (a Work Item's sizing log, the caller's own entries marked `isMine`), a `voterKey` option
   on `getTeamRefinement`, `mintVoterKey`, `createFileVoterKeyStore` and the shared vote wording. A refusal's
   `LighthouseApiError` now also carries the `problemCode` and `problemTitle` Lighthouse sent.
