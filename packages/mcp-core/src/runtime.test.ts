@@ -1,6 +1,16 @@
 import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
-import { createMcpCoreRuntime, registerMcpTools } from "./index";
+import {
+  createMcpCoreRuntime,
+  type McpCoreRuntimeDependencies,
+  registerMcpTools,
+} from "./index";
+
+type RuntimeClient = ReturnType<McpCoreRuntimeDependencies["createClient"]>;
+
+// Each test stubs only the calls its tool makes; the methods it leaves out are never reached.
+const stubClient = (methods: Partial<RuntimeClient>): RuntimeClient =>
+  methods as RuntimeClient;
 
 const emptyDeliveryHistory = {
   deliveryDate: "2026-06-30T00:00:00Z",
@@ -11,18 +21,19 @@ const emptyDeliveryHistory = {
 describe("createMcpCoreRuntime", () => {
   it("lists baseline Lighthouse tools", () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.2.3" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-      }),
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.2.3" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        }),
     });
 
     const tools = runtime.listTools();
@@ -116,18 +127,19 @@ describe("createMcpCoreRuntime", () => {
 
   it("calls health-check tool and returns success", async () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.2.3" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-      }),
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.2.3" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        }),
     });
 
     const result = await runtime.callTool("lighthouse_health_check", {});
@@ -138,18 +150,19 @@ describe("createMcpCoreRuntime", () => {
 
   it("calls version tool and returns version", async () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v2.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-      }),
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        }),
     });
 
     const result = await runtime.callTool("lighthouse_version_get", {});
@@ -160,18 +173,19 @@ describe("createMcpCoreRuntime", () => {
 
   it("returns error for unknown tools", async () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v2.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-      }),
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+        }),
     });
 
     const result = await runtime.callTool("lighthouse_unknown", {});
@@ -182,21 +196,22 @@ describe("createMcpCoreRuntime", () => {
 
   it("propagates client errors through MCP tool responses", async () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({
-          category: "unauthorized",
-          reason: "token missing",
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({
+            category: "unauthorized",
+            reason: "token missing",
+          }),
+          getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
         }),
-        getVersion: async () => ({ ok: true, value: "v2.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_health_check", {});
@@ -207,59 +222,66 @@ describe("createMcpCoreRuntime", () => {
 
   it("calls worktracking, team, and portfolio tools", async () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v2.0.0" }),
-        listWorkTrackingConnections: async () => ({
-          ok: true,
-          value: [{ id: 1, name: "Jira" }],
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v2.0.0" }),
+          listWorkTrackingConnections: async () => ({
+            ok: true,
+            value: [{ id: 1, name: "Jira" }],
+          }),
+          getWorkTrackingConnection: async () => ({
+            ok: true,
+            value: { id: 1, name: "Jira" },
+          }),
+          listTeams: async () => ({
+            ok: true,
+            value: [{ id: 5, name: "Team A" }],
+          }),
+          getTeam: async () => ({
+            ok: true,
+            value: { id: 5, name: "Team A" },
+          }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({
+            ok: true,
+            value: [{ id: 9, name: "Portfolio A" }],
+          }),
+          getPortfolio: async () => ({
+            ok: true,
+            value: { id: 9, name: "Portfolio A" },
+          }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getWorkTrackingConnection: async () => ({
-          ok: true,
-          value: { id: 1, name: "Jira" },
-        }),
-        listTeams: async () => ({
-          ok: true,
-          value: [{ id: 5, name: "Team A" }],
-        }),
-        getTeam: async () => ({
-          ok: true,
-          value: { id: 5, name: "Team A" },
-        }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({
-          ok: true,
-          value: [{ id: 9, name: "Portfolio A" }],
-        }),
-        getPortfolio: async () => ({
-          ok: true,
-          value: { id: 9, name: "Portfolio A" },
-        }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const worktrackingList = await runtime.callTool(
@@ -283,41 +305,48 @@ describe("createMcpCoreRuntime", () => {
 
   it("lists metrics tools in the tool registry", () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const toolNames = runtime.listTools().map((t) => t.name);
@@ -333,41 +362,48 @@ describe("createMcpCoreRuntime", () => {
   it("calls team throughput metrics tool", async () => {
     const throughputData = { labels: ["2026-01-01"], data: [3] };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: throughputData }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: throughputData }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
@@ -433,41 +469,48 @@ describe("createMcpCoreRuntime", () => {
       howManyForecasts: [],
     };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: forecastResult }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: forecastResult }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_forecast_manual", {
@@ -482,41 +525,48 @@ describe("createMcpCoreRuntime", () => {
   it("calls delivery list tool", async () => {
     const deliveries = [{ id: 1, name: "Release 1" }];
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: deliveries }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: deliveries }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_delivery_list", {
@@ -572,56 +622,66 @@ describe("createMcpCoreRuntime", () => {
         },
   ) =>
     createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true as const, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({
-          ok: true as const,
-          value: [],
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true as const, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getWorkTrackingConnection: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          listTeams: async () => ({ ok: true as const, value: [] }),
+          getTeam: async () => ({ ok: true as const, value: {} }),
+          refreshTeam: async () => ({ ok: true as const, value: undefined }),
+          listPortfolios: async () => ({ ok: true as const, value: [] }),
+          getPortfolio: async () => ({ ok: true as const, value: {} }),
+          refreshPortfolio: async () => ({
+            ok: true as const,
+            value: undefined,
+          }),
+          getTeamThroughput: async () => ({ ok: true as const, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getPortfolioThroughput: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getTeamWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true as const,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true as const, value: [] }),
+          getFeaturesByReferences: async () => ({
+            ok: true as const,
+            value: [],
+          }),
+          getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
+          listDeliveries: async () => ({ ok: true as const, value: [] }),
+          getDeliveryMetricsHistory: async () => result,
+          createDelivery: async () => ({ ok: true as const, value: {} }),
+          updateDelivery: async () => ({ ok: true as const, value: {} }),
+          deleteDelivery: async () => ({ ok: true as const, value: undefined }),
+          runManualForecast: async () => ({ ok: true as const, value: {} }),
+          runBacktest: async () => ({ ok: true as const, value: {} }),
         }),
-        getWorkTrackingConnection: async () => ({
-          ok: true as const,
-          value: {},
-        }),
-        listTeams: async () => ({ ok: true as const, value: [] }),
-        getTeam: async () => ({ ok: true as const, value: {} }),
-        refreshTeam: async () => ({ ok: true as const, value: undefined }),
-        listPortfolios: async () => ({ ok: true as const, value: [] }),
-        getPortfolio: async () => ({ ok: true as const, value: {} }),
-        refreshPortfolio: async () => ({ ok: true as const, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true as const, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({
-          ok: true as const,
-          value: [],
-        }),
-        getPortfolioThroughput: async () => ({ ok: true as const, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({
-          ok: true as const,
-          value: {},
-        }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({
-          ok: true as const,
-          value: {},
-        }),
-        getPortfolioWorkItemAgeOverTime: async () => ({
-          ok: true as const,
-          value: {},
-        }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true as const,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true as const, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true as const, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
-        listDeliveries: async () => ({ ok: true as const, value: [] }),
-        getDeliveryMetricsHistory: async () => result,
-        createDelivery: async () => ({ ok: true as const, value: {} }),
-        updateDelivery: async () => ({ ok: true as const, value: {} }),
-        deleteDelivery: async () => ({ ok: true as const, value: undefined }),
-        runManualForecast: async () => ({ ok: true as const, value: {} }),
-        runBacktest: async () => ({ ok: true as const, value: {} }),
-      }),
     });
 
   it("summarises a delivery's history by default, leaving the heavy shapes out", async () => {
@@ -697,17 +757,18 @@ describe("createMcpCoreRuntime", () => {
       },
     ];
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
-        getRecurringBlackoutRules: async () => ({ ok: true, value: rules }),
-        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        deleteRecurringBlackoutRule: async () => ({
-          ok: true,
-          value: undefined,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+          getRecurringBlackoutRules: async () => ({ ok: true, value: rules }),
+          createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          deleteRecurringBlackoutRule: async () => ({
+            ok: true,
+            value: undefined,
+          }),
         }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_blackout_list", {});
@@ -728,20 +789,21 @@ describe("createMcpCoreRuntime", () => {
       summary: "Every week on Mon, Wed from 2026-06-01",
     };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
-        getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
-        createRecurringBlackoutRule: async (payload) => {
-          received = payload;
-          return { ok: true, value: created };
-        },
-        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        deleteRecurringBlackoutRule: async () => ({
-          ok: true,
-          value: undefined,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+          getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+          createRecurringBlackoutRule: async (payload) => {
+            received = payload;
+            return { ok: true, value: created };
+          },
+          updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          deleteRecurringBlackoutRule: async () => ({
+            ok: true,
+            value: undefined,
+          }),
         }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_blackout_create", {
@@ -766,21 +828,22 @@ describe("createMcpCoreRuntime", () => {
     let receivedId: number | undefined;
     let receivedPayload: Record<string, unknown> | undefined;
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
-        getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
-        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        updateRecurringBlackoutRule: async (id, payload) => {
-          receivedId = id;
-          receivedPayload = payload as Record<string, unknown>;
-          return { ok: true, value: { id } };
-        },
-        deleteRecurringBlackoutRule: async () => ({
-          ok: true,
-          value: undefined,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+          getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+          createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          updateRecurringBlackoutRule: async (id, payload) => {
+            receivedId = id;
+            receivedPayload = payload as Record<string, unknown>;
+            return { ok: true, value: { id } };
+          },
+          deleteRecurringBlackoutRule: async () => ({
+            ok: true,
+            value: undefined,
+          }),
         }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_blackout_update", {
@@ -801,17 +864,18 @@ describe("createMcpCoreRuntime", () => {
   it("calls recurring blackout-rule delete tool", async () => {
     let deletedId: number | undefined;
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
-        getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
-        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        deleteRecurringBlackoutRule: async (id) => {
-          deletedId = id;
-          return { ok: true, value: undefined };
-        },
-      }),
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v26.5.29.6" }),
+          getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
+          createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          deleteRecurringBlackoutRule: async (id) => {
+            deletedId = id;
+            return { ok: true, value: undefined };
+          },
+        }),
     });
 
     const result = await runtime.callTool("lighthouse_blackout_delete", {
@@ -824,24 +888,25 @@ describe("createMcpCoreRuntime", () => {
 
   it("reports the upgrade error when the server gates recurring blackout rules", async () => {
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v26.5.29.5" }),
-        getRecurringBlackoutRules: async () => ({
-          ok: false,
-          error: {
-            category: "misconfigured",
-            reason:
-              'does not support "recurringBlackoutRules" — Upgrade Lighthouse',
-          },
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v26.5.29.5" }),
+          getRecurringBlackoutRules: async () => ({
+            ok: false,
+            error: {
+              category: "misconfigured",
+              reason:
+                'does not support "recurringBlackoutRules" — Upgrade Lighthouse',
+            },
+          }),
+          createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
+          deleteRecurringBlackoutRule: async () => ({
+            ok: true,
+            value: undefined,
+          }),
         }),
-        createRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        updateRecurringBlackoutRule: async () => ({ ok: true, value: {} }),
-        deleteRecurringBlackoutRule: async () => ({
-          ok: true,
-          value: undefined,
-        }),
-      }),
     });
 
     const result = await runtime.callTool("lighthouse_blackout_list", {});
@@ -862,44 +927,51 @@ describe("createMcpCoreRuntime", () => {
       ],
     };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: ageData,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: ageData,
+          }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
@@ -918,44 +990,48 @@ describe("createMcpCoreRuntime", () => {
       daily: [{ date: "2026-01-01", totalAge: 10, itemCount: 3 }],
     };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: totalAgeData,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: totalAgeData,
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
@@ -979,44 +1055,48 @@ describe("createMcpCoreRuntime", () => {
       ],
     };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: ageData,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: ageData,
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
@@ -1031,49 +1111,56 @@ describe("createMcpCoreRuntime", () => {
   it("calls team workItemAgePercentiles metrics tool", async () => {
     const percentiles = [{ percentile: 85, value: 11 }];
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getTeamWorkItemAgePercentiles: async () => ({
-          ok: true,
-          value: percentiles,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getTeamWorkItemAgePercentiles: async () => ({
+            ok: true,
+            value: percentiles,
+          }),
+          getPortfolioWorkItemAgePercentiles: async () => ({
+            ok: true,
+            value: [],
+          }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getPortfolioWorkItemAgePercentiles: async () => ({
-          ok: true,
-          value: [],
-        }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
@@ -1088,46 +1175,53 @@ describe("createMcpCoreRuntime", () => {
   it("calls portfolio workItemAgePercentiles metrics tool", async () => {
     const percentiles = [{ percentile: 50, value: 4 }];
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getTeamWorkItemAgePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioWorkItemAgePercentiles: async () => ({
-          ok: true,
-          value: percentiles,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getTeamWorkItemAgePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioWorkItemAgePercentiles: async () => ({
+            ok: true,
+            value: percentiles,
+          }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: {},
-        }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
@@ -1353,41 +1447,48 @@ describe("createMcpCoreRuntime", () => {
       daily: [{ date: "2026-01-01", totalAge: 25, itemCount: 7 }],
     };
     const runtime = createMcpCoreRuntime({
-      createClient: () => ({
-        checkConnectivity: async () => ({ category: "success" }),
-        getVersion: async () => ({ ok: true, value: "v1.0.0" }),
-        listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
-        getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
-        listTeams: async () => ({ ok: true, value: [] }),
-        getTeam: async () => ({ ok: true, value: {} }),
-        refreshTeam: async () => ({ ok: true, value: undefined }),
-        listPortfolios: async () => ({ ok: true, value: [] }),
-        getPortfolio: async () => ({ ok: true, value: {} }),
-        refreshPortfolio: async () => ({ ok: true, value: undefined }),
-        getTeamThroughput: async () => ({ ok: true, value: {} }),
-        getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
-        getPortfolioThroughput: async () => ({ ok: true, value: {} }),
-        getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getTeamTotalWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
-        getPortfolioTotalWorkItemAgeOverTime: async () => ({
-          ok: true,
-          value: totalAgeData,
+      createClient: () =>
+        stubClient({
+          checkConnectivity: async () => ({ category: "success" }),
+          getVersion: async () => ({ ok: true, value: "v1.0.0" }),
+          listWorkTrackingConnections: async () => ({ ok: true, value: [] }),
+          getWorkTrackingConnection: async () => ({ ok: true, value: {} }),
+          listTeams: async () => ({ ok: true, value: [] }),
+          getTeam: async () => ({ ok: true, value: {} }),
+          refreshTeam: async () => ({ ok: true, value: undefined }),
+          listPortfolios: async () => ({ ok: true, value: [] }),
+          getPortfolio: async () => ({ ok: true, value: {} }),
+          refreshPortfolio: async () => ({ ok: true, value: undefined }),
+          getTeamThroughput: async () => ({ ok: true, value: {} }),
+          getTeamCycleTimePercentiles: async () => ({ ok: true, value: [] }),
+          getPortfolioThroughput: async () => ({ ok: true, value: {} }),
+          getTeamWorkItemAgeOverTime: async () => ({ ok: true, value: {} }),
+          getTeamTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: {},
+          }),
+          getPortfolioTotalWorkItemAgeOverTime: async () => ({
+            ok: true,
+            value: totalAgeData,
+          }),
+          getFeaturesByIds: async () => ({ ok: true, value: [] }),
+          getFeaturesByReferences: async () => ({ ok: true, value: [] }),
+          getFeatureWorkItems: async () => ({ ok: true, value: [] }),
+          listDeliveries: async () => ({ ok: true, value: [] }),
+          getDeliveryMetricsHistory: async () => ({
+            ok: true,
+            value: emptyDeliveryHistory,
+          }),
+          createDelivery: async () => ({ ok: true, value: {} }),
+          updateDelivery: async () => ({ ok: true, value: {} }),
+          deleteDelivery: async () => ({ ok: true, value: undefined }),
+          runManualForecast: async () => ({ ok: true, value: {} }),
+          runBacktest: async () => ({ ok: true, value: {} }),
         }),
-        getFeaturesByIds: async () => ({ ok: true, value: [] }),
-        getFeaturesByReferences: async () => ({ ok: true, value: [] }),
-        getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-        listDeliveries: async () => ({ ok: true, value: [] }),
-        getDeliveryMetricsHistory: async () => ({
-          ok: true,
-          value: emptyDeliveryHistory,
-        }),
-        createDelivery: async () => ({ ok: true, value: {} }),
-        updateDelivery: async () => ({ ok: true, value: {} }),
-        deleteDelivery: async () => ({ ok: true, value: undefined }),
-        runManualForecast: async () => ({ ok: true, value: {} }),
-        runBacktest: async () => ({ ok: true, value: {} }),
-      }),
     });
 
     const result = await runtime.callTool(
