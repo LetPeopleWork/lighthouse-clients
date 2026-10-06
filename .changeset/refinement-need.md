@@ -25,7 +25,8 @@ Needs a Lighthouse newer than v26.10.3.6; an older server is told to upgrade and
   Refinement states right now", as the web page does. `--json` and `--toon` return the facts unchanged.
 - The MCP tool `lighthouse_team_refinement_get` (input `{ id }`) returns the same facts plus a
   `summary` holding the sentence the web page states. Its description explains the verdict, the
-  range and the cycle it covers.
+  range and the cycle it covers, whether today is a Refinement day, how many days remain until the
+  next one, and whether the ready count comes from votes or from stages.
 - The client gains `getTeamRefinement(teamId)`, `getTerminology()` and the shared wording both
   surfaces use: `readRefinementWording` reads the Team's name and the instance's terms, and
   `describeRefinementSummary` and friends state the need in them.

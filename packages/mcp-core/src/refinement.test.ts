@@ -135,8 +135,16 @@ describe("the refinement need tool", () => {
 
     expect(tool).toBeDefined();
     const description = tool?.description ?? "";
-    for (const explained of ["verdict", "low", "high", "cycle", "summary"]) {
-      expect(description).toContain(explained);
+    for (const explanation of [
+      "`summary` is the sentence the web page states, in the instance's terminology.",
+      "need.low and need.high are the range of work items the team is likely to pull over one cycle (need.cycleStart to need.cycleEnd: from the next Refinement to the one after, or from today on a Refinement day), read at need.lowPercentile and need.highPercentile.",
+      "need.verdict says where readyCount sits against that range: Below, In or Above.",
+      "Without a verdict, need.unavailableReason says why: NoCadence, InsufficientData or NoRefinementStates.",
+      "isRefinementDay is true on a Refinement day, when the cycle starts today.",
+      "daysUntilNextRefinement counts the days from the instance's today to nextRefinementDate.",
+      "readySource says what readyCount counts: work items ready by Votes, or by Stages on a team with stage rules.",
+    ]) {
+      expect(description).toContain(explanation);
     }
     expect(tool?.inputSchema).toMatchObject({ required: ["id"] });
   });
