@@ -6,6 +6,7 @@ import {
   FEATURE_REQUIRES_SERVER_NEWER_THAN,
   isServerVersionNewerThan,
   type LighthouseClientAuth,
+  queryServerAuthMode,
 } from "@letpeoplework/lighthouse-client";
 import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -243,6 +244,21 @@ export const evaluateOAuthVersionGate = (
   };
 };
 
+export const NO_SHARED_VOTES =
+  "Votes through the shared Lighthouse MCP server need sign-in, and this Lighthouse runs without it. Vote from the web page, the lh command line or an MCP server on your own machine.";
+
+/**
+ * This server is shared and keeps no voter key for anyone, so without sign-in it cannot tell one voter
+ * from another. With sign-in, or when the mode cannot be read, Lighthouse itself decides.
+ */
+export const refuseVotingWithoutSignIn = async (
+  lighthouseUrl: string,
+  fetch: typeof globalThis.fetch,
+): Promise<string | null> => {
+  const { mode } = await queryServerAuthMode(lighthouseUrl, { fetch });
+  return mode === "disabled" ? NO_SHARED_VOTES : null;
+};
+
 export const startMcpHttpServer = async (
   options: McpHttpServerOptions,
 ): Promise<McpHttpServerHandle> => {
@@ -314,6 +330,8 @@ export const startMcpHttpServer = async (
             },
             { fetch: insecureFetch },
           ),
+        refuseVoting: () =>
+          refuseVotingWithoutSignIn(options.lighthouseUrl, insecureFetch),
       });
 
       const transport = new StreamableHTTPServerTransport({

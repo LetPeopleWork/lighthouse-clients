@@ -1,9 +1,20 @@
 import {
   type DeliveryMetricsHistory,
+  describeNothingToTakeBack,
+  describeRecordedComment,
+  describeRecordedVote,
   describeRefinementSummary,
+  describeTakenBack,
+  describeVoteRefusal,
+  type LighthouseApiError,
+  type LighthouseApiResult,
   type LighthouseClient,
+  mintVoterKey,
+  type RefinementAnswer,
+  readRefinementTerms,
   readRefinementWording,
   summariseDeliveryMetricsHistory,
+  type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { encode } from "@toon-format/toon";
@@ -41,6 +52,9 @@ export type McpToolDefinition = {
     | "lighthouse_team_get"
     | "lighthouse_team_refresh"
     | "lighthouse_team_refinement_get"
+    | "lighthouse_team_refinement_vote"
+    | "lighthouse_team_refinement_comment"
+    | "lighthouse_team_refinement_voteTakeBack"
     | "lighthouse_portfolio_list"
     | "lighthouse_portfolio_get"
     | "lighthouse_portfolio_refresh"
@@ -667,10 +681,27 @@ type McpRuntimeClient = {
         readonly error: { readonly category: string; readonly reason: string };
       }
   >;
-} & Pick<LighthouseClient, "getTeamRefinement" | "getTerminology">;
+} & Pick<
+  LighthouseClient,
+  | "getTeamRefinement"
+  | "castRefinementVote"
+  | "addRefinementComment"
+  | "takeBackRefinementVote"
+  | "getTerminology"
+>;
+
+/** The voter key one MCP server keeps for the one Lighthouse it talks to. */
+export type McpVoterKeyStore = {
+  readonly load: () => Promise<string | null>;
+  readonly save: (key: string) => Promise<void>;
+};
 
 export type McpCoreRuntimeDependencies = {
   readonly createClient: () => McpRuntimeClient;
+  /** Where a local server keeps its voter key; a server shared by many people keeps none. */
+  readonly voterKeyStore?: McpVoterKeyStore;
+  /** Why this server may not vote, comment or take back right now, or null when it may. */
+  readonly refuseVoting?: () => Promise<string | null>;
 };
 
 export type McpCoreRuntime = {
@@ -717,6 +748,18 @@ const recurringBlackoutRuleProperties = {
   },
 } as const;
 
+const workItemProperty = {
+  type: "string",
+  description:
+    "The work item's reference, as referenceId shows it in lighthouse_team_refinement_get (for example GR-051).",
+} as const;
+
+const voterNameProperty = {
+  type: "string",
+  description:
+    "The user's own name, needed when Lighthouse runs without sign-in. Ask the user for their name and never infer it, not from the system, an account or earlier messages. Leave it out with sign-in.",
+} as const;
+
 const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_health_check",
@@ -761,6 +804,62 @@ const toolDefinitions: readonly McpToolDefinition[] = [
     description:
       "How many work items a team should refine before its next Refinement, as on the team's Refinement tab (Lighthouse newer than v26.10.3.6). `summary` is the sentence the web page states, in the instance's terminology. need.low and need.high are the range of work items the team is likely to pull over one cycle (need.cycleStart to need.cycleEnd: from the next Refinement to the one after, or from today on a Refinement day), read at need.lowPercentile and need.highPercentile. need.verdict says where readyCount sits against that range: Below, In or Above. Without a verdict, need.unavailableReason says why: NoCadence, InsufficientData or NoRefinementStates. isRefinementDay is true on a Refinement day, when the cycle starts today. daysUntilNextRefinement counts the days from the instance's today to nextRefinementDate. readySource says what readyCount counts: work items ready by Votes, or by Stages on a team with stage rules. workItems are the items in refinement, in the order the Refinement tab lists them.",
     inputSchema: idInputSchema,
+  },
+  {
+    name: "lighthouse_team_refinement_vote",
+    description:
+      "Records the USER's own sizing judgement under their name. Never call this on your own initiative or on someone else's behalf: show the user the Work Item, the answer and any comment you intend to send, and call only after they explicitly confirm. answer is Yes (ready to be pulled), YesBut (\"Yes, if…\": ready under a condition, which goes in comment) or No; voting again replaces the user's earlier vote. Returns the work item as the vote left it, with `summary` stating where it now stands. Lighthouse newer than v26.10.3.6.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "The team's numeric id." },
+        workItem: workItemProperty,
+        answer: {
+          type: "string",
+          enum: ["Yes", "YesBut", "No"],
+          description:
+            'The user\'s answer: Yes, YesBut ("Yes, if…") or No, as myVote and split name them.',
+        },
+        comment: {
+          type: "string",
+          description:
+            "Optional; required with YesBut, where it says what has to be true.",
+        },
+        voterName: voterNameProperty,
+      },
+      required: ["id", "workItem", "answer"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_refinement_comment",
+    description:
+      "Records a comment or question of the USER's on a work item in refinement, under their name, without a vote. Never call this on your own initiative or on someone else's behalf: show the user the work item and the comment you intend to send, and call only after they explicitly confirm. Returns the work item as the comment left it, with a `summary`. Lighthouse newer than v26.10.3.6.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "The team's numeric id." },
+        workItem: workItemProperty,
+        comment: { type: "string", description: "The user's comment." },
+        voterName: voterNameProperty,
+      },
+      required: ["id", "workItem", "comment"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "lighthouse_team_refinement_voteTakeBack",
+    description:
+      "Takes back the vote the USER cast on a work item from this assistant. Call only when the user asks for it. When this assistant holds no vote of theirs on the work item it says so and takes nothing back. Returns the work item as the take-back left it, with `summary` stating where it now stands. Lighthouse newer than v26.10.3.6.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "The team's numeric id." },
+        workItem: workItemProperty,
+      },
+      required: ["id", "workItem"],
+      additionalProperties: false,
+    },
   },
   {
     name: "lighthouse_portfolio_list",
@@ -1295,9 +1394,10 @@ const getRefinementErrorToolResult = (error: {
 const getTeamRefinementToolResult = async (
   client: McpRuntimeClient,
   teamId: number,
+  voterKey: string | undefined,
 ): Promise<McpToolResult> => {
   const [refinement, wording] = await Promise.all([
-    client.getTeamRefinement(teamId),
+    client.getTeamRefinement(teamId, { voterKey }),
     readRefinementWording(client, teamId),
   ]);
   if (!refinement.ok) {
@@ -1312,6 +1412,247 @@ const getTeamRefinementToolResult = async (
     `refinement: ${encodePayload({ summary, ...refinement.value })}`,
   );
 };
+
+const ASK_FOR_THE_NAME =
+  "Ask the user for their name and send it as voterName; never guess it.";
+
+const REFINEMENT_ANSWERS: ReadonlySet<string> = new Set([
+  "Yes",
+  "YesBut",
+  "No",
+]);
+
+const getArgument = (argumentsPayload: unknown, key: string): unknown =>
+  typeof argumentsPayload === "object" &&
+  argumentsPayload !== null &&
+  !Array.isArray(argumentsPayload)
+    ? (argumentsPayload as Readonly<Record<string, unknown>>)[key]
+    : undefined;
+
+const getNonBlankArgument = (
+  argumentsPayload: unknown,
+  key: string,
+): string | undefined => {
+  const value = getArgument(argumentsPayload, key);
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+};
+
+type RefinementWriteTarget = {
+  readonly teamId: number;
+  readonly workItem: string;
+};
+
+/** The team and work item a write names, or the house "invalid …" refusal under its label. */
+const getRefinementWriteTarget = (
+  argumentsPayload: unknown,
+  label: string,
+): RefinementWriteTarget | McpToolResult => {
+  const teamId = getNumericId(argumentsPayload);
+  if (teamId === null) {
+    return getErrorToolResult(`${label}: invalid id`);
+  }
+  const workItem = getNonBlankArgument(argumentsPayload, "workItem");
+  if (workItem === undefined) {
+    return getErrorToolResult(`${label}: invalid workItem`);
+  }
+  return { teamId, workItem };
+};
+
+const isToolResult = (value: unknown): value is McpToolResult =>
+  typeof value === "object" &&
+  value !== null &&
+  "isError" in value &&
+  "content" in value;
+
+/** The key this server keeps, minted and kept on its first write; none on a server that keeps none. */
+const keepVoterKey = async (
+  store: McpVoterKeyStore | undefined,
+): Promise<string | undefined> => {
+  if (store === undefined) {
+    return undefined;
+  }
+  const kept = await store.load();
+  if (kept !== null) {
+    return kept;
+  }
+  const minted = mintVoterKey();
+  await store.save(minted);
+  return minted;
+};
+
+const getVoteRefusalToolResult = async (
+  label: string,
+  error: LighthouseApiError,
+  client: McpRuntimeClient,
+): Promise<McpToolResult> =>
+  getErrorToolResult(
+    `${label}: ${describeVoteRefusal(error, {
+      terms: await readRefinementTerms(client),
+      nameRequired: ASK_FOR_THE_NAME,
+    })}`,
+  );
+
+const getRefinementWriteToolResult = async (
+  label: string,
+  result: LighthouseApiResult<VotedRow>,
+  client: McpRuntimeClient,
+  describe: (row: VotedRow) => string,
+): Promise<McpToolResult> =>
+  result.ok
+    ? getSuccessToolResult(
+        `${label}: ${encodePayload({ summary: describe(result.value), ...result.value })}`,
+      )
+    : getVoteRefusalToolResult(label, result.error, client);
+
+type RefinementWrite = (
+  argumentsPayload: unknown,
+  client: McpRuntimeClient,
+  dependencies: McpCoreRuntimeDependencies,
+) => Promise<McpToolResult>;
+
+const refusedVoting = async (
+  label: string,
+  dependencies: McpCoreRuntimeDependencies,
+): Promise<McpToolResult | null> => {
+  const refusal = (await dependencies.refuseVoting?.()) ?? null;
+  return refusal === null ? null : getErrorToolResult(`${label}: ${refusal}`);
+};
+
+const castVote: RefinementWrite = async (
+  argumentsPayload,
+  client,
+  dependencies,
+) => {
+  const target = getRefinementWriteTarget(argumentsPayload, "vote");
+  if (isToolResult(target)) {
+    return target;
+  }
+  const answer = getArgument(argumentsPayload, "answer");
+  if (typeof answer !== "string" || !REFINEMENT_ANSWERS.has(answer)) {
+    return getErrorToolResult("vote: invalid answer");
+  }
+  const comment = getNonBlankArgument(argumentsPayload, "comment");
+  if (answer === "YesBut" && comment === undefined) {
+    return getErrorToolResult(
+      'vote: A "Yes, if…" needs its condition: add a comment saying what has to be true.',
+    );
+  }
+  const refused = await refusedVoting("vote", dependencies);
+  if (refused !== null) {
+    return refused;
+  }
+
+  const voterName = getNonBlankArgument(argumentsPayload, "voterName");
+  const result = await client.castRefinementVote(
+    target.teamId,
+    target.workItem,
+    {
+      answer: answer as RefinementAnswer,
+      channel: "Assistant",
+      comment,
+      voterName,
+      voterKey: await keepVoterKey(dependencies.voterKeyStore),
+    },
+  );
+  return getRefinementWriteToolResult("vote", result, client, (row) =>
+    describeRecordedVote(
+      { workItem: target.workItem, voterName },
+      answer as RefinementAnswer,
+      row,
+    ),
+  );
+};
+
+const addComment: RefinementWrite = async (
+  argumentsPayload,
+  client,
+  dependencies,
+) => {
+  const target = getRefinementWriteTarget(argumentsPayload, "comment");
+  if (isToolResult(target)) {
+    return target;
+  }
+  const comment = getNonBlankArgument(argumentsPayload, "comment");
+  if (comment === undefined) {
+    return getErrorToolResult("comment: invalid comment");
+  }
+  const refused = await refusedVoting("comment", dependencies);
+  if (refused !== null) {
+    return refused;
+  }
+
+  const voterName = getNonBlankArgument(argumentsPayload, "voterName");
+  const result = await client.addRefinementComment(
+    target.teamId,
+    target.workItem,
+    {
+      comment,
+      channel: "Assistant",
+      voterName,
+      voterKey: await keepVoterKey(dependencies.voterKeyStore),
+    },
+  );
+  return getRefinementWriteToolResult("comment", result, client, () =>
+    describeRecordedComment({ workItem: target.workItem, voterName }),
+  );
+};
+
+/**
+ * Lighthouse answers a take-back that found nothing exactly like one that did, so the refinement is read
+ * first, and nothing is sent when this assistant holds no vote of the user's on the work item.
+ */
+const takeBackVote: RefinementWrite = async (
+  argumentsPayload,
+  client,
+  dependencies,
+) => {
+  const target = getRefinementWriteTarget(argumentsPayload, "takeBack");
+  if (isToolResult(target)) {
+    return target;
+  }
+  const refused = await refusedVoting("takeBack", dependencies);
+  if (refused !== null) {
+    return refused;
+  }
+  const nothingToTakeBack = getSuccessToolResult(
+    `takeBack: ${encodePayload({ summary: describeNothingToTakeBack(target.workItem) })}`,
+  );
+  const store = dependencies.voterKeyStore;
+  const voterKey = (await store?.load()) ?? undefined;
+  if (store !== undefined && voterKey === undefined) {
+    return nothingToTakeBack;
+  }
+
+  const refinement = await client.getTeamRefinement(target.teamId, {
+    voterKey,
+  });
+  if (!refinement.ok) {
+    return getVoteRefusalToolResult("takeBack", refinement.error, client);
+  }
+  const row = refinement.value.workItems.find(
+    (candidate) => candidate.referenceId === target.workItem,
+  );
+  if (row?.myVote == null) {
+    return nothingToTakeBack;
+  }
+
+  const result = await client.takeBackRefinementVote(
+    target.teamId,
+    target.workItem,
+    { channel: "Assistant", voterKey },
+  );
+  return getRefinementWriteToolResult("takeBack", result, client, (takenBack) =>
+    describeTakenBack({ workItem: target.workItem }, takenBack),
+  );
+};
+
+const REFINEMENT_WRITES: ReadonlyMap<string, RefinementWrite> = new Map([
+  ["lighthouse_team_refinement_vote", castVote],
+  ["lighthouse_team_refinement_comment", addComment],
+  ["lighthouse_team_refinement_voteTakeBack", takeBackVote],
+]);
 
 const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
   if (
@@ -1470,6 +1811,23 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   lighthouse_team_get: z.object({ id: z.number().int() }),
   lighthouse_team_refresh: z.object({ id: z.number().int() }),
   lighthouse_team_refinement_get: z.object({ id: z.number().int() }),
+  lighthouse_team_refinement_vote: z.object({
+    id: z.number().int(),
+    workItem: z.string(),
+    answer: z.enum(["Yes", "YesBut", "No"]),
+    comment: z.string().optional(),
+    voterName: z.string().optional(),
+  }),
+  lighthouse_team_refinement_comment: z.object({
+    id: z.number().int(),
+    workItem: z.string(),
+    comment: z.string(),
+    voterName: z.string().optional(),
+  }),
+  lighthouse_team_refinement_voteTakeBack: z.object({
+    id: z.number().int(),
+    workItem: z.string(),
+  }),
   lighthouse_portfolio_list: z.object({}),
   lighthouse_portfolio_get: z.object({ id: z.number().int() }),
   lighthouse_portfolio_refresh: z.object({ id: z.number().int() }),
@@ -1642,8 +2000,16 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   }),
 };
 
+// Writes whose names end in a verb the suffix rule does not know.
+const WRITING_TOOLS: ReadonlySet<McpToolDefinition["name"]> = new Set([
+  "lighthouse_team_refinement_vote",
+  "lighthouse_team_refinement_comment",
+  "lighthouse_team_refinement_voteTakeBack",
+]);
+
 const isReadOnlyTool = (toolName: McpToolDefinition["name"]): boolean =>
   !(
+    WRITING_TOOLS.has(toolName) ||
     toolName.endsWith("_refresh") ||
     toolName.endsWith("_create") ||
     toolName.endsWith("_update") ||
@@ -1762,7 +2128,16 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("refinement: invalid id");
       }
 
-      return getTeamRefinementToolResult(client, id);
+      return getTeamRefinementToolResult(
+        client,
+        id,
+        (await dependencies.voterKeyStore?.load()) ?? undefined,
+      );
+    }
+
+    const refinementWrite = REFINEMENT_WRITES.get(name);
+    if (refinementWrite !== undefined) {
+      return refinementWrite(argumentsPayload, client, dependencies);
     }
 
     if (name === "lighthouse_portfolio_list") {

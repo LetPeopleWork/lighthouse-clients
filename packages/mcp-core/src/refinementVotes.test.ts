@@ -188,7 +188,7 @@ const factsOf = (
 };
 
 describe("the refinement vote, comment and take-back tools", () => {
-  it.skip("are offered with descriptions that make the assistant ask the user first, and ask their name", () => {
+  it("are offered with descriptions that make the assistant ask the user first, and ask their name", () => {
     const { runtime } = anAssistantOn();
 
     const tools = new Map(runtime.listTools().map((tool) => [tool.name, tool]));
@@ -227,7 +227,7 @@ describe("the refinement vote, comment and take-back tools", () => {
     });
   });
 
-  it.skip("are registered as writes, never as safe to call freely", () => {
+  it("are registered as writes, never as safe to call freely", () => {
     const registered = new Map<
       string,
       {
@@ -272,7 +272,7 @@ describe("the refinement vote, comment and take-back tools", () => {
   });
 
   // @driving_port
-  it.skip("records Ana's Yes, if… through her assistant, marked as cast through an assistant, and states where GR-051 stands", async () => {
+  it("records Ana's Yes, if… through her assistant, marked as cast through an assistant, and states where GR-051 stands", async () => {
     const assistant = anAssistantOn({
       answers: {
         [`POST ${workItemPath("GR-051")}/votes`]: answering(
@@ -307,7 +307,7 @@ describe("the refinement vote, comment and take-back tools", () => {
     expect(vote.headers[VOTER_KEY_HEADER]).toBe(minted);
   });
 
-  it.skip.each([
+  it.each([
     {
       tool: COMMENT,
       label: "comment",
@@ -355,7 +355,7 @@ describe("the refinement vote, comment and take-back tools", () => {
     },
   );
 
-  it.skip("reads the refinement with the key this assistant keeps, so the user's own vote is marked", async () => {
+  it("reads the refinement with the key this assistant keeps, so the user's own vote is marked", async () => {
     const assistant = anAssistantOn({ storedKey: ANAS_ASSISTANT_KEY });
 
     const result = await assistant.runtime.callTool(READ, { id: GRAVITY_ID });
@@ -368,7 +368,7 @@ describe("the refinement vote, comment and take-back tools", () => {
   });
 
   // @error
-  it.skip.each([
+  it.each([
     {
       case: "a Yes, if… without its condition",
       argumentsPayload: {
@@ -408,7 +408,7 @@ describe("the refinement vote, comment and take-back tools", () => {
   );
 
   // @error
-  it.skip.each([
+  it.each([
     {
       refusal: refusing(
         400,
@@ -452,7 +452,7 @@ describe("the refinement vote, comment and take-back tools", () => {
   );
 
   // @error
-  it.skip("says there is nothing to take back when this assistant has never voted, and takes nothing back", async () => {
+  it("says there is nothing to take back when this assistant has never voted, and takes nothing back", async () => {
     const assistant = anAssistantOn({ storedKey: null });
 
     const result = await assistant.runtime.callTool(TAKE_BACK, {

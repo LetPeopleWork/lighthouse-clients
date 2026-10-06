@@ -1,6 +1,9 @@
 ---
 "@letpeoplework/lighthouse-client": minor
 "@letpeoplework/lighthouse-cli": minor
+"@letpeoplework/lighthouse-mcp-core": minor
+"@letpeoplework/lighthouse-mcp-stdio": patch
+"@letpeoplework/lighthouse-mcp-http": patch
 ---
 
 Cast, comment on and take back refinement votes through the client
@@ -15,3 +18,5 @@ Cast, comment on and take back refinement votes through the client
 - `lh refinement get` lists Votes, Readiness and Warnings for every Work Item.
 - `lh refinement vote`, `comment` and `take-back` cast a vote, add a comment and take a vote back.
 - `lh config voter set --name <name>` stores the name votes carry without sign-in; `lh config voter` shows it.
+- MCP tools `lighthouse_team_refinement_vote`, `_comment` and `_voteTakeBack`, registered as writes.
+- mcp-stdio keeps its voter key beside lh's; mcp-http refuses votes on a Lighthouse without sign-in.

@@ -36,6 +36,9 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_team_get",
       "lighthouse_team_refresh",
       "lighthouse_team_refinement_get",
+      "lighthouse_team_refinement_vote",
+      "lighthouse_team_refinement_comment",
+      "lighthouse_team_refinement_voteTakeBack",
       "lighthouse_portfolio_list",
       "lighthouse_portfolio_get",
       "lighthouse_portfolio_refresh",
@@ -71,6 +74,44 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_portfolio_metrics_cumulativeStateTimeItems",
       "lighthouse_portfolio_metrics_cumulativeStateTimeCandidates",
     ]);
+  });
+
+  it("registers the writing tools as writes and every other tool as read-only", () => {
+    const annotations = new Map<string, Record<string, unknown>>();
+    const server = {
+      registerTool: (
+        name: string,
+        configuration: { readonly annotations: Record<string, unknown> },
+      ) => {
+        annotations.set(name, configuration.annotations);
+      },
+    };
+    const writingTools = [
+      "lighthouse_team_refresh",
+      "lighthouse_portfolio_refresh",
+      "lighthouse_blackout_create",
+      "lighthouse_blackout_update",
+      "lighthouse_blackout_delete",
+      "lighthouse_team_refinement_vote",
+      "lighthouse_team_refinement_comment",
+      "lighthouse_team_refinement_voteTakeBack",
+    ];
+
+    registerMcpTools(server as never, { createClient: () => ({}) as never });
+
+    expect(annotations.size).toBe(
+      createMcpCoreRuntime({ createClient: () => ({}) as never }).listTools()
+        .length,
+    );
+    for (const [name, registered] of annotations) {
+      const writes = writingTools.includes(name);
+      expect({ name, ...registered }).toEqual({
+        name,
+        readOnlyHint: !writes,
+        idempotentHint: !writes,
+        openWorldHint: false,
+      });
+    }
   });
 
   it("calls health-check tool and returns success", async () => {
@@ -1644,7 +1685,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(42);
+    expect(registered).toHaveLength(45);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",

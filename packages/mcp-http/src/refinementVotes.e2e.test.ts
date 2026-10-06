@@ -136,7 +136,7 @@ describe("votes through the shared MCP server", () => {
   });
 
   // @error @real-io
-  it.skip.each([
+  it.each([
     {
       tool: "lighthouse_team_refinement_vote",
       argumentsPayload: {
@@ -173,7 +173,7 @@ describe("votes through the shared MCP server", () => {
   );
 
   // @driving_port @real-io
-  it.skip("with sign-in, records the vote as the caller's own credential, through an assistant, with no voter key", async () => {
+  it("with sign-in, records the vote as the caller's own credential, through an assistant, with no voter key", async () => {
     const { lighthouse, mcp } = await start(true);
 
     const result = await callTool(

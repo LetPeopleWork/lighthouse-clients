@@ -54,13 +54,18 @@ const readKeys = async (
   }
 };
 
+// "http://host:5000/" and "http://host:5000" are one Lighthouse, however each client was given its URL.
+const scopeOf = (lighthouse: string): string =>
+  lighthouse.trim().replace(/\/+$/u, "");
+
 /** A voter key store kept in one JSON file, readable by its owner only. */
 export const createFileVoterKeyStore = (filePath: string): VoterKeyStore => ({
-  load: async (lighthouse) => (await readKeys(filePath))[lighthouse] ?? null,
+  load: async (lighthouse) =>
+    (await readKeys(filePath))[scopeOf(lighthouse)] ?? null,
   save: async (lighthouse, key) => {
     const persisted: PersistedVoterKeys = {
       version: 1,
-      keys: { ...(await readKeys(filePath)), [lighthouse]: key },
+      keys: { ...(await readKeys(filePath)), [scopeOf(lighthouse)]: key },
     };
     await mkdir(dirname(filePath), { recursive: true });
     await writeFile(filePath, JSON.stringify(persisted, null, 2), {

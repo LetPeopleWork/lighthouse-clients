@@ -22,6 +22,14 @@ describe("the file voter key store", () => {
     expect((await stat(filePath)).mode & 0o777).toBe(0o600);
   });
 
+  it("finds a Lighthouse's key whether its URL was given with a trailing slash or not", async () => {
+    const store = createFileVoterKeyStore(aStoreFile());
+
+    await store.save("http://localhost:5000/", "the-key");
+
+    expect(await store.load("http://localhost:5000")).toBe("the-key");
+  });
+
   it("keeps no key when the file is missing or unreadable", async () => {
     const filePath = aStoreFile();
     expect(
