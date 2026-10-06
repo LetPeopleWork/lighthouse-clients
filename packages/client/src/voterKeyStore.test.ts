@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { stat, writeFile } from "node:fs/promises";
+import { chmod, readFile, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -40,6 +40,74 @@ describe("the file voter key store", () => {
     expect(
       await createFileVoterKeyStore(filePath).load("standalone"),
     ).toBeNull();
+  });
+
+  it("keeps every key when several clients save their first key at once", async () => {
+    const filePath = aStoreFile();
+    const lighthouses = [
+      "http://localhost:5000",
+      "http://lighthouse.example:5000",
+      "https://lighthouse.example",
+      "standalone",
+    ];
+
+    await Promise.all(
+      lighthouses.map((lighthouse, index) =>
+        createFileVoterKeyStore(filePath).save(lighthouse, `key-${index}`),
+      ),
+    );
+
+    const store = createFileVoterKeyStore(filePath);
+    for (const [index, lighthouse] of lighthouses.entries()) {
+      expect(await store.load(lighthouse)).toBe(`key-${index}`);
+    }
+  });
+
+  // @error
+  it.each([
+    { content: "not json" },
+    { content: '{"version":1,"keys":["a list"]}' },
+  ])(
+    "refuses to save over a file it cannot read ($content), and leaves it as it was",
+    async ({ content }) => {
+      const filePath = aStoreFile();
+      await writeFile(filePath, content, "utf8");
+
+      await expect(
+        createFileVoterKeyStore(filePath).save("standalone", "a-key"),
+      ).rejects.toThrow(
+        `The voter key file ${filePath} cannot be read; fix or remove it.`,
+      );
+
+      expect(await readFile(filePath, "utf8")).toBe(content);
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "makes a file others could read its owner's alone when it saves",
+    async () => {
+      const filePath = aStoreFile();
+      await writeFile(filePath, '{"version":1,"keys":{}}', "utf8");
+      await chmod(filePath, 0o644);
+
+      await createFileVoterKeyStore(filePath).save("standalone", "a-key");
+
+      expect((await stat(filePath)).mode & 0o777).toBe(0o600);
+    },
+  );
+
+  it("saves past a lock another client left behind long ago", async () => {
+    const filePath = aStoreFile();
+    const lockPath = `${filePath}.lock`;
+    await writeFile(lockPath, "", "utf8");
+    const longAgo = new Date(Date.now() - 60 * 60 * 1000);
+    await utimes(lockPath, longAgo, longAgo);
+
+    await createFileVoterKeyStore(filePath).save("standalone", "a-key");
+
+    expect(await createFileVoterKeyStore(filePath).load("standalone")).toBe(
+      "a-key",
+    );
   });
 
   it("lives beside the command line's config file", () => {

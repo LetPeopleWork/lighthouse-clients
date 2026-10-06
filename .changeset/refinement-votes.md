@@ -24,7 +24,9 @@ upgrade and is never asked.
 - With sign-in, a vote is the signed-in account's. Without it, a vote carries the name given with `--as` or
   stored once with `lh config voter set --name <name>` (`lh config voter` shows it); `lh` never guesses a name.
   The first vote mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the CLI
-  config, so the vote can be taken back from that machine.
+  config, so the vote can be taken back from that machine. The file is its owner's alone (on Linux and
+  macOS); `lh` and a local MCP server saving at the same moment both keep their keys, and a file that cannot
+  be read is refused with a message naming it, never written over.
 - The MCP tools `lighthouse_team_refinement_vote` (`{ id, workItem, answer, comment?, voterName? }`, answer
   `Yes`, `YesBut` or `No`), `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack`
   are registered as writes. Their descriptions tell the assistant to confirm with the user first and to ask
