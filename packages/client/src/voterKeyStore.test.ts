@@ -30,6 +30,57 @@ describe("the file voter key store", () => {
     expect(await store.load("http://localhost:5000")).toBe("the-key");
   });
 
+  it.each([
+    "https://lighthouse.example",
+    "https://lighthouse.example/",
+    "https://LIGHTHOUSE.example:443",
+    "https://lighthouse.example/api",
+    " https://lighthouse.example/api/ ",
+  ])(
+    "finds the key saved under HTTPS://Lighthouse.example:443/ when the same Lighthouse is given as '%s'",
+    async (sameLighthouse) => {
+      const store = createFileVoterKeyStore(aStoreFile());
+
+      await store.save("HTTPS://Lighthouse.example:443/", "the-key");
+
+      expect(await store.load(sameLighthouse)).toBe("the-key");
+      expect(await store.load("https://lighthouse.example:8443")).toBeNull();
+      expect(await store.load("http://lighthouse.example")).toBeNull();
+    },
+  );
+
+  it("keeps the standalone Lighthouse's key apart from every server's", async () => {
+    const store = createFileVoterKeyStore(aStoreFile());
+
+    await store.save("standalone", "the-standalone-key");
+
+    expect(await store.load(" standalone ")).toBe("the-standalone-key");
+    expect(await store.load("http://localhost:5000")).toBeNull();
+  });
+
+  it("finds a key an earlier version kept under the URL as given, and keeps it from then on under the Lighthouse it names", async () => {
+    const filePath = aStoreFile();
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        version: 1,
+        keys: { "HTTPS://Lighthouse.example:443": "the-old-key" },
+      }),
+      "utf8",
+    );
+
+    const store = createFileVoterKeyStore(filePath);
+
+    expect(await store.load("HTTPS://Lighthouse.example:443/")).toBe(
+      "the-old-key",
+    );
+    expect(await store.load("https://lighthouse.example")).toBe("the-old-key");
+    expect(JSON.parse(await readFile(filePath, "utf8"))).toEqual({
+      version: 1,
+      keys: { "https://lighthouse.example": "the-old-key" },
+    });
+  });
+
   it("keeps no key when the file is missing or unreadable", async () => {
     const filePath = aStoreFile();
     expect(

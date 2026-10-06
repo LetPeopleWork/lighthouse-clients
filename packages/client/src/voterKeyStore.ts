@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { getNormalizedLighthouseUrl } from "./lighthouseUrl";
 
 /**
  * The voter keys this machine keeps, one per Lighthouse. The command line and the local MCP server share
@@ -200,10 +201,9 @@ const writeKeysAtomically = async (
 };
 
 // Re-read under the lock, so a key another client saved a moment ago is kept rather than written over.
-const saveKey = async (
+const updateKeys = async (
   filePath: string,
-  scope: string,
-  key: string,
+  update: (kept: KeyMap) => KeyMap,
 ): Promise<void> => {
   await mkdir(dirname(filePath), {
     recursive: true,
@@ -214,20 +214,80 @@ const saveKey = async (
     if (kept === null) {
       throw unreadableFile(filePath);
     }
-    await writeKeysAtomically(filePath, { ...kept, [scope]: key });
+    await writeKeysAtomically(filePath, update(kept));
   });
 };
 
-// "http://host:5000/" and "http://host:5000" are one Lighthouse, however each client was given its URL.
-const scopeOf = (lighthouse: string): string =>
+// How earlier versions named a Lighthouse: the URL as each client was given it, less trailing slashes.
+const legacyScopeOf = (lighthouse: string): string =>
   lighthouse.trim().replace(/\/+$/u, "");
+
+const API_PATH = /\/api$/u;
+
+/**
+ * The name a Lighthouse's voter key is kept under: `standalone` for the desktop app, otherwise the server
+ * as the client reaches it, so `HTTPS://Lighthouse.example:443/` and `https://lighthouse.example/api` are
+ * one Lighthouse and one voter, whether `lh` or the local MCP server was given the URL.
+ */
+export const getVoterKeyScope = (lighthouse: string): string => {
+  if (lighthouse.trim() === STANDALONE_VOTER_KEY_SCOPE) {
+    return STANDALONE_VOTER_KEY_SCOPE;
+  }
+  const normalized = getNormalizedLighthouseUrl(lighthouse);
+  return normalized === null
+    ? legacyScopeOf(lighthouse)
+    : normalized.replace(API_PATH, "");
+};
+
+const withoutKey = (keys: KeyMap, scope: string): KeyMap =>
+  Object.fromEntries(Object.entries(keys).filter(([kept]) => kept !== scope));
+
+// A key kept under an earlier version's spelling moves to the Lighthouse's own name the first time it is
+// read, so nobody becomes a second voter by upgrading. When it cannot move, it is still the key to use.
+const moveLegacyKey = async (
+  filePath: string,
+  legacyScope: string,
+  scope: string,
+  key: string,
+): Promise<void> => {
+  try {
+    await updateKeys(filePath, (kept) => ({
+      ...withoutKey(kept, legacyScope),
+      [scope]: kept[scope] ?? key,
+    }));
+  } catch {
+    // The key is returned all the same; the move is tried again on the next read.
+  }
+};
+
+const loadKey = async (
+  filePath: string,
+  lighthouse: string,
+): Promise<string | null> => {
+  const keys = await readKeys(filePath);
+  const scope = getVoterKeyScope(lighthouse);
+  const kept = keys?.[scope];
+  if (kept !== undefined) {
+    return kept;
+  }
+  const legacyScope = legacyScopeOf(lighthouse);
+  const legacyKey = legacyScope === scope ? undefined : keys?.[legacyScope];
+  if (legacyKey === undefined) {
+    return null;
+  }
+  await moveLegacyKey(filePath, legacyScope, scope, legacyKey);
+  return legacyKey;
+};
 
 /**
  * A voter key store kept in one JSON file, readable by its owner only. A file it cannot read is never
  * written over: it may hold the keys a person's earlier votes were cast with.
  */
 export const createFileVoterKeyStore = (filePath: string): VoterKeyStore => ({
-  load: async (lighthouse) =>
-    (await readKeys(filePath))?.[scopeOf(lighthouse)] ?? null,
-  save: (lighthouse, key) => saveKey(filePath, scopeOf(lighthouse), key),
+  load: (lighthouse) => loadKey(filePath, lighthouse),
+  save: (lighthouse, key) =>
+    updateKeys(filePath, (kept) => ({
+      ...kept,
+      [getVoterKeyScope(lighthouse)]: key,
+    })),
 });

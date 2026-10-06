@@ -32,7 +32,9 @@ upgrade and is never asked.
   are registered as writes. Their descriptions tell the assistant to confirm with the user first and to ask
   for the user's name rather than infer it. Each result carries a `summary` in the same words as `lh`.
   `lighthouse_team_refinement_get` marks the user's own vote.
-- mcp-stdio keeps its voter key in the same file as `lh`, so a person is one voter whichever they use.
+- mcp-stdio keeps its voter key in the same file as `lh`, so a person is one voter whichever they use, and
+  however each was given the URL (`HTTPS://Lighthouse.example:443/` and `https://lighthouse.example/api` are
+  one Lighthouse).
   mcp-http, shared by many people, refuses votes on a Lighthouse without sign-in and points to the web page,
   `lh` or a local MCP server.
 - The client gains `castRefinementVote`, `addRefinementComment`, `takeBackRefinementVote`, a `voterKey` option

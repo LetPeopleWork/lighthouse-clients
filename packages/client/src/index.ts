@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { getNormalizedLighthouseUrl } from "./lighthouseUrl";
 
 export type ClientCapability =
   | "versioned-api-contracts"
@@ -122,29 +123,6 @@ const getErrorMessageWithCause = (error: unknown, fallback: string): string => {
   }
 
   return error.message;
-};
-
-const getNormalizedLighthouseUrl = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return null;
-    }
-
-    const pathname = parsed.pathname.replace(/\/+$/u, "");
-    if (pathname.length === 0 || pathname === "/") {
-      return parsed.origin;
-    }
-
-    return `${parsed.origin}${pathname}`;
-  } catch {
-    return null;
-  }
 };
 
 const getApiBaseUrl = (lighthouseUrl: string): string => {
