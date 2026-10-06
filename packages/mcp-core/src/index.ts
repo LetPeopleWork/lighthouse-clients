@@ -1,5 +1,8 @@
 import {
   type DeliveryMetricsHistory,
+  describeRefinementSummary,
+  type LighthouseClient,
+  resolveRefinementTerms,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -37,6 +40,7 @@ export type McpToolDefinition = {
     | "lighthouse_team_list"
     | "lighthouse_team_get"
     | "lighthouse_team_refresh"
+    | "lighthouse_team_refinement_get"
     | "lighthouse_portfolio_list"
     | "lighthouse_portfolio_get"
     | "lighthouse_portfolio_refresh"
@@ -663,7 +667,7 @@ type McpRuntimeClient = {
         readonly error: { readonly category: string; readonly reason: string };
       }
   >;
-};
+} & Pick<LighthouseClient, "getTeamRefinement" | "getTerminology">;
 
 export type McpCoreRuntimeDependencies = {
   readonly createClient: () => McpRuntimeClient;
@@ -750,6 +754,12 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_refresh",
     description: "Trigger data refresh for a team by ID.",
+    inputSchema: idInputSchema,
+  },
+  {
+    name: "lighthouse_team_refinement_get",
+    description:
+      "How many work items a team should refine before its next Refinement, as on the team's Refinement tab (Lighthouse newer than v26.10.3.6). `summary` is the sentence the web page states, in the instance's terminology. need.low and need.high are the range of work items the team is likely to pull over one cycle (need.cycleStart to need.cycleEnd: from the next Refinement to the one after, or from today on a Refinement day), read at need.lowPercentile and need.highPercentile. need.verdict says where readyCount sits against that range: Below, In or Above. Without a verdict, need.unavailableReason says why: NoCadence, InsufficientData or NoRefinementStates. workItems are the items in refinement, in the order the Refinement tab lists them.",
     inputSchema: idInputSchema,
   },
   {
@@ -1276,6 +1286,42 @@ const getNumericId = (argumentsPayload: unknown): number | null => {
   return null;
 };
 
+const teamNameOf = (team: unknown, teamId: number): string => {
+  const name = (team as { readonly name?: unknown } | null)?.name;
+  return typeof name === "string" ? name : `Team ${teamId}`;
+};
+
+const getTeamRefinementToolResult = async (
+  client: McpRuntimeClient,
+  teamId: number,
+): Promise<McpToolResult> => {
+  const refinement = await client.getTeamRefinement(teamId);
+  if (!refinement.ok) {
+    return getErrorToolResult(
+      `refinement: ${refinement.error.category} (${refinement.error.reason})`,
+    );
+  }
+
+  const [team, terminology] = await Promise.all([
+    client.getTeam(teamId),
+    client.getTerminology(),
+  ]);
+  if (!team.ok) {
+    return getErrorToolResult(
+      `refinement: ${team.error.category} (${team.error.reason})`,
+    );
+  }
+
+  const summary = describeRefinementSummary(
+    teamNameOf(team.value, teamId),
+    refinement.value,
+    resolveRefinementTerms(terminology.ok ? terminology.value : null),
+  );
+  return getSuccessToolResult(
+    `refinement: ${encodePayload({ summary, ...refinement.value })}`,
+  );
+};
+
 const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
   if (
     typeof argumentsPayload !== "object" ||
@@ -1432,6 +1478,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   lighthouse_team_list: z.object({}),
   lighthouse_team_get: z.object({ id: z.number().int() }),
   lighthouse_team_refresh: z.object({ id: z.number().int() }),
+  lighthouse_team_refinement_get: z.object({ id: z.number().int() }),
   lighthouse_portfolio_list: z.object({}),
   lighthouse_portfolio_get: z.object({ id: z.number().int() }),
   lighthouse_portfolio_refresh: z.object({ id: z.number().int() }),
@@ -1716,6 +1763,15 @@ export const createMcpCoreRuntime = (
       return getErrorToolResult(
         `team refresh: ${result.error.category} (${result.error.reason})`,
       );
+    }
+
+    if (name === "lighthouse_team_refinement_get") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("refinement: invalid id");
+      }
+
+      return getTeamRefinementToolResult(client, id);
     }
 
     if (name === "lighthouse_portfolio_list") {

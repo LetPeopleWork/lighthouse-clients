@@ -35,6 +35,7 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_team_list",
       "lighthouse_team_get",
       "lighthouse_team_refresh",
+      "lighthouse_team_refinement_get",
       "lighthouse_portfolio_list",
       "lighthouse_portfolio_get",
       "lighthouse_portfolio_refresh",
@@ -1643,7 +1644,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(41);
+    expect(registered).toHaveLength(42);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",

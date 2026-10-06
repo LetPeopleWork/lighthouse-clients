@@ -114,7 +114,7 @@ const textOf = (result: Awaited<ReturnType<Runtime["callTool"]>>): string =>
   result.content.map((content) => content.text).join("\n");
 
 describe("the refinement need tool", () => {
-  it.skip("is offered with a description that explains the verdict, the range and the cycle", () => {
+  it("is offered with a description that explains the verdict, the range and the cycle", () => {
     const { runtime } = anAssistantOn(ok(gravitysRefinement()));
 
     const tool = runtime.listTools().find((listed) => listed.name === TOOL);
@@ -128,7 +128,7 @@ describe("the refinement need tool", () => {
   });
 
   // @driving_port
-  it.skip("hands an assistant the facts together with the sentence the web page states", async () => {
+  it("hands an assistant the facts together with the sentence the web page states", async () => {
     const { runtime, asked } = anAssistantOn(ok(gravitysRefinement()));
 
     const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
@@ -147,7 +147,7 @@ describe("the refinement need tool", () => {
     );
   });
 
-  it.skip("tells an assistant why there is no number for a Team without a cadence", async () => {
+  it("tells an assistant why there is no number for a Team without a cadence", async () => {
     const { runtime } = anAssistantOn(ok(gravitysRefinement(noCadence)));
 
     const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
@@ -162,10 +162,7 @@ describe("the refinement need tool", () => {
     expect(text).not.toContain(" ready — ");
   });
 
-  it.skip.each([
-    { argumentsPayload: {} },
-    { argumentsPayload: { id: "gravity" } },
-  ])(
+  it.each([{ argumentsPayload: {} }, { argumentsPayload: { id: "gravity" } }])(
     "refuses $argumentsPayload without asking Lighthouse",
     async ({ argumentsPayload }) => {
       const { runtime, asked } = anAssistantOn(ok(gravitysRefinement()));
@@ -178,7 +175,7 @@ describe("the refinement need tool", () => {
     },
   );
 
-  it.skip("passes a Lighthouse refusal straight through", async () => {
+  it("passes a Lighthouse refusal straight through", async () => {
     const { runtime } = anAssistantOn({
       ok: false,
       error: {

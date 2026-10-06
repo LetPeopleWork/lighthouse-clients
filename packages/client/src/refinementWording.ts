@@ -185,6 +185,17 @@ export const describeRefinementNeed = (
     : describeJudgedNeed(need);
 };
 
+/** The heading and the need sentence together, as the web page states them. */
+export const describeRefinementSummary = (
+  teamName: string,
+  refinement: TeamRefinement,
+  terms: RefinementTerms,
+): string => {
+  const heading = describeRefinementHeading(teamName, refinement, terms);
+  const need = describeRefinementNeed(teamName, refinement, terms);
+  return need === null ? heading : `${heading}\n${need}`;
+};
+
 /** Where the line goes among the listed Work Items: after this many rows, saying this. */
 export type EnoughForLine = {
   readonly afterRows: number;
