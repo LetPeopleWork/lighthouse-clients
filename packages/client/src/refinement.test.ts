@@ -111,7 +111,7 @@ const aLighthouseAnswering = (
 };
 
 describe("the refinement need through the client", () => {
-  it.skip("hands over the refinement facts for a Team exactly as the server sent them", async () => {
+  it("hands over the refinement facts for a Team exactly as the server sent them", async () => {
     const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_REFINEMENT, {
       "/v1/teams/3/refinement": answering(gravitysRefinement),
     });
@@ -124,7 +124,7 @@ describe("the refinement need through the client", () => {
     ]);
   });
 
-  it.skip("tells the caller to upgrade a Lighthouse that has no refinement yet, without asking it", async () => {
+  it("tells the caller to upgrade a Lighthouse that has no refinement yet, without asking it", async () => {
     const lighthouse = aLighthouseAnswering(LAST_SERVER_WITHOUT_REFINEMENT, {
       "/v1/teams/3/refinement": answering(gravitysRefinement),
     });
@@ -141,7 +141,7 @@ describe("the refinement need through the client", () => {
     expect(lighthouse.asksOtherThanTheVersion()).toEqual([]);
   });
 
-  it.skip("hands over the words the instance uses for its terms", async () => {
+  it("hands over the words the instance uses for its terms", async () => {
     const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_REFINEMENT, {
       "/v1/terminology/all": answering(renamedTerminology),
     });
@@ -151,7 +151,7 @@ describe("the refinement need through the client", () => {
     expect(result).toEqual({ ok: true, value: renamedTerminology });
   });
 
-  it.skip("reports a failed terminology read as a failure the caller can fall back from", async () => {
+  it("reports a failed terminology read as a failure the caller can fall back from", async () => {
     const lighthouse = aLighthouseAnswering(FIRST_SERVER_WITH_REFINEMENT, {
       "/v1/terminology/all": answering("boom", 500),
     });

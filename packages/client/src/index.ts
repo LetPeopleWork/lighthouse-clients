@@ -1164,6 +1164,77 @@ export type RecurringBlackoutRuleInput = {
   readonly description: string;
 };
 
+export type RefinementVerdict = "Below" | "In" | "Above";
+
+export type NeedUnavailableReason =
+  | "NoCadence"
+  | "InsufficientData"
+  | "NoRefinementStates";
+
+export type RefinementNeed = {
+  readonly verdict: RefinementVerdict | null;
+  readonly unavailableReason: NeedUnavailableReason | null;
+  readonly low: number | null;
+  readonly high: number | null;
+  readonly lowPercentile: number | null;
+  readonly highPercentile: number | null;
+  readonly horizonWorkingDays: number | null;
+  readonly cycleStart: string | null;
+  readonly cycleEnd: string | null;
+};
+
+export type RefinementRow = {
+  readonly referenceId: string;
+  readonly name: string;
+  readonly url: string | null;
+  readonly state: string;
+  readonly parentReferenceId: string;
+  readonly voteCount: number;
+  readonly myVote: "Yes" | "YesBut" | "No" | null;
+  readonly split: {
+    readonly yes: number;
+    readonly yesBut: number;
+    readonly no: number;
+  };
+  readonly readiness:
+    | "Ready"
+    | "MoreYesNeeded"
+    | "MoreVotersNeeded"
+    | "NeedsDiscussion";
+  readonly missingVotes: number | null;
+  readonly stage: "Waiting" | "BeingRefined" | "Ready" | null;
+  readonly signalsDisagree: boolean;
+  readonly hasComments: boolean;
+  readonly hasOpenQuestion: boolean;
+};
+
+export type TeamRefinement = {
+  readonly refinementConfigured: boolean;
+  readonly workItems: readonly RefinementRow[];
+  readonly yardstick: {
+    readonly source: "Sle" | "CycleTimeFallback" | "Unavailable";
+    readonly days: number | null;
+    readonly probability: number | null;
+  };
+  readonly voterIdentity: "Account" | "SelfDeclared";
+  readonly readyByVotesCount: number;
+  readonly stagesConfigured: boolean;
+  readonly readyCount: number;
+  readonly readySource: "Votes" | "Stages";
+  readonly nextRefinementDate: string | null;
+  readonly isRefinementDay: boolean;
+  readonly daysUntilNextRefinement: number | null;
+  readonly need: RefinementNeed;
+};
+
+export type TerminologyEntry = {
+  readonly id: number;
+  readonly key: string;
+  readonly description: string;
+  readonly defaultValue: string;
+  readonly value: string;
+};
+
 export type LighthouseClient = {
   readonly checkConnectivity: () => Promise<ConnectivityValidationResult>;
   readonly getVersion: () => Promise<LighthouseApiResult<string>>;
@@ -1196,6 +1267,12 @@ export type LighthouseClient = {
   ) => Promise<LighthouseApiResult<unknown>>;
   readonly deleteTeam: (teamId: number) => Promise<LighthouseApiResult<void>>;
   readonly refreshTeam: (teamId: number) => Promise<LighthouseApiResult<void>>;
+  readonly getTeamRefinement: (
+    teamId: number,
+  ) => Promise<LighthouseApiResult<TeamRefinement>>;
+  readonly getTerminology: () => Promise<
+    LighthouseApiResult<readonly TerminologyEntry[]>
+  >;
 
   readonly listPortfolios: () => Promise<
     LighthouseApiResult<readonly unknown[]>
@@ -1873,6 +1950,7 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   // The endpoint landed in v26.6.7.1. The per-epic size fields came much later and are optional on
   // the wire, so a server between the two answers fine — it just reports no sizes.
   deliveryMetricsHistory: "v26.5.29.5",
+  teamRefinement: "v26.10.3.6",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2060,6 +2138,25 @@ export const createLighthouseClient = (
       requestNoContent(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "POST",
       }),
+    getTeamRefinement: async (teamId: number) => {
+      const unsupported = await ensureServerSupports("teamRefinement");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<TeamRefinement>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/refinement`,
+        { method: "GET" },
+      );
+    },
+    getTerminology: async () =>
+      requestJson<readonly TerminologyEntry[]>(
+        configuration,
+        dependencies,
+        "/v1/terminology/all",
+        { method: "GET" },
+      ),
     listPortfolios: async () =>
       requestJson<readonly unknown[]>(
         configuration,
