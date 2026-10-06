@@ -7,7 +7,7 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
-  resolveRefinementTerms,
+  readRefinementWording,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -2407,11 +2407,6 @@ const parseTeamIdOption = (
   return Number(value);
 };
 
-const teamNameOf = (team: unknown, teamId: number): string =>
-  isRecord(team) && typeof team.name === "string"
-    ? team.name
-    : `Team ${teamId}`;
-
 const runRefinementGet = async (
   args: readonly string[],
   outputFormat: OutputFormat,
@@ -2427,19 +2422,12 @@ const runRefinementGet = async (
     return mapApiResultToCliResult(refinement, outputFormat);
   }
 
-  const [team, terminology] = await Promise.all([
-    client.getTeam(teamId),
-    client.getTerminology(),
-  ]);
-  if (!team.ok) {
-    return mapApiResultToCliResult(team, outputFormat);
+  const wording = await readRefinementWording(client, teamId);
+  if (!wording.ok) {
+    return mapApiResultToCliResult(wording, outputFormat);
   }
-  const terms = resolveRefinementTerms(
-    terminology.ok ? terminology.value : null,
-  );
-  const teamName = teamNameOf(team.value, teamId);
   return mapApiResultToCliResult(refinement, outputFormat, (facts) =>
-    renderRefinement(teamName, facts, terms),
+    renderRefinement(facts, wording.value),
   );
 };
 

@@ -22,8 +22,9 @@ never asked.
 - The MCP tool `lighthouse_team_refinement_get` (input `{ id }`) returns the same facts plus a
   `summary` holding the sentence the web page states. Its description explains the verdict, the
   range and the cycle it covers.
-- The client gains `getTeamRefinement(teamId)`, `getTerminology()` and the shared wording
-  (`describeRefinementSummary` and friends) both surfaces use.
+- The client gains `getTeamRefinement(teamId)`, `getTerminology()` and the shared wording both
+  surfaces use: `readRefinementWording` reads the Team's name and the instance's terms, and
+  `describeRefinementSummary` and friends state the need in them.
 
 This release also carries the runtime dependency updates held back since the last one:
 `@modelcontextprotocol/sdk` 1.30.0, `undici` 8.11, `zod` 4 and `@toon-format/toon` 4. The TOON

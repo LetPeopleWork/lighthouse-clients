@@ -224,11 +224,7 @@ export const formatPayload = <TValue>(
   }
 
   if (outputFormat === "pretty") {
-    return {
-      ok: true,
-      value:
-        renderPretty === undefined ? formatPretty(value) : renderPretty(value),
-    };
+    return { ok: true, value: (renderPretty ?? formatPretty)(value) };
   }
 
   try {

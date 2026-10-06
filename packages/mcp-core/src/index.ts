@@ -2,7 +2,7 @@ import {
   type DeliveryMetricsHistory,
   describeRefinementSummary,
   type LighthouseClient,
-  resolveRefinementTerms,
+  readRefinementWording,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -1286,10 +1286,11 @@ const getNumericId = (argumentsPayload: unknown): number | null => {
   return null;
 };
 
-const teamNameOf = (team: unknown, teamId: number): string => {
-  const name = (team as { readonly name?: unknown } | null)?.name;
-  return typeof name === "string" ? name : `Team ${teamId}`;
-};
+const getRefinementErrorToolResult = (error: {
+  readonly category: string;
+  readonly reason: string;
+}): McpToolResult =>
+  getErrorToolResult(`refinement: ${error.category} (${error.reason})`);
 
 const getTeamRefinementToolResult = async (
   client: McpRuntimeClient,
@@ -1297,26 +1298,15 @@ const getTeamRefinementToolResult = async (
 ): Promise<McpToolResult> => {
   const refinement = await client.getTeamRefinement(teamId);
   if (!refinement.ok) {
-    return getErrorToolResult(
-      `refinement: ${refinement.error.category} (${refinement.error.reason})`,
-    );
+    return getRefinementErrorToolResult(refinement.error);
   }
 
-  const [team, terminology] = await Promise.all([
-    client.getTeam(teamId),
-    client.getTerminology(),
-  ]);
-  if (!team.ok) {
-    return getErrorToolResult(
-      `refinement: ${team.error.category} (${team.error.reason})`,
-    );
+  const wording = await readRefinementWording(client, teamId);
+  if (!wording.ok) {
+    return getRefinementErrorToolResult(wording.error);
   }
 
-  const summary = describeRefinementSummary(
-    teamNameOf(team.value, teamId),
-    refinement.value,
-    resolveRefinementTerms(terminology.ok ? terminology.value : null),
-  );
+  const summary = describeRefinementSummary(refinement.value, wording.value);
   return getSuccessToolResult(
     `refinement: ${encodePayload({ summary, ...refinement.value })}`,
   );

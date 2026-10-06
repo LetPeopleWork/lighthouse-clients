@@ -1,4 +1,9 @@
-import type { RefinementNeed, TeamRefinement, TerminologyEntry } from "./index";
+import type {
+  LighthouseClient,
+  RefinementNeed,
+  TeamRefinement,
+  TerminologyEntry,
+} from "./index";
 
 /** The words an instance may rename that the refinement need is stated in. */
 export type RefinementTerms = {
@@ -8,7 +13,13 @@ export type RefinementTerms = {
   readonly refinement: string;
 };
 
-export const SEEDED_REFINEMENT_TERMS: RefinementTerms = {
+/** What the refinement need is stated with: the Team's name and the instance's words. */
+export type RefinementWording = {
+  readonly teamName: string;
+  readonly terms: RefinementTerms;
+};
+
+const SEEDED_REFINEMENT_TERMS: RefinementTerms = {
   workItem: "Work Item",
   workItems: "Work Items",
   team: "Team",
@@ -19,7 +30,7 @@ const NOT_ENOUGH_DATA =
   "Not enough data yet — need at least 5 days with completed items to forecast.";
 
 /** The instance's words, a blank or missing one falling back to the seeded word, as on the web. */
-export const resolveRefinementTerms = (
+const resolveRefinementTerms = (
   terminology: readonly TerminologyEntry[] | null,
 ): RefinementTerms => {
   const wordFor = (key: keyof RefinementTerms): string => {
@@ -34,14 +45,55 @@ export const resolveRefinementTerms = (
   };
 };
 
+const nameTheTeam = (team: unknown, teamId: number): string =>
+  typeof team === "object" &&
+  team !== null &&
+  "name" in team &&
+  typeof team.name === "string"
+    ? team.name
+    : `Team ${teamId}`;
+
+type Read<TValue, TError> =
+  | { readonly ok: true; readonly value: TValue }
+  | { readonly ok: false; readonly error: TError };
+
+/** The two reads the wording comes from; each surface passes its own client. */
+export type RefinementWordingSource<TError> = {
+  readonly getTeam: (teamId: number) => Promise<Read<unknown, TError>>;
+  readonly getTerminology: LighthouseClient["getTerminology"];
+};
+
+/**
+ * Reads the Team's name and the instance's terminology. Terminology that cannot be read leaves the
+ * seeded words standing rather than failing the answer; a Team that cannot be read fails it.
+ */
+export const readRefinementWording = async <TError>(
+  source: RefinementWordingSource<TError>,
+  teamId: number,
+): Promise<Read<RefinementWording, TError>> => {
+  const [team, terminology] = await Promise.all([
+    source.getTeam(teamId),
+    source.getTerminology(),
+  ]);
+  if (!team.ok) {
+    return team;
+  }
+  return {
+    ok: true,
+    value: {
+      teamName: nameTheTeam(team.value, teamId),
+      terms: resolveRefinementTerms(terminology.ok ? terminology.value : null),
+    },
+  };
+};
+
 type JudgedNeed = {
   readonly verdict: "Below" | "In" | "Above";
   readonly readyCount: number;
   readonly low: number;
   readonly high: number;
   readonly isRefinementDay: boolean;
-  readonly teamName: string;
-  readonly terms: RefinementTerms;
+  readonly wording: RefinementWording;
 };
 
 const isOneNumber = ({ low, high }: JudgedNeed): boolean => low === high;
@@ -59,16 +111,16 @@ const theRange = (need: JudgedNeed): string =>
 
 const workItemsTermFor = (need: JudgedNeed): string =>
   isOneNumber(need) && need.low === 1
-    ? need.terms.workItem
-    : need.terms.workItems;
+    ? need.wording.terms.workItem
+    : need.wording.terms.workItems;
 
-const whereTheCycleEnds = (need: JudgedNeed): string =>
-  need.isRefinementDay
-    ? `the next ${need.terms.refinement}`
-    : `the ${need.terms.refinement} after`;
+const whereTheCycleEnds = ({ isRefinementDay, wording }: JudgedNeed): string =>
+  isRefinementDay
+    ? `the next ${wording.terms.refinement}`
+    : `the ${wording.terms.refinement} after`;
 
 const describeBelow = (need: JudgedNeed): string =>
-  `below ${theRange(need)} ${workItemsTermFor(need)} ${need.teamName} is likely to pull until ${whereTheCycleEnds(need)}. Refine ${howManyMore(need)} more.`;
+  `below ${theRange(need)} ${workItemsTermFor(need)} ${need.wording.teamName} is likely to pull until ${whereTheCycleEnds(need)}. Refine ${howManyMore(need)} more.`;
 
 const describeIn = (need: JudgedNeed): string => {
   const where = isOneNumber(need)
@@ -111,7 +163,7 @@ const hasNoRefinementStates = (refinement: TeamRefinement): boolean =>
   !refinement.refinementConfigured ||
   refinement.need.unavailableReason === "NoRefinementStates";
 
-const describeWhen = (
+const describeNextRefinement = (
   refinement: TeamRefinement,
   terms: RefinementTerms,
 ): string => {
@@ -128,16 +180,15 @@ const describeWhen = (
 };
 
 /** "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days", or why there is no next Refinement to name. */
-export const describeRefinementHeading = (
-  teamName: string,
+const describeHeading = (
   refinement: TeamRefinement,
-  terms: RefinementTerms,
-): string => `${teamName} · ${describeWhen(refinement, terms)}`;
+  wording: RefinementWording,
+): string =>
+  `${wording.teamName} · ${describeNextRefinement(refinement, wording.terms)}`;
 
-const judged = (
-  teamName: string,
+const judgedNeedOf = (
   refinement: TeamRefinement,
-  terms: RefinementTerms,
+  wording: RefinementWording,
 ): JudgedNeed | null => {
   const { verdict, low, high } = refinement.need;
   if (verdict === null || low === null || high === null) {
@@ -149,12 +200,11 @@ const judged = (
     low,
     high,
     isRefinementDay: refinement.isRefinementDay,
-    teamName,
-    terms,
+    wording,
   };
 };
 
-const describeNoNumber = (
+const describeWhyNoNumber = (
   refinement: TeamRefinement,
   terms: RefinementTerms,
 ): string | null => {
@@ -174,25 +224,23 @@ const describeNoNumber = (
  * "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after.
  * Refine 2 to 5 more.", or, without a verdict, why there is no number.
  */
-export const describeRefinementNeed = (
-  teamName: string,
+const describeNeed = (
   refinement: TeamRefinement,
-  terms: RefinementTerms,
+  wording: RefinementWording,
 ): string | null => {
-  const need = judged(teamName, refinement, terms);
+  const need = judgedNeedOf(refinement, wording);
   return need === null
-    ? describeNoNumber(refinement, terms)
+    ? describeWhyNoNumber(refinement, wording.terms)
     : describeJudgedNeed(need);
 };
 
 /** The heading and the need sentence together, as the web page states them. */
 export const describeRefinementSummary = (
-  teamName: string,
   refinement: TeamRefinement,
-  terms: RefinementTerms,
+  wording: RefinementWording,
 ): string => {
-  const heading = describeRefinementHeading(teamName, refinement, terms);
-  const need = describeRefinementNeed(teamName, refinement, terms);
+  const heading = describeHeading(refinement, wording);
+  const need = describeNeed(refinement, wording);
   return need === null ? heading : `${heading}\n${need}`;
 };
 
