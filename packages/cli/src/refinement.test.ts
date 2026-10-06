@@ -267,6 +267,22 @@ describe("lh refinement get", () => {
       says: "0 ready — below the 1 Work Item Team Gravity is likely to pull until the Refinement after. Refine 1 more.",
     },
     {
+      verdict: "In",
+      readyCount: 6,
+      low: 6,
+      high: 6,
+      isRefinementDay: false,
+      says: "6 ready — exactly the 6 likely to be pulled. Nothing more needs refining by then.",
+    },
+    {
+      verdict: "Above",
+      readyCount: 10,
+      low: 8,
+      high: 8,
+      isRefinementDay: false,
+      says: "10 ready — above the 8 likely to be pulled. Stop refining: nothing more is needed by then.",
+    },
+    {
       verdict: "Below",
       readyCount: 3,
       low: 5,
@@ -291,6 +307,34 @@ describe("lh refinement get", () => {
 
       expect(result.exitCode).toBe(0);
       expect(prose(result.stdout)).toContain(says);
+    },
+  );
+
+  it.each([
+    {
+      days: 2,
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    },
+    {
+      days: 1,
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · tomorrow",
+    },
+    {
+      days: 0,
+      heading: "Team Gravity · Next Refinement: Thu 8 Oct · in 0 days",
+    },
+    { days: null, heading: "Team Gravity · Next Refinement: Thu 8 Oct" },
+  ])(
+    "heads the answer '$heading' when the next Refinement is $days days away",
+    async ({ days, heading }) => {
+      const { dependencies } = aLighthouse({
+        refinement: ok(gravitysRefinement({ daysUntilNextRefinement: days })),
+      });
+
+      const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+      expect(result.exitCode).toBe(0);
+      expect(shownLines(result.stdout)[0]).toBe(heading);
     },
   );
 

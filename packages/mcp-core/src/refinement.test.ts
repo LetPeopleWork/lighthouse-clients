@@ -165,17 +165,12 @@ describe("the refinement need tool", () => {
     const result = await runtime.callTool(TOOL, { id: GRAVITY_ID });
 
     expect(result.isError).toBe(false);
-    const text = textOf(result);
     expect(asked).toContain(`refinement ${GRAVITY_ID}`);
-    expect(text).toContain("readyCount: 3");
-    expect(text).toContain("verdict: Below");
-    expect(text).toContain("summary");
-    expect(text).toContain(
-      "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
-    );
-    expect(text).toContain(
-      "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
-    );
+    expect(factsOf(result)).toEqual({
+      summary:
+        "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days\n3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
+      ...gravitysRefinement(),
+    });
   });
 
   it("tells an assistant why there is no number for a Team without a cadence", async () => {
