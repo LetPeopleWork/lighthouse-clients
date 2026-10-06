@@ -11,8 +11,8 @@ Ask how much to refine from the terminal and from an assistant
 "How many Work Items should we refine before the next Refinement?" was answered only on a Team's
 Refinement tab in the browser. Now `lh` and the MCP tools answer it too, in exactly the words the
 web page uses and in the instance's own terminology, so a renamed "Story" or "Grooming" reads the
-same everywhere. Needs a Lighthouse newer than v26.10.3.6; an older server is told to upgrade and is
-never asked.
+same everywhere. A term left blank, or terminology that cannot be read, reads as the default word.
+Needs a Lighthouse newer than v26.10.3.6; an older server is told to upgrade and is never asked.
 
 - `lh refinement get --team-id <id>` states the next Refinement, how many Work Items are ready
   against the range the Team is likely to pull, and how many more to refine. It then lists the

@@ -416,8 +416,6 @@ describe("lh refinement get", () => {
           workItem: "Story",
           workItems: "Stories",
           refinement: "Grooming",
-          // Left blank, the seeded word stands.
-          refinements: "",
         }),
       ),
     });
@@ -436,6 +434,28 @@ describe("lh refinement get", () => {
     expect(prose(result.stdout)).toContain(
       "enough for the next Grooming (85%) · not needed before then",
     );
+  });
+
+  it("keeps the seeded word for a term the instance left blank or does not send", async () => {
+    const { dependencies } = aLighthouse({
+      terminology: ok(
+        terminologyRenaming({ workItem: "Story", workItems: "" }).filter(
+          (entry) => entry.key !== "refinement",
+        ),
+      ),
+    });
+
+    const result = await runCliCommand(refinementOfGravity(), dependencies);
+
+    expect(result.exitCode).toBe(0);
+    const lines = shownLines(result.stdout);
+    expect(lines[0]).toBe(
+      "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
+    );
+    expect(prose(result.stdout)).toContain(
+      "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
+    );
+    expect(lines).toContain("# Story Parent State");
   });
 
   it("falls back to the seeded words when the instance's terms cannot be read", async () => {
