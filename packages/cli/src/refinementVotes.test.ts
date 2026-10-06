@@ -993,7 +993,7 @@ describe("lh config voter", () => {
     expect(lighthouse.writes()[0]?.body).toMatchObject({ voterName: ANA_LIMA });
   });
 
-  it.skip("says how to store a name when none is stored", async () => {
+  it("says how to store a name when none is stored", async () => {
     const lighthouse = aLighthouse({ voter: { name: null } });
 
     const shown = await runCliCommand(
@@ -1008,7 +1008,7 @@ describe("lh config voter", () => {
   });
 
   // @error
-  it.skip.each([
+  it.each([
     { name: [] as string[], says: "Missing --name" },
     { name: ["--name", "   "], says: "Missing --name" },
     {

@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import {
   type CliConnection,
   type CliServerConnection,
+  createFileVoterKeyStore,
   createLighthouseClient,
+  getVoterKeyStorePath,
   loadStandaloneDiscoveryContract,
   validateLighthouseConnectivity,
 } from "@letpeoplework/lighthouse-client";
@@ -32,6 +34,7 @@ type PersistedConfigV2 = {
   readonly version: 2;
   readonly connection?: CliConnection;
   readonly outputFormat?: OutputFormat;
+  readonly voterName?: string;
 };
 
 const getConfigPath = (): string =>
@@ -49,6 +52,8 @@ const loadPersistedStorage = async (): Promise<PersistedConfigV2> => {
         outputFormat: isOutputFormat(parsed.outputFormat)
           ? parsed.outputFormat
           : undefined,
+        voterName:
+          typeof parsed.voterName === "string" ? parsed.voterName : undefined,
       };
     }
     // Migrate v1 → v2
@@ -169,18 +174,9 @@ export const runCli = async (
     },
     saveConnection: async (connection) => {
       const storage = await loadPersistedStorage();
-      if (connection === null) {
-        await savePersistedStorage({
-          version: 2,
-          outputFormat: storage.outputFormat,
-        });
-        return;
-      }
-
       await savePersistedStorage({
-        version: 2,
-        connection,
-        outputFormat: storage.outputFormat,
+        ...storage,
+        connection: connection ?? undefined,
       });
     },
     loadOutputFormat: async () => {
@@ -189,12 +185,23 @@ export const runCli = async (
     },
     saveOutputFormat: async (outputFormat) => {
       const storage = await loadPersistedStorage();
+      await savePersistedStorage({ ...storage, outputFormat });
+    },
+    loadVoterName: async () => {
+      const storage = await loadPersistedStorage();
+      return storage.voterName ?? null;
+    },
+    saveVoterName: async (voterName) => {
+      const storage = await loadPersistedStorage();
       await savePersistedStorage({
-        version: 2,
-        connection: storage.connection,
-        outputFormat,
+        ...storage,
+        voterName: voterName ?? undefined,
       });
     },
+    loadVoterKey: async (lighthouse) =>
+      createFileVoterKeyStore(getVoterKeyStorePath()).load(lighthouse),
+    saveVoterKey: async (lighthouse, key) =>
+      createFileVoterKeyStore(getVoterKeyStorePath()).save(lighthouse, key),
     readTextFile: async (filePath) => readFile(filePath, "utf8"),
     prompt,
     openBrowser,

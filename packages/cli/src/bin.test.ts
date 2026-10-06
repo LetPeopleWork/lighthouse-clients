@@ -317,6 +317,61 @@ describe("cli binary entrypoint", () => {
       }
     }
   });
+
+  it("keeps the voter name in the cli config, through other settings and a disconnect", async () => {
+    const stdout = vi.fn<(message: string) => void>();
+    const stderr = vi.fn<(message: string) => void>();
+    const configPath = join(
+      mkdtempSync(join(tmpdir(), "lighthouse-cli-voter-")),
+      "cli-config.json",
+    );
+    const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
+    process.env.LIGHTHOUSE_CLI_CONFIG_PATH = configPath;
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        version: 2,
+        connection: {
+          mode: "server",
+          endpointUrl: "http://localhost:5000",
+          authMode: "disabled",
+        },
+      }),
+      "utf8",
+    );
+
+    try {
+      await runCli(["config", "voter", "set", "--name", "Ana Lima"], {
+        stdout,
+        stderr,
+      });
+      await runCli(["config", "output", "set", "--format", "json"], {
+        stdout,
+        stderr,
+      });
+      await runCli(["connection", "disconnect"], { stdout, stderr });
+      stdout.mockClear();
+      const exitCode = await runCli(["config", "voter"], { stdout, stderr });
+
+      expect(exitCode).toBe(0);
+      expect(stderr).not.toHaveBeenCalled();
+      expect(stdout).toHaveBeenCalledWith("Voter name: Ana Lima");
+      const savedConfig = JSON.parse(await readFile(configPath, "utf8")) as {
+        readonly voterName?: string;
+        readonly outputFormat?: string;
+      };
+      expect(savedConfig).toMatchObject({
+        voterName: "Ana Lima",
+        outputFormat: "json",
+      });
+    } finally {
+      if (previousConfigPath === undefined) {
+        process.env.LIGHTHOUSE_CLI_CONFIG_PATH = undefined;
+      } else {
+        process.env.LIGHTHOUSE_CLI_CONFIG_PATH = previousConfigPath;
+      }
+    }
+  });
 });
 
 describe("isDirectExecution", () => {

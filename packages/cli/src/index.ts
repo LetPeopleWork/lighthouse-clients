@@ -8,6 +8,7 @@ import {
   type LighthouseClient,
   type MetricsDateRange,
   readRefinementWording,
+  STANDALONE_VOTER_KEY_SCOPE,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -122,8 +123,12 @@ export type RunCliCommandDependencies = {
   readonly validateStandaloneDiscovery: () => Promise<ConnectivityValidationResult>;
   readonly createClient: (connection: CliConnection) => CliClientOperations;
   readonly getEnvApiKey?: () => string | undefined;
+  /** The name votes and comments carry when Lighthouse runs without sign-in. */
+  readonly loadVoterName?: () => Promise<string | null>;
+  readonly saveVoterName?: (name: string | null) => Promise<void>;
   /** The voter key this client keeps for one Lighthouse, or null when it keeps none. */
   readonly loadVoterKey?: (lighthouse: string) => Promise<string | null>;
+  readonly saveVoterKey?: (lighthouse: string, key: string) => Promise<void>;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1176,6 +1181,8 @@ const getConfigGroupHelpText = (): string =>
     "Usage:",
     "  lh config output",
     "  lh config output set --format <pretty|toon|json>",
+    "  lh config voter",
+    "  lh config voter set --name <name>",
   ].join("\n");
 
 const getRefinementGroupHelpText = (): string =>
@@ -2349,6 +2356,45 @@ const runForecastGroup = async (
   }
 };
 
+// The longest name Lighthouse records with a vote or comment.
+const LONGEST_VOTER_NAME = 100;
+
+const VOTER_NAME_TOO_LONG = `A name is at most ${LONGEST_VOTER_NAME} characters.`;
+
+const runConfigVoter = async (
+  subject: string | undefined,
+  args: readonly string[],
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (subject === undefined || subject === "get") {
+    const name = await dependencies.loadVoterName?.();
+    return getSuccessResult(
+      name == null
+        ? 'No voter name stored. Store one with: lh config voter set --name "<name>"'
+        : `Voter name: ${name}`,
+    );
+  }
+
+  if (subject !== "set") {
+    return getUnknownSubcommandResult(
+      getConfigGroupHelpText(),
+      "config voter",
+      subject,
+    );
+  }
+
+  const name = getOptionValue(args, "--name")?.trim() ?? "";
+  if (name.length === 0) {
+    return getErrorResult("Missing --name for config voter set.");
+  }
+  if (name.length > LONGEST_VOTER_NAME) {
+    return getErrorResult(VOTER_NAME_TOO_LONG);
+  }
+
+  await dependencies.saveVoterName?.(name);
+  return getSuccessResult(`Voter name set to ${name}.`);
+};
+
 const runConfigGroup = async (
   action: string | undefined,
   subject: string | undefined,
@@ -2357,6 +2403,10 @@ const runConfigGroup = async (
 ): Promise<CliCommandResult> => {
   if (action === undefined) {
     return getSuccessResult(getConfigGroupHelpText());
+  }
+
+  if (action === "voter") {
+    return runConfigVoter(subject, args, dependencies);
   }
 
   if (action !== "output") {
@@ -2408,10 +2458,6 @@ const parseTeamIdOption = (
   }
   return Number(value);
 };
-
-// A standalone connection follows the desktop app wherever its lock file points, so it is one Lighthouse
-// whatever port it was last started on.
-const STANDALONE_VOTER_KEY_SCOPE = "standalone";
 
 /** Which Lighthouse a voter key belongs to: the server's URL, or the one standalone app on this machine. */
 const voterKeyScopeOf = (connection: CliConnection): string =>
