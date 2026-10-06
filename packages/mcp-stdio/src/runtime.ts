@@ -5,6 +5,7 @@ import {
   type LighthouseConnectionConfiguration,
   loadStandaloneDiscoveryContract,
   STANDALONE_VOTER_KEY_SCOPE,
+  voterKeyStoreFor,
 } from "@letpeoplework/lighthouse-client";
 import {
   type McpVoterKeyStore,
@@ -47,13 +48,11 @@ const getNormalizedExplicitUrl = (value: string): string | null => {
 export const createLocalVoterKeyStore = (
   voterKeyScope: string,
   env: NodeJS.ProcessEnv = process.env,
-): McpVoterKeyStore => {
-  const store = createFileVoterKeyStore(getVoterKeyStorePath(env));
-  return {
-    load: () => store.load(voterKeyScope),
-    save: (key) => store.save(voterKeyScope, key),
-  };
-};
+): McpVoterKeyStore =>
+  voterKeyStoreFor(
+    createFileVoterKeyStore(getVoterKeyStorePath(env)),
+    voterKeyScope,
+  );
 
 type ResolvedLighthouse = {
   readonly connection: LighthouseConnectionConfiguration;

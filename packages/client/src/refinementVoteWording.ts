@@ -4,7 +4,11 @@ import type {
   RefinementRow,
   VotedRow,
 } from "./index";
-import type { RefinementTerms } from "./refinementWording";
+import {
+  type RefinementTerms,
+  type RefinementTermsSource,
+  readRefinementTerms,
+} from "./refinementWording";
 
 const ANSWER_WORDS: Readonly<Record<RefinementAnswer, string>> = {
   Yes: "Yes",
@@ -106,6 +110,10 @@ export const describeTakenBack = (
 ): string =>
   `Took back ${whose(voterName)} vote on ${workItem}. ${whereItStands(workItem, row)}`;
 
+/** Why a "Yes, if…" without its condition is not sent, ending in how this surface adds one. */
+export const describeMissingCondition = (howToAddIt: string): string =>
+  `A "${describeAnswer("YesBut")}" needs its condition: ${howToAddIt}`;
+
 /** Said instead of taking back when this client has no vote on the Work Item to take back. */
 export const describeNothingToTakeBack = (workItem: string): string =>
   `No vote of yours on ${workItem} to take back from this client.`;
@@ -151,3 +159,14 @@ export const describeVoteRefusal = (
     `${error.category}: ${error.reason}`
   );
 };
+
+/** {@link describeVoteRefusal} in the instance's own words, read from the instance first. */
+export const readVoteRefusal = async (
+  source: RefinementTermsSource,
+  error: LighthouseApiError,
+  nameRequired: string,
+): Promise<string> =>
+  describeVoteRefusal(error, {
+    terms: await readRefinementTerms(source),
+    nameRequired,
+  });

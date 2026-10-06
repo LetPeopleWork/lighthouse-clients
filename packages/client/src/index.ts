@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -1213,7 +1212,13 @@ export type RefinementRow = {
   readonly hasOpenQuestion: boolean;
 };
 
-export type RefinementAnswer = "Yes" | "YesBut" | "No";
+/** The answers a vote can give, in the order the web's buttons show them. */
+export const REFINEMENT_ANSWERS = ["Yes", "YesBut", "No"] as const;
+
+export type RefinementAnswer = (typeof REFINEMENT_ANSWERS)[number];
+
+export const isRefinementAnswer = (value: unknown): value is RefinementAnswer =>
+  REFINEMENT_ANSWERS.some((answer) => answer === value);
 
 /** Where a vote, comment or take-back was sent from. */
 export type RefinementChannel = "Cli" | "Assistant";
@@ -2089,12 +2094,6 @@ export const isServerVersionNewerThan = (
 
 /** The header a client sends its voter key in, so Lighthouse can tell its votes from anyone else's. */
 export const VOTER_KEY_HEADER = "X-Lighthouse-Voter-Key";
-
-const MINTED_VOTER_KEY_BYTES = 32;
-
-/** A fresh random voter key: 43 URL-safe characters from 32 random bytes. */
-export const mintVoterKey = (): string =>
-  randomBytes(MINTED_VOTER_KEY_BYTES).toString("base64url");
 
 const voterKeyHeaders = (
   voterKey: string | undefined,
@@ -3031,5 +3030,6 @@ export const createLighthouseClient = (
 };
 
 export * from "./refinementVoteWording";
+export * from "./refinementVoting";
 export * from "./refinementWording";
 export * from "./voterKeyStore";

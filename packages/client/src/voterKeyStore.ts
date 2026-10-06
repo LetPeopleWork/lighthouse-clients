@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -10,6 +11,40 @@ import { dirname, join } from "node:path";
 export type VoterKeyStore = {
   readonly load: (lighthouse: string) => Promise<string | null>;
   readonly save: (lighthouse: string, key: string) => Promise<void>;
+};
+
+/** The voter key a client keeps for the one Lighthouse it talks to. */
+export type LighthouseVoterKeyStore = {
+  readonly load: () => Promise<string | null>;
+  readonly save: (key: string) => Promise<void>;
+};
+
+/** The part of a store that holds one Lighthouse's key. */
+export const voterKeyStoreFor = (
+  store: VoterKeyStore,
+  lighthouse: string,
+): LighthouseVoterKeyStore => ({
+  load: () => store.load(lighthouse),
+  save: (key) => store.save(lighthouse, key),
+});
+
+const MINTED_VOTER_KEY_BYTES = 32;
+
+/** A fresh random voter key: 43 URL-safe characters from 32 random bytes. */
+export const mintVoterKey = (): string =>
+  randomBytes(MINTED_VOTER_KEY_BYTES).toString("base64url");
+
+/** The key already kept, or on a client's first write a fresh one, minted and kept from then on. */
+export const keepVoterKey = async (
+  store: LighthouseVoterKeyStore,
+): Promise<string> => {
+  const kept = await store.load();
+  if (kept !== null) {
+    return kept;
+  }
+  const minted = mintVoterKey();
+  await store.save(minted);
+  return minted;
 };
 
 const VOTER_KEYS_FILE_NAME = "voter-keys.json";
