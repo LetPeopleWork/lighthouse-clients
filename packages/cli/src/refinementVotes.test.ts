@@ -1324,3 +1324,69 @@ describe("lh refinement take-back names the vote as it was cast", () => {
     },
   );
 });
+
+describe("lh refinement says a refusal that is not about the vote the way every lh command does", () => {
+  // @error
+  it.each([
+    {
+      refusal: refusing(404, "Not Found"),
+      says: "misconfigured: Request failed with status 404.",
+      notTheTitle: "Not Found",
+    },
+    {
+      refusal: refusing(403, "Forbidden"),
+      says: "unauthorized: Request failed with status 403.",
+      notTheTitle: "Forbidden",
+    },
+    {
+      refusal: refusing(
+        400,
+        "A vote needs an answer and the channel it was cast from.",
+      ),
+      says: "unexpected: Request failed with status 400.",
+      notTheTitle: "A vote needs an answer",
+    },
+  ])(
+    "says '$says' rather than the bare title",
+    async ({ refusal, says, notTheTitle }) => {
+      const lighthouse = aLighthouse({
+        voter: { name: ANA_LIMA },
+        answers: { [`POST ${workItemPath("GR-051")}/votes`]: refusal },
+      });
+
+      const result = await runCliCommand(
+        onGravity("vote", "--work-item", "GR-051", "--answer", "yes"),
+        lighthouse.dependencies,
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.trim()).toBe(says);
+      expect(result.stderr).not.toContain(notTheTitle);
+    },
+  );
+});
+
+describe("lh refinement get stars only a vote Lighthouse says is the caller's", () => {
+  it("shows no star when Lighthouse leaves the caller's vote out", async () => {
+    const { myVote: _leftOut, ...withoutMyVote } = pdfExport({
+      split: { yes: 2, yesBut: 0, no: 0 },
+    });
+    const lighthouse = aLighthouse({
+      answers: {
+        [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering(
+          gravitysRefinement([withoutMyVote]),
+        ),
+      },
+    });
+
+    const result = await runCliCommand(
+      onGravity("get"),
+      lighthouse.dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(theLineFor(result.stdout, "GR-051")).toBe(
+      "1 GR-051 PDF export GR-010 Refinement 2 Yes 3 more Yes needed",
+    );
+  });
+});

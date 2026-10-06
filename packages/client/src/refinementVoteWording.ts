@@ -55,7 +55,7 @@ export const describeVotes = (
   if (parts.length === 0) {
     return "No votes";
   }
-  return `${parts.join(" · ")}${row.myVote === null ? "" : "*"}`;
+  return `${parts.join(" · ")}${row.myVote == null ? "" : "*"}`;
 };
 
 /** What to look at on a Work Item: "open question", "stage disagrees", both, or nothing. */
@@ -119,6 +119,16 @@ export const describeNothingToTakeBack = (workItem: string): string =>
   `No vote of yours on ${workItem} to take back from this client.`;
 
 const TOO_MANY_REQUESTS = 429;
+const BAD_REQUEST = 400;
+
+// Lighthouse sends its one vote refusal without a code, a name over the length limit, with a title that
+// already says what to do. Only that title is passed on; any other bare title is not the voter's to act on.
+const NAME_TOO_LONG = /^A name is at most \d+ characters\.$/u;
+
+const isNameTooLong = (error: LighthouseApiError): boolean =>
+  error.statusCode === BAD_REQUEST &&
+  error.problemCode === undefined &&
+  NAME_TOO_LONG.test(error.problemTitle ?? "");
 
 const LONGEST_COMMENT = 2000;
 
@@ -138,7 +148,8 @@ export type VoteRefusalWording = {
 
 /**
  * Why Lighthouse would not take a vote, comment or take-back, in words the voter can act on: the web's
- * sentence where it has one, otherwise the refusal's own title, otherwise its category and reason.
+ * sentence where it has one, the title of a name that is too long, otherwise its category and reason as
+ * every other command says a refusal.
  */
 export const describeVoteRefusal = (
   error: LighthouseApiError,
@@ -153,9 +164,11 @@ export const describeVoteRefusal = (
   if (error.problemCode === "voter-name-required") {
     return nameRequired;
   }
+  if (isNameTooLong(error)) {
+    return error.problemTitle ?? "";
+  }
   return (
     REFUSALS_IN_WORDS[error.problemCode ?? ""] ??
-    error.problemTitle ??
     `${error.category}: ${error.reason}`
   );
 };
