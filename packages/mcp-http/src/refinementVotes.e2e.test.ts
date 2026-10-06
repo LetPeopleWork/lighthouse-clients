@@ -60,6 +60,16 @@ const startLighthouse = async (signIn: boolean) => {
         res.end(JSON.stringify({ mode: signIn ? "Enabled" : "Disabled" }));
         return;
       }
+      if (path.endsWith("/refinement")) {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({
+            workItems: [pdfExport],
+            voterIdentity: signIn ? "Account" : "SelfDeclared",
+          }),
+        );
+        return;
+      }
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(pdfExport));
     });

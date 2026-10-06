@@ -17,6 +17,7 @@ import {
   type RefinementWordingSource,
   readRefinementWording,
   readVoteRefusal,
+  type TeamRefinement,
   type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import { z } from "zod";
@@ -196,11 +197,25 @@ const getRefinementWriteTarget = (
   return { teamId, workItem };
 };
 
-/** The key this server keeps, minted and kept on its first write; none on a server that keeps none. */
+/**
+ * The key this server keeps, minted and kept on its first write; none on a server that keeps none; or why
+ * it could not be kept.
+ */
 const keepServerVoterKey = async (
+  label: string,
   store: McpVoterKeyStore | undefined,
-): Promise<string | undefined> =>
-  store === undefined ? undefined : keepVoterKey(store);
+): Promise<string | undefined | McpToolResult> => {
+  if (store === undefined) {
+    return undefined;
+  }
+  try {
+    return await keepVoterKey(store);
+  } catch (error: unknown) {
+    return getErrorToolResult(
+      `${label}: ${error instanceof Error ? error.message : "the voter key was not kept."}`,
+    );
+  }
+};
 
 const loadServerVoterKey = async (
   dependencies: RefinementToolDependencies,
@@ -215,6 +230,51 @@ const getVoteRefusalToolResult = async (
   getErrorToolResult(
     `${label}: ${await readVoteRefusal(client, error, ASK_FOR_THE_NAME)}`,
   );
+
+// With sign-in Lighthouse knows the voter from the credential, so the server sends neither name nor key.
+// Lighthouse says which it is on every refinement it answers.
+const isSignedIn = (refinement: Pick<TeamRefinement, "voterIdentity">) =>
+  refinement.voterIdentity === "Account";
+
+const readRefinementFor = async (
+  label: string,
+  client: RefinementToolClient,
+  teamId: number,
+  voterKey?: string,
+): Promise<TeamRefinement | McpToolResult> => {
+  const refinement = await client.getTeamRefinement(teamId, { voterKey });
+  return refinement.ok
+    ? refinement.value
+    : getVoteRefusalToolResult(label, refinement.error, client);
+};
+
+type WriteVoter = {
+  readonly voterName?: string;
+  readonly voterKey?: string;
+};
+
+// The name is checked before a key is minted, so a refused call leaves nothing behind.
+const resolveWriteVoter = async (
+  label: string,
+  argumentsPayload: unknown,
+  client: RefinementToolClient,
+  dependencies: RefinementToolDependencies,
+  teamId: number,
+): Promise<WriteVoter | McpToolResult> => {
+  const refinement = await readRefinementFor(label, client, teamId);
+  if (isToolResult(refinement)) {
+    return refinement;
+  }
+  if (isSignedIn(refinement)) {
+    return {};
+  }
+  const voterName = getNonBlankArgument(argumentsPayload, "voterName");
+  if (voterName === undefined) {
+    return getErrorToolResult(`${label}: ${ASK_FOR_THE_NAME}`);
+  }
+  const voterKey = await keepServerVoterKey(label, dependencies.voterKeyStore);
+  return isToolResult(voterKey) ? voterKey : { voterName, voterKey };
+};
 
 const getRefinementWriteToolResult = async (
   label: string,
@@ -292,20 +352,28 @@ const castVote: RefinementTool = async (
     return refused;
   }
 
-  const voterName = getNonBlankArgument(argumentsPayload, "voterName");
+  const voter = await resolveWriteVoter(
+    "vote",
+    argumentsPayload,
+    client,
+    dependencies,
+    target.teamId,
+  );
+  if (isToolResult(voter)) {
+    return voter;
+  }
+
   const result = await client.castRefinementVote(
     target.teamId,
     target.workItem,
-    {
-      answer,
-      channel: CHANNEL,
-      comment,
-      voterName,
-      voterKey: await keepServerVoterKey(dependencies.voterKeyStore),
-    },
+    { answer, channel: CHANNEL, comment, ...voter },
   );
   return getRefinementWriteToolResult("vote", result, client, (row) =>
-    describeRecordedVote({ workItem: target.workItem, voterName }, answer, row),
+    describeRecordedVote(
+      { workItem: target.workItem, voterName: voter.voterName },
+      answer,
+      row,
+    ),
   );
 };
 
@@ -327,19 +395,27 @@ const addComment: RefinementTool = async (
     return refused;
   }
 
-  const voterName = getNonBlankArgument(argumentsPayload, "voterName");
+  const voter = await resolveWriteVoter(
+    "comment",
+    argumentsPayload,
+    client,
+    dependencies,
+    target.teamId,
+  );
+  if (isToolResult(voter)) {
+    return voter;
+  }
+
   const result = await client.addRefinementComment(
     target.teamId,
     target.workItem,
-    {
-      comment,
-      channel: CHANNEL,
-      voterName,
-      voterKey: await keepServerVoterKey(dependencies.voterKeyStore),
-    },
+    { comment, channel: CHANNEL, ...voter },
   );
   return getRefinementWriteToolResult("comment", result, client, () =>
-    describeRecordedComment({ workItem: target.workItem, voterName }),
+    describeRecordedComment({
+      workItem: target.workItem,
+      voterName: voter.voterName,
+    }),
   );
 };
 
@@ -359,25 +435,27 @@ const takeBackVote: RefinementTool = async (
   const nothingToTakeBack = getSuccessToolResult(
     `takeBack: ${encodePayload({ summary: describeNothingToTakeBack(target.workItem) })}`,
   );
-  const voterKey = await loadServerVoterKey(dependencies);
-  if (dependencies.voterKeyStore !== undefined && voterKey === undefined) {
-    return nothingToTakeBack;
+  const keptVoterKey = await loadServerVoterKey(dependencies);
+  const refinement = await readRefinementFor(
+    "takeBack",
+    client,
+    target.teamId,
+    keptVoterKey,
+  );
+  if (isToolResult(refinement)) {
+    return refinement;
   }
-
-  const refinement = await client.getTeamRefinement(target.teamId, {
-    voterKey,
-  });
-  if (!refinement.ok) {
-    return getVoteRefusalToolResult("takeBack", refinement.error, client);
-  }
-  if (!holdsMyVoteOn(refinement.value, target.workItem)) {
+  if (!holdsMyVoteOn(refinement, target.workItem)) {
     return nothingToTakeBack;
   }
 
   const result = await client.takeBackRefinementVote(
     target.teamId,
     target.workItem,
-    { channel: CHANNEL, voterKey },
+    {
+      channel: CHANNEL,
+      voterKey: isSignedIn(refinement) ? undefined : keptVoterKey,
+    },
   );
   return getRefinementWriteToolResult("takeBack", result, client, (takenBack) =>
     describeTakenBack({ workItem: target.workItem }, takenBack),

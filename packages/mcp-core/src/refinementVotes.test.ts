@@ -97,6 +97,9 @@ const anAssistantOn = (
   options: {
     readonly answers?: Readonly<Record<string, MockResponse>>;
     readonly storedKey?: string | null;
+    /** Whom Lighthouse takes a vote from: the signed-in account, or a name and a key. */
+    readonly voterIdentity?: "Account" | "SelfDeclared";
+    readonly keyFileRefusal?: string;
   } = {},
 ) => {
   const asked: Asked[] = [];
@@ -110,7 +113,7 @@ const anAssistantOn = (
       refinementConfigured: true,
       workItems: [pdfExport()],
       yardstick: { source: "Sle", days: 7, probability: 85 },
-      voterIdentity: "SelfDeclared",
+      voterIdentity: options.voterIdentity ?? "SelfDeclared",
       readyByVotesCount: 0,
       stagesConfigured: false,
       readyCount: 0,
@@ -166,6 +169,9 @@ const anAssistantOn = (
     voterKeyStore: {
       load: async () => storedKey,
       save: async (key: string) => {
+        if (options.keyFileRefusal !== undefined) {
+          throw new Error(options.keyFileRefusal);
+        }
         storedKey = key;
       },
     },
@@ -444,6 +450,7 @@ describe("the refinement vote, comment and take-back tools", () => {
         id: GRAVITY_ID,
         workItem: "GR-051",
         answer: "Yes",
+        voterName: ANA_LIMA,
       });
 
       expect(result.isError).toBe(true);
@@ -466,5 +473,126 @@ describe("the refinement vote, comment and take-back tools", () => {
     );
     expect(assistant.writes()).toEqual([]);
     expect(assistant.storedKey()).toBeNull();
+  });
+});
+
+// Whether a vote is the signed-in account's is Lighthouse's to say, on the refinement it answers. A local
+// server keeps a voter key only for a Lighthouse that needs one, and only once it has the user's name.
+describe("the refinement write tools go by whom Lighthouse takes a vote from", () => {
+  const theRowAfterAYes = {
+    [`POST ${workItemPath("GR-051")}/votes`]: answering(
+      pdfExportAfterAnasYesIf,
+    ),
+    [`POST ${workItemPath("GR-054")}/comments`]: answering(pdfExport()),
+  };
+
+  // @driving_port
+  it("with sign-in, votes as the signed-in account, sending no name and no key and minting none", async () => {
+    const assistant = anAssistantOn({
+      voterIdentity: "Account",
+      storedKey: null,
+      answers: theRowAfterAYes,
+    });
+
+    const result = await assistant.runtime.callTool(VOTE, {
+      id: GRAVITY_ID,
+      workItem: "GR-051",
+      answer: "Yes",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(factsOf(result, "vote").summary).toBe(
+      "Recorded: your Yes on GR-051. GR-051: 2 more Yes needed.",
+    );
+    const [vote] = assistant.writes();
+    expect(vote.body).toEqual({ answer: "Yes", channel: "Assistant" });
+    expect(vote.headers[VOTER_KEY_HEADER]).toBeUndefined();
+    expect(assistant.storedKey()).toBeNull();
+  });
+
+  it("with sign-in, takes back the signed-in account's vote though this server never kept a key", async () => {
+    const assistant = anAssistantOn({
+      voterIdentity: "Account",
+      storedKey: null,
+      answers: {
+        [`GET /v1/teams/${GRAVITY_ID}/refinement`]: answering({
+          voterIdentity: "Account",
+          workItems: [pdfExport({ myVote: "Yes" })],
+        }),
+        [`DELETE ${workItemPath("GR-051")}/votes/mine`]: answering(pdfExport()),
+      },
+    });
+
+    const result = await assistant.runtime.callTool(TAKE_BACK, {
+      id: GRAVITY_ID,
+      workItem: "GR-051",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(factsOf(result, "takeBack").summary).toBe(
+      "Took back your vote on GR-051. GR-051: 3 more Yes needed.",
+    );
+    const [takeBack] = assistant.writes();
+    expect(takeBack.method).toBe("DELETE");
+    expect(takeBack.headers[VOTER_KEY_HEADER]).toBeUndefined();
+    expect(assistant.storedKey()).toBeNull();
+  });
+
+  // @error
+  it.each([
+    {
+      tool: VOTE,
+      label: "vote",
+      argumentsPayload: { id: GRAVITY_ID, workItem: "GR-051", answer: "Yes" },
+    },
+    {
+      tool: COMMENT,
+      label: "comment",
+      argumentsPayload: {
+        id: GRAVITY_ID,
+        workItem: "GR-054",
+        comment: "Which API version?",
+      },
+    },
+  ])(
+    "without sign-in, asks for the user's name before $label sends anything or mints a key",
+    async ({ tool, label, argumentsPayload }) => {
+      const assistant = anAssistantOn({
+        voterIdentity: "SelfDeclared",
+        storedKey: null,
+        answers: theRowAfterAYes,
+      });
+
+      const result = await assistant.runtime.callTool(tool, argumentsPayload);
+
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toBe(
+        `${label}: Ask the user for their name and send it as voterName; never guess it.`,
+      );
+      expect(assistant.writes()).toEqual([]);
+      expect(assistant.storedKey()).toBeNull();
+    },
+  );
+
+  // @error
+  it("says why it cannot keep a voter key, and sends nothing, when the key file cannot be written", async () => {
+    const theFileRefused =
+      "The voter key file /home/ana/.config/lighthouse-clients/voter-keys.json cannot be read; fix or remove it.";
+    const assistant = anAssistantOn({
+      storedKey: null,
+      keyFileRefusal: theFileRefused,
+      answers: theRowAfterAYes,
+    });
+
+    const result = await assistant.runtime.callTool(VOTE, {
+      id: GRAVITY_ID,
+      workItem: "GR-051",
+      answer: "Yes",
+      voterName: ANA_LIMA,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toBe(`vote: ${theFileRefused}`);
+    expect(assistant.writes()).toEqual([]);
   });
 });

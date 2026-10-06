@@ -32,7 +32,9 @@ upgrade and is never asked.
   `Yes`, `YesBut` or `No`), `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack`
   are registered as writes. Their descriptions tell the assistant to confirm with the user first and to ask
   for the user's name rather than infer it. Each result carries a `summary` in the same words as `lh`.
-  `lighthouse_team_refinement_get` marks the user's own vote.
+  `lighthouse_team_refinement_get` marks the user's own vote. Like `lh`, the tools go by what Lighthouse says
+  about sign-in: with it they send no name and keep no key, and a signed-in vote can be taken back; without
+  it a vote or comment without `voterName` is refused before anything is sent or kept.
 - mcp-stdio keeps its voter key in the same file as `lh`, so a person is one voter whichever they use, and
   however each was given the URL (`HTTPS://Lighthouse.example:443/` and `https://lighthouse.example/api` are
   one Lighthouse).
