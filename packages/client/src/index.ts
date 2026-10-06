@@ -2875,3 +2875,5 @@ export const createLighthouseClient = (
       ),
   };
 };
+
+export * from "./refinementWording";

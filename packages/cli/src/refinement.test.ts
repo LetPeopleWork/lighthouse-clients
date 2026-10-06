@@ -196,7 +196,7 @@ const ENOUGH_FOR_THE_NEXT_REFINEMENT =
 
 describe("lh refinement get", () => {
   // @walking_skeleton @driving_port
-  it.skip("tells Priya in the web's words that Team Gravity is below its range, and marks the Work Items needed", async () => {
+  it("tells Priya in the web's words that Team Gravity is below its range, and marks the Work Items needed", async () => {
     const { dependencies } = aLighthouse({});
 
     const result = await runCliCommand(refinementOfGravity(), dependencies);
@@ -228,7 +228,7 @@ describe("lh refinement get", () => {
     expect(result.stdout).not.toContain("voteCount");
   });
 
-  it.skip.each([
+  it.each([
     {
       verdict: "Below",
       readyCount: 3,
@@ -289,7 +289,7 @@ describe("lh refinement get", () => {
     },
   );
 
-  it.skip.each([
+  it.each([
     {
       listed: 9,
       high: 8,
@@ -350,7 +350,7 @@ describe("lh refinement get", () => {
     },
   );
 
-  it.skip.each([
+  it.each([
     {
       unavailableReason: "NoCadence",
       refinementConfigured: true,
@@ -409,7 +409,7 @@ describe("lh refinement get", () => {
     },
   );
 
-  it.skip("says it in the words the instance has renamed its terms to", async () => {
+  it("says it in the words the instance has renamed its terms to", async () => {
     const { dependencies } = aLighthouse({
       terminology: ok(
         terminologyRenaming({
@@ -438,7 +438,7 @@ describe("lh refinement get", () => {
     );
   });
 
-  it.skip("falls back to the seeded words when the instance's terms cannot be read", async () => {
+  it("falls back to the seeded words when the instance's terms cannot be read", async () => {
     const { dependencies } = aLighthouse({
       terminology: {
         ok: false,
@@ -458,7 +458,7 @@ describe("lh refinement get", () => {
     expect(result.stderr).toBe("");
   });
 
-  it.skip.each([
+  it.each([
     { flag: "--json", rendered: JSON.stringify(gravitysRefinement()) },
     { flag: "--toon", rendered: encode(gravitysRefinement() as never) },
   ])(
@@ -476,7 +476,7 @@ describe("lh refinement get", () => {
     },
   );
 
-  it.skip.each([
+  it.each([
     { args: ["refinement", "get"], says: "Missing required --team-id" },
     {
       args: ["refinement", "get", "--team-id", "gravity"],
@@ -492,7 +492,7 @@ describe("lh refinement get", () => {
     expect(asked).toEqual([]);
   });
 
-  it.skip("passes a Lighthouse refusal straight through", async () => {
+  it("passes a Lighthouse refusal straight through", async () => {
     const { dependencies } = aLighthouse({
       refinement: {
         ok: false,
@@ -510,7 +510,7 @@ describe("lh refinement get", () => {
     expect(result.stderr).toContain("Upgrade Lighthouse");
   });
 
-  it.skip("lists the command in the refinement group help and the group in the overview", async () => {
+  it("lists the command in the refinement group help and the group in the overview", async () => {
     const { dependencies } = aLighthouse({});
 
     const group = await runCliCommand(["refinement"], dependencies);

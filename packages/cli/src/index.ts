@@ -7,6 +7,7 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
+  resolveRefinementTerms,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -16,7 +17,9 @@ import {
   isOutputFormatFlag,
   OUTPUT_FORMAT_FLAGS,
   type OutputFormat,
+  type PrettyRenderer,
 } from "./output";
+import { renderRefinement } from "./refinementOutput";
 
 export type CliPackageContract = {
   readonly name: "@letpeoplework/lighthouse-cli";
@@ -47,6 +50,8 @@ type CliDomainClientLike = Pick<
   | "updateTeam"
   | "deleteTeam"
   | "refreshTeam"
+  | "getTeamRefinement"
+  | "getTerminology"
   | "listPortfolios"
   | "getPortfolio"
   | "createPortfolio"
@@ -191,13 +196,18 @@ const stripOutputFormatFlags = (args: readonly string[]): string[] =>
 const mapApiResultToCliResult = <TValue>(
   result: LighthouseApiResult<TValue>,
   outputFormat: OutputFormat,
+  renderPretty?: PrettyRenderer<TValue>,
 ): CliCommandResult => {
   if (result.ok) {
     if (result.value === undefined) {
       return getSuccessResult("ok");
     }
 
-    const formattedPayload = formatPayload(result.value, outputFormat);
+    const formattedPayload = formatPayload(
+      result.value,
+      outputFormat,
+      renderPretty,
+    );
     if (!formattedPayload.ok) {
       return getErrorResult(formattedPayload.error);
     }
@@ -1166,6 +1176,16 @@ const getConfigGroupHelpText = (): string =>
     "  lh config output set --format <pretty|toon|json>",
   ].join("\n");
 
+const getRefinementGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh refinement get --team-id <id>",
+    "",
+    "  get states how many Work Items the Team needs ready for the next Refinement and",
+    "  lists the Work Items in refinement, in the instance's own terms. --json and --toon",
+    "  return the facts unchanged. Requires Lighthouse newer than v26.10.3.6.",
+  ].join("\n");
+
 const getHealthGroupHelpText = (): string =>
   ["Usage:", "  lh health check"].join("\n");
 
@@ -1193,6 +1213,7 @@ const getUsageText = async (
     "  forecast",
     "  worktracking",
     "  feature",
+    "  refinement",
     "  config",
     "  health",
     "  version",
@@ -2371,6 +2392,87 @@ const runConfigGroup = async (
   );
 };
 
+const parseTeamIdOption = (
+  args: readonly string[],
+): number | CliCommandResult => {
+  const value = getOptionValue(args, "--team-id");
+  if (value === undefined) {
+    return getErrorResult("Missing required --team-id for refinement get.");
+  }
+  if (!/^\d+$/u.test(value)) {
+    return getErrorResult(
+      `Invalid --team-id "${value}": expected a numeric Team id.`,
+    );
+  }
+  return Number(value);
+};
+
+const teamNameOf = (team: unknown, teamId: number): string =>
+  isRecord(team) && typeof team.name === "string"
+    ? team.name
+    : `Team ${teamId}`;
+
+const runRefinementGet = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  client: CliClientOperations,
+): Promise<CliCommandResult> => {
+  const teamId = parseTeamIdOption(args);
+  if (isCliCommandResult(teamId)) {
+    return teamId;
+  }
+
+  const refinement = await client.getTeamRefinement(teamId);
+  if (!refinement.ok || outputFormat !== "pretty") {
+    return mapApiResultToCliResult(refinement, outputFormat);
+  }
+
+  const [team, terminology] = await Promise.all([
+    client.getTeam(teamId),
+    client.getTerminology(),
+  ]);
+  if (!team.ok) {
+    return mapApiResultToCliResult(team, outputFormat);
+  }
+  const terms = resolveRefinementTerms(
+    terminology.ok ? terminology.value : null,
+  );
+  const teamName = teamNameOf(team.value, teamId);
+  return mapApiResultToCliResult(refinement, outputFormat, (facts) =>
+    renderRefinement(teamName, facts, terms),
+  );
+};
+
+const runRefinementGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getRefinementGroupHelpText());
+  }
+
+  if (action !== "get") {
+    return getUnknownSubcommandResult(
+      getRefinementGroupHelpText(),
+      "refinement",
+      action,
+    );
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  return runRefinementGet(
+    args,
+    outputFormat,
+    dependencies.createClient(connectionOrError),
+  );
+};
+
 const runHealthGroup = async (
   action: string | undefined,
   dependencies: RunCliCommandDependencies,
@@ -2480,6 +2582,10 @@ export const runCliCommand = async (
 
   if (scope === "feature") {
     return runFeatureGroup(action, args, outputFormat, dependencies);
+  }
+
+  if (scope === "refinement") {
+    return runRefinementGroup(action, args, outputFormat, dependencies);
   }
 
   if (scope === "config") {
