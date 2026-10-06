@@ -14,6 +14,7 @@ The stdio server exposes Lighthouse as MCP tools for:
 - Team and portfolio metrics.
 - Feature, delivery, and forecast operations.
 - A Team's refinement need (`lighthouse_team_refinement_get`): how many Work Items to refine before the next Refinement, with the sentence the web page states as `summary`.
+- Refinement votes: `lighthouse_team_refinement_vote`, `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack` record the user's own vote, comment or take-back on a Work Item in refinement, marked as sent through an assistant. They are writes, and their descriptions tell the assistant to confirm with the user first and to ask for the user's name (needed without sign-in) rather than infer it. The server keeps a voter key per Lighthouse in the same `voter-keys.json` the `lh` command line uses, so the user is one voter whether they vote from `lh` or through the assistant.
 
 ## Connection and Authentication
 

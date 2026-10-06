@@ -277,10 +277,14 @@ lh delivery list --portfolio-id <id>
 lh delivery metrics --delivery-id <id> [--detail epics]
 lh worktracking list
 lh feature list
-lh refinement get --team-id <id>   # how many Work Items to refine before the next Refinement
+lh refinement get --team-id <id>   # how many Work Items to refine, and how the votes stand
+lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]
+lh refinement comment --team-id <id> --work-item <ref> --text <text> [--as <name>]
+lh refinement take-back --team-id <id> --work-item <ref>
 lh health check
 lh config output
 lh config output set --format json
+lh config voter set --name <name>  # the name votes carry without sign-in; ask the user for it
 ```
 
 Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItemAge`, `arrivals`, `predictabilityScore`
@@ -323,6 +327,11 @@ Users ask naturally ("tell me about the Mars Colonization feature"). Claude hand
 | Feature work items | `lighthouse_portfolio_list` → feature IDs | `lighthouse_feature_workitems` with `{id: <feature_id>}` |
 | Team details | `lighthouse_team_list` | `lighthouse_team_get` with `{id: <team_id>}` |
 | How much a team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the team sees on its Refinement tab |
+| Vote, comment or take back a vote on a Work Item in refinement | `lighthouse_team_refinement_get` → `referenceId` | `lighthouse_team_refinement_vote` / `_comment` / `_voteTakeBack`; see below |
+
+### Refinement votes — ask first, ask the name
+
+A vote or comment is the **user's own** judgement, recorded under their name. Never vote or comment on your own initiative or on someone else's behalf. Show the user the Work Item, the answer (`Yes`, `YesBut` for "Yes, if…", or `No`) and any comment you intend to send, and call only after they explicitly confirm. A `YesBut` needs its condition in `comment`. Without sign-in Lighthouse needs the user's name: **ask the user for it** and pass it as `voterName`; never infer it from the system, an account or earlier messages. Quote the tool's `summary`. Without sign-in a take-back only removes a vote cast from the same machine; when there is none it says so.
 
 ### `lighthouse_feature_get` — correct usage
 

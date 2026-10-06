@@ -57,6 +57,7 @@ irm https://github.com/LetPeopleWork/lighthouse-clients/releases/latest/download
 - List, inspect, and refresh work tracking connections, teams, and portfolios.
 - Create, update, and delete teams and portfolios with JSON payloads.
 - Query features, deliveries, metrics, and forecasts.
+- See how the votes stand on the Work Items in refinement, and cast, comment on or take back your own vote.
 - Persist a default output format and override it per command.
 
 ## Quick Start
@@ -174,6 +175,8 @@ lh connection status                          Show current connection status
 lh config output                              Show the current default payload output format
 lh config output set --format <pretty|toon|json>
 											  Persist the default payload output format
+lh config voter                               Show the name your refinement votes carry
+lh config voter set --name <name>            Store that name (used without sign-in)
 lh health check                               Check server connectivity
 lh version get                                Get server version
 lh worktracking list                          List work tracking connections
@@ -212,8 +215,16 @@ lh feature get --refs <ref1,ref2,...>        Get features by references
 lh feature workitems --id <feature-id>       Get work items for a feature
 lh refinement get --team-id <team-id>        How many Work Items to refine before the
                                              next Refinement, in the web's words, and
-                                             the Work Items in refinement (Lighthouse
+                                             the Work Items in refinement with their
+                                             Votes, Readiness and Warnings (Lighthouse
                                              newer than v26.10.3.6)
+lh refinement vote --team-id <team-id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]
+                                             Vote on a Work Item; yes-but ("Yes, if…")
+                                             needs its condition in --comment
+lh refinement comment --team-id <team-id> --work-item <ref> --text <text> [--as <name>]
+                                             Comment on a Work Item without voting
+lh refinement take-back --team-id <team-id> --work-item <ref>
+                                             Take back the vote you cast from this client
 lh delivery list --portfolio-id <portfolio-id>
 lh delivery metrics --delivery-id <delivery-id> [--detail epics]
                                              One row per recorded day; --detail epics
@@ -223,6 +234,8 @@ lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> -
 ```
 
 Global payload output override flags: `--pretty`, `--json`, `--toon`
+
+**Refinement votes.** On a Lighthouse with sign-in, a vote or comment is your account's and needs no name. Without sign-in it carries the name you give with `--as`, or the one stored with `lh config voter set --name`; `lh` never guesses it. The first vote also mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the config file (mode `0600`), so the vote can be taken back from this machine later. The local MCP server keeps its key in the same file, so you are one voter whether you vote from `lh` or through your assistant. In the Votes column a `*` marks a Work Item you have voted on.
 
 Run `lh <group>` to see the available subcommands for that group.
 

@@ -6,17 +6,33 @@
 "@letpeoplework/lighthouse-mcp-http": patch
 ---
 
-Cast, comment on and take back refinement votes through the client
+See how the refinement votes stand, and vote, from the terminal and from an assistant
 
-- `getTeamRefinement(teamId, { voterKey })` sends the client's voter key, so the caller's own vote is marked.
-- `castRefinementVote`, `addRefinementComment` and `takeBackRefinementVote` record a vote, a comment or a
-  take-back, naming the channel it came from. They need a Lighthouse newer than v26.10.3.6.
-- A refusal now carries the `problemCode` and `problemTitle` Lighthouse sent, so a surface can word it.
-- `mintVoterKey()` makes a fresh random voter key, and `createFileVoterKeyStore` keeps one per Lighthouse;
-  `describeVotes`, `describeReadiness`, `describeWarnings`, the outcome sentences and `describeVoteRefusal`
-  state votes and refusals in the web's words.
-- `lh refinement get` lists Votes, Readiness and Warnings for every Work Item.
-- `lh refinement vote`, `comment` and `take-back` cast a vote, add a comment and take a vote back.
-- `lh config voter set --name <name>` stores the name votes carry without sign-in; `lh config voter` shows it.
-- MCP tools `lighthouse_team_refinement_vote`, `_comment` and `_voteTakeBack`, registered as writes.
-- mcp-stdio keeps its voter key beside lh's; mcp-http refuses votes on a Lighthouse without sign-in.
+Saying whether a Work Item is ready, and seeing whether the Team agrees, happened only on a Team's
+Refinement tab in the browser. Now `lh` and the MCP tools show how the votes stand on every Work Item in
+refinement, and let a person cast a vote, add a comment and take their vote back, under the same identity
+rules as the web page and in its words. Needs a Lighthouse newer than v26.10.3.6; an older server is told to
+upgrade and is never asked.
+
+- `lh refinement get` lists three more columns: **Votes** (the split, such as `1 Yes · 1 Yes, if…`, with a
+  `*` where you have voted, or `No votes`), **Readiness** (`Ready`, `2 more Yes needed`, `Needs discussion`,
+  as the web says it) and **Warnings** (`open question`, `stage disagrees`).
+- `lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]`,
+  `lh refinement comment … --text <text>` and `lh refinement take-back …` answer in one line, such as
+  `Recorded: Ana Lima — Yes on GR-073. That made GR-073 Ready.` A "Yes, if…" needs its condition. Lighthouse's
+  refusals come back in plain words. `--json` and `--toon` return the Work Item as the vote left it.
+- With sign-in, a vote is the signed-in account's. Without it, a vote carries the name given with `--as` or
+  stored once with `lh config voter set --name <name>` (`lh config voter` shows it); `lh` never guesses a name.
+  The first vote mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the CLI
+  config, so the vote can be taken back from that machine.
+- The MCP tools `lighthouse_team_refinement_vote` (`{ id, workItem, answer, comment?, voterName? }`, answer
+  `Yes`, `YesBut` or `No`), `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack`
+  are registered as writes. Their descriptions tell the assistant to confirm with the user first and to ask
+  for the user's name rather than infer it. Each result carries a `summary` in the same words as `lh`.
+  `lighthouse_team_refinement_get` marks the user's own vote.
+- mcp-stdio keeps its voter key in the same file as `lh`, so a person is one voter whichever they use.
+  mcp-http, shared by many people, refuses votes on a Lighthouse without sign-in and points to the web page,
+  `lh` or a local MCP server.
+- The client gains `castRefinementVote`, `addRefinementComment`, `takeBackRefinementVote`, a `voterKey` option
+  on `getTeamRefinement`, `mintVoterKey`, `createFileVoterKeyStore` and the shared vote wording. A refusal's
+  `LighthouseApiError` now also carries the `problemCode` and `problemTitle` Lighthouse sent.
