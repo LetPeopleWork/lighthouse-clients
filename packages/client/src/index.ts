@@ -3030,4 +3030,5 @@ export const createLighthouseClient = (
   };
 };
 
+export * from "./refinementVoteWording";
 export * from "./refinementWording";

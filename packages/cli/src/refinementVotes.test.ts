@@ -181,9 +181,11 @@ const bodyOf = (init: RequestInit | undefined): unknown =>
 const workItemPath = (referenceId: string) =>
   `/v1/teams/${GRAVITY_ID}/refinement/work-items/${referenceId}`;
 
+type KeptKeys = Readonly<Record<string, string>>;
+
 type Voter = {
   readonly name?: string | null;
-  readonly keys?: Readonly<Record<string, string>>;
+  readonly keys?: KeptKeys;
 };
 
 // Lighthouse as the production client meets it, answering by method and path; the voter's name and
@@ -310,7 +312,7 @@ const theLineFor = (stdout: string, referenceId: string) =>
 
 describe("lh refinement get shows how the votes stand", () => {
   // @driving_port
-  it.skip("tells Priya which Work Items are Ready, which need discussion and where the caller has voted", async () => {
+  it("tells Priya which Work Items are Ready, which need discussion and where the caller has voted", async () => {
     const lighthouse = aLighthouse();
 
     const result = await runCliCommand(
@@ -334,7 +336,7 @@ describe("lh refinement get shows how the votes stand", () => {
     );
   });
 
-  it.skip.each([
+  it.each([
     {
       split: { yes: 0, yesBut: 0, no: 0 },
       myVote: null,
@@ -381,7 +383,7 @@ describe("lh refinement get shows how the votes stand", () => {
     },
   );
 
-  it.skip.each([
+  it.each([
     { readiness: "Ready", missingVotes: null, says: "Ready" },
     { readiness: "MoreYesNeeded", missingVotes: 1, says: "1 more Yes needed" },
     {
@@ -427,7 +429,7 @@ describe("lh refinement get shows how the votes stand", () => {
     },
   );
 
-  it.skip.each([
+  it.each([
     { hasOpenQuestion: false, signalsDisagree: false, warns: "" },
     { hasOpenQuestion: true, signalsDisagree: false, warns: " open question" },
     {
@@ -470,10 +472,16 @@ describe("lh refinement get shows how the votes stand", () => {
     },
   );
 
-  it.skip.each([
-    { keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY }, sends: ANAS_CLIENT_KEY },
-    { keys: { [OTHER_LIGHTHOUSE_URL]: ANAS_CLIENT_KEY }, sends: undefined },
-    { keys: {}, sends: undefined },
+  it.each([
+    {
+      keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } as KeptKeys,
+      sends: ANAS_CLIENT_KEY,
+    },
+    {
+      keys: { [OTHER_LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } as KeptKeys,
+      sends: undefined,
+    },
+    { keys: {} as KeptKeys, sends: undefined },
   ])(
     "reads with the key this client keeps for this Lighthouse ($sends), so the caller's own vote is starred, and makes none up",
     async ({ keys, sends }) => {
@@ -829,10 +837,10 @@ describe("lh refinement vote, comment and take-back", () => {
 
   // @error
   it.skip.each([
-    { situation: "this client has never voted here", keys: {} },
+    { situation: "this client has never voted here", keys: {} as KeptKeys },
     {
       situation: "this client's vote on GR-051 is already gone",
-      keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY },
+      keys: { [LIGHTHOUSE_URL]: ANAS_CLIENT_KEY } as KeptKeys,
     },
   ])(
     "says there is nothing to take back when $situation, and takes nothing back",

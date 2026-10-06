@@ -122,6 +122,8 @@ export type RunCliCommandDependencies = {
   readonly validateStandaloneDiscovery: () => Promise<ConnectivityValidationResult>;
   readonly createClient: (connection: CliConnection) => CliClientOperations;
   readonly getEnvApiKey?: () => string | undefined;
+  /** The voter key this client keeps for one Lighthouse, or null when it keeps none. */
+  readonly loadVoterKey?: (lighthouse: string) => Promise<string | null>;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2407,25 +2409,46 @@ const parseTeamIdOption = (
   return Number(value);
 };
 
+// A standalone connection follows the desktop app wherever its lock file points, so it is one Lighthouse
+// whatever port it was last started on.
+const STANDALONE_VOTER_KEY_SCOPE = "standalone";
+
+/** Which Lighthouse a voter key belongs to: the server's URL, or the one standalone app on this machine. */
+const voterKeyScopeOf = (connection: CliConnection): string =>
+  connection.mode === "server"
+    ? connection.endpointUrl
+    : STANDALONE_VOTER_KEY_SCOPE;
+
+const loadKeptVoterKey = async (
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
+): Promise<string | undefined> =>
+  (await dependencies.loadVoterKey?.(voterKeyScopeOf(connection))) ?? undefined;
+
 const runRefinementGet = async (
   args: readonly string[],
   outputFormat: OutputFormat,
-  client: CliClientOperations,
+  connection: CliConnection,
+  dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
   const teamId = parseTeamIdOption(args);
   if (isCliCommandResult(teamId)) {
     return teamId;
   }
 
+  const client = dependencies.createClient(connection);
+  const readOptions = {
+    voterKey: await loadKeptVoterKey(connection, dependencies),
+  };
   if (outputFormat !== "pretty") {
     return mapApiResultToCliResult(
-      await client.getTeamRefinement(teamId),
+      await client.getTeamRefinement(teamId, readOptions),
       outputFormat,
     );
   }
 
   const [refinement, wording] = await Promise.all([
-    client.getTeamRefinement(teamId),
+    client.getTeamRefinement(teamId, readOptions),
     readRefinementWording(client, teamId),
   ]);
   if (!refinement.ok) {
@@ -2462,11 +2485,7 @@ const runRefinementGroup = async (
     return connectionOrError;
   }
 
-  return runRefinementGet(
-    args,
-    outputFormat,
-    dependencies.createClient(connectionOrError),
-  );
+  return runRefinementGet(args, outputFormat, connectionOrError, dependencies);
 };
 
 const runHealthGroup = async (

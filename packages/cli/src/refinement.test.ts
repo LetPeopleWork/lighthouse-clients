@@ -21,7 +21,7 @@ const row = (referenceId: string, name: string, parentReferenceId: string) => ({
   url: null,
   state: IN_REFINEMENT,
   parentReferenceId,
-  // Vote facts travel with every row; this list does not show them.
+  // Every row carries two Yes votes, one short of Ready.
   voteCount: 2,
   myVote: null,
   split: { yes: 2, yesBut: 0, no: 0 },
@@ -123,6 +123,8 @@ const terminologyRenaming = (renamed: Readonly<Record<string, string>>) =>
 
 const ok = (value: unknown): ApiResult => ({ ok: true, value });
 
+const NOTHING_RENAMED: Readonly<Record<string, string>> = {};
+
 const aLighthouse = (overrides: {
   readonly refinement?: ApiResult;
   readonly terminology?: ApiResult;
@@ -214,21 +216,27 @@ describe("lh refinement get", () => {
     expect(prose(result.stdout)).toContain(
       "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
     );
-    expect(lines).toContain("# Work Item Parent State");
-    const eighth = lines.indexOf("8 GR-073 Bulk import GR-012 Refinement");
+    expect(lines).toContain(
+      "# Work Item Parent State Votes Readiness Warnings",
+    );
+    const eighth = lines.indexOf(
+      "8 GR-073 Bulk import GR-012 Refinement 2 Yes 1 more Yes needed",
+    );
     expect(lines.slice(eighth - 7, eighth + 1)).toEqual([
-      "1 GR-051 PDF export GR-010 Refinement",
-      "2 GR-052 Saved filters GR-010 Refinement",
-      "3 GR-055 Audit trail GR-011 Refinement",
-      "4 GR-058 Team invites GR-011 Refinement",
-      "5 GR-061 CSV import GR-012 Refinement",
-      "6 GR-064 Webhooks GR-012 Refinement",
-      "7 GR-070 Offline mode GR-013 Refinement",
-      "8 GR-073 Bulk import GR-012 Refinement",
+      "1 GR-051 PDF export GR-010 Refinement 2 Yes 1 more Yes needed",
+      "2 GR-052 Saved filters GR-010 Refinement 2 Yes 1 more Yes needed",
+      "3 GR-055 Audit trail GR-011 Refinement 2 Yes 1 more Yes needed",
+      "4 GR-058 Team invites GR-011 Refinement 2 Yes 1 more Yes needed",
+      "5 GR-061 CSV import GR-012 Refinement 2 Yes 1 more Yes needed",
+      "6 GR-064 Webhooks GR-012 Refinement 2 Yes 1 more Yes needed",
+      "7 GR-070 Offline mode GR-013 Refinement 2 Yes 1 more Yes needed",
+      "8 GR-073 Bulk import GR-012 Refinement 2 Yes 1 more Yes needed",
     ]);
     expect(lines[eighth + 1]).toContain(ENOUGH_FOR_THE_NEXT_REFINEMENT);
-    expect(lines[eighth + 2]).toBe("GR-080 Dark mode - Refinement");
-    // How the votes stand is a later list's to show.
+    expect(lines[eighth + 2]).toBe(
+      "GR-080 Dark mode - Refinement 2 Yes 1 more Yes needed",
+    );
+    // How the votes stand is said in words, never in the wire's names.
     expect(result.stdout).not.toContain("MoreYesNeeded");
     expect(result.stdout).not.toContain("voteCount");
   });
@@ -359,21 +367,24 @@ describe("lh refinement get", () => {
       listed: 9,
       high: 8,
       numbered: 8,
-      lineFollows: "8 GR-073 Bulk import GR-012 Refinement",
+      lineFollows:
+        "8 GR-073 Bulk import GR-012 Refinement 2 Yes 1 more Yes needed",
       lineSays: ENOUGH_FOR_THE_NEXT_REFINEMENT,
     },
     {
       listed: 8,
       high: 8,
       numbered: 8,
-      lineFollows: "8 GR-073 Bulk import GR-012 Refinement",
+      lineFollows:
+        "8 GR-073 Bulk import GR-012 Refinement 2 Yes 1 more Yes needed",
       lineSays: ENOUGH_FOR_THE_NEXT_REFINEMENT,
     },
     {
       listed: 3,
       high: 8,
       numbered: 3,
-      lineFollows: "3 GR-055 Audit trail GR-011 Refinement",
+      lineFollows:
+        "3 GR-055 Audit trail GR-011 Refinement 2 Yes 1 more Yes needed",
       lineSays:
         "All 3 Work Items in Refinement are needed before the next Refinement.",
     },
@@ -381,7 +392,8 @@ describe("lh refinement get", () => {
       listed: 1,
       high: 8,
       numbered: 1,
-      lineFollows: "1 GR-051 PDF export GR-010 Refinement",
+      lineFollows:
+        "1 GR-051 PDF export GR-010 Refinement 2 Yes 1 more Yes needed",
       lineSays:
         "The only Work Item in Refinement is needed before the next Refinement.",
     },
@@ -389,7 +401,7 @@ describe("lh refinement get", () => {
       listed: 2,
       high: 0,
       numbered: 0,
-      lineFollows: "# Work Item Parent State",
+      lineFollows: "# Work Item Parent State Votes Readiness Warnings",
       lineSays: ENOUGH_FOR_THE_NEXT_REFINEMENT,
     },
   ])(
@@ -469,8 +481,8 @@ describe("lh refinement get", () => {
       expect(result.stdout).not.toContain("needed before the next");
       expect(lines.filter((shown) => /^\d+ GR-/u.test(shown))).toEqual([]);
       expect(lines.slice(-2)).toEqual([
-        "GR-051 PDF export GR-010 Refinement",
-        "GR-052 Saved filters GR-010 Refinement",
+        "GR-051 PDF export GR-010 Refinement 2 Yes 1 more Yes needed",
+        "GR-052 Saved filters GR-010 Refinement 2 Yes 1 more Yes needed",
       ]);
     },
   );
@@ -592,7 +604,7 @@ describe("lh refinement get", () => {
       expect(result.exitCode).toBe(0);
       expect(shownLines(result.stdout).slice(0, 2)).toEqual([
         "Team Gravity · Next Refinement: Thu 8 Oct · in 2 days",
-        "# Work Item Parent State",
+        "# Work Item Parent State Votes Readiness Warnings",
       ]);
     },
   );
@@ -672,7 +684,7 @@ describe("lh refinement get", () => {
       situation: "a verdict",
       nextRefinementDate: "2026-10-08",
       need: { verdict: "Below", unavailableReason: null, low: 5, high: 8 },
-      renamed: {},
+      renamed: NOTHING_RENAMED,
       says: "No Work Items in Refinement states right now",
     },
     {
@@ -684,7 +696,7 @@ describe("lh refinement get", () => {
         low: null,
         high: null,
       },
-      renamed: {},
+      renamed: NOTHING_RENAMED,
       says: "No Work Items in Refinement states right now",
     },
     {
@@ -737,7 +749,7 @@ describe("lh refinement get", () => {
     expect(prose(result.stdout)).toContain(
       "3 ready — below the range of 5–8 Stories Team Gravity is likely to pull until the Grooming after. Refine 2 to 5 more.",
     );
-    expect(lines).toContain("# Story Parent State");
+    expect(lines).toContain("# Story Parent State Votes Readiness Warnings");
     expect(prose(result.stdout)).toContain(
       "enough for the next Grooming (85%) · not needed before then",
     );
@@ -762,7 +774,7 @@ describe("lh refinement get", () => {
     expect(prose(result.stdout)).toContain(
       "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
     );
-    expect(lines).toContain("# Story Parent State");
+    expect(lines).toContain("# Story Parent State Votes Readiness Warnings");
   });
 
   it("falls back to the seeded words when the instance's terms cannot be read", async () => {
@@ -782,7 +794,9 @@ describe("lh refinement get", () => {
     expect(prose(result.stdout)).toContain(
       "3 ready — below the range of 5–8 Work Items Team Gravity is likely to pull until the Refinement after. Refine 2 to 5 more.",
     );
-    expect(shownLines(result.stdout)).toContain("# Work Item Parent State");
+    expect(shownLines(result.stdout)).toContain(
+      "# Work Item Parent State Votes Readiness Warnings",
+    );
     expect(result.stderr).toBe("");
   });
 

@@ -1,6 +1,9 @@
 import {
   countNumberedRows,
+  describeReadiness,
   describeRefinementSummary,
+  describeVotes,
+  describeWarnings,
   type EnoughForLine,
   placeEnoughForLine,
   type RefinementTerms,
@@ -29,6 +32,9 @@ const workItemRows = (refinement: TeamRefinement): string[][] => {
     `${workItem.referenceId} ${workItem.name}`,
     workItem.parentReferenceId || "-",
     workItem.state,
+    describeVotes(workItem),
+    describeReadiness(workItem),
+    describeWarnings(workItem),
   ]);
 };
 
@@ -51,7 +57,15 @@ const workItemList = (
   if (refinement.workItems.length === 0) {
     return [];
   }
-  const header = ["#", terms.workItem, "Parent", "State"];
+  const header = [
+    "#",
+    terms.workItem,
+    "Parent",
+    "State",
+    "Votes",
+    "Readiness",
+    "Warnings",
+  ];
   const [headerLine, ...rowLines] = toTableLines([
     header,
     ...workItemRows(refinement),
