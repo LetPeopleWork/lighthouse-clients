@@ -1,8 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  describeRefinementSummary,
-  type TeamRefinement,
-} from "./refinementWording";
+import type { TeamRefinement } from "./index";
+import { describeRefinementSummary } from "./refinementWording";
 
 // A reader ten hours behind UTC, where midnight UTC on 8 Oct is still the evening of 7 Oct. Set before
 // any Date is made; Node takes a TZ change at runtime.
