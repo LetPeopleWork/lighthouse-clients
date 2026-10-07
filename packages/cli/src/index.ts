@@ -2082,7 +2082,7 @@ const runMetricsGroup = async (
     (facts) =>
       asked === null
         ? renderMetricsHeadline(facts, wording, systemWipLimit)
-        : renderMetricDays(facts, wording, asked),
+        : renderMetricDays(facts, wording, asked, systemWipLimit),
   );
 };
 

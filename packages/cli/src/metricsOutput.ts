@@ -1,7 +1,11 @@
 import {
   type AnswerWording,
+  describeArrivalsDays,
+  describeAsOfHeading,
+  describeBlockedDays,
   describeBlockedNow,
   describeBlockedOverTime,
+  describeCycleTimeDays,
   describeInProgressNow,
   describeMetricsHeading,
   describeOverTimeHeading,
@@ -9,6 +13,7 @@ import {
   describePercentilesOverTime,
   describePercentilesOverTimeDays,
   describePredictabilityScore,
+  describePredictabilityScoreDays,
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
   describeRefusedMetric,
@@ -18,8 +23,11 @@ import {
   describeTotalWorkItemAge,
   describeTotalWorkItemAgeDays,
   describeUnknownMetric,
+  describeWipDays,
+  describeWorkItemAgeDays,
   isMetricRefusal,
   type MetricAnswer,
+  type MetricDays,
   type MetricDayView,
   type MetricLine,
   type MetricsHeadlinePart,
@@ -240,36 +248,121 @@ export const renderMetricsHeadline = (
     .join("\n\n");
 };
 
-// A metric's day view, or null when its section is refused or in a shape this version cannot read.
-type DayViewRenderer = (
-  subject: MetricsSubject,
-  wording: AnswerWording,
-) => MetricDayView | null;
+type DayFacts = {
+  readonly subject: MetricsSubject;
+  readonly wording: AnswerWording;
+  readonly systemWipLimit: number | undefined;
+};
 
-const dayViewOf =
-  <T>(
-    key: string,
-    read: Reader<T>,
-    describe: (
-      view: T,
-      subject: MetricsSubject,
-      wording: AnswerWording,
-    ) => MetricDayView,
-  ): DayViewRenderer =>
-  (subject, wording) => {
-    const answer = readMetricAnswer(subject.sections[key], read);
-    return answer === null || isMetricRefusal(answer)
+// A metric's day view, or null when a section it needs is refused or in a shape this version cannot read.
+type DayViewRenderer = (facts: DayFacts) => MetricDayView | null;
+
+// Which heading a metric's day view sits under: the range, or the range's last day for a metric that
+// answers about now.
+type DayView = { readonly asOf: boolean; readonly render: DayViewRenderer };
+
+const answered = <T>(answer: MetricAnswer<T> | null | undefined): answer is T =>
+  answer !== null && answer !== undefined && !isMetricRefusal(answer);
+
+const sectionOf = <T>(
+  subject: MetricsSubject,
+  key: string,
+  read: Reader<T>,
+): T | null => {
+  const answer = readMetricAnswer(subject.sections[key], read);
+  return answered(answer) ? answer : null;
+};
+
+const overTheRange = (render: DayViewRenderer): DayView => ({
+  asOf: false,
+  render,
+});
+
+const dayViewOf = <T>(
+  key: string,
+  read: Reader<T>,
+  describe: (
+    view: T,
+    subject: MetricsSubject,
+    wording: AnswerWording,
+  ) => MetricDayView,
+): DayView =>
+  overTheRange(({ subject, wording }) => {
+    const view = sectionOf(subject, key, read);
+    return view === null ? null : describe(view, subject, wording);
+  });
+
+const wipDays: DayView = {
+  asOf: true,
+  render: ({ subject, wording, systemWipLimit }) => {
+    const wip = sectionOf(subject, "wip", readWip);
+    return wip !== null && answered(wip.current) && answered(wip.overTime)
+      ? describeWipDays(
+          wip.current,
+          wip.overTime,
+          subject.scope,
+          wording.terms,
+          systemWipLimit,
+        )
+      : null;
+  },
+};
+
+const cycleTimeDays = overTheRange(({ subject, wording }) => {
+  const cycleTime = sectionOf(subject, "cycleTime", readCycleTime);
+  return cycleTime !== null &&
+    answered(cycleTime.percentiles) &&
+    answered(cycleTime.closedItems)
+    ? describeCycleTimeDays(
+        cycleTime.percentiles,
+        cycleTime.closedItems,
+        wording.terms,
+      )
+    : null;
+});
+
+const workItemAgeDays: DayView = {
+  asOf: true,
+  render: ({ subject, wording }) => {
+    const percentiles = sectionOf(
+      subject,
+      "workItemAgePercentiles",
+      readWorkItemAgePercentiles,
+    );
+    const overTime = sectionOf(subject, "workItemAge", readWorkItemAge);
+    return percentiles === null || overTime === null
       ? null
-      : describe(answer, subject, wording);
-  };
+      : describeWorkItemAgeDays(
+          percentiles,
+          overTime,
+          subject.scope,
+          wording.terms,
+        );
+  },
+};
 
 // One entry per metric name `--metrics` accepts; a name without one prints the generic view.
-const DAY_VIEWS: Readonly<Partial<Record<string, DayViewRenderer>>> = {
+const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
   throughput: dayViewOf(
     "throughput",
     readThroughput,
     (chart, subject, wording) =>
       describeThroughputDays(chart, subject.scope, wording.terms),
+  ),
+  arrivals: dayViewOf("arrivals", readArrivals, (chart, subject, wording) =>
+    describeArrivalsDays(chart, subject.scope, wording.terms),
+  ),
+  wip: wipDays,
+  cycleTime: cycleTimeDays,
+  workItemAge: workItemAgeDays,
+  predictabilityScore: dayViewOf(
+    "predictabilityScore",
+    readPredictabilityScore,
+    (view, subject, wording) =>
+      describePredictabilityScoreDays(view, subject.scope, wording.terms),
+  ),
+  blocked: dayViewOf("blocked", readBlocked, (view, subject, wording) =>
+    describeBlockedDays(view, subject.scope, wording.terms),
   ),
   totalWorkItemAge: dayViewOf(
     "totalWorkItemAge",
@@ -291,36 +384,49 @@ const DAY_VIEWS: Readonly<Partial<Record<string, DayViewRenderer>>> = {
   ),
 };
 
+const tableLines = (days: MetricDays): string[] =>
+  "rows" in days ? toTableLines(days.rows) : [days.note];
+
 const dayViewLines = (view: MetricDayView): string[] => [
   view.sentence,
-  "",
-  ...("rows" in view ? toTableLines(view.rows) : [view.note]),
+  ...("tables" in view ? view.tables : [view]).flatMap((days) => [
+    "",
+    ...tableLines(days),
+  ]),
 ];
 
 /**
  * The metrics asked for by name, in the order asked: the heading, then each one's sentence and every
- * day it has. Null when any of them has no day view yet, is refused or comes in a shape it does not know,
- * so the command prints the generic view exactly as before.
+ * day it has; the heading names only the range's last day when every metric asked for answers about now.
+ * Null when any of them has no day view yet, is refused or comes in a shape it does not know, so the
+ * command prints the generic view exactly as before.
  */
 export const renderMetricDays = (
   value: unknown,
   wording: AnswerWording,
   names: readonly string[],
+  systemWipLimit?: number,
 ): string | null => {
   const subject = readMetricsSubject(value);
   if (subject === null || names.length === 0) {
     return null;
   }
+  const facts: DayFacts = { subject, wording, systemWipLimit };
   const views: MetricDayView[] = [];
+  let asOf = true;
   for (const name of names) {
-    const view = DAY_VIEWS[name]?.(subject, wording) ?? null;
-    if (view === null) {
+    const entry = DAY_VIEWS[name];
+    const view = entry?.render(facts) ?? null;
+    if (entry === undefined || view === null) {
       return null;
     }
+    asOf &&= entry.asOf;
     views.push(view);
   }
   return [
-    describeMetricsHeading(subject, wording),
+    asOf
+      ? describeAsOfHeading(subject, wording)
+      : describeMetricsHeading(subject, wording),
     ...views.flatMap((view, index) => [
       ...(index === 0 ? [] : [""]),
       ...dayViewLines(view),

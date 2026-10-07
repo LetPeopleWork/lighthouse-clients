@@ -63,7 +63,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @driving_port @US-03 — AC-03.1: each of the ten names, a sentence then its table (KPI-1 component)
-  it.skip.each([
+  it.each([
     {
       metric: "throughput",
       heading: OVER_THE_RANGE,

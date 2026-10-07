@@ -1,19 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
   daysInRange,
+  describeArrivalsDays,
+  describeAsOfHeading,
+  describeBlockedDays,
   describeBlockedNow,
   describeBlockedOverTime,
+  describeCycleTimeDays,
   describeInProgressNow,
   describeMetricsHeading,
   describePercentileRows,
   describePercentilesOverTimeDays,
   describePredictabilityScore,
+  describePredictabilityScoreDays,
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
   describeThroughputDays,
   describeTotalThroughput,
   describeTotalWorkItemAge,
   describeTotalWorkItemAgeDays,
+  describeWipDays,
+  describeWorkItemAgeDays,
   OVER_TIME_EMPTY_SENTENCE,
   ordinalOf,
   readArrivals,
@@ -577,5 +584,251 @@ describe("one metric, every day", () => {
       sentence: "Throughput natural process limits per recorded day",
       note: OVER_TIME_EMPTY_SENTENCE,
     });
+  });
+
+  it("heads a metric about now with the range's last day", () => {
+    expect(
+      describeAsOfHeading(
+        { endDate: "2026-10-06T00:00:00Z" },
+        { name: "Gravity", terms: SEEDED_TERMS },
+      ),
+    ).toBe("Gravity · as of Tue 6 Oct 2026");
+  });
+
+  it("states Arrivals' total, then the count started on each day", () => {
+    expect(describeArrivalsDays(chart(), "team", SEEDED_TERMS)).toEqual({
+      sentence: "Total Arrivals: 31 Work Items, 1.0 / day",
+      rows: [
+        ["Date", "Work Items started"],
+        ["Mon 7 Sep 2026", "2"],
+      ],
+    });
+  });
+
+  it("lists the Work Items in progress oldest first, since when each blocked one is blocked, then each day's count", () => {
+    const now = {
+      asOfDate: "2026-10-06",
+      count: 3,
+      items: [
+        {
+          isBlocked: false,
+          referenceId: "GR-064",
+          name: "Retry",
+          state: "Review",
+          workItemAge: 9,
+        },
+        {
+          isBlocked: true,
+          referenceId: "GR-061",
+          name: "Export",
+          state: "In Progress",
+          workItemAge: 14,
+          blockedSince: "2026-10-01T08:00:00Z",
+        },
+        { isBlocked: true },
+      ],
+    };
+    const overTime = { ...RANGE, daily: [{ date: "2026-10-06", count: 3 }] };
+
+    expect(describeWipDays(now, overTime, "team", SEEDED_TERMS, 10)).toEqual({
+      sentence: "Work Items in Progress: 3 (System WIP Limit: 10 Work Items)",
+      tables: [
+        {
+          rows: [
+            ["ID", "Name", "State", "Work Item Age", "Blocked"],
+            [
+              "GR-061",
+              "Export",
+              "In Progress",
+              "14 days",
+              "since Thu 1 Oct 2026",
+            ],
+            ["GR-064", "Retry", "Review", "9 days", ""],
+            ["—", "—", "—", "—", "Blocked"],
+          ],
+        },
+        {
+          rows: [
+            ["Date", "Work Items in Progress"],
+            ["Tue 6 Oct 2026", "3"],
+          ],
+        },
+      ],
+    });
+    expect(
+      describeWipDays(
+        { ...now, count: 0, items: [] },
+        { ...RANGE, daily: [] },
+        "portfolio",
+        SEEDED_TERMS,
+        undefined,
+      ),
+    ).toEqual({
+      sentence: "Features in Progress: 0",
+      tables: [{ note: OVER_TIME_EMPTY_SENTENCE }],
+    });
+  });
+
+  it("states the Cycle Time percentiles lowest first, then each closed Work Item", () => {
+    expect(
+      describeCycleTimeDays(
+        [
+          { percentile: 95, value: 21 },
+          { percentile: 50, value: 1 },
+        ],
+        [
+          {
+            id: 52,
+            name: "Rename",
+            referenceId: "GR-052",
+            closedDate: "2026-09-07T10:00:00Z",
+            cycleTime: 3,
+          },
+          { id: 55, name: "Fix" },
+        ],
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Cycle Time Percentiles: 50th 1 day · 95th 21 days",
+      tables: [
+        {
+          rows: [
+            ["ID", "Name", "Closed", "Cycle Time"],
+            ["GR-052", "Rename", "Mon 7 Sep 2026", "3 days"],
+            ["—", "Fix", "—", "—"],
+          ],
+        },
+      ],
+    });
+    expect(describeCycleTimeDays([], [], SEEDED_TERMS)).toEqual({
+      sentence: "Cycle Time Percentiles",
+      tables: [],
+    });
+  });
+
+  it("states the Work Item Age percentiles, then each day's oldest Work Item and how many there were", () => {
+    expect(
+      describeWorkItemAgeDays(
+        [{ percentile: 50, value: 3 }],
+        {
+          ...RANGE,
+          daily: [
+            {
+              date: "2026-09-07",
+              items: [
+                { id: 64, name: "Retry", referenceId: "GR-064", age: 2 },
+                { id: 61, name: "Export", referenceId: "GR-061", age: 6 },
+              ],
+            },
+            { date: "2026-09-08", items: [] },
+          ],
+        },
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Work Item Age Percentiles: 50th 3 days",
+      rows: [
+        ["Date", "Oldest", "Work Items"],
+        ["Mon 7 Sep 2026", "GR-061 6 days", "2"],
+        ["Tue 8 Sep 2026", "—", "0"],
+      ],
+    });
+  });
+
+  it("states the Predictability Score alone, to one decimal", () => {
+    expect(
+      describePredictabilityScoreDays({ score: 0.634 }, "team", SEEDED_TERMS),
+    ).toEqual({ sentence: "Predictability Score: 63.4%", tables: [] });
+    expect(
+      describePredictabilityScoreDays(
+        { score: undefined },
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({ sentence: "Predictability Score: —", tables: [] });
+  });
+
+  it("states the blocked count from the first recorded day to the last, then each recorded day's count", () => {
+    expect(
+      describeBlockedDays(
+        {
+          ...RANGE,
+          history: [
+            { recordedAt: "2026-10-06", blockedCount: 2 },
+            { recordedAt: "2026-09-07", blockedCount: 1 },
+          ],
+        },
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Blocked Work Items: 1 on Mon 7 Sep → 2 on Tue 6 Oct",
+      rows: [
+        ["Date", "Blocked Work Items"],
+        ["Tue 6 Oct 2026", "2"],
+        ["Mon 7 Sep 2026", "1"],
+      ],
+    });
+    expect(
+      describeBlockedDays({ ...RANGE, history: [] }, "team", SEEDED_TERMS),
+    ).toEqual({
+      sentence: "Blocked Work Items",
+      note: OVER_TIME_EMPTY_SENTENCE,
+    });
+  });
+
+  it("reads what the day views list of a Work Item in progress and of a closed one", () => {
+    const wip = readWip({
+      current: {
+        asOfDate: "2026-10-06",
+        count: 1,
+        items: [
+          {
+            isBlocked: true,
+            referenceId: "GR-061",
+            name: "Export",
+            state: "In Progress",
+            workItemAge: 14,
+            blockedSince: "2026-10-01T08:00:00Z",
+          },
+        ],
+      },
+      overTime: { ...RANGE, daily: [] },
+    });
+    expect(wip?.current).toMatchObject({
+      items: [
+        {
+          referenceId: "GR-061",
+          name: "Export",
+          state: "In Progress",
+          workItemAge: 14,
+          blockedSince: "2026-10-01T08:00:00Z",
+        },
+      ],
+    });
+    const cycleTime = readCycleTime({
+      percentiles: { values: [] },
+      closedItems: {
+        items: [
+          {
+            id: 52,
+            name: "Rename",
+            referenceId: "GR-052",
+            closedDate: "2026-09-07T10:00:00Z",
+            cycleTime: 3,
+          },
+        ],
+      },
+    });
+    expect(cycleTime?.closedItems).toEqual([
+      {
+        id: 52,
+        name: "Rename",
+        referenceId: "GR-052",
+        closedDate: "2026-09-07T10:00:00Z",
+        cycleTime: 3,
+      },
+    ]);
   });
 });

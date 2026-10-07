@@ -139,8 +139,25 @@ export const readThroughput = readDailyCountChart;
 
 export const readArrivals = readDailyCountChart;
 
-/** A Work Item in progress, as far as the headline counts it; an older Lighthouse does not say whether it is blocked. */
-export type InProgressItem = { readonly isBlocked: boolean | undefined };
+// A fact the view can do without: absent when Lighthouse did not send it, or sent it in another shape.
+const optionalText = (value: unknown): string | undefined =>
+  isText(value) ? value : undefined;
+
+const optionalNumber = (value: unknown): number | undefined =>
+  isNumber(value) ? value : undefined;
+
+const optionalDay = (value: unknown): string | undefined =>
+  isDay(value) ? value : undefined;
+
+/** A Work Item in progress; an older Lighthouse does not say whether it is blocked. */
+export type InProgressItem = {
+  readonly isBlocked: boolean | undefined;
+  readonly referenceId?: string;
+  readonly name?: string;
+  readonly state?: string;
+  readonly workItemAge?: number;
+  readonly blockedSince?: string;
+};
 
 export type InProgressNowView = {
   readonly asOfDate: string;
@@ -156,7 +173,14 @@ export type WipView = {
 const readInProgressItem = (value: unknown): InProgressItem | null =>
   isFacts(value) &&
   (value.isBlocked === undefined || typeof value.isBlocked === "boolean")
-    ? { isBlocked: value.isBlocked }
+    ? {
+        isBlocked: value.isBlocked,
+        referenceId: optionalText(value.referenceId),
+        name: optionalText(value.name),
+        state: optionalText(value.state),
+        workItemAge: optionalNumber(value.workItemAge),
+        blockedSince: optionalDay(value.blockedSince),
+      }
     : null;
 
 const readInProgressNow = (value: unknown): InProgressNowView | null => {
@@ -193,7 +217,13 @@ const readPercentileValues = (
 ): readonly PercentileValue[] | null =>
   isFacts(value) ? readEvery(value.values, readPercentileValue) : null;
 
-export type ClosedItem = { readonly id: number; readonly name: string };
+export type ClosedItem = {
+  readonly id: number;
+  readonly name: string;
+  readonly referenceId?: string;
+  readonly closedDate?: string;
+  readonly cycleTime?: number;
+};
 
 export type CycleTimeView = {
   readonly percentiles: MetricAnswer<readonly PercentileValue[]>;
@@ -202,7 +232,13 @@ export type CycleTimeView = {
 
 const readClosedItem = (value: unknown): ClosedItem | null =>
   isFacts(value) && isNumber(value.id) && isText(value.name)
-    ? { id: value.id, name: value.name }
+    ? {
+        id: value.id,
+        name: value.name,
+        referenceId: optionalText(value.referenceId),
+        closedDate: optionalDay(value.closedDate),
+        cycleTime: optionalNumber(value.cycleTime),
+      }
     : null;
 
 const readClosedItems = (value: unknown): readonly ClosedItem[] | null =>
@@ -589,6 +625,19 @@ export const describeMetricsHeading = (
   return `${wording.name} · ${dayOf(subject.startDate)} – ${dayOf(subject.endDate)} (${describeDays(days)})`;
 };
 
+const wipLimitOf = (
+  systemWipLimit: number,
+  scope: MetricsScope,
+  terms: Terms,
+): string =>
+  `System ${terms.wip} Limit: ${countOf(systemWipLimit, countedOf(scope, terms))}`;
+
+/** "Gravity · as of Tue 6 Oct 2026", for a metric that answers about the range's last day. */
+export const describeAsOfHeading = (
+  subject: Pick<MetricsSubject, "endDate">,
+  wording: AnswerWording,
+): string => `${wording.name} · as of ${dayOf(subject.endDate)}`;
+
 /** "Work Items in Progress  9  System WIP Limit: 10 Work Items", the limit left out when none is set. */
 export const describeInProgressNow = (
   now: InProgressNowView,
@@ -601,7 +650,7 @@ export const describeInProgressNow = (
   detail:
     systemWipLimit === undefined
       ? ""
-      : `System ${terms.wip} Limit: ${countOf(systemWipLimit, countedOf(scope, terms))}`,
+      : wipLimitOf(systemWipLimit, scope, terms),
 });
 
 /** "Blocked Work Items  2", or null when Lighthouse does not say which items are blocked. */
@@ -680,6 +729,9 @@ export const describeTotalWorkItemAge = (
       };
 };
 
+const scoreOf = (view: PredictabilityScoreView): string =>
+  view.score === undefined ? "—" : `${(view.score * 100).toFixed(1)}%`;
+
 /** "Predictability Score  63.4%", as the web shows it to one decimal. */
 export const describePredictabilityScore = (
   view: PredictabilityScoreView,
@@ -687,7 +739,7 @@ export const describePredictabilityScore = (
   terms: Terms,
 ): MetricLine => ({
   label: metricsHeadlineLabel("predictabilityScore", scope, terms),
-  value: view.score === undefined ? "—" : `${(view.score * 100).toFixed(1)}%`,
+  value: scoreOf(view),
   detail: "",
 });
 
@@ -820,11 +872,15 @@ export const describeBlockedOverTime = (
 
 /**
  * One metric over its days: the sentence that answers it, its day table with the header row first, and
- * the web's empty-chart sentence in place of a table when Lighthouse has recorded no day.
+ * the web's empty-chart sentence in place of a table when Lighthouse has recorded no day. A metric the
+ * dashboard shows as more than one table lists them in order, and one with only a sentence lists none.
  */
-export type MetricDayView = { readonly sentence: string } & MetricDays;
+export type MetricDayView = { readonly sentence: string } & (
+  | MetricDays
+  | { readonly tables: readonly MetricDays[] }
+);
 
-type MetricDays =
+export type MetricDays =
   | { readonly rows: readonly (readonly string[])[] }
   | { readonly note: string };
 
@@ -837,18 +893,202 @@ const dayTable = <T>(
     ? { note: OVER_TIME_EMPTY_SENTENCE }
     : { rows: [header, ...entries.map(row)] };
 
-/** "Total Throughput: 31 Work Items, 1.0 / day", then the count closed on each day. */
-export const describeThroughputDays = (
+const dailyCountDays = (
+  part: "throughput" | "arrivals",
+  happened: string,
   chart: DailyCountChartView,
   scope: MetricsScope,
   terms: Terms,
 ): MetricDayView => {
   const counted = countedOf(scope, terms);
   return {
-    sentence: `${metricsHeadlineLabel("throughput", scope, terms)}: ${countOf(chart.total, counted)}, ${perDay(chart)}`,
-    ...dayTable(["Date", `${counted.many} closed`], chart.daily, (day) => [
+    sentence: `${metricsHeadlineLabel(part, scope, terms)}: ${countOf(chart.total, counted)}, ${perDay(chart)}`,
+    ...dayTable(["Date", `${counted.many} ${happened}`], chart.daily, (day) => [
       dayOf(day.date),
       String(day.count),
+    ]),
+  };
+};
+
+/** "Total Throughput: 31 Work Items, 1.0 / day", then the count closed on each day. */
+export const describeThroughputDays = (
+  chart: DailyCountChartView,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => dailyCountDays("throughput", "closed", chart, scope, terms);
+
+/** "Total Arrivals: 28 Work Items, 0.9 / day", then the count started on each day. */
+export const describeArrivalsDays = (
+  chart: DailyCountChartView,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => dailyCountDays("arrivals", "started", chart, scope, terms);
+
+const ABSENT = "—";
+
+const daysOrAbsent = (days: number | undefined): string =>
+  days === undefined ? ABSENT : describeDays(days);
+
+const blockedCell = (item: InProgressItem, terms: Terms): string => {
+  if (item.isBlocked !== true) {
+    return "";
+  }
+  return item.blockedSince === undefined
+    ? terms.blocked
+    : `since ${dayOf(item.blockedSince)}`;
+};
+
+// The dashboard lists the oldest Work Item in progress first.
+const oldestFirst = (
+  items: readonly InProgressItem[],
+): readonly InProgressItem[] =>
+  [...items].sort(
+    (left, right) => (right.workItemAge ?? -1) - (left.workItemAge ?? -1),
+  );
+
+/**
+ * "Work Items in Progress: 9 (System WIP Limit: 10 Work Items)", then each Work Item in progress, oldest
+ * first, and the count in progress on each day.
+ */
+export const describeWipDays = (
+  now: InProgressNowView,
+  overTime: DailyCountsView,
+  scope: MetricsScope,
+  terms: Terms,
+  systemWipLimit: number | undefined,
+): MetricDayView => {
+  const label = metricsHeadlineLabel("wip", scope, terms);
+  const limit =
+    systemWipLimit === undefined
+      ? ""
+      : ` (${wipLimitOf(systemWipLimit, scope, terms)})`;
+  const items: MetricDays[] =
+    now.items.length === 0
+      ? []
+      : [
+          {
+            rows: [
+              ["ID", "Name", "State", terms.workItemAge, terms.blocked],
+              ...oldestFirst(now.items).map((item) => [
+                item.referenceId ?? ABSENT,
+                item.name ?? ABSENT,
+                item.state ?? ABSENT,
+                daysOrAbsent(item.workItemAge),
+                blockedCell(item, terms),
+              ]),
+            ],
+          },
+        ];
+  return {
+    sentence: `${label}: ${now.count}${limit}`,
+    tables: [
+      ...items,
+      dayTable(["Date", label], overTime.daily, (day) => [
+        dayOf(day.date),
+        String(day.count),
+      ]),
+    ],
+  };
+};
+
+const percentilesSentence = (
+  label: string,
+  values: readonly PercentileValue[],
+): string =>
+  values.length === 0
+    ? label
+    : `${label}: ${[...values]
+        .sort((left, right) => left.percentile - right.percentile)
+        .map(
+          (entry) =>
+            `${ordinalOf(entry.percentile)} ${describeDays(entry.value)}`,
+        )
+        .join(" · ")}`;
+
+/** "Cycle Time Percentiles: 50th 5 days · … · 95th 21 days", then each closed Work Item and its Cycle Time. */
+export const describeCycleTimeDays = (
+  percentiles: readonly PercentileValue[],
+  closedItems: readonly ClosedItem[],
+  terms: Terms,
+): MetricDayView => ({
+  sentence: percentilesSentence(`${terms.cycleTime} Percentiles`, percentiles),
+  tables:
+    closedItems.length === 0
+      ? []
+      : [
+          {
+            rows: [
+              ["ID", "Name", "Closed", terms.cycleTime],
+              ...closedItems.map((item) => [
+                item.referenceId ?? ABSENT,
+                item.name,
+                item.closedDate === undefined ? ABSENT : dayOf(item.closedDate),
+                daysOrAbsent(item.cycleTime),
+              ]),
+            ],
+          },
+        ],
+});
+
+const oldestOf = (day: DailyWorkItemAge): string => {
+  const oldest = day.items.reduce<WorkItemAgeEntry | undefined>(
+    (found, item) =>
+      found === undefined || item.age > found.age ? item : found,
+    undefined,
+  );
+  return oldest === undefined
+    ? ABSENT
+    : `${oldest.referenceId} ${describeDays(oldest.age)}`;
+};
+
+/**
+ * "Work Item Age Percentiles: 50th 3 days · … · 95th 18 days", then each day's oldest Work Item and how
+ * many were in progress; every item of a day is in --json.
+ */
+export const describeWorkItemAgeDays = (
+  percentiles: readonly PercentileValue[],
+  overTime: WorkItemAgeOverTimeResult,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => ({
+  sentence: percentilesSentence(
+    `${terms.workItemAge} Percentiles`,
+    percentiles,
+  ),
+  ...dayTable(
+    ["Date", "Oldest", countedOf(scope, terms).many],
+    overTime.daily,
+    (day) => [dayOf(day.date), oldestOf(day), String(day.items.length)],
+  ),
+});
+
+/** "Predictability Score: 63.4%", alone: the chart's marks need facts --json does not carry. */
+export const describePredictabilityScoreDays = (
+  view: PredictabilityScoreView,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => ({
+  sentence: `${metricsHeadlineLabel("predictabilityScore", scope, terms)}: ${scoreOf(view)}`,
+  tables: [],
+});
+
+/** "Blocked Work Items: 1 on Mon 7 Sep → 2 on Tue 6 Oct", then each recorded day's count. */
+export const describeBlockedDays = (
+  view: MetricHistoryView<BlockedCountSnapshot>,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => {
+  const label = metricsHeadlineLabel("blocked", scope, terms);
+  const first = earliestBy(view.history, (entry) => entry.recordedAt);
+  const last = latestBy(view.history, (entry) => entry.recordedAt);
+  return {
+    sentence:
+      first === undefined || last === undefined
+        ? label
+        : `${label}: ${fromFirstToLast(first, last, (entry) => String(entry.blockedCount))}`,
+    ...dayTable(["Date", label], view.history, (day) => [
+      dayOf(day.recordedAt),
+      String(day.blockedCount),
     ]),
   };
 };
