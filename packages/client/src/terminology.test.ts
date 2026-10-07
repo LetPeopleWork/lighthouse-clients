@@ -38,4 +38,14 @@ describe("resolveTerms", () => {
 
     expect(terms).toEqual(SEEDED_TERMS);
   });
+
+  it("leaves the seeded words standing when the read itself throws", async () => {
+    const terms = await readTerms({
+      getTerminology: async () => {
+        throw new Error("socket hang up");
+      },
+    });
+
+    expect(terms).toEqual(SEEDED_TERMS);
+  });
 });

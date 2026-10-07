@@ -206,8 +206,11 @@ export const isOutputFormatFlag = (
   value: string,
 ): value is keyof typeof OUTPUT_FORMAT_FLAGS => value in OUTPUT_FORMAT_FLAGS;
 
-/** A command's own pretty view of its result; a command without one gets the generic view. */
-export type PrettyRenderer<TValue> = (value: TValue) => string;
+/**
+ * A command's own pretty view of its result. A command without one, or an answer its renderer does not
+ * recognise (null), gets the generic view.
+ */
+export type PrettyRenderer<TValue> = (value: TValue) => string | null;
 
 export const formatPayload = <TValue>(
   value: TValue,
@@ -224,7 +227,7 @@ export const formatPayload = <TValue>(
   }
 
   if (outputFormat === "pretty") {
-    return { ok: true, value: (renderPretty ?? formatPretty)(value) };
+    return { ok: true, value: renderPretty?.(value) ?? formatPretty(value) };
   }
 
   try {

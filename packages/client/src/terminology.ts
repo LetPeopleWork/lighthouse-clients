@@ -75,6 +75,10 @@ export type TermsSource = Pick<LighthouseClient, "getTerminology">;
 
 /** The instance's words; when they cannot be read the seeded ones stand in, so this never fails. */
 export const readTerms = async (source: TermsSource): Promise<Terms> => {
-  const terminology = await source.getTerminology();
-  return resolveTerms(terminology.ok ? terminology.value : null);
+  try {
+    const terminology = await source.getTerminology();
+    return resolveTerms(terminology.ok ? terminology.value : null);
+  } catch {
+    return SEEDED_TERMS;
+  }
 };

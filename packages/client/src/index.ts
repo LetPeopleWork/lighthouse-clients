@@ -3055,8 +3055,10 @@ export const createLighthouseClient = (
   };
 };
 
+export * from "./answerWording";
 export * from "./calendarDates";
 export * from "./forecastDisplayRules";
+export * from "./forecastWording";
 export * from "./refinementVoteWording";
 export * from "./refinementVoting";
 export * from "./refinementWording";

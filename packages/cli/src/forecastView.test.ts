@@ -65,7 +65,7 @@ const LIKELIHOOD_FOR_25 =
 
 describe("lh forecast manual --pretty", () => {
   // @driving_port @US-01 @contract-shape:pure-function
-  it.skip("tells Lena when Gravity's 25 Work Items will be done, in the Forecast tab's words and levels", async () => {
+  it("tells Lena when Gravity's 25 Work Items will be done, in the Forecast tab's words and levels", async () => {
     const lighthouse = gravitysLighthouse();
 
     const result = await lighthouse.run(forTwentyFiveByEndOfOctober);
@@ -340,7 +340,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @error @version-skew @US-01 — D5 + M1: an answer lh does not recognise prints the generic view, silently
-  it.skip.each([
+  it.each([
     {
       reshaped: "the dates are under another name",
       answer: (() => {
@@ -383,7 +383,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @boundary @US-01 @reader-time-zone — D15: a calendar day is never shifted by the reader's zone
-  it.skip.each(["America/Adak", "Pacific/Kiritimati"])(
+  it.each(["America/Adak", "Pacific/Kiritimati"])(
     "prints Lighthouse's days unshifted for a reader in %s",
     async (zone) => {
       const result = await inTimeZone(zone, () =>

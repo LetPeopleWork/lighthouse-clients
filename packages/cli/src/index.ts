@@ -7,6 +7,7 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
+  readAnswerWording,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -17,6 +18,7 @@ import {
   isCliCommandResult,
   mapApiResultToCliResult,
 } from "./commandResult";
+import { renderManualForecast } from "./forecastOutput";
 import {
   DEFAULT_OUTPUT_FORMAT,
   isOutputFormat,
@@ -1884,13 +1886,28 @@ const runManualForecastCommand = async (
   }
 
   const client = dependencies.createClient(connectionOrError);
-  return mapApiResultToCliResult(
-    await client.runManualForecast(teamId, {
-      remainingItems: remaining,
-      targetDate: getOptionValue(args, "--target-date"),
-      applyFilterOverride: filterOrError.applyFilterOverride,
+  const input = {
+    remainingItems: remaining,
+    targetDate: getOptionValue(args, "--target-date"),
+    applyFilterOverride: filterOrError.applyFilterOverride,
+  };
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(
+      await client.runManualForecast(teamId, input),
+      outputFormat,
+    );
+  }
+
+  const [forecast, wording] = await Promise.all([
+    client.runManualForecast(teamId, input),
+    readAnswerWording(client, {
+      term: "team",
+      id: teamId,
+      read: () => client.getTeam(teamId),
     }),
-    outputFormat,
+  ]);
+  return mapApiResultToCliResult(forecast, outputFormat, (facts) =>
+    renderManualForecast(facts, wording),
   );
 };
 
