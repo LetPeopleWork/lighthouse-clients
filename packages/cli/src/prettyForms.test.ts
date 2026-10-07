@@ -284,7 +284,7 @@ describe("every lh form is accounted for", () => {
 });
 
 // Later slices move their forms into the delivered set as they ship.
-const DELIVERED_SLICES: ReadonlySet<string> = new Set(["01", "02"]);
+const DELIVERED_SLICES: ReadonlySet<string> = new Set(["01", "02", "03"]);
 const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
   DELIVERED_SLICES.has(form.slice),
 );

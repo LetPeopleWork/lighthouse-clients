@@ -221,7 +221,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   );
 
   // @US-03 — AC-03.3: a named cycle time definition names the sentence (the Team's settings carry the names)
-  it.skip("names the cycle time definition Priya chose", async () => {
+  it("names the cycle time definition Priya chose", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamSettings: ok({
         ...gravity(),

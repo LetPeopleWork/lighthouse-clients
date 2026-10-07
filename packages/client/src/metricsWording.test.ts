@@ -28,6 +28,7 @@ import {
   readBlocked,
   readCumulativeStateTime,
   readCycleTime,
+  readCycleTimeDefinitionName,
   readMetricAnswer,
   readMetricsSubject,
   readPercentilesOverTime,
@@ -43,6 +44,14 @@ import {
 import { SEEDED_TERMS } from "./terminology";
 
 const RANGE = { startDate: "2026-09-07", endDate: "2026-10-06" };
+
+const TEAM_SETTINGS = {
+  name: "Gravity",
+  cycleTimeDefinitions: [
+    { id: 3, name: "Dev Time", startState: "Doing", endState: "Review" },
+    { id: 4, name: "Lead Time", startState: "To Do", endState: "Done" },
+  ],
+};
 
 const chart = () => ({
   ...RANGE,
@@ -292,6 +301,35 @@ describe("the metrics section readers", () => {
     expect(readSystemWipLimit({ systemWIPLimit: 10 })).toBe(10);
     expect(readSystemWipLimit({ systemWIPLimit: 0 })).toBeUndefined();
     expect(readSystemWipLimit(null)).toBeUndefined();
+  });
+
+  it.each([
+    {
+      found: "the definition with that id",
+      settings: TEAM_SETTINGS,
+      id: 4,
+      name: "Lead Time",
+    },
+    {
+      found: "nothing for an id the Team does not have",
+      settings: TEAM_SETTINGS,
+      id: 9,
+      name: undefined,
+    },
+    {
+      found: "nothing when the settings were refused",
+      settings: null,
+      id: 4,
+      name: undefined,
+    },
+    {
+      found: "nothing for a definition without a name",
+      settings: { cycleTimeDefinitions: [{ id: 4, name: " " }] },
+      id: 4,
+      name: undefined,
+    },
+  ])("names $found", ({ settings, id, name }) => {
+    expect(readCycleTimeDefinitionName(settings, id)).toBe(name);
   });
 });
 
@@ -705,6 +743,14 @@ describe("one metric, every day", () => {
       sentence: "Cycle Time Percentiles",
       tables: [],
     });
+    expect(
+      describeCycleTimeDays(
+        [{ percentile: 50, value: 1 }],
+        [],
+        SEEDED_TERMS,
+        "Lead Time",
+      ).sentence,
+    ).toBe("Lead Time Percentiles: 50th 1 day");
   });
 
   it("states the Work Item Age percentiles, then each day's oldest Work Item and how many there were", () => {

@@ -8,6 +8,7 @@ import {
   type LighthouseClient,
   type MetricsDateRange,
   readAnswerWording,
+  readCycleTimeDefinitionName,
   readSystemWipLimit,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
@@ -54,6 +55,7 @@ type CliDomainClientLike = Pick<
   | "getWorkTrackingConnection"
   | "listTeams"
   | "getTeam"
+  | "getTeamSettings"
   | "createTeam"
   | "updateTeam"
   | "deleteTeam"
@@ -1981,6 +1983,30 @@ const runBacktestForecastCommand = async (
   );
 };
 
+// Only the Team's settings name a cycle time definition, and only the cycle time day view says the name;
+// a refused or failed read leaves the sentence on the instance's word for cycle time.
+const readCycleTimeDefinitionNameOf = async (
+  client: CliClientOperations,
+  action: "team" | "portfolio",
+  teamId: number,
+  asked: readonly string[] | null,
+  definitionId: number | undefined,
+): Promise<string | undefined> => {
+  if (
+    definitionId === undefined ||
+    action !== "team" ||
+    !asked?.includes("cycleTime")
+  ) {
+    return undefined;
+  }
+  const settings = await client
+    .getTeamSettings(teamId)
+    .catch(() => ({ ok: false as const, error: null }));
+  return settings.ok
+    ? readCycleTimeDefinitionName(settings.value, definitionId)
+    : undefined;
+};
+
 const runMetricsGroup = async (
   action: string | undefined,
   args: readonly string[],
@@ -2062,27 +2088,38 @@ const runMetricsGroup = async (
   const owner = (
     action === "team" ? client.getTeam(entityId) : client.getPortfolio(entityId)
   ).catch(() => ({ ok: false as const, error: null }));
-  const [payload, wording, ownerRead] = await Promise.all([
-    buildPayload(),
-    readAnswerWording(client, {
-      term: action,
-      id: entityId,
-      read: () => owner,
-    }),
-    owner,
-  ]);
+  const asked =
+    metricsFilterOrError === null ? null : [...metricsFilterOrError];
+  const [payload, wording, ownerRead, cycleTimeDefinitionName] =
+    await Promise.all([
+      buildPayload(),
+      readAnswerWording(client, {
+        term: action,
+        id: entityId,
+        read: () => owner,
+      }),
+      owner,
+      readCycleTimeDefinitionNameOf(
+        client,
+        action,
+        entityId,
+        asked,
+        definitionIdOrError.definitionId,
+      ),
+    ]);
   const systemWipLimit = readSystemWipLimit(
     ownerRead.ok ? ownerRead.value : null,
   );
-  const asked =
-    metricsFilterOrError === null ? null : [...metricsFilterOrError];
   return mapApiResultToCliResult(
     { ok: true, value: payload },
     outputFormat,
     (facts) =>
       asked === null
         ? renderMetricsHeadline(facts, wording, systemWipLimit)
-        : renderMetricDays(facts, wording, asked, systemWipLimit),
+        : renderMetricDays(facts, wording, asked, {
+            systemWipLimit,
+            cycleTimeDefinitionName,
+          }),
   );
 };
 

@@ -1303,6 +1303,9 @@ export type LighthouseClient = {
 
   readonly listTeams: () => Promise<LighthouseApiResult<readonly unknown[]>>;
   readonly getTeam: (teamId: number) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamSettings: (
+    teamId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
   readonly createTeam: (
     payload: LighthouseWritePayload,
   ) => Promise<LighthouseApiResult<unknown>>;
@@ -2228,6 +2231,13 @@ export const createLighthouseClient = (
       requestJson<unknown>(configuration, dependencies, `/v1/teams/${teamId}`, {
         method: "GET",
       }),
+    getTeamSettings: async (teamId: number) =>
+      requestJson<unknown>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/settings`,
+        { method: "GET" },
+      ),
     createTeam: async (payload: LighthouseWritePayload) =>
       requestJson<unknown>(configuration, dependencies, "/v1/teams", {
         method: "POST",

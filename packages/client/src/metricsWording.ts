@@ -521,6 +521,26 @@ export const readSystemWipLimit = (value: unknown): number | undefined =>
     ? value.systemWIPLimit
     : undefined;
 
+/** The name of the Team's cycle time definition with this id; absent when the settings do not carry it. */
+export const readCycleTimeDefinitionName = (
+  settings: unknown,
+  definitionId: number,
+): string | undefined => {
+  const definitions =
+    isFacts(settings) && Array.isArray(settings.cycleTimeDefinitions)
+      ? settings.cycleTimeDefinitions
+      : [];
+  const named: unknown = definitions.find(
+    (definition: unknown) =>
+      isFacts(definition) && definition.id === definitionId,
+  );
+  return isFacts(named) &&
+    typeof named.name === "string" &&
+    named.name.trim() !== ""
+    ? named.name
+    : undefined;
+};
+
 // ── Wording ──────────────────────────────────────────────────────────────────
 
 /** One line of the headline: what it is, its number, and what the number is out of. */
@@ -1014,8 +1034,12 @@ export const describeCycleTimeDays = (
   percentiles: readonly PercentileValue[],
   closedItems: readonly ClosedItem[],
   terms: Terms,
+  definitionName?: string,
 ): MetricDayView => ({
-  sentence: percentilesSentence(`${terms.cycleTime} Percentiles`, percentiles),
+  sentence: percentilesSentence(
+    `${definitionName ?? terms.cycleTime} Percentiles`,
+    percentiles,
+  ),
   tables:
     closedItems.length === 0
       ? []

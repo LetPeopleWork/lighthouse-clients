@@ -16,7 +16,9 @@ closed on it. Every other name `--metrics` accepts gets the same treatment:
   Work Item in progress (ID, Name, State, Work Item Age and since when it is blocked), oldest first, and
   the count in progress on each day.
 - `cycleTime`: the Cycle Time percentiles, then each closed Work Item with the day it closed and its Cycle
-  Time.
+  Time. With `--definition-id`, the sentence names the chosen cycle time definition
+  (`Lead Time Percentiles: …`); when the Team's settings cannot be read it falls back to Cycle Time and the
+  command still answers.
 - `workItemAge`: under the "as of" heading, the Work Item Age percentiles, then each day's oldest Work
   Item and how many there were; every item of every day stays in `--json`.
 - `totalWorkItemAge`: the total as on the latest day, then each day's total and its Work Items.
@@ -32,7 +34,8 @@ instance that renamed its terms sees its own words.
 
 A metric Lighthouse refuses and an answer in a shape the CLI does not recognise still print the generic
 view, exit 0, as before. `--json` and `--toon` are unchanged. The client package gains a `describe…Days`
-function per metric and `describeAsOfHeading`; `readPercentilesOverTime` now also reads the history's
+function per metric, `describeAsOfHeading`, `getTeamSettings` (`GET /teams/{id}/settings`) and
+`readCycleTimeDefinitionName`; `readPercentilesOverTime` now also reads the history's
 horizon, and `readWip` and `readCycleTime` also read each Work Item's ID, name, state, age, closed day and
 blocked-since day when Lighthouse sends them.
 

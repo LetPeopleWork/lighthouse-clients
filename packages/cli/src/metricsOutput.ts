@@ -252,6 +252,7 @@ type DayFacts = {
   readonly subject: MetricsSubject;
   readonly wording: AnswerWording;
   readonly systemWipLimit: number | undefined;
+  readonly cycleTimeDefinitionName: string | undefined;
 };
 
 // A metric's day view, or null when a section it needs is refused or in a shape this version cannot read.
@@ -308,18 +309,21 @@ const wipDays: DayView = {
   },
 };
 
-const cycleTimeDays = overTheRange(({ subject, wording }) => {
-  const cycleTime = sectionOf(subject, "cycleTime", readCycleTime);
-  return cycleTime !== null &&
-    answered(cycleTime.percentiles) &&
-    answered(cycleTime.closedItems)
-    ? describeCycleTimeDays(
-        cycleTime.percentiles,
-        cycleTime.closedItems,
-        wording.terms,
-      )
-    : null;
-});
+const cycleTimeDays = overTheRange(
+  ({ subject, wording, cycleTimeDefinitionName }) => {
+    const cycleTime = sectionOf(subject, "cycleTime", readCycleTime);
+    return cycleTime !== null &&
+      answered(cycleTime.percentiles) &&
+      answered(cycleTime.closedItems)
+      ? describeCycleTimeDays(
+          cycleTime.percentiles,
+          cycleTime.closedItems,
+          wording.terms,
+          cycleTimeDefinitionName,
+        )
+      : null;
+  },
+);
 
 const workItemAgeDays: DayView = {
   asOf: true,
@@ -405,13 +409,21 @@ export const renderMetricDays = (
   value: unknown,
   wording: AnswerWording,
   names: readonly string[],
-  systemWipLimit?: number,
+  owner: {
+    readonly systemWipLimit?: number;
+    readonly cycleTimeDefinitionName?: string;
+  } = {},
 ): string | null => {
   const subject = readMetricsSubject(value);
   if (subject === null || names.length === 0) {
     return null;
   }
-  const facts: DayFacts = { subject, wording, systemWipLimit };
+  const facts: DayFacts = {
+    subject,
+    wording,
+    systemWipLimit: owner.systemWipLimit,
+    cycleTimeDefinitionName: owner.cycleTimeDefinitionName,
+  };
   const views: MetricDayView[] = [];
   let asOf = true;
   for (const name of names) {

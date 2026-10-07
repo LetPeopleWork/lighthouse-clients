@@ -860,6 +860,45 @@ describe("createLighthouseClient", () => {
     );
   });
 
+  it("gets a team's settings through the versioned API contract", async () => {
+    const settings = {
+      id: 3,
+      cycleTimeDefinitions: [{ id: 4, name: "Lead Time" }],
+    };
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(settings),
+        json: async () => settings,
+      },
+    ]);
+
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.getTeamSettings(3);
+
+    expect(result).toEqual({ ok: true, value: settings });
+    expect(fetchMock.calls[1]?.url).toBe(
+      "http://localhost:5000/api/v1/teams/3/settings",
+    );
+    expect(fetchMock.calls[1]?.init?.method).toBe("GET");
+  });
+
   it("gets portfolio throughput metrics with a date range", async () => {
     const throughputData = { labels: ["2026-01-01"], data: [2] };
     const fetchMock = getFetchSequenceMock([
