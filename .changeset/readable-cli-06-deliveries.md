@@ -19,7 +19,22 @@ read the heading names it by its id, and the list still prints. An instance that
 its own words. A list in which any Delivery arrives without its name, id, date or work prints the generic
 view, exit 0, as before. `--json` and `--toon` are unchanged.
 
+`lh delivery metrics --delivery-id <id>` reads day by day
+
+Under `--pretty`, `lh delivery metrics --delivery-id <id>` heads the view with the Delivery, its Delivery
+Date and the first recorded day (`Delivery [id: 11] · Delivery Date Tue 15 Dec 2026 · recorded since Tue
+15 Sep 2026`; the read carries no Delivery name, so its id stands in), then prints one row per recorded
+day: Date, Done, Remaining, Total, how many Features, and the likelihood. With `--detail epics` it adds the
+latest recorded day in detail: `On Tue 6 Oct 2026`, a table of its Features (name, done, likelihood, size,
+with `(default size)` where Lighthouse assumed one), and the four chances with the day each is likely done
+by. The flag keeps its name; the output says Features. Every day's detail stays in `--json`. A Delivery
+with no recorded day prints the heading, then `No data yet.` A history in a shape the view cannot fully
+read prints the generic view, exit 0, as before. `--json` and `--toon` are unchanged.
+
 The client package gains `readDeliveryList`, `describeDeliveryListTitle`, `describeNoDeliveries`,
 `describeDeliveryListHeadings`, `describeDeliveryDone`, `describeDeliveryLikelihood`,
 `describeDeliveryRow`, `deliveryLikelihoodAnswer`, `OVERDUE_SHORT` and the `DeliveryListItem` and
-`DeliveryListOwner` types.
+`DeliveryListOwner` types, and for the recorded days `readDeliveryMetricsHistory`, `latestRecordedDay`,
+`describeDeliveryMetricsHeading`, `describeRecordedDayHeadings`, `describeRecordedDayRow`,
+`describeRecordedDayTitle`, `describeDeliveryFeatureHeadings`, `describeDeliveryFeatureRow`,
+`describeDeliveryChanceHeadings` and `describeDeliveryChanceRow`.

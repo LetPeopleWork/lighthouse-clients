@@ -2323,7 +2323,7 @@ describe("runCliCommand", () => {
     });
 
     const result = await runCliCommand(
-      ["delivery", "list", "--portfolio-id", "4"],
+      ["delivery", "list", "--portfolio-id", "4", "--json"],
       dependencies,
     );
 
@@ -2381,7 +2381,7 @@ describe("runCliCommand", () => {
     const { dependencies } = getDeliveryMetricsDependencies();
 
     const result = await runCliCommand(
-      ["delivery", "metrics", "--delivery-id", "42"],
+      ["delivery", "metrics", "--delivery-id", "42", "--json"],
       dependencies,
     );
 
@@ -2396,7 +2396,15 @@ describe("runCliCommand", () => {
     const { dependencies } = getDeliveryMetricsDependencies();
 
     const result = await runCliCommand(
-      ["delivery", "metrics", "--delivery-id", "42", "--detail", "epics"],
+      [
+        "delivery",
+        "metrics",
+        "--delivery-id",
+        "42",
+        "--detail",
+        "epics",
+        "--json",
+      ],
       dependencies,
     );
 

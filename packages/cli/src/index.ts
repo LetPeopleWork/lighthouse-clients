@@ -22,7 +22,7 @@ import {
   isCliCommandResult,
   mapApiResultToCliResult,
 } from "./commandResult";
-import { renderDeliveryList } from "./deliveryOutput";
+import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
 import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
@@ -2332,14 +2332,28 @@ const runDeliveryGroup = async (
     }
 
     const client = dependencies.createClient(connectionOrError);
-    const result = await client.getDeliveryMetricsHistory(deliveryId);
-    if (!result.ok || detail === "epics") {
+    // Terminology is read only for the pretty view, so --json and --toon ask for the history alone.
+    const [result, terms] = await Promise.all([
+      client.getDeliveryMetricsHistory(deliveryId),
+      outputFormat === "pretty" ? readTerms(client) : null,
+    ]);
+    if (!result.ok) {
       return mapApiResultToCliResult(result, outputFormat);
     }
 
+    const inDetail = detail === "epics";
     return mapApiResultToCliResult(
-      { ok: true, value: summariseDeliveryMetricsHistory(result.value) },
+      {
+        ok: true,
+        value: inDetail
+          ? result.value
+          : summariseDeliveryMetricsHistory(result.value),
+      },
       outputFormat,
+      terms === null
+        ? undefined
+        : () =>
+            renderDeliveryMetrics(result.value, deliveryId, inDetail, terms),
     );
   }
 

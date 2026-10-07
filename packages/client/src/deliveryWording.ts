@@ -1,5 +1,15 @@
 import { formatCalendarDay } from "./calendarDates";
-import { deliveryLikelihoodAnswer } from "./forecastDisplayRules";
+import {
+  deliveryLikelihoodAnswer,
+  formatLikelihood,
+  likelihoodAnswer,
+} from "./forecastDisplayRules";
+import type {
+  DeliveryFeatureMetric,
+  DeliveryMetricsHistory,
+  DeliveryMetricsHistoryPoint,
+  DeliveryWhenDistributionPoint,
+} from "./index";
 import { describeOwnerName, NOT_SENT } from "./ownerWording";
 import type { Terms } from "./terminology";
 
@@ -158,3 +168,158 @@ export const describeDeliveryRow = (
   describeDeliveryLikelihood(delivery),
   delivery.likelyBy === undefined ? NOT_SENT : dayOf(delivery.likelyBy),
 ];
+
+const isNullableNumber = (value: unknown): value is number | null =>
+  value === null || typeof value === "number";
+
+const isFeatureMetric = (value: unknown): value is DeliveryFeatureMetric =>
+  isRecord(value) &&
+  typeof value.referenceId === "string" &&
+  typeof value.name === "string" &&
+  typeof value.completion === "number" &&
+  isNullableNumber(value.likelihood);
+
+const isChance = (value: unknown): value is DeliveryWhenDistributionPoint =>
+  isRecord(value) &&
+  typeof value.probability === "number" &&
+  textOf(value.expectedDate) !== undefined;
+
+const isRecordedDay = (value: unknown): value is DeliveryMetricsHistoryPoint =>
+  isRecord(value) &&
+  textOf(value.date) !== undefined &&
+  typeof value.totalWork === "number" &&
+  typeof value.doneWork === "number" &&
+  typeof value.remainingWork === "number" &&
+  isNullableNumber(value.likelihoodPercentage) &&
+  Array.isArray(value.featureBreakdown) &&
+  value.featureBreakdown.every(isFeatureMetric) &&
+  (value.whenDistribution === null ||
+    (Array.isArray(value.whenDistribution) &&
+      value.whenDistribution.every(isChance)));
+
+/**
+ * A Delivery's recorded days, or null when the answer lacks its Delivery Date or any day lacks a fact its
+ * row or detail states: a table with a hole in it would misstate the trend.
+ */
+export const readDeliveryMetricsHistory = (
+  value: unknown,
+): DeliveryMetricsHistory | null => {
+  if (
+    !isRecord(value) ||
+    textOf(value.deliveryDate) === undefined ||
+    !(
+      value.firstSnapshotDate === null ||
+      textOf(value.firstSnapshotDate) !== undefined
+    ) ||
+    !Array.isArray(value.points) ||
+    !value.points.every(isRecordedDay)
+  ) {
+    return null;
+  }
+  return value as DeliveryMetricsHistory;
+};
+
+/** The most recent recorded day, whatever order the days arrive in; undefined when none is recorded. */
+export const latestRecordedDay = (
+  history: DeliveryMetricsHistory,
+): DeliveryMetricsHistoryPoint | undefined =>
+  history.points.reduce<DeliveryMetricsHistoryPoint | undefined>(
+    (latest, day) =>
+      latest === undefined || Date.parse(day.date) > Date.parse(latest.date)
+        ? day
+        : latest,
+    undefined,
+  );
+
+/**
+ * "Delivery [id: 11] · Delivery Date Tue 15 Dec 2026 · recorded since Tue 15 Sep 2026". The read carries no
+ * Delivery name, so its id stands in; the last part is left out until a first day is recorded.
+ */
+export const describeDeliveryMetricsHeading = (
+  history: DeliveryMetricsHistory,
+  deliveryId: number,
+  terms: Terms,
+): string =>
+  [
+    `${terms.delivery} [id: ${deliveryId}]`,
+    `${terms.delivery} Date ${dayOf(history.deliveryDate)}`,
+    ...(history.firstSnapshotDate === null
+      ? []
+      : [`recorded since ${dayOf(history.firstSnapshotDate)}`]),
+  ].join(" · ");
+
+/** The day-by-day table's column headings. */
+export const describeRecordedDayHeadings = (terms: Terms): string[] => [
+  "Date",
+  "Done",
+  "Remaining",
+  "Total",
+  terms.features,
+  "Likelihood",
+];
+
+/** One recorded day as a row, in the order of its headings. */
+export const describeRecordedDayRow = (
+  day: DeliveryMetricsHistoryPoint,
+): string[] => [
+  dayOf(day.date),
+  String(day.doneWork),
+  String(day.remainingWork),
+  String(day.totalWork),
+  String(day.featureBreakdown.length),
+  likelihoodAnswer({
+    likelihood: day.likelihoodPercentage,
+    cannotBeForecast: false,
+    hasRemainingWork: day.remainingWork > 0,
+    precision: "round",
+  }),
+];
+
+/** The title over one day's detail: "On Tue 6 Oct 2026". */
+export const describeRecordedDayTitle = (
+  day: DeliveryMetricsHistoryPoint,
+): string => `On ${dayOf(day.date)}`;
+
+/** The per-Feature table's column headings, as the web's Feature grid names them. */
+export const describeDeliveryFeatureHeadings = (terms: Terms): string[] => [
+  `${terms.feature} Name`,
+  "Done",
+  "Likelihood",
+  "Size",
+];
+
+// Days recorded before Lighthouse kept sizes carry none; that is unknown, never zero.
+const sizeOf = (feature: DeliveryFeatureMetric): string => {
+  if (typeof feature.totalItems !== "number") {
+    return NOT_SENT;
+  }
+  return feature.isUsingDefaultSize === true
+    ? `${feature.totalItems} (default size)`
+    : String(feature.totalItems);
+};
+
+/** One Feature as it stood that day, in the order of its headings. */
+export const describeDeliveryFeatureRow = (
+  feature: DeliveryFeatureMetric,
+): string[] => [
+  `${feature.referenceId} ${feature.name}`,
+  `${Math.round(feature.completion)}%`,
+  feature.likelihood === null
+    ? NOT_SENT
+    : formatLikelihood(feature.likelihood, {
+        hasRemainingWork: feature.completion < 100,
+        precision: "round",
+      }),
+  sizeOf(feature),
+];
+
+/** The forecast distribution's column headings. */
+export const describeDeliveryChanceHeadings = (): string[] => [
+  "Chance",
+  "Done by",
+];
+
+/** One chance of the day's forecast: "85%" and the day it is that likely to be done by. */
+export const describeDeliveryChanceRow = (
+  chance: DeliveryWhenDistributionPoint,
+): string[] => [`${chance.probability}%`, dayOf(chance.expectedDate)];

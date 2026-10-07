@@ -18,8 +18,7 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 06 (US-06): Deliveries read like the Delivery cards, one row each, and a Delivery's
-// recorded days as a table. Every scenario but the format guards is pending until DELIVER slice 06.
+// Deliveries read like the Delivery cards, one row each, and a Delivery's recorded days read as a table.
 
 const deliveriesOfOceanExplorer = ["delivery", "list", "--portfolio-id", "2"];
 const daysOfTheQ4Release = ["delivery", "metrics", "--delivery-id", "11"];
@@ -65,7 +64,7 @@ describe("lh delivery list --pretty", () => {
     ]);
   });
 
-  // @error @US-06 — whatTheHeaderChipSays: Cannot forecast outranks Not enough data
+  // @error @US-06 — as on the card's header chip, Cannot forecast outranks Not enough data
   it.each([
     {
       why: "a Team has no throughput history",
@@ -82,7 +81,7 @@ describe("lh delivery list --pretty", () => {
     expect(await likelihoodCellOf(delivery)).toContain(" Cannot forecast ");
   });
 
-  // @boundary @US-06 — isForecastDataInsufficient.ts: thin history matters only while work remains
+  // @boundary @US-06 — thin history matters only while work remains
   it("states the likelihood of a finished Delivery even on thin history", async () => {
     const cell = await likelihoodCellOf({
       hasSufficientData: false,
@@ -94,7 +93,7 @@ describe("lh delivery list --pretty", () => {
     expect(cell).not.toContain("Not enough data");
   });
 
-  // @error @version-skew @US-06 — D5: Overdue only when the server says so
+  // @error @version-skew @US-06 — Overdue only when Lighthouse says so, never worked out from the date
   it("never calls a Delivery overdue when an older Lighthouse does not say", async () => {
     const { isOverdue: _notSent, ...older } = aDelivery({
       date: "2026-10-02T00:00:00Z",
@@ -112,7 +111,7 @@ describe("lh delivery list --pretty", () => {
     expect(result.stdout).not.toContain("Overdue");
   });
 
-  // @error @US-06 — D13: '—' when Lighthouse sends no 85% date
+  // @error @US-06
   it("says '—' for the 85% forecast when Lighthouse sends none", async () => {
     const cell = await likelihoodCellOf({
       completionDates: [
@@ -128,7 +127,7 @@ describe("lh delivery list --pretty", () => {
     expect(cell.endsWith(" 78% —")).toBe(true);
   });
 
-  // @error @US-06 — M9: the web's empty state for a Portfolio without Deliveries (DeliveriesChips.tsx)
+  // @error @US-06 — the web's own words for a Portfolio without Deliveries
   it("says Ocean Explorer has no Deliveries when the list is empty", async () => {
     const lighthouse = oceanExplorersLighthouse({ listDeliveries: ok([]) });
 
@@ -141,7 +140,7 @@ describe("lh delivery list --pretty", () => {
     ]);
   });
 
-  // @error @infrastructure-failure @US-06 — C14
+  // @error @infrastructure-failure @US-06 — the Portfolio is read only for its name, so losing it never loses the list
   it("heads the list with the Portfolio's id when its name cannot be read", async () => {
     const lighthouse = oceanExplorersLighthouse({
       getPortfolio: refused("forbidden", "You may not read this Portfolio"),
@@ -153,7 +152,7 @@ describe("lh delivery list --pretty", () => {
     expect(shownLines(result.stdout)[0]).toBe("Portfolio [id: 2] · Deliveries");
   });
 
-  // @US-06 @kpi — KPI-5
+  // @US-06 @kpi
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = oceanExplorersLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -170,7 +169,7 @@ describe("lh delivery list --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @boundary @US-06 @reader-time-zone — D15
+  // @boundary @US-06 @reader-time-zone — a calendar day is never shifted by the reader's time zone
   it.each(["America/Adak", "Pacific/Kiritimati"])(
     "dates each Delivery as Lighthouse does for a reader in %s",
     async (zone) => {
@@ -184,7 +183,7 @@ describe("lh delivery list --pretty", () => {
     },
   );
 
-  // @error @version-skew @US-06 — D5 + M1
+  // @error @version-skew @US-06 — a list the view cannot fully read prints as it came, never with a hole in it
   it("shows the list as it came when a Delivery arrives without its date", async () => {
     const recognised = await oceanExplorersLighthouse().run(
       deliveriesOfOceanExplorer,
@@ -206,8 +205,8 @@ describe("lh delivery list --pretty", () => {
 });
 
 describe("lh delivery metrics --pretty", () => {
-  // @driving_port @US-06 @contract-shape:pure-function — the metrics read carries no Delivery name (S13)
-  it.skip("shows Lena the Q4 Release day by day", async () => {
+  // @driving_port @US-06 @contract-shape:pure-function — the metrics read carries no Delivery name, so its id heads the view
+  it("shows Lena the Q4 Release day by day", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
     const result = await lighthouse.run(daysOfTheQ4Release);
@@ -226,8 +225,8 @@ describe("lh delivery metrics --pretty", () => {
     ]);
   });
 
-  // @driving_port @US-06 — D14: the latest recorded day in detail, its Features and four chances
-  it.skip("adds the latest day's Features and chances with --detail epics", async () => {
+  // @driving_port @US-06 — only the latest day in detail; every day's detail stays in --json
+  it("adds the latest day's Features and chances with --detail epics", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
     const result = await lighthouse.run([
@@ -253,9 +252,32 @@ describe("lh delivery metrics --pretty", () => {
       "95% Tue 22 Dec 2026",
     ]);
   });
+
+  // @error @US-06 — days are recorded forward only, so a new Delivery has none to show yet
+  it.each([
+    { how: "summarised", flags: [] as string[] },
+    { how: "in detail", flags: ["--detail", "epics"] },
+  ])(
+    "says 'No data yet.' under the heading before a first day is recorded ($how)",
+    async ({ flags }) => {
+      const lighthouse = oceanExplorersLighthouse({
+        getDeliveryMetricsHistory: ok(
+          q4ReleaseHistory({ firstSnapshotDate: null, points: [] }),
+        ),
+      });
+
+      const result = await lighthouse.run([...daysOfTheQ4Release, ...flags]);
+
+      expect(result.exitCode).toBe(0);
+      expect(shownLines(result.stdout)).toEqual([
+        "Delivery [id: 11] · Delivery Date Tue 15 Dec 2026",
+        "No data yet.",
+      ]);
+    },
+  );
 });
 
-// Guards, green today and on every slice after (D4, KPI-2).
+// Scripts read --json and --toon, so the pretty views must never change them.
 describe("lh delivery keeps the facts formats as they are", () => {
   // @driving_port @US-06 @contract-shape:unbounded-preservation
   it("hands scripts the Deliveries unchanged with --json and --toon, and asks only for them", async () => {
