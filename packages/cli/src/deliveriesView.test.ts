@@ -142,7 +142,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @error @infrastructure-failure @US-06 — C14
-  it.skip("heads the list with the Portfolio's id when its name cannot be read", async () => {
+  it("heads the list with the Portfolio's id when its name cannot be read", async () => {
     const lighthouse = oceanExplorersLighthouse({
       getPortfolio: refused("forbidden", "You may not read this Portfolio"),
     });
@@ -154,7 +154,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @US-06 @kpi — KPI-5
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = oceanExplorersLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -171,7 +171,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @boundary @US-06 @reader-time-zone — D15
-  it.skip.each(["America/Adak", "Pacific/Kiritimati"])(
+  it.each(["America/Adak", "Pacific/Kiritimati"])(
     "dates each Delivery as Lighthouse does for a reader in %s",
     async (zone) => {
       const result = await inTimeZone(zone, () =>
@@ -185,7 +185,7 @@ describe("lh delivery list --pretty", () => {
   );
 
   // @error @version-skew @US-06 — D5 + M1
-  it.skip("shows the list as it came when a Delivery arrives without its date", async () => {
+  it("shows the list as it came when a Delivery arrives without its date", async () => {
     const recognised = await oceanExplorersLighthouse().run(
       deliveriesOfOceanExplorer,
     );

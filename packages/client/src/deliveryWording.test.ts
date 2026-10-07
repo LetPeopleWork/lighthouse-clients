@@ -85,7 +85,7 @@ describe("the Deliveries list's words", () => {
     { key: "features", defaultValue: "Features", value: "Outcomes" },
     { key: "workItem", defaultValue: "Work Item", value: "Ticket" },
     { key: "workItems", defaultValue: "Work Items", value: "Tickets" },
-  ]);
+  ] as never);
 
   it("heads the list with the Portfolio's name, or its id when the name could not be read", () => {
     expect(
