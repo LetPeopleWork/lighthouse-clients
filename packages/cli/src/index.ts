@@ -9,6 +9,7 @@ import {
   type MetricsDateRange,
   readAnswerWording,
   readCycleTimeDefinitionName,
+  readPortfolio,
   readSystemWipLimit,
   readTerms,
   summariseDeliveryMetricsHistory,
@@ -21,6 +22,7 @@ import {
   isCliCommandResult,
   mapApiResultToCliResult,
 } from "./commandResult";
+import { renderDeliveryList } from "./deliveryOutput";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
 import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
@@ -2352,9 +2354,23 @@ const runDeliveryGroup = async (
   }
 
   const client = dependencies.createClient(connectionOrError);
-  return mapApiResultToCliResult(
-    await client.listDeliveries(portfolioId),
-    outputFormat,
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(
+      await client.listDeliveries(portfolioId),
+      outputFormat,
+    );
+  }
+  // The Portfolio is read only for the heading's name, so a refusal or failure there never fails the list.
+  const [deliveries, terms, portfolio] = await Promise.all([
+    client.listDeliveries(portfolioId),
+    readTerms(client),
+    client.getPortfolio(portfolioId).catch(() => null),
+  ]);
+  const portfolioName = portfolio?.ok
+    ? readPortfolio(portfolio.value)?.name
+    : undefined;
+  return mapApiResultToCliResult(deliveries, outputFormat, (facts) =>
+    renderDeliveryList(facts, { id: portfolioId, name: portfolioName }, terms),
   );
 };
 

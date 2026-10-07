@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deliveryLikelihoodAnswer,
   formatLikelihood,
   levelOf,
   likelihoodAnswer,
@@ -127,6 +128,58 @@ describe("the one answer a likelihood gives, in the web's order", () => {
     },
   ] as const)("reads '$reads' when $why", ({ facts, reads }) => {
     expect(likelihoodAnswer({ ...forecastable, ...facts })).toBe(reads);
+  });
+});
+
+describe("the answer a Delivery card gives (DeliverySection.tsx)", () => {
+  const onTrack = {
+    likelihood: 78.2,
+    cannotBeForecast: false,
+    hasRemainingWork: true,
+    hasSufficientData: true,
+    isOverdue: false,
+    precision: "round",
+  } as const;
+
+  it.each([
+    { why: "it is on track", facts: {}, reads: "78%" },
+    {
+      why: "its date has passed",
+      facts: { isOverdue: true, likelihood: 0 },
+      reads: "Overdue",
+    },
+    {
+      why: "its date has passed on thin history",
+      facts: { isOverdue: true, hasSufficientData: false },
+      reads: "Overdue",
+    },
+    {
+      why: "its date has passed and it cannot be forecast",
+      facts: { isOverdue: true, cannotBeForecast: true },
+      reads: "Overdue · Cannot forecast",
+    },
+    {
+      why: "its date has passed and Lighthouse gives no likelihood",
+      facts: { isOverdue: true, likelihood: null },
+      reads: "Overdue · Cannot forecast",
+    },
+    {
+      why: "an older Lighthouse does not say whether it is overdue",
+      facts: { isOverdue: undefined, likelihood: 12 },
+      reads: "12%",
+    },
+    {
+      why: "it cannot be forecast",
+      facts: { cannotBeForecast: true },
+      reads: "Cannot forecast",
+    },
+    {
+      why: "history is thin while work remains",
+      facts: { hasSufficientData: false },
+      reads: "Not enough data",
+    },
+  ] as const)("reads '$reads' when $why", ({ facts, reads }) => {
+    expect(deliveryLikelihoodAnswer({ ...onTrack, ...facts })).toBe(reads);
   });
 });
 

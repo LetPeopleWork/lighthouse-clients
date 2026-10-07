@@ -44,7 +44,7 @@ const likelihoodCellOf = async (delivery: Record<string, unknown>) => {
 
 describe("lh delivery list --pretty", () => {
   // @driving_port @US-06 @contract-shape:pure-function
-  it.skip("shows Lena every Delivery of Ocean Explorer in one table, each with the card's answer", async () => {
+  it("shows Lena every Delivery of Ocean Explorer in one table, each with the card's answer", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
     const result = await lighthouse.run(deliveriesOfOceanExplorer);
@@ -66,7 +66,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @error @US-06 — whatTheHeaderChipSays: Cannot forecast outranks Not enough data
-  it.skip.each([
+  it.each([
     {
       why: "a Team has no throughput history",
       delivery: {
@@ -83,7 +83,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @boundary @US-06 — isForecastDataInsufficient.ts: thin history matters only while work remains
-  it.skip("states the likelihood of a finished Delivery even on thin history", async () => {
+  it("states the likelihood of a finished Delivery even on thin history", async () => {
     const cell = await likelihoodCellOf({
       hasSufficientData: false,
       remainingWork: 0,
@@ -95,7 +95,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @error @version-skew @US-06 — D5: Overdue only when the server says so
-  it.skip("never calls a Delivery overdue when an older Lighthouse does not say", async () => {
+  it("never calls a Delivery overdue when an older Lighthouse does not say", async () => {
     const { isOverdue: _notSent, ...older } = aDelivery({
       date: "2026-10-02T00:00:00Z",
       likelihoodPercentage: 12,
@@ -113,7 +113,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @error @US-06 — D13: '—' when Lighthouse sends no 85% date
-  it.skip("says '—' for the 85% forecast when Lighthouse sends none", async () => {
+  it("says '—' for the 85% forecast when Lighthouse sends none", async () => {
     const cell = await likelihoodCellOf({
       completionDates: [
         {
@@ -129,7 +129,7 @@ describe("lh delivery list --pretty", () => {
   });
 
   // @error @US-06 — M9: the web's empty state for a Portfolio without Deliveries (DeliveriesChips.tsx)
-  it.skip("says Ocean Explorer has no Deliveries when the list is empty", async () => {
+  it("says Ocean Explorer has no Deliveries when the list is empty", async () => {
     const lighthouse = oceanExplorersLighthouse({ listDeliveries: ok([]) });
 
     const result = await lighthouse.run(deliveriesOfOceanExplorer);

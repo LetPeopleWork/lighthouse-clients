@@ -65,3 +65,24 @@ export const likelihoodAnswer = (facts: {
   }
   return formatLikelihood(facts.likelihood, facts);
 };
+
+export const OVERDUE_SHORT = "Overdue";
+
+/**
+ * A Delivery card's answer: its likelihood, or "Overdue" once its date has passed. Overdue says more than a
+ * number for a date already gone, but not more than "Cannot forecast", so the web shows both of those.
+ */
+export const deliveryLikelihoodAnswer = (
+  facts: Parameters<typeof likelihoodAnswer>[0] & {
+    // Only the server knows the instance's today; an older Lighthouse that does not say is never overdue.
+    readonly isOverdue?: boolean;
+  },
+): string => {
+  const answer = likelihoodAnswer(facts);
+  if (facts.isOverdue !== true) {
+    return answer;
+  }
+  return answer === CANNOT_FORECAST_SHORT
+    ? `${OVERDUE_SHORT} · ${CANNOT_FORECAST_SHORT}`
+    : OVERDUE_SHORT;
+};
