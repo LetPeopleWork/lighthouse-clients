@@ -11,7 +11,7 @@ The stdio server exposes Lighthouse as MCP tools for:
 - Health and version checks.
 - Work tracking, team, and portfolio lookups.
 - Team and portfolio refresh operations.
-- Team and portfolio metrics.
+- Team and portfolio metrics. Each per-metric tool (Throughput, the Cycle Time and Work Item Age percentiles, Work Item Age, Total Work Item Age, the blocked history, the percentiles over time and the process limits) also states its answer as `lh metrics --metrics <name>` heads it: the heading and the sentence.
 - Feature, delivery, and forecast operations. The forecast tools (`lighthouse_forecast_manual`, `lighthouse_forecast_backtest`) also return a `summary` stating the answer as the web does: the heading and likelihood sentence, or the backtest's heading, period and actual Throughput.
 - A Team's refinement need (`lighthouse_team_refinement_get`): how many Work Items to refine before the next Refinement, with the sentence the web page states as `summary`.
 - Refinement votes: `lighthouse_team_refinement_vote`, `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack` record the user's own vote, comment or take-back on a Work Item in refinement, marked as sent through an assistant. They are writes, and their descriptions tell the assistant to confirm with the user first and to ask for the user's name (needed without sign-in) rather than infer it. The server keeps a voter key per Lighthouse in the same `voter-keys.json` the `lh` command line uses, so the user is one voter whether they vote from `lh` or through the assistant.
@@ -171,7 +171,7 @@ All MCP tool responses are serialized using [TOON](https://github.com/LetPeopleW
 TOON is a structured text format designed for LLM consumption.
 MCP clients that display raw tool results will see TOON-encoded output.
 
-A tool that carries a `summary` field states its answer there as the web does, in the instance's terminology. Every other field is the facts, unchanged; when the tool does not recognise the answer's shape it adds no summary.
+A tool that carries a `summary` states its answer there as the web does, in the instance's terminology. An object answer carries it as a `summary` field beside the facts. A list answer keeps its facts block exactly as before and carries the summary in a second text block, `summary: …`. Every other field is the facts, unchanged; when the tool does not recognise the answer's shape it adds no summary.
 
 ### TLS certificate validation
 

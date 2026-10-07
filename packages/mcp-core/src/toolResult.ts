@@ -36,17 +36,31 @@ const isFactsObject = (
 /**
  * The facts under their label, with the answer stated as the web does beside them. Without a summary the
  * facts go out exactly as they always have, so an assistant reading them never sees a different shape.
+ * An object takes the summary as a field. A list, a single value, or an object that already has a
+ * `summary` of its own cannot take one without changing its facts, so its summary follows in a second
+ * block.
  */
 export const withSummary = (
   label: string,
   facts: unknown,
   summary: string | null,
-): McpToolResult =>
-  getSuccessToolResult(
-    `${label}: ${encodePayload(
-      summary !== null && isFactsObject(facts) ? { summary, ...facts } : facts,
-    )}`,
-  );
+): McpToolResult => {
+  if (summary === null) {
+    return getSuccessToolResult(`${label}: ${encodePayload(facts)}`);
+  }
+  if (isFactsObject(facts) && !("summary" in facts)) {
+    return getSuccessToolResult(
+      `${label}: ${encodePayload({ summary, ...facts })}`,
+    );
+  }
+  return {
+    isError: false,
+    content: [
+      { type: "text", text: `${label}: ${encodePayload(facts)}` },
+      { type: "text", text: `summary: ${summary}` },
+    ],
+  };
+};
 
 export const getErrorToolResult = (text: string): McpToolResult => ({
   isError: true,

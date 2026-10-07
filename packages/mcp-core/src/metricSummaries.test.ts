@@ -20,7 +20,7 @@ import {
 
 // Story 6218, slice 03: the per-metric tools add the sentence lh prints above that metric's table. A list
 // answer keeps its facts block byte for byte and gains a second block `summary: …`; an object answer gains a
-// `summary` field (ADR-224). Pending until DELIVER slice 03.
+// `summary` field (ADR-224).
 
 const gravitysRange = { id: 3, startDate: "2026-09-07", endDate: "2026-10-06" };
 const oceanExplorersRange = {
@@ -47,7 +47,7 @@ const answered = (read: string): unknown =>
 
 describe("the per-metric tools' summary, on a list answer", () => {
   // @driving_port @US-03 @contract-shape:bounded-change
-  it.skip.each([
+  it.each([
     {
       tool: "lighthouse_team_metrics_cycleTimePercentiles",
       read: "getTeamCycleTimePercentiles",
@@ -96,7 +96,7 @@ describe("the per-metric tools' summary, on a list answer", () => {
   );
 
   // @error @US-03 — AC-03.2 on the MCP side
-  it.skip("says nothing is recorded yet, in the web's words, for an empty percentile history", async () => {
+  it("says nothing is recorded yet, in the web's words, for an empty percentile history", async () => {
     const assistant = gravitysAssistant({
       getTeamPercentilesOverTime: ok([]),
     });
@@ -115,7 +115,7 @@ describe("the per-metric tools' summary, on a list answer", () => {
 
 describe("the per-metric tools' summary, on an object answer", () => {
   // @driving_port @US-03 @contract-shape:bounded-change
-  it.skip.each([
+  it.each([
     {
       tool: "lighthouse_team_metrics_throughput",
       read: "getTeamThroughput",
@@ -153,9 +153,75 @@ describe("the per-metric tools' summary, on an object answer", () => {
   );
 });
 
+describe("the per-metric tools' summary, as lh heads it", () => {
+  it("states a Work Item Age answer under the as-of heading with its percentiles", async () => {
+    const result = await gravitysAssistant().call(
+      "lighthouse_team_metrics_workItemAge",
+      gravitysRange,
+    );
+
+    const { summary, ...facts } = answerOf(result, "team workItemAge: ");
+    expect(facts).toEqual(answered("getTeamWorkItemAgeOverTime"));
+    expect(summary).toBe(
+      "Gravity · as of Tue 6 Oct 2026\nWork Item Age Percentiles: 50th 3 days · 70th 6 days · 85th 11 days · 95th 18 days",
+    );
+  });
+
+  it("states a Work Item Age answer without a summary when its percentiles cannot be read", async () => {
+    const result = await gravitysAssistant({
+      getTeamWorkItemAgePercentiles: refused("unexpected", "down"),
+    }).call("lighthouse_team_metrics_workItemAge", gravitysRange);
+
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: `team workItemAge: ${encode(answered("getTeamWorkItemAgeOverTime") as never)}`,
+      },
+    ]);
+  });
+
+  it("states a Portfolio's history under the Portfolio's heading, in Features", async () => {
+    const result = await gravitysAssistant().call(
+      "lighthouse_portfolio_metrics_blockedCountHistory",
+      oceanExplorersRange,
+    );
+
+    expect(factsBlockOf(result)).toBe(
+      `portfolio blockedCountHistory: ${encode(answered("getPortfolioBlockedCountHistory") as never)}`,
+    );
+    expect(summaryBlockOf(result)).toBe(
+      `summary: ${oceanExplorer().name} · Thu 9 Jul 2026 – Tue 6 Oct 2026 (90 days)\nBlocked Features: 1 on Mon 7 Sep → 2 on Tue 6 Oct`,
+    );
+  });
+
+  it("names the cycle time definition it was asked for", async () => {
+    const result = await gravitysAssistant({
+      getTeamSettings: ok({
+        cycleTimeDefinitions: [{ id: 4, name: "Lead Time" }],
+      }),
+    }).call("lighthouse_team_metrics_cycleTimePercentiles", {
+      ...gravitysRange,
+      definitionId: 4,
+    });
+
+    expect(summaryBlockOf(result)).toContain(
+      "Lead Time Percentiles: 50th 5 days",
+    );
+  });
+
+  it("states no other family's percentiles as Cycle Time", async () => {
+    const result = await gravitysAssistant().call(
+      "lighthouse_team_metrics_percentilesOverTime",
+      { ...gravitysRange, metricType: "WorkItemAge" },
+    );
+
+    expect(summaryBlockOf(result)).toBeNull();
+  });
+});
+
 describe("the per-metric tools without a summary", () => {
   // @error @version-skew @US-03 — ADR-224 rule 3
-  it.skip("adds no summary to a percentile history it does not recognise", async () => {
+  it("adds no summary to a percentile history it does not recognise", async () => {
     const recognised = await gravitysAssistant().call(
       "lighthouse_team_metrics_blockedCountHistory",
       gravitysRange,

@@ -41,3 +41,12 @@ blocked-since day when Lighthouse sends them.
 
 With every term renamed, the day views print no seeded word of their own; Work Item names still print
 exactly as Lighthouse sends them.
+
+The per-metric MCP tools of a Team and a Portfolio now state their answer as `lh` heads it: the heading
+and the sentence, never the table. An object answer (Throughput, Work Item Age, Total Work Item Age)
+gains a `summary` field. A list answer (the Cycle Time and Work Item Age percentiles, the blocked
+history, the percentiles over time and the process limits) keeps its facts block byte for byte and adds
+a second text block, `summary: …`; an empty history says nothing is recorded yet, in the web's words. An
+answer in a shape the tool does not recognise, or another percentile or process-limit family than the
+one `lh` states, gets no summary, and a refusal stays the same error. The client package gains
+`readRunChart`, `readCycleTimePercentiles`, `describeWorkItemAgePercentiles` and `describeMetricSummary`.

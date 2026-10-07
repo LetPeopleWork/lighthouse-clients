@@ -366,7 +366,7 @@ Use the dedicated tools to retrieve work item age data:
 
 All accept optional `startDate` / `endDate` parameters. Results include a `daily` array of `{ date, items[{id, name, referenceId, age}] }` (per-item) or `{ date, totalAge, itemCount }` (total).
 
-A tool that carries a `summary` states its answer there as the web does, in the instance's terminology: quote it to the user. Every other field is the facts, the same as the tool returned before it had a summary; reason over those. The forecast tools carry one: `lighthouse_forecast_manual` the heading and likelihood sentence, `lighthouse_forecast_backtest` the heading, period and actual Throughput.
+A tool that carries a `summary` states its answer there as the web does, in the instance's terminology: quote it to the user. Every other field is the facts, the same as the tool returned before it had a summary; reason over those. The forecast tools carry one: `lighthouse_forecast_manual` the heading and likelihood sentence, `lighthouse_forecast_backtest` the heading, period and actual Throughput. So do the per-metric tools of a Team and a Portfolio, with the heading and sentence `lh metrics --metrics <name>` prints. An object answer carries `summary` as a field; a list answer (the percentiles, the blocked history, the percentiles over time, the process limits) keeps its facts in the first text block and states the summary in a second one, `summary: …`.
 
 For age data on items within a specific *feature*, use `lighthouse_feature_workitems({id: <feature_id>})` — returns work items with a `workItemAge` field.
 

@@ -1,14 +1,38 @@
 import {
   type AnswerWording,
   type DeliveryMetricsHistory,
+  describeAsOfHeading,
   describeBacktestActual,
   describeBacktestPeriod,
   describeBacktestSummary,
+  describeBlockedDays,
+  describeCycleTimeDays,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
+  describeMetricSummary,
+  describeMetricsHeading,
+  describePercentilesOverTimeDays,
+  describeProcessBehaviorOverTimeDays,
+  describeThroughputDays,
+  describeTotalWorkItemAgeDays,
+  describeWorkItemAgeDays,
+  describeWorkItemAgePercentiles,
+  getDefaultMetricsDateRange,
+  type MetricDayView,
+  type MetricsDateRange,
+  type MetricsScope,
   readAnswerWording,
   readBacktest,
+  readBlocked,
+  readCycleTimeDefinitionName,
+  readCycleTimePercentiles,
   readManualForecast,
+  readPercentilesOverTime,
+  readProcessBehaviorOverTime,
+  readRunChart,
+  readTotalWorkItemAge,
+  readWorkItemAge,
+  readWorkItemAgePercentiles,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -249,6 +273,16 @@ type McpRuntimeClient = {
         readonly ok: true;
         readonly value: readonly unknown[];
       }
+    | {
+        readonly ok: false;
+        readonly error: {
+          readonly category: string;
+          readonly reason: string;
+        };
+      }
+  >;
+  readonly getTeamSettings: (id: number) => Promise<
+    | { readonly ok: true; readonly value: unknown }
     | {
         readonly ok: false;
         readonly error: {
@@ -797,7 +831,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_throughput",
     description:
-      'Get throughput run-chart data for a team by ID, optionally filtered by start and end dates. Pass view="filtered" to apply the team\'s forecast-exclusion rule (Lighthouse v26.5.24.10+); omit or "raw" returns unfiltered data.',
+      'Get throughput run-chart data for a team by ID, optionally filtered by start and end dates. Pass view="filtered" to apply the team\'s forecast-exclusion rule (Lighthouse v26.5.24.10+); omit or "raw" returns unfiltered data. `summary` states the answer as the dashboard does, in the instance\'s terminology: the heading and its sentence.',
     inputSchema: {
       type: "object",
       properties: {
@@ -812,7 +846,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_cycleTimePercentiles",
     description:
-      "Get cycle-time percentiles for a team by ID, optionally filtered by start and end dates. Pass definitionId to get the percentiles for a named cycle time (premium) instead of the default cycle time.",
+      "Get cycle-time percentiles for a team by ID, optionally filtered by start and end dates. Pass definitionId to get the percentiles for a named cycle time (premium) instead of the default cycle time. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -831,7 +865,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_workItemAgePercentiles",
     description:
-      "Get work-item age percentiles for a team by ID, optionally filtered by start and end dates. Ages are measured as of the last day of the selected range, not as of today — a historical range reports how old the items were at the end of that period, so do not present the result as the team's current ages unless the range ends today.",
+      "Get work-item age percentiles for a team by ID, optionally filtered by start and end dates. Ages are measured as of the last day of the selected range, not as of today — a historical range reports how old the items were at the end of that period, so do not present the result as the team's current ages unless the range ends today. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -845,7 +879,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_workItemAgePercentiles",
     description:
-      "Get work-item age percentiles for a portfolio by ID, optionally filtered by start and end dates. Ages are measured as of the last day of the selected range, not as of today — a historical range reports how old the items were at the end of that period, so do not present the result as the portfolio's current ages unless the range ends today.",
+      "Get work-item age percentiles for a portfolio by ID, optionally filtered by start and end dates. Ages are measured as of the last day of the selected range, not as of today — a historical range reports how old the items were at the end of that period, so do not present the result as the portfolio's current ages unless the range ends today. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -859,7 +893,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_blockedCountHistory",
     description:
-      "Get the blocked-items-over-time trend for a team by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the team's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp.",
+      "Get the blocked-items-over-time trend for a team by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the team's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -873,7 +907,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_blockedCountHistory",
     description:
-      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the portfolio's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp.",
+      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the portfolio's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -887,7 +921,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_percentilesOverTime",
     description:
-      "Get the percentiles-over-time trend for a team by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. By default Lighthouse only returns days it recorded, so a recently upgraded server returns an empty series until it has recorded some; where a System Admin has switched on filling in past days (a Preview), the read starts filling missing days in the background and a later call may return more. Use metricType to pick the family and horizon to pick the cycle-time window.",
+      "Get the percentiles-over-time trend for a team by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. By default Lighthouse only returns days it recorded, so a recently upgraded server returns an empty series until it has recorded some; where a System Admin has switched on filling in past days (a Preview), the read starts filling missing days in the background and a later call may return more. Use metricType to pick the family and horizon to pick the cycle-time window. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -902,7 +936,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_percentilesOverTime",
     description:
-      "Get the percentiles-over-time trend for a portfolio by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. By default Lighthouse only returns days it recorded, so a recently upgraded server returns an empty series until it has recorded some; where a System Admin has switched on filling in past days (a Preview), the read starts filling missing days in the background and a later call may return more. Use metricType to pick the family and horizon to pick the cycle-time window.",
+      "Get the percentiles-over-time trend for a portfolio by ID: the p50/p70/p85/p95 quartet recorded on each captured day, optionally filtered by start and end dates. By default Lighthouse only returns days it recorded, so a recently upgraded server returns an empty series until it has recorded some; where a System Admin has switched on filling in past days (a Preview), the read starts filling missing days in the background and a later call may return more. Use metricType to pick the family and horizon to pick the cycle-time window. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -917,7 +951,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_processBehaviorOverTime",
     description:
-      "Get the process-behaviour-limits-over-time trend for a team by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Days are recorded on refresh (and, where a System Admin has switched on filling in past days, filled in the background after a read), and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero.",
+      "Get the process-behaviour-limits-over-time trend for a team by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Days are recorded on refresh (and, where a System Admin has switched on filling in past days, filled in the background after a read), and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -932,7 +966,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_processBehaviorOverTime",
     description:
-      "Get the process-behaviour-limits-over-time trend for a portfolio by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Days are recorded on refresh (and, where a System Admin has switched on filling in past days, filled in the background after a read), and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero. FeatureSize is available here and not on teams.",
+      "Get the process-behaviour-limits-over-time trend for a portfolio by ID: the upper limit, average and lower limit (UNPL/Average/LNPL) recorded on each captured day, optionally filtered by start and end dates. Days are recorded on refresh (and, where a System Admin has switched on filling in past days, filled in the background after a read), and days without a usable baseline are absent rather than zeroed — an empty series means nothing was recorded, never a process pinned at zero. FeatureSize is available here and not on teams. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -947,7 +981,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_throughput",
     description:
-      "Get throughput run-chart data for a portfolio by ID, optionally filtered by start and end dates.",
+      "Get throughput run-chart data for a portfolio by ID, optionally filtered by start and end dates. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -961,7 +995,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_workItemAge",
     description:
-      "Get per-item work item age over time for a team by ID. Returns daily snapshots with each in-progress item's age in days derived from its startedDate. Items without a startedDate are omitted.",
+      "Get per-item work item age over time for a team by ID. Returns daily snapshots with each in-progress item's age in days derived from its startedDate. Items without a startedDate are omitted. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -975,7 +1009,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_totalWorkItemAge",
     description:
-      "Get the total (summed) work item age over time for a team by ID. Returns daily totals of all in-progress item ages derived from startedDate. Items without a startedDate are not counted.",
+      "Get the total (summed) work item age over time for a team by ID. Returns daily totals of all in-progress item ages derived from startedDate. Items without a startedDate are not counted. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -989,7 +1023,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_workItemAge",
     description:
-      "Get per-item work item age over time for a portfolio by ID. Returns daily snapshots with each in-progress item's age in days derived from its startedDate. Items without a startedDate are omitted.",
+      "Get per-item work item age over time for a portfolio by ID. Returns daily snapshots with each in-progress item's age in days derived from its startedDate. Items without a startedDate are omitted. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1003,7 +1037,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_totalWorkItemAge",
     description:
-      "Get the total (summed) work item age over time for a portfolio by ID. Returns daily totals of all in-progress item ages derived from startedDate. Items without a startedDate are not counted.",
+      "Get the total (summed) work item age over time for a portfolio by ID. Returns daily totals of all in-progress item ages derived from startedDate. Items without a startedDate are not counted. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1283,6 +1317,222 @@ const readTeamWording = (client: McpRuntimeClient, teamId: number) =>
     id: teamId,
     read: () => client.getTeam(teamId),
   });
+
+const readPortfolioWording = (client: McpRuntimeClient, portfolioId: number) =>
+  readAnswerWording(client, {
+    term: "portfolio",
+    id: portfolioId,
+    read: () => client.getPortfolio(portfolioId),
+  });
+
+const readMetricsWording = (
+  client: McpRuntimeClient,
+  scope: MetricsScope,
+  id: number,
+): Promise<AnswerWording> =>
+  scope === "team"
+    ? readTeamWording(client, id)
+    : readPortfolioWording(client, id);
+
+type MetricRead = Promise<
+  | { readonly ok: true; readonly value: unknown }
+  | {
+      readonly ok: false;
+      readonly error: { readonly category: string; readonly reason: string };
+    }
+>;
+
+// A read made only for the summary: when it fails, the summary is left out and the facts still go out.
+const readForSummary = async <T>(
+  read: () => Promise<T>,
+): Promise<T | undefined> => {
+  try {
+    return await read();
+  } catch {
+    return undefined;
+  }
+};
+
+const answeredValue = (read: Awaited<MetricRead> | undefined): unknown =>
+  read?.ok === true ? read.value : undefined;
+
+const summaryOrNull = (summarise: () => string | null): string | null => {
+  try {
+    return summarise();
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * One per-metric tool's answer: the facts under their label with the metric stated as lh states it, or
+ * Lighthouse's refusal exactly as before. The summary's own reads run beside the metric's.
+ */
+const answerMetric = async <Context>(
+  labels: { readonly answer: string; readonly refusal: string },
+  read: MetricRead,
+  context: Promise<Context>,
+  summarise: (facts: unknown, context: Context) => string | null,
+): Promise<McpToolResult> => {
+  const [result, known] = await Promise.all([read, context]);
+  if (!result.ok) {
+    return getErrorToolResult(
+      `${labels.refusal}: ${result.error.category} (${result.error.reason})`,
+    );
+  }
+  return withSummary(
+    labels.answer,
+    result.value,
+    summaryOrNull(() => summarise(result.value, known)),
+  );
+};
+
+const metricLabels = (scope: MetricsScope, metric: string) => ({
+  answer: `${scope} ${metric}`,
+  refusal: `${scope} metrics`,
+});
+
+const overTheRange = (
+  range: MetricsDateRange,
+  wording: AnswerWording,
+  view: MetricDayView | null,
+): string | null =>
+  view === null
+    ? null
+    : describeMetricSummary(describeMetricsHeading(range, wording), view);
+
+const summariseThroughput =
+  (scope: MetricsScope, range: MetricsDateRange) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const chart = readRunChart(facts, range);
+    return overTheRange(
+      range,
+      wording,
+      chart === null
+        ? null
+        : describeThroughputDays(chart, scope, wording.terms),
+    );
+  };
+
+const summariseCycleTimePercentiles =
+  (range: MetricsDateRange) =>
+  (
+    facts: unknown,
+    known: {
+      readonly wording: AnswerWording;
+      readonly definitionName: string | undefined;
+    },
+  ): string | null => {
+    const percentiles = readCycleTimePercentiles({ values: facts });
+    return overTheRange(
+      range,
+      known.wording,
+      percentiles === null
+        ? null
+        : describeCycleTimeDays(
+            percentiles,
+            [],
+            known.wording.terms,
+            known.definitionName,
+          ),
+    );
+  };
+
+const summariseWorkItemAgePercentiles =
+  (range: MetricsDateRange) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const percentiles = readWorkItemAgePercentiles({ values: facts });
+    return percentiles === null
+      ? null
+      : linesOf(
+          describeAsOfHeading(range, wording),
+          describeWorkItemAgePercentiles(percentiles, wording.terms),
+        );
+  };
+
+const summariseWorkItemAge =
+  (scope: MetricsScope) =>
+  (
+    facts: unknown,
+    known: { readonly wording: AnswerWording; readonly percentiles: unknown },
+  ): string | null => {
+    const overTime = readWorkItemAge(facts);
+    const percentiles = readWorkItemAgePercentiles({
+      values: known.percentiles,
+    });
+    return overTime === null || percentiles === null
+      ? null
+      : describeMetricSummary(
+          describeAsOfHeading(overTime, known.wording),
+          describeWorkItemAgeDays(
+            percentiles,
+            overTime,
+            scope,
+            known.wording.terms,
+          ),
+        );
+  };
+
+const summariseTotalWorkItemAge =
+  (scope: MetricsScope) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const view = readTotalWorkItemAge(facts);
+    return view === null
+      ? null
+      : overTheRange(
+          view,
+          wording,
+          describeTotalWorkItemAgeDays(view, scope, wording.terms),
+        );
+  };
+
+const summariseBlocked =
+  (scope: MetricsScope, range: MetricsDateRange) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const view = readBlocked({ ...range, history: facts });
+    return overTheRange(
+      range,
+      wording,
+      view === null ? null : describeBlockedDays(view, scope, wording.terms),
+    );
+  };
+
+// lh only ever states the Cycle Time percentiles' history; another family gets no sentence of its own.
+const summarisePercentilesOverTime =
+  (range: MetricsDateRange, argumentsPayload: unknown) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const view = readPercentilesOverTime({
+      ...range,
+      history: facts,
+      horizon: getHorizonArgument(argumentsPayload),
+    });
+    const ofCycleTime =
+      getPercentilesOverTimeMetricType(argumentsPayload) !== "WorkItemAge" &&
+      view !== null &&
+      view.history.every((day) => day.metricType === "CycleTime");
+    return overTheRange(
+      range,
+      wording,
+      view !== null && ofCycleTime
+        ? describePercentilesOverTimeDays(view, wording.terms)
+        : null,
+    );
+  };
+
+// lh only ever states the Throughput process limits, which Lighthouse answers when no family is asked for.
+const summariseProcessBehaviorOverTime =
+  (range: MetricsDateRange, argumentsPayload: unknown) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const family = getProcessBehaviorMetricType(argumentsPayload);
+    const view = readProcessBehaviorOverTime({ ...range, history: facts });
+    return overTheRange(
+      range,
+      wording,
+      view !== null && (family === undefined || family === "Throughput")
+        ? describeProcessBehaviorOverTimeDays(view, wording.terms)
+        : null,
+    );
+  };
 
 const describeManualForecastAnswer = (
   facts: unknown,
@@ -1808,14 +2058,12 @@ export const createMcpCoreRuntime = (
       }
       const range = getDateRange(argumentsPayload);
       const view = getThroughputFilterView(argumentsPayload);
-      const result = await client.getTeamThroughput(id, range, view);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team throughput: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "throughput"),
+        client.getTeamThroughput(id, range, view),
+        readMetricsWording(client, "team", id),
+        summariseThroughput("team", summaryRange),
       );
     }
 
@@ -1826,18 +2074,23 @@ export const createMcpCoreRuntime = (
       }
       const range = getDateRange(argumentsPayload);
       const definitionId = getDefinitionId(argumentsPayload);
-      const result = await client.getTeamCycleTimePercentiles(
-        id,
-        range,
-        definitionId,
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team cycleTimePercentiles: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "cycleTimePercentiles"),
+        client.getTeamCycleTimePercentiles(id, range, definitionId),
+        Promise.all([
+          readTeamWording(client, id),
+          definitionId === undefined
+            ? undefined
+            : readForSummary(() => client.getTeamSettings(id)).then(
+                (settings) =>
+                  readCycleTimeDefinitionName(
+                    answeredValue(settings),
+                    definitionId,
+                  ),
+              ),
+        ]).then(([wording, definitionName]) => ({ wording, definitionName })),
+        summariseCycleTimePercentiles(summaryRange),
       );
     }
 
@@ -1847,14 +2100,12 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamWorkItemAgePercentiles(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team workItemAgePercentiles: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "workItemAgePercentiles"),
+        client.getTeamWorkItemAgePercentiles(id, range),
+        readMetricsWording(client, "team", id),
+        summariseWorkItemAgePercentiles(summaryRange),
       );
     }
 
@@ -1864,14 +2115,12 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioWorkItemAgePercentiles(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio workItemAgePercentiles: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("portfolio", "workItemAgePercentiles"),
+        client.getPortfolioWorkItemAgePercentiles(id, range),
+        readMetricsWording(client, "portfolio", id),
+        summariseWorkItemAgePercentiles(summaryRange),
       );
     }
 
@@ -1881,14 +2130,12 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamBlockedCountHistory(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team blockedCountHistory: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "blockedCountHistory"),
+        client.getTeamBlockedCountHistory(id, range),
+        readMetricsWording(client, "team", id),
+        summariseBlocked("team", summaryRange),
       );
     }
 
@@ -1898,14 +2145,12 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioBlockedCountHistory(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio blockedCountHistory: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("portfolio", "blockedCountHistory"),
+        client.getPortfolioBlockedCountHistory(id, range),
+        readMetricsWording(client, "portfolio", id),
+        summariseBlocked("portfolio", summaryRange),
       );
     }
 
@@ -1915,19 +2160,17 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamPercentilesOverTime(
-        id,
-        range,
-        getPercentilesOverTimeMetricType(argumentsPayload),
-        getHorizonArgument(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team percentilesOverTime: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "percentilesOverTime"),
+        client.getTeamPercentilesOverTime(
+          id,
+          range,
+          getPercentilesOverTimeMetricType(argumentsPayload),
+          getHorizonArgument(argumentsPayload),
+        ),
+        readMetricsWording(client, "team", id),
+        summarisePercentilesOverTime(summaryRange, argumentsPayload),
       );
     }
 
@@ -1937,19 +2180,17 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioPercentilesOverTime(
-        id,
-        range,
-        getPercentilesOverTimeMetricType(argumentsPayload),
-        getHorizonArgument(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio percentilesOverTime: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("portfolio", "percentilesOverTime"),
+        client.getPortfolioPercentilesOverTime(
+          id,
+          range,
+          getPercentilesOverTimeMetricType(argumentsPayload),
+          getHorizonArgument(argumentsPayload),
+        ),
+        readMetricsWording(client, "portfolio", id),
+        summarisePercentilesOverTime(summaryRange, argumentsPayload),
       );
     }
 
@@ -1959,18 +2200,16 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamProcessBehaviorOverTime(
-        id,
-        range,
-        getProcessBehaviorMetricType(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team processBehaviorOverTime: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "processBehaviorOverTime"),
+        client.getTeamProcessBehaviorOverTime(
+          id,
+          range,
+          getProcessBehaviorMetricType(argumentsPayload),
+        ),
+        readMetricsWording(client, "team", id),
+        summariseProcessBehaviorOverTime(summaryRange, argumentsPayload),
       );
     }
 
@@ -1980,18 +2219,16 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioProcessBehaviorOverTime(
-        id,
-        range,
-        getProcessBehaviorMetricType(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio processBehaviorOverTime: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("portfolio", "processBehaviorOverTime"),
+        client.getPortfolioProcessBehaviorOverTime(
+          id,
+          range,
+          getProcessBehaviorMetricType(argumentsPayload),
+        ),
+        readMetricsWording(client, "portfolio", id),
+        summariseProcessBehaviorOverTime(summaryRange, argumentsPayload),
       );
     }
 
@@ -2129,14 +2366,12 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioThroughput(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio throughput: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const summaryRange = range ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("portfolio", "throughput"),
+        client.getPortfolioThroughput(id, range),
+        readMetricsWording(client, "portfolio", id),
+        summariseThroughput("portfolio", summaryRange),
       );
     }
 
@@ -2146,14 +2381,17 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamWorkItemAgeOverTime(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team workItemAge: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      return answerMetric(
+        metricLabels("team", "workItemAge"),
+        client.getTeamWorkItemAgeOverTime(id, range),
+        Promise.all([
+          readMetricsWording(client, "team", id),
+          readForSummary(() => client.getTeamWorkItemAgePercentiles(id, range)),
+        ]).then(([wording, percentiles]) => ({
+          wording,
+          percentiles: answeredValue(percentiles),
+        })),
+        summariseWorkItemAge("team"),
       );
     }
 
@@ -2163,14 +2401,11 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getTeamTotalWorkItemAgeOverTime(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team totalWorkItemAge: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      return answerMetric(
+        metricLabels("team", "totalWorkItemAge"),
+        client.getTeamTotalWorkItemAgeOverTime(id, range),
+        readMetricsWording(client, "team", id),
+        summariseTotalWorkItemAge("team"),
       );
     }
 
@@ -2180,14 +2415,19 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioWorkItemAgeOverTime(id, range);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio workItemAge: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      return answerMetric(
+        metricLabels("portfolio", "workItemAge"),
+        client.getPortfolioWorkItemAgeOverTime(id, range),
+        Promise.all([
+          readMetricsWording(client, "portfolio", id),
+          readForSummary(() =>
+            client.getPortfolioWorkItemAgePercentiles(id, range),
+          ),
+        ]).then(([wording, percentiles]) => ({
+          wording,
+          percentiles: answeredValue(percentiles),
+        })),
+        summariseWorkItemAge("portfolio"),
       );
     }
 
@@ -2197,17 +2437,11 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio metrics: invalid id");
       }
       const range = getDateRange(argumentsPayload);
-      const result = await client.getPortfolioTotalWorkItemAgeOverTime(
-        id,
-        range,
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio totalWorkItemAge: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      return answerMetric(
+        metricLabels("portfolio", "totalWorkItemAge"),
+        client.getPortfolioTotalWorkItemAgeOverTime(id, range),
+        readMetricsWording(client, "portfolio", id),
+        summariseTotalWorkItemAge("portfolio"),
       );
     }
 

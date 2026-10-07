@@ -10,6 +10,7 @@ import type {
   CumulativeStateTimeStateRow,
   DailyTotalWorkItemAge,
   DailyWorkItemAge,
+  MetricsDateRange,
   PercentilesOverTimeMetricType,
   PercentilesOverTimeSnapshot,
   ProcessBehaviorSnapshot,
@@ -139,6 +140,46 @@ export const readThroughput = readDailyCountChart;
 
 export const readArrivals = readDailyCountChart;
 
+const dayAfter = (day: string, offset: number): string =>
+  new Date(utcOf(day) + offset * DAY_IN_MS).toISOString().slice(0, 10);
+
+const readRunChartDay = (
+  [offset, items]: readonly [string, unknown],
+  startDate: string,
+): DailyCount | null =>
+  /^\d+$/u.test(offset) && Array.isArray(items)
+    ? { date: dayAfter(startDate, Number(offset)), count: items.length }
+    : null;
+
+/**
+ * A run chart as Lighthouse sends it, the Work Items counted on each day keyed by the day's offset from the
+ * range's first day, read as the total and the count of each day. Without a total the days are summed.
+ */
+export const readRunChart = (
+  value: unknown,
+  range: MetricsDateRange,
+): DailyCountChartView | null => {
+  if (!isFacts(value) || !isFacts(value.workItemsPerUnitOfTime)) {
+    return null;
+  }
+  const daily = readEvery(Object.entries(value.workItemsPerUnitOfTime), (day) =>
+    readRunChartDay(day as [string, unknown], range.startDate),
+  );
+  if (daily === null) {
+    return null;
+  }
+  const sorted = [...daily].sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+  return readDailyCountChart({
+    ...range,
+    total: isNumber(value.total)
+      ? value.total
+      : sorted.reduce((sum, day) => sum + day.count, 0),
+    daily: sorted,
+  });
+};
+
 // A fact the view can do without: absent when Lighthouse did not send it, or sent it in another shape.
 const optionalText = (value: unknown): string | undefined =>
   isText(value) ? value : undefined;
@@ -256,6 +297,8 @@ export const readCycleTime = (value: unknown): CycleTimeView | null => {
 };
 
 export const readWorkItemAgePercentiles = readPercentileValues;
+
+export const readCycleTimePercentiles = readPercentileValues;
 
 const readWorkItemAgeEntry = (value: unknown): WorkItemAgeEntry | null =>
   isFacts(value) &&
@@ -1069,6 +1112,13 @@ const oldestOf = (day: DailyWorkItemAge): string => {
     : `${oldest.referenceId} ${describeDays(oldest.age)}`;
 };
 
+/** "Work Item Age Percentiles: 50th 3 days · 70th 6 days · 85th 11 days · 95th 18 days". */
+export const describeWorkItemAgePercentiles = (
+  percentiles: readonly PercentileValue[],
+  terms: Terms,
+): string =>
+  percentilesSentence(`${terms.workItemAge} Percentiles`, percentiles);
+
 /**
  * "Work Item Age Percentiles: 50th 3 days · … · 95th 18 days", then each day's oldest Work Item and how
  * many were in progress; every item of a day is in --json.
@@ -1079,10 +1129,7 @@ export const describeWorkItemAgeDays = (
   scope: MetricsScope,
   terms: Terms,
 ): MetricDayView => ({
-  sentence: percentilesSentence(
-    `${terms.workItemAge} Percentiles`,
-    percentiles,
-  ),
+  sentence: describeWorkItemAgePercentiles(percentiles, terms),
   ...dayTable(
     ["Date", "Oldest", countedOf(scope, terms).many],
     overTime.daily,
@@ -1181,3 +1228,17 @@ export const describeProcessBehaviorOverTimeDays = (
     ],
   ),
 });
+
+const notesOf = (view: MetricDayView): readonly string[] =>
+  ("tables" in view ? view.tables : [view]).flatMap((days) =>
+    "note" in days ? [days.note] : [],
+  );
+
+/**
+ * One metric as an assistant is told it: the heading and sentence lh prints above the metric's tables, and
+ * the web's words where a note stands in for a table, such as a history with no recorded day. Never a table.
+ */
+export const describeMetricSummary = (
+  heading: string,
+  view: MetricDayView,
+): string => [heading, view.sentence, ...notesOf(view)].join("\n");

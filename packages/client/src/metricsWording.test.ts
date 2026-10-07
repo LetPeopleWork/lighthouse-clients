@@ -8,6 +8,7 @@ import {
   describeBlockedOverTime,
   describeCycleTimeDays,
   describeInProgressNow,
+  describeMetricSummary,
   describeMetricsHeading,
   describePercentileRows,
   describePercentilesOverTimeDays,
@@ -21,6 +22,7 @@ import {
   describeTotalWorkItemAgeDays,
   describeWipDays,
   describeWorkItemAgeDays,
+  describeWorkItemAgePercentiles,
   OVER_TIME_EMPTY_SENTENCE,
   ordinalOf,
   PREDICTABILITY_SCORE_EXPLANATION,
@@ -34,6 +36,7 @@ import {
   readPercentilesOverTime,
   readPredictabilityScore,
   readProcessBehaviorOverTime,
+  readRunChart,
   readSystemWipLimit,
   readThroughput,
   readTotalWorkItemAge,
@@ -882,6 +885,119 @@ describe("one metric, every day", () => {
         closedDate: "2026-09-07T10:00:00Z",
         cycleTime: 3,
       },
+    ]);
+  });
+});
+
+describe("one metric as an assistant is told it", () => {
+  const gravity = { name: "Gravity", terms: SEEDED_TERMS };
+
+  it("reads a run chart as the total and each day's count, dated from the range's first day", () => {
+    expect(
+      readRunChart(
+        {
+          workItemsPerUnitOfTime: { "1": [{}, {}], "0": [{}] },
+          history: 2,
+          total: 3,
+        },
+        RANGE,
+      ),
+    ).toEqual({
+      ...RANGE,
+      total: 3,
+      daily: [
+        { date: "2026-09-07", count: 1 },
+        { date: "2026-09-08", count: 2 },
+      ],
+    });
+  });
+
+  it("sums a run chart's days when Lighthouse sends no total", () => {
+    expect(
+      readRunChart(
+        { workItemsPerUnitOfTime: { "0": [{}], "2": [{}, {}] } },
+        RANGE,
+      )?.total,
+    ).toBe(3);
+  });
+
+  it.each([
+    { shape: "no days at all", value: { total: 3 } },
+    {
+      shape: "a day that is not an offset",
+      value: { workItemsPerUnitOfTime: { first: [] } },
+    },
+    {
+      shape: "a day that is not a list",
+      value: { workItemsPerUnitOfTime: { "0": 2 } },
+    },
+    { shape: "a list", value: [] },
+  ])("does not read a run chart with $shape", ({ value }) => {
+    expect(readRunChart(value, RANGE)).toBeNull();
+  });
+
+  it("states the Work Item Age percentiles, lowest first", () => {
+    expect(
+      describeWorkItemAgePercentiles(
+        [
+          { percentile: 85, value: 11 },
+          { percentile: 50, value: 3 },
+        ],
+        SEEDED_TERMS,
+      ),
+    ).toBe("Work Item Age Percentiles: 50th 3 days · 85th 11 days");
+  });
+
+  it("gives the heading and the sentence, never the table", () => {
+    const view = describeWorkItemAgeDays(
+      [{ percentile: 50, value: 3 }],
+      {
+        ...RANGE,
+        daily: [
+          {
+            date: "2026-10-06",
+            items: [{ id: 1, name: "Export", referenceId: "GR-1", age: 4 }],
+          },
+        ],
+      },
+      "team",
+      SEEDED_TERMS,
+    );
+
+    expect(
+      describeMetricSummary(describeAsOfHeading(RANGE, gravity), view),
+    ).toBe(
+      "Gravity · as of Tue 6 Oct 2026\nWork Item Age Percentiles: 50th 3 days",
+    );
+  });
+
+  it("gives the web's words where a history has no recorded day", () => {
+    const view = describeBlockedDays(
+      { ...RANGE, history: [] },
+      "portfolio",
+      SEEDED_TERMS,
+    );
+
+    expect(
+      describeMetricSummary(describeMetricsHeading(RANGE, gravity), view),
+    ).toBe(
+      `Gravity · Mon 7 Sep 2026 – Tue 6 Oct 2026 (30 days)\nBlocked Features\n${OVER_TIME_EMPTY_SENTENCE}`,
+    );
+  });
+
+  it("gives each note of a metric drawn as more than one table", () => {
+    const view = describeWipDays(
+      { asOfDate: RANGE.endDate, count: 0, items: [] },
+      { ...RANGE, daily: [] },
+      "team",
+      SEEDED_TERMS,
+      undefined,
+    );
+
+    expect(describeMetricSummary("Gravity", view).split("\n")).toEqual([
+      "Gravity",
+      "Work Items in Progress: 0",
+      OVER_TIME_EMPTY_SENTENCE,
     ]);
   });
 });
