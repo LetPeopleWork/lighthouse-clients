@@ -1,6 +1,9 @@
 import type { AnswerWording } from "./answerWording";
 import { formatCalendarDay } from "./calendarDates";
-import { likelihoodAnswer } from "./forecastDisplayRules";
+import {
+  INSUFFICIENT_FORECAST_DATA_SHORT,
+  likelihoodAnswer,
+} from "./forecastDisplayRules";
 
 /** One row of the When table: the chance of being done by a calendar day. */
 export type ForecastChanceByDay = {
@@ -154,9 +157,6 @@ export const describeManualForecastLikelihood = (
   if (forecast.remainingItems <= 0 || forecast.targetDate === null) {
     return null;
   }
-  if (forecast.hasSufficientData === false) {
-    return INSUFFICIENT_FORECAST_DATA_SENTENCE;
-  }
   const answer = likelihoodAnswer({
     likelihood: forecast.likelihood,
     cannotBeForecast: false,
@@ -164,5 +164,9 @@ export const describeManualForecastLikelihood = (
     hasSufficientData: forecast.hasSufficientData,
     precision: "fixed2",
   });
+  // The Forecast tab spells thin history out in full in place of the whole sentence.
+  if (answer === INSUFFICIENT_FORECAST_DATA_SHORT) {
+    return INSUFFICIENT_FORECAST_DATA_SENTENCE;
+  }
   return `Likelihood to close ${countOf(forecast, wording)} by ${dayOf(forecast.targetDate)}: ${answer}`;
 };

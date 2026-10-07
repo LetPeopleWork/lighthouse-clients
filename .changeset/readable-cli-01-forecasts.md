@@ -16,7 +16,10 @@ remains), then the number.
 `lh forecast manual` now reads like the Forecast tab under `--pretty`: a heading with the Team's name,
 the When and How Many tables with each chance's level named as the Forecast tab's icon names it (`Certain`,
 `Confident`, `Realistic`, `Risky`) and days written as `Mon 9 Nov 2026`, and the likelihood sentence, all
-in the instance's own terminology.
+in the instance's own terminology. The likelihood reads as the web states it: `Cannot forecast` when there
+is no likelihood (even on thin history), the web's "Not enough data yet" sentence in its place when the
+Team's history is too thin, and otherwise the number, capped at `>95%` while work remains. An older
+Lighthouse that does not say whether the history is enough gets the number as usual.
 `--json` and `--toon` are unchanged, and an answer in a shape the CLI does not recognise still prints the
 generic view. The client package gains `resolveTerms` / `readTerms`, `formatCalendarDay` /
 `formatTimestamp`, `readAnswerWording` and `readManualForecast` with its `describe…` wording.

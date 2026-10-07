@@ -134,7 +134,7 @@ describe("lh forecast manual --pretty", () => {
   );
 
   // @boundary @US-01 — formatLikelihood.ts: >95% while work remains, two decimals otherwise
-  it.skip.each([
+  it.each([
     { likelihood: 48.2034, remaining: 25, reads: "48.20%" },
     { likelihood: 95, remaining: 25, reads: "95.00%" },
     { likelihood: 95.01, remaining: 25, reads: ">95%" },
@@ -165,7 +165,7 @@ describe("lh forecast manual --pretty", () => {
   );
 
   // @error @US-01 — cannotForecast.ts
-  it.skip("says it cannot forecast when Lighthouse has no likelihood to give", async () => {
+  it("says it cannot forecast when Lighthouse has no likelihood to give", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(gravitysForecast({ likelihood: null })),
     });
@@ -179,7 +179,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @error @US-01 — insufficientForecastData.ts
-  it.skip("says a Team with too little history needs more days instead of giving a number", async () => {
+  it("says a Team with too little history needs more days instead of giving a number", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: ok(gravity({ id: 2, name: "Lightspeed" })),
       runManualForecast: ok(
@@ -206,7 +206,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @error @US-01 @version-skew — an older Lighthouse sends no hasSufficientData; absent is not "insufficient"
-  it.skip("states the likelihood as usual when an older Lighthouse does not say whether the history is enough", async () => {
+  it("states the likelihood as usual when an older Lighthouse does not say whether the history is enough", async () => {
     const { hasSufficientData: _notSent, ...olderAnswer } = gravitysForecast();
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(olderAnswer),

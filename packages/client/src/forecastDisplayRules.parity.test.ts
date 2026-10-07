@@ -4,6 +4,11 @@ import {
   levelOf,
   likelihoodAnswer,
 } from "./forecastDisplayRules";
+import {
+  describeManualForecastLikelihood,
+  type ManualForecastView,
+} from "./forecastWording";
+import { SEEDED_TERMS } from "./terminology";
 
 // The web decides a forecast's level and how a likelihood reads in the browser;
 // the clients restate those rules. Each row is a case the web's own tests pin, naming the file it mirrors, so
@@ -87,6 +92,11 @@ describe("the one answer a likelihood gives, in the web's order", () => {
       reads: "Cannot forecast",
     },
     {
+      why: "Lighthouse gives no likelihood, even on thin history",
+      facts: { likelihood: null, hasSufficientData: false },
+      reads: "Cannot forecast",
+    },
+    {
       why: "history is thin while work remains",
       facts: { hasSufficientData: false },
       reads: "Not enough data",
@@ -117,5 +127,42 @@ describe("the one answer a likelihood gives, in the web's order", () => {
     },
   ] as const)("reads '$reads' when $why", ({ facts, reads }) => {
     expect(likelihoodAnswer({ ...forecastable, ...facts })).toBe(reads);
+  });
+});
+
+describe("the Forecast tab's likelihood sentence (ForecastLikelihood.tsx)", () => {
+  const wording = { terms: SEEDED_TERMS, name: "Gravity" };
+  const forecast: ManualForecastView = {
+    remainingItems: 25,
+    targetDate: "2026-10-30T00:00:00Z",
+    likelihood: 48.2034,
+    whenForecasts: [],
+    howManyForecasts: [],
+    filterApplied: false,
+    hasSufficientData: true,
+  };
+
+  it.each([
+    {
+      why: "Lighthouse gives no likelihood, even on thin history",
+      facts: { likelihood: null, hasSufficientData: false },
+      reads:
+        "Likelihood to close 25 Work Items by Fri 30 Oct 2026: Cannot forecast",
+    },
+    {
+      why: "history is thin while work remains",
+      facts: { hasSufficientData: false },
+      reads:
+        "Not enough data yet — need at least 5 days with completed items to forecast.",
+    },
+    {
+      why: "an older Lighthouse does not say whether history is thin",
+      facts: { hasSufficientData: undefined },
+      reads: "Likelihood to close 25 Work Items by Fri 30 Oct 2026: 48.20%",
+    },
+  ] as const)("reads '$reads' when $why", ({ facts, reads }) => {
+    expect(
+      describeManualForecastLikelihood({ ...forecast, ...facts }, wording),
+    ).toBe(reads);
   });
 });
