@@ -20,6 +20,11 @@ in the instance's own terminology. The likelihood reads as the web states it: `C
 is no likelihood (even on thin history), the web's "Not enough data yet" sentence in its place when the
 Team's history is too thin, and otherwise the number, capped at `>95%` while work remains. An older
 Lighthouse that does not say whether the history is enough gets the number as usual.
+The heading names only what was asked (`Gravity · 25 Work Items` for `--remaining` alone, `Gravity · target
+Fri 30 Oct 2026` for `--target-date` alone, which also show only the When or only the How Many table) and
+ends with `Use filtered Throughput` when the forecast used the Team's filtered Throughput. Neither extra
+read can fail the command: when the Terminology cannot be read the seeded words are used, and when the
+Team cannot be read the heading starts `Team [id: 3]`.
 `--json` and `--toon` are unchanged, and an answer in a shape the CLI does not recognise still prints the
 generic view. The client package gains `resolveTerms` / `readTerms`, `formatCalendarDay` /
 `formatTimestamp`, `readAnswerWording` and `readManualForecast` with its `describe…` wording.

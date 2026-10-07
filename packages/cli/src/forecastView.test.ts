@@ -219,7 +219,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @boundary @US-01 — AC-01.3
-  it.skip("shows only the When table when Lena asks only how long 25 Work Items take", async () => {
+  it("shows only the When table when Lena asks only how long 25 Work Items take", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(
         gravitysForecast({
@@ -241,7 +241,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @boundary @US-01 — AC-01.3
-  it.skip("shows only the How Many table when Lena asks only what fits by a date", async () => {
+  it("shows only the How Many table when Lena asks only what fits by a date", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(
         gravitysForecast({
@@ -267,7 +267,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @US-01 — ManualForecaster.tsx toggle label
-  it.skip("says in the heading when the forecast used the Team's filtered Throughput", async () => {
+  it("says in the heading when the forecast used the Team's filtered Throughput", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(gravitysForecast({ filterApplied: true })),
     });
@@ -310,7 +310,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @error @infrastructure-failure @US-01 — D4: a failed Terminology read leaves the seeded words
-  it.skip("falls back to the seeded words when the instance's terms cannot be read", async () => {
+  it("falls back to the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: refused("unexpected", "Terminology is unavailable"),
     });
@@ -325,7 +325,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @error @infrastructure-failure @US-01 — C14: a heading is never worth an error
-  it.skip("heads the forecast with the Team's id when its name cannot be read", async () => {
+  it("heads the forecast with the Team's id when its name cannot be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: refused("forbidden", "You may not read this Team"),
     });

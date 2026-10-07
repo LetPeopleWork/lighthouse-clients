@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { readManualForecast } from "./forecastWording";
+import {
+  describeManualForecastSummary,
+  type ManualForecastView,
+  readManualForecast,
+} from "./forecastWording";
+import { SEEDED_TERMS } from "./terminology";
 
 const manualForecast = () => ({
   remainingItems: 25,
@@ -92,5 +97,59 @@ describe("readManualForecast", () => {
 
     expect(read?.targetDate).toBeNull();
     expect(read?.likelihood).toBeNull();
+  });
+});
+
+describe("describeManualForecastSummary", () => {
+  const asked = (facts: Partial<ManualForecastView>): ManualForecastView => ({
+    remainingItems: 25,
+    targetDate: "2026-10-30T00:00:00Z",
+    likelihood: null,
+    whenForecasts: [],
+    howManyForecasts: [],
+    filterApplied: false,
+    hasSufficientData: true,
+    ...facts,
+  });
+  const gravity = { terms: SEEDED_TERMS, name: "Gravity" };
+
+  it.each([
+    {
+      given: "both inputs",
+      facts: {},
+      heading: "Gravity · 25 Work Items · target Fri 30 Oct 2026",
+    },
+    {
+      given: "only the remaining Work Items",
+      facts: { targetDate: null },
+      heading: "Gravity · 25 Work Items",
+    },
+    {
+      given: "only the target date",
+      facts: { remainingItems: 0 },
+      heading: "Gravity · target Fri 30 Oct 2026",
+    },
+    {
+      given: "both inputs on filtered Throughput",
+      facts: { filterApplied: true },
+      heading:
+        "Gravity · 25 Work Items · target Fri 30 Oct 2026 · Use filtered Throughput",
+    },
+    {
+      given: "only the target date on filtered Throughput",
+      facts: { remainingItems: 0, filterApplied: true },
+      heading: "Gravity · target Fri 30 Oct 2026 · Use filtered Throughput",
+    },
+  ])("names only what was asked, given $given", ({ facts, heading }) => {
+    expect(describeManualForecastSummary(asked(facts), gravity)).toBe(heading);
+  });
+
+  it("says nothing of filtering when an older Lighthouse does not send it", () => {
+    expect(
+      describeManualForecastSummary(
+        asked({ filterApplied: undefined }),
+        gravity,
+      ),
+    ).toBe("Gravity · 25 Work Items · target Fri 30 Oct 2026");
   });
 });
