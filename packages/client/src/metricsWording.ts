@@ -534,6 +534,12 @@ const readContributors = (
   return items === null ? null : { state: value.state, items };
 };
 
+/** Time in State's bar on its own, as one read answers it. */
+export const readTimeInStateBar = readStates;
+
+/** The Work Items contributing to one state of Time in State, as one read answers them. */
+export const readTimeInStateContributors = readContributors;
+
 /** Time in State: the bar, the Work Items it can be narrowed to, and one state's contributors when one was asked for. */
 export type CumulativeStateTimeView = {
   readonly bar: MetricAnswer<CumulativeStateTimeResult>;
@@ -1274,12 +1280,18 @@ const inWorkflowOrder = (
 ): readonly CumulativeStateTimeStateRow[] =>
   [...states].sort((left, right) => left.workflowOrder - right.workflowOrder);
 
+const contributorsTitle = (
+  state: string,
+  scope: MetricsScope,
+  terms: Terms,
+): string => `${countedOf(scope, terms).many} contributing to ${state}`;
+
 const contributorsOf = (
   contributors: CumulativeStateTimeItemsResult,
   scope: MetricsScope,
   terms: Terms,
 ): MetricDays => {
-  const title = `${countedOf(scope, terms).many} contributing to ${contributors.state}`;
+  const title = contributorsTitle(contributors.state, scope, terms);
   return contributors.items.length === 0
     ? { title, note: NO_DATA_YET }
     : {
@@ -1342,6 +1354,16 @@ export const describeTimeInStateDays = (
         : [states, contributorsOf(contributors, scope, terms)],
   };
 };
+
+/** One state's drill-down on its own, answered with the title the web's dialog puts above it. */
+export const describeTimeInStateContributorDays = (
+  contributors: CumulativeStateTimeItemsResult,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => ({
+  ...contributorsOf(contributors, scope, terms),
+  sentence: contributorsTitle(contributors.state, scope, terms),
+});
 
 const notesOf = (view: MetricDayView): readonly string[] =>
   ("tables" in view ? view.tables : [view]).flatMap((days) =>

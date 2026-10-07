@@ -13,7 +13,7 @@ import {
 } from "../test-support/mcpHarness";
 
 // Story 6218, slice 04: the Time in State tools. The bar and the drill-down gain a `summary`; the picker's
-// candidate list does not (M4: lh never prints it). Pending until DELIVER slice 04.
+// candidate list does not, as lh never prints it.
 
 const gravitysRange = { id: 3, startDate: "2026-09-07", endDate: "2026-10-06" };
 
@@ -27,7 +27,7 @@ const gravitysAssistant = () =>
 
 describe("the Time in State tools' summary", () => {
   // @driving_port @US-04 @contract-shape:bounded-change
-  it.skip("hands an assistant the drill-down's facts with the dialog's title as its summary", async () => {
+  it("hands an assistant the drill-down's facts with the dialog's title as its summary", async () => {
     const result = await gravitysAssistant().call(
       "lighthouse_team_metrics_cumulativeStateTimeItems",
       { ...gravitysRange, state: "Review" },
@@ -43,7 +43,7 @@ describe("the Time in State tools' summary", () => {
   });
 
   // @driving_port @US-04 @contract-shape:bounded-change — the summary's sentence is open (see feature-delta)
-  it.skip("hands an assistant the bar's facts unchanged with a summary beside them", async () => {
+  it("hands an assistant the bar's facts unchanged with a summary beside them", async () => {
     const result = await gravitysAssistant().call(
       "lighthouse_team_metrics_cumulativeStateTime",
       gravitysRange,

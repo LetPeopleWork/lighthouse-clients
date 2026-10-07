@@ -18,6 +18,7 @@ import {
   describeProcessBehaviorOverTimeDays,
   describeThroughputDays,
   describeTimeInState,
+  describeTimeInStateContributorDays,
   describeTimeInStateDays,
   describeTotalThroughput,
   describeTotalWorkItemAge,
@@ -42,6 +43,8 @@ import {
   readRunChart,
   readSystemWipLimit,
   readThroughput,
+  readTimeInStateBar,
+  readTimeInStateContributors,
   readTotalWorkItemAge,
   readWip,
   readWorkItemAge,
@@ -1102,5 +1105,62 @@ describe("Time in State", () => {
         { title: "Work Items contributing to Review", note: NO_DATA_YET },
       ],
     });
+  });
+
+  it("tells an assistant the bar as its heading and one sentence, without a count it was not given", () => {
+    expect(
+      describeMetricSummary(
+        "Gravity",
+        describeTimeInStateDays(
+          states(),
+          undefined,
+          undefined,
+          "team",
+          SEEDED_TERMS,
+        ),
+      ),
+    ).toBe("Gravity\nTime in State");
+  });
+
+  it("tells an assistant one state's drill-down by the dialog's title, and when none contributed", () => {
+    const contributors = (items: readonly unknown[]) =>
+      readTimeInStateContributors({ state: "Review", items });
+    const someone = contributors([
+      {
+        workItemId: 64,
+        referenceId: "GR-064",
+        title: "Retry failed Jira sync",
+        type: "User Story",
+        state: "Review",
+        stateCategory: "Doing",
+        url: null,
+        daysContributed: 6,
+      },
+    ]);
+    const nobody = contributors([]);
+    if (someone === null || nobody === null) {
+      throw new Error("the drill-down should read");
+    }
+
+    expect(
+      describeMetricSummary(
+        "Ocean Explorer",
+        describeTimeInStateContributorDays(someone, "portfolio", SEEDED_TERMS),
+      ),
+    ).toBe("Ocean Explorer\nFeatures contributing to Review");
+    expect(
+      describeMetricSummary(
+        "Gravity",
+        describeTimeInStateContributorDays(nobody, "team", SEEDED_TERMS),
+      ),
+    ).toBe(`Gravity\nWork Items contributing to Review\n${NO_DATA_YET}`);
+  });
+
+  it("reads the bar on its own and refuses one whose state has no place in the workflow", () => {
+    const [review] = states().states;
+    const { workflowOrder: _notSent, ...unordered } = review;
+
+    expect(readTimeInStateBar(states())).toEqual(states());
+    expect(readTimeInStateBar({ states: [unordered] })).toBeNull();
   });
 });

@@ -14,6 +14,8 @@ import {
   describePercentilesOverTimeDays,
   describeProcessBehaviorOverTimeDays,
   describeThroughputDays,
+  describeTimeInStateContributorDays,
+  describeTimeInStateDays,
   describeTotalWorkItemAgeDays,
   describeWorkItemAgeDays,
   describeWorkItemAgePercentiles,
@@ -30,6 +32,8 @@ import {
   readPercentilesOverTime,
   readProcessBehaviorOverTime,
   readRunChart,
+  readTimeInStateBar,
+  readTimeInStateContributors,
   readTotalWorkItemAge,
   readWorkItemAge,
   readWorkItemAgePercentiles,
@@ -1203,7 +1207,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_cumulativeStateTime",
     description:
-      "Get cumulative time-per-state bar data for a team by ID: one entry per Doing-category workflow state with total/completed/ongoing contribution days and item counts. Optionally filter by date range and a subset of work-item IDs.",
+      "Get cumulative time-per-state bar data for a team by ID: one entry per Doing-category workflow state with total/completed/ongoing contribution days and item counts. Optionally filter by date range and a subset of work-item IDs. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1218,7 +1222,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_cumulativeStateTimeItems",
     description:
-      "Get the per-item drill-down for ONE state of a team's cumulative time-per-state chart: the work items that contributed to that state, with days contributed. Requires the state name.",
+      "Get the per-item drill-down for ONE state of a team's cumulative time-per-state chart: the work items that contributed to that state, with days contributed. Requires the state name. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and the drill-down's title.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1248,7 +1252,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_cumulativeStateTime",
     description:
-      "Get cumulative time-per-state bar data for a portfolio by ID: one entry per Doing-category workflow state with total/completed/ongoing contribution days and item counts. Optionally filter by date range and a subset of work-item IDs.",
+      "Get cumulative time-per-state bar data for a portfolio by ID: one entry per Doing-category workflow state with total/completed/ongoing contribution days and item counts. Optionally filter by date range and a subset of work-item IDs. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and its sentence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1263,7 +1267,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_cumulativeStateTimeItems",
     description:
-      "Get the per-item drill-down for ONE state of a portfolio's cumulative time-per-state chart: the work items that contributed to that state, with days contributed. Requires the state name.",
+      "Get the per-item drill-down for ONE state of a portfolio's cumulative time-per-state chart: the work items that contributed to that state, with days contributed. Requires the state name. `summary` states the answer as the dashboard does, in the instance's terminology: the heading and the drill-down's title.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1484,6 +1488,43 @@ const summariseTotalWorkItemAge =
           wording,
           describeTotalWorkItemAgeDays(view, scope, wording.terms),
         );
+  };
+
+// Only lh reads the Work Items Time in State can be narrowed to, so the bar is told without their count.
+const summariseTimeInState =
+  (scope: MetricsScope, range: MetricsDateRange) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const bar = readTimeInStateBar(facts);
+    return overTheRange(
+      range,
+      wording,
+      bar === null
+        ? null
+        : describeTimeInStateDays(
+            bar,
+            undefined,
+            undefined,
+            scope,
+            wording.terms,
+          ),
+    );
+  };
+
+const summariseTimeInStateContributors =
+  (scope: MetricsScope, range: MetricsDateRange) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const contributors = readTimeInStateContributors(facts);
+    return overTheRange(
+      range,
+      wording,
+      contributors === null
+        ? null
+        : describeTimeInStateContributorDays(
+            contributors,
+            scope,
+            wording.terms,
+          ),
+    );
   };
 
 const summariseBlocked =
@@ -2237,18 +2278,16 @@ export const createMcpCoreRuntime = (
       if (id === null) {
         return getErrorToolResult("team metrics: invalid id");
       }
-      const result = await client.getTeamCumulativeStateTime(
-        id,
-        getDateRange(argumentsPayload),
-        getItemIdsArgument(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team cumulativeStateTime: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const range = getDateRange(argumentsPayload);
+      return answerMetric(
+        metricLabels("team", "cumulativeStateTime"),
+        client.getTeamCumulativeStateTime(
+          id,
+          range,
+          getItemIdsArgument(argumentsPayload),
+        ),
+        readMetricsWording(client, "team", id),
+        summariseTimeInState("team", range ?? getDefaultMetricsDateRange()),
       );
     }
 
@@ -2261,19 +2300,20 @@ export const createMcpCoreRuntime = (
       if (state === undefined) {
         return getErrorToolResult("team metrics: missing state");
       }
-      const result = await client.getTeamCumulativeStateTimeItems(
-        id,
-        state,
-        getDateRange(argumentsPayload),
-        getItemIdsArgument(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `team cumulativeStateTimeItems: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `team metrics: ${result.error.category} (${result.error.reason})`,
+      const range = getDateRange(argumentsPayload);
+      return answerMetric(
+        metricLabels("team", "cumulativeStateTimeItems"),
+        client.getTeamCumulativeStateTimeItems(
+          id,
+          state,
+          range,
+          getItemIdsArgument(argumentsPayload),
+        ),
+        readMetricsWording(client, "team", id),
+        summariseTimeInStateContributors(
+          "team",
+          range ?? getDefaultMetricsDateRange(),
+        ),
       );
     }
 
@@ -2301,18 +2341,19 @@ export const createMcpCoreRuntime = (
       if (id === null) {
         return getErrorToolResult("portfolio metrics: invalid id");
       }
-      const result = await client.getPortfolioCumulativeStateTime(
-        id,
-        getDateRange(argumentsPayload),
-        getItemIdsArgument(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio cumulativeStateTime: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const range = getDateRange(argumentsPayload);
+      return answerMetric(
+        metricLabels("portfolio", "cumulativeStateTime"),
+        client.getPortfolioCumulativeStateTime(
+          id,
+          range,
+          getItemIdsArgument(argumentsPayload),
+        ),
+        readMetricsWording(client, "portfolio", id),
+        summariseTimeInState(
+          "portfolio",
+          range ?? getDefaultMetricsDateRange(),
+        ),
       );
     }
 
@@ -2325,19 +2366,20 @@ export const createMcpCoreRuntime = (
       if (state === undefined) {
         return getErrorToolResult("portfolio metrics: missing state");
       }
-      const result = await client.getPortfolioCumulativeStateTimeItems(
-        id,
-        state,
-        getDateRange(argumentsPayload),
-        getItemIdsArgument(argumentsPayload),
-      );
-      if (result.ok) {
-        return getSuccessToolResult(
-          `portfolio cumulativeStateTimeItems: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `portfolio metrics: ${result.error.category} (${result.error.reason})`,
+      const range = getDateRange(argumentsPayload);
+      return answerMetric(
+        metricLabels("portfolio", "cumulativeStateTimeItems"),
+        client.getPortfolioCumulativeStateTimeItems(
+          id,
+          state,
+          range,
+          getItemIdsArgument(argumentsPayload),
+        ),
+        readMetricsWording(client, "portfolio", id),
+        summariseTimeInStateContributors(
+          "portfolio",
+          range ?? getDefaultMetricsDateRange(),
+        ),
       );
     }
 

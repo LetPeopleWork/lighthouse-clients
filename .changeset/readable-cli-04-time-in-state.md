@@ -19,5 +19,13 @@ renamed its terms sees its own words. States that arrive without their workflow 
 or an answer in a shape the CLI does not recognise still print the generic view, exit 0, as before.
 `--json` and `--toon` are unchanged.
 
-The client package gains `describeTimeInState`, `describeTimeInStateDays`, `timeInStateItemCount` and
-`NO_DATA_YET`, and a day table can now carry a `title`.
+An assistant gets Time in State stated too. `lighthouse_team_metrics_cumulativeStateTime` and
+`lighthouse_portfolio_metrics_cumulativeStateTime` return a `summary` beside the facts: the heading and
+the line `Time in State`. The drill-down tools, `lighthouse_team_metrics_cumulativeStateTimeItems` and
+`lighthouse_portfolio_metrics_cumulativeStateTimeItems`, state the heading and the title above the Work
+Items, `Work Items contributing to Review`, and `No data yet.` when none contributed. Every other field is
+the facts, unchanged. The candidates tools carry no summary, as `lh` never prints that list.
+
+The client package gains `describeTimeInState`, `describeTimeInStateDays`,
+`describeTimeInStateContributorDays`, `timeInStateItemCount`, `readTimeInStateBar`,
+`readTimeInStateContributors` and `NO_DATA_YET`, and a day table can now carry a `title`.
