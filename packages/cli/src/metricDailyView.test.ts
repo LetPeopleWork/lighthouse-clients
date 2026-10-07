@@ -141,7 +141,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   );
 
   // @US-03 — WorkItemsDialog.tsx: ID, Name, State, the age and the blocked marker
-  it.skip("lists the Work Items in progress with their age and since when they are blocked", async () => {
+  it("lists the Work Items in progress with their age and since when they are blocked", async () => {
     const result = await gravitysLighthouse().run(metricOfGravity("wip"));
 
     const lines = shownLines(result.stdout);
@@ -154,7 +154,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @US-03 — the Closed Work Items dialog
-  it.skip("lists each closed Work Item with the day it closed and its Cycle Time", async () => {
+  it("lists each closed Work Item with the day it closed and its Cycle Time", async () => {
     const result = await gravitysLighthouse().run(metricOfGravity("cycleTime"));
 
     expect(shownLines(result.stdout)).toContain(
@@ -163,7 +163,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @US-03 — PredictabilityScore.tsx, its explanation verbatim
-  it.skip("explains the predictability score in the dashboard's own words", async () => {
+  it("explains the predictability score in the dashboard's own words", async () => {
     const result = await gravitysLighthouse().run(
       metricOfGravity("predictabilityScore"),
     );
@@ -194,7 +194,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   );
 
   // @US-03 — AC-03.4: several names, each complete, in the order given
-  it.skip.each([
+  it.each([
     {
       asked: "throughput,blocked",
       first: "Total Throughput:",

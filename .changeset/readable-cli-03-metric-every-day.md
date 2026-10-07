@@ -20,7 +20,8 @@ closed on it. Every other name `--metrics` accepts gets the same treatment:
 - `workItemAge`: under the "as of" heading, the Work Item Age percentiles, then each day's oldest Work
   Item and how many there were; every item of every day stays in `--json`.
 - `totalWorkItemAge`: the total as on the latest day, then each day's total and its Work Items.
-- `predictabilityScore`: the score, to one decimal.
+- `predictabilityScore`: the score, to one decimal, then the dashboard's own explanation of what it
+  means.
 - `blocked`: the blocked count from the first recorded day to the last, then each recorded day's count.
 - `percentilesOverTime` and `processBehaviorOverTime`: each recorded day's 50th, 70th, 85th and 95th
   percentile of Cycle Time, and each recorded day's Throughput natural process limits.

@@ -23,6 +23,7 @@ import {
   describeWorkItemAgeDays,
   OVER_TIME_EMPTY_SENTENCE,
   ordinalOf,
+  PREDICTABILITY_SCORE_EXPLANATION,
   readArrivals,
   readBlocked,
   readCumulativeStateTime,
@@ -736,17 +737,23 @@ describe("one metric, every day", () => {
     });
   });
 
-  it("states the Predictability Score alone, to one decimal", () => {
+  it("states the Predictability Score to one decimal, then the dashboard's explanation of it", () => {
     expect(
       describePredictabilityScoreDays({ score: 0.634 }, "team", SEEDED_TERMS),
-    ).toEqual({ sentence: "Predictability Score: 63.4%", tables: [] });
+    ).toEqual({
+      sentence: "Predictability Score: 63.4%",
+      note: PREDICTABILITY_SCORE_EXPLANATION,
+    });
     expect(
       describePredictabilityScoreDays(
         { score: undefined },
         "team",
         SEEDED_TERMS,
       ),
-    ).toEqual({ sentence: "Predictability Score: —", tables: [] });
+    ).toEqual({
+      sentence: "Predictability Score: —",
+      note: PREDICTABILITY_SCORE_EXPLANATION,
+    });
   });
 
   it("states the blocked count from the first recorded day to the last, then each recorded day's count", () => {

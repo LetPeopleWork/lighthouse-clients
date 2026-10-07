@@ -532,6 +532,10 @@ export type MetricLine = {
 
 export const UNKNOWN_SHAPE_NOTE = "shown only with --json (unknown shape)";
 
+/** What the dashboard says under its Predictability Score, word for word. */
+export const PREDICTABILITY_SCORE_EXPLANATION =
+  'The predictability score shows how "close" the 50% and 95% chance are. The closer they are, the more predictable you are. 100% means they are exactly the same value. The higher number, the better.';
+
 /** What an empty over-time chart says on the web. */
 export const OVER_TIME_EMPTY_SENTENCE =
   "Nothing to show for the selected range. Days appear here as Lighthouse records them.";
@@ -1062,14 +1066,17 @@ export const describeWorkItemAgeDays = (
   ),
 });
 
-/** "Predictability Score: 63.4%", alone: the chart's marks need facts --json does not carry. */
+/**
+ * "Predictability Score: 63.4%", then what the dashboard says the score means; no table, because the
+ * chart's marks need facts --json does not carry.
+ */
 export const describePredictabilityScoreDays = (
   view: PredictabilityScoreView,
   scope: MetricsScope,
   terms: Terms,
 ): MetricDayView => ({
   sentence: `${metricsHeadlineLabel("predictabilityScore", scope, terms)}: ${scoreOf(view)}`,
-  tables: [],
+  note: PREDICTABILITY_SCORE_EXPLANATION,
 });
 
 /** "Blocked Work Items: 1 on Mon 7 Sep → 2 on Tue 6 Oct", then each recorded day's count. */
