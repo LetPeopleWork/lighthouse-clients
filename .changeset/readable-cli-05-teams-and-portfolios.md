@@ -34,7 +34,13 @@ System WIP Limit (`5 Features`), the Feature WIP as the number of Teams working 
 that renamed its terms sees its own words. A Portfolio that arrives without its name or id prints the
 generic view, exit 0. `--json` and `--toon` are unchanged.
 
-The client package gains `readOwnerList`, `describeOwnerListTitle`, `describeOwnerListHeadings`,
+Over MCP, `lighthouse_team_list` and `lighthouse_portfolio_list` return their facts block exactly as
+before, then a second text block counting them in the instance's words: `summary: 7 Teams`,
+`summary: 1 Team`, `summary: No Portfolios`. When the instance's terms cannot be read the count uses the
+seeded words, and the tool never fails for it. A list in which any Team or Portfolio arrives without its
+name or id returns only the facts block, as before.
+
+The client package gains `readOwnerList`, `describeOwnerListTitle`, `describeOwnerListHeadings`, `describeOwnerCount`,
 `describeOwnerName`, `describeFeatureCount`, `describeTags`, `describeLastUpdated`, `NOT_SENT`,
 `readTeam`, `describeTeamSummary`, `readPortfolio`, `describePortfolioSummary`, `NOT_SET` and the
 `TeamSummary`, `PortfolioSummary`, `ThroughputDates` and `OwnerReference` types.

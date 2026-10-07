@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeFeatureCount,
   describeLastUpdated,
+  describeOwnerCount,
   describeOwnerListHeadings,
   describeOwnerListTitle,
   describeOwnerName,
@@ -106,6 +107,26 @@ describe("the list's words", () => {
   ])("counts $count Features as '$reads'", ({ count, reads }) => {
     expect(describeFeatureCount(count, renamed)).toBe(reads);
   });
+
+  it.each([
+    { kind: "team", count: 0, terms: SEEDED_TERMS, reads: "No Teams" },
+    { kind: "team", count: 1, terms: SEEDED_TERMS, reads: "1 Team" },
+    { kind: "team", count: 7, terms: SEEDED_TERMS, reads: "7 Teams" },
+    { kind: "team", count: 7, terms: renamed, reads: "7 Squads" },
+    {
+      kind: "portfolio",
+      count: 0,
+      terms: SEEDED_TERMS,
+      reads: "No Portfolios",
+    },
+    { kind: "portfolio", count: 1, terms: SEEDED_TERMS, reads: "1 Portfolio" },
+    { kind: "portfolio", count: 5, terms: renamed, reads: "5 Programmes" },
+  ] as const)(
+    "counts $count of kind $kind as '$reads'",
+    ({ kind, count, terms, reads }) => {
+      expect(describeOwnerCount(kind, count, terms)).toBe(reads);
+    },
+  );
 
   it("joins the tags, and leaves the cell empty when there are none", () => {
     expect(describeTags(["mobile", "payments"])).toBe("mobile, payments");

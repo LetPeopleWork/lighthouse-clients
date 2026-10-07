@@ -11,6 +11,7 @@ import {
   describeManualForecastSummary,
   describeMetricSummary,
   describeMetricsHeading,
+  describeOwnerCount,
   describePercentilesOverTimeDays,
   describeProcessBehaviorOverTimeDays,
   describeThroughputDays,
@@ -23,15 +24,18 @@ import {
   type MetricDayView,
   type MetricsDateRange,
   type MetricsScope,
+  type OwnerKind,
   readAnswerWording,
   readBacktest,
   readBlocked,
   readCycleTimeDefinitionName,
   readCycleTimePercentiles,
   readManualForecast,
+  readOwnerList,
   readPercentilesOverTime,
   readProcessBehaviorOverTime,
   readRunChart,
+  readTerms,
   readTimeInStateBar,
   readTimeInStateContributors,
   readTotalWorkItemAge,
@@ -1391,6 +1395,27 @@ const answerMetric = async <Context>(
   );
 };
 
+/** A Team or Portfolio list's facts, then how many it holds, unless a row cannot say what it is. */
+const answerOwnerList = async (
+  kind: OwnerKind,
+  label: string,
+  read: MetricRead,
+  client: McpRuntimeClient,
+): Promise<McpToolResult> => {
+  const [result, terms] = await Promise.all([read, readTerms(client)]);
+  if (!result.ok) {
+    return getErrorToolResult(
+      `${label}: ${result.error.category} (${result.error.reason})`,
+    );
+  }
+  const owners = readOwnerList(result.value);
+  return withSummary(
+    label,
+    result.value,
+    owners === null ? null : describeOwnerCount(kind, owners.length, terms),
+  );
+};
+
 const metricLabels = (scope: MetricsScope, metric: string) => ({
   answer: `${scope} ${metric}`,
   refusal: `${scope} metrics`,
@@ -1996,14 +2021,7 @@ export const createMcpCoreRuntime = (
     }
 
     if (name === "lighthouse_team_list") {
-      const teams = await client.listTeams();
-      if (teams.ok) {
-        return getSuccessToolResult(`teams: ${encodePayload(teams.value)}`);
-      }
-
-      return getErrorToolResult(
-        `teams: ${teams.error.category} (${teams.error.reason})`,
-      );
+      return answerOwnerList("team", "teams", client.listTeams(), client);
     }
 
     if (name === "lighthouse_team_get") {
@@ -2044,15 +2062,11 @@ export const createMcpCoreRuntime = (
     }
 
     if (name === "lighthouse_portfolio_list") {
-      const portfolios = await client.listPortfolios();
-      if (portfolios.ok) {
-        return getSuccessToolResult(
-          `portfolios: ${encodePayload(portfolios.value)}`,
-        );
-      }
-
-      return getErrorToolResult(
-        `portfolios: ${portfolios.error.category} (${portfolios.error.reason})`,
+      return answerOwnerList(
+        "portfolio",
+        "portfolios",
+        client.listPortfolios(),
+        client,
       );
     }
 

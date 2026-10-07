@@ -80,7 +80,7 @@ describe("an answer's summary over the shared MCP server", () => {
   });
 
   // @real-io @adapter-integration @US-05 @contract-shape:bounded-change
-  it.skip("hands an assistant's MCP client the Team list's facts and then its summary, as two blocks", async () => {
+  it("hands an assistant's MCP client the Team list's facts and then its summary, as two blocks", async () => {
     lighthouse = await startLighthouse();
     mcp = await startMcpHttpServer({
       lighthouseUrl: lighthouse.url,

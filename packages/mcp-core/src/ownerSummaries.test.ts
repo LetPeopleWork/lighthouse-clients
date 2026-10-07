@@ -24,7 +24,7 @@ import {
 
 describe("the Team and Portfolio list tools' summary", () => {
   // @driving_port @US-05 @contract-shape:bounded-change — M3
-  it.skip.each([
+  it.each([
     {
       tool: "lighthouse_team_list",
       read: "listTeams",
@@ -74,7 +74,7 @@ describe("the Team and Portfolio list tools' summary", () => {
   );
 
   // @error @infrastructure-failure @US-05 — the summary's reads never fail the tool
-  it.skip("counts in the seeded words when the instance's terms cannot be read", async () => {
+  it("counts in the seeded words when the instance's terms cannot be read", async () => {
     const assistant = anAssistantOn({
       listTeams: ok(sevenTeams()),
       getTerminology: refused("unexpected", "Terminology is unavailable"),
@@ -87,7 +87,7 @@ describe("the Team and Portfolio list tools' summary", () => {
   });
 
   // @error @version-skew @US-05 — ADR-224 rule 3
-  it.skip("adds no count to a list whose Teams it does not recognise", async () => {
+  it("adds no count to a list whose Teams it does not recognise", async () => {
     const recognised = await anAssistantOn({
       listTeams: ok(sevenTeams()),
     }).call("lighthouse_team_list");

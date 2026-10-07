@@ -64,6 +64,22 @@ export const describeOwnerListTitle = (
   terms: Terms,
 ): string => (kind === "team" ? terms.teams : terms.portfolios);
 
+/** How many Teams or Portfolios the list holds, in the instance's words: "No Teams", "1 Team", "7 Teams". */
+export const describeOwnerCount = (
+  kind: OwnerKind,
+  count: number,
+  terms: Terms,
+): string => {
+  const [one, many] =
+    kind === "team"
+      ? [terms.team, terms.teams]
+      : [terms.portfolio, terms.portfolios];
+  if (count === 0) {
+    return `No ${many}`;
+  }
+  return `${count} ${count === 1 ? one : many}`;
+};
+
 /** The list's column headings, as the Overview's table has them. */
 export const describeOwnerListHeadings = (terms: Terms): string[] => [
   "Name",
