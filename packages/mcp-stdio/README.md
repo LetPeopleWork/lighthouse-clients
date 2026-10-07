@@ -9,7 +9,7 @@ Use this package when you want Lighthouse tools inside a local MCP client such a
 The stdio server exposes Lighthouse as MCP tools for:
 
 - Health and version checks.
-- Work tracking, team, and portfolio lookups.
+- Work tracking, team, and portfolio lookups. `lighthouse_team_list` and `lighthouse_portfolio_list` keep their facts block and add a second block counting them (`summary: 7 Teams`); `lighthouse_team_get` and `lighthouse_portfolio_get` carry the page's heading and settings as `summary`, as `lh team get` and `lh portfolio get` print them.
 - Team and portfolio refresh operations.
 - Team and portfolio metrics. Each per-metric tool (Throughput, the Cycle Time and Work Item Age percentiles, Work Item Age, Total Work Item Age, the blocked history, the percentiles over time, the process limits and Time in State) also states its answer as `lh metrics --metrics <name>` heads it: the heading and the sentence. Time in State's drill-down into one state states the heading and the title above its Work Items; the list of Work Items to pick from carries no summary.
 - Feature, delivery, and forecast operations. The forecast tools (`lighthouse_forecast_manual`, `lighthouse_forecast_backtest`) also return a `summary` stating the answer as the web does: the heading and likelihood sentence, or the backtest's heading, period and actual Throughput.

@@ -18,12 +18,11 @@ import {
   summaryBlockOf,
 } from "../test-support/mcpHarness";
 
-// Story 6218, slice 05: the Team and Portfolio tools. A list keeps its facts block byte for byte and gains a
-// second block with a count in the instance's words (M3); a single Team or Portfolio gains a `summary` field.
-// Pending until DELIVER slice 05.
+// A list keeps its facts block byte for byte and gains a second block with a count in the instance's words;
+// a single Team or Portfolio gains a `summary` field holding the page's heading and settings.
 
 describe("the Team and Portfolio list tools' summary", () => {
-  // @driving_port @US-05 @contract-shape:bounded-change — M3
+  // @driving_port @US-05 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_team_list",
@@ -86,7 +85,7 @@ describe("the Team and Portfolio list tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: 7 Teams");
   });
 
-  // @error @version-skew @US-05 — ADR-224 rule 3
+  // @error @version-skew @US-05 — a row without a name and id cannot be counted as a Team
   it("adds no count to a list whose Teams it does not recognise", async () => {
     const recognised = await anAssistantOn({
       listTeams: ok(sevenTeams()),
@@ -105,7 +104,7 @@ describe("the Team and Portfolio list tools' summary", () => {
 
 describe("the Team and Portfolio get tools' summary", () => {
   // @driving_port @US-05 @contract-shape:bounded-change
-  it.skip.each([
+  it.each([
     {
       tool: "lighthouse_team_get",
       read: "getTeam",
@@ -140,7 +139,7 @@ describe("the Team and Portfolio get tools' summary", () => {
   );
 
   // @driving_port @US-05
-  it.skip.each([
+  it.each([
     "lighthouse_team_list",
     "lighthouse_team_get",
     "lighthouse_portfolio_list",

@@ -13,7 +13,9 @@ import {
   describeMetricsHeading,
   describeOwnerCount,
   describePercentilesOverTimeDays,
+  describePortfolioSummary,
   describeProcessBehaviorOverTimeDays,
+  describeTeamSummary,
   describeThroughputDays,
   describeTimeInStateContributorDays,
   describeTimeInStateDays,
@@ -33,8 +35,10 @@ import {
   readManualForecast,
   readOwnerList,
   readPercentilesOverTime,
+  readPortfolio,
   readProcessBehaviorOverTime,
   readRunChart,
+  readTeam,
   readTerms,
   readTimeInStateBar,
   readTimeInStateContributors,
@@ -801,12 +805,14 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
   {
     name: "lighthouse_team_list",
-    description: "List all teams available in Lighthouse.",
+    description:
+      "List all teams available in Lighthouse. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse_team_get",
-    description: "Get full details for one team by ID.",
+    description:
+      "Get full details for one team by ID. `summary` states the page's heading and settings as the web does, in the instance's terminology.",
     inputSchema: idInputSchema,
   },
   {
@@ -823,12 +829,14 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   ...refinementWriteToolDefinitions,
   {
     name: "lighthouse_portfolio_list",
-    description: "List all portfolios in Lighthouse.",
+    description:
+      "List all portfolios in Lighthouse. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse_portfolio_get",
-    description: "Get full details for one portfolio by ID.",
+    description:
+      "Get full details for one portfolio by ID. `summary` states the page's heading and settings as the web does, in the instance's terminology.",
     inputSchema: idInputSchema,
   },
   {
@@ -1413,6 +1421,35 @@ const answerOwnerList = async (
     label,
     result.value,
     owners === null ? null : describeOwnerCount(kind, owners.length, terms),
+  );
+};
+
+/** One Team or Portfolio: its facts, with the page's heading and settings as its summary when it can be read. */
+const answerOwner = async <Owner>(
+  label: string,
+  read: MetricRead,
+  client: McpRuntimeClient,
+  describe: {
+    readonly read: (value: unknown) => Owner | null;
+    readonly lines: (
+      owner: Owner,
+      terms: Awaited<ReturnType<typeof readTerms>>,
+    ) => string[];
+  },
+): Promise<McpToolResult> => {
+  const [result, terms] = await Promise.all([read, readTerms(client)]);
+  if (!result.ok) {
+    return getErrorToolResult(
+      `${label}: ${result.error.category} (${result.error.reason})`,
+    );
+  }
+  return withSummary(
+    label,
+    result.value,
+    summaryOrNull(() => {
+      const owner = describe.read(result.value);
+      return owner === null ? null : linesOf(...describe.lines(owner, terms));
+    }),
   );
 };
 
@@ -2030,14 +2067,10 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team: invalid id");
       }
 
-      const team = await client.getTeam(id);
-      if (team.ok) {
-        return getSuccessToolResult(`team: ${encodePayload(team.value)}`);
-      }
-
-      return getErrorToolResult(
-        `team: ${team.error.category} (${team.error.reason})`,
-      );
+      return answerOwner("team", client.getTeam(id), client, {
+        read: readTeam,
+        lines: describeTeamSummary,
+      });
     }
 
     if (name === "lighthouse_team_refresh") {
@@ -2076,16 +2109,10 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio: invalid id");
       }
 
-      const portfolio = await client.getPortfolio(id);
-      if (portfolio.ok) {
-        return getSuccessToolResult(
-          `portfolio: ${encodePayload(portfolio.value)}`,
-        );
-      }
-
-      return getErrorToolResult(
-        `portfolio: ${portfolio.error.category} (${portfolio.error.reason})`,
-      );
+      return answerOwner("portfolio", client.getPortfolio(id), client, {
+        read: readPortfolio,
+        lines: describePortfolioSummary,
+      });
     }
 
     if (name === "lighthouse_portfolio_refresh") {

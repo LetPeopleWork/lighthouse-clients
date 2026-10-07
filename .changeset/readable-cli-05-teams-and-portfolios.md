@@ -40,6 +40,14 @@ before, then a second text block counting them in the instance's words: `summary
 seeded words, and the tool never fails for it. A list in which any Team or Portfolio arrives without its
 name or id returns only the facts block, as before.
 
+Over MCP, `lighthouse_team_get` and `lighthouse_portfolio_get` return the same facts as before with one
+more field, `summary`: the page's heading and settings, one per line, as `lh team get` and
+`lh portfolio get` print them (`Gravity [id: 3]`, `Service Level Expectation: 85% of Work Items within
+12 days or less`, `Feature WIP: 3 Teams`), in the instance's words. When the instance's terms cannot be
+read the summary uses the seeded words; a Team or Portfolio that arrives without its name or id returns
+the facts alone, and the tool never fails for its summary. The descriptions of all four tools say what
+`summary` holds.
+
 The client package gains `readOwnerList`, `describeOwnerListTitle`, `describeOwnerListHeadings`, `describeOwnerCount`,
 `describeOwnerName`, `describeFeatureCount`, `describeTags`, `describeLastUpdated`, `NOT_SENT`,
 `readTeam`, `describeTeamSummary`, `readPortfolio`, `describePortfolioSummary`, `NOT_SET` and the
