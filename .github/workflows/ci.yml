@@ -363,6 +363,8 @@ jobs:
             sleep 3
           done
           expect_pretty "When will 10 Work Items be done?" facts forecast manual --team-id "$ZENITH" --remaining 10
+          expect_pretty "Predictability Score" facts metrics team --id "$ZENITH"
+          echo "lh metrics team --pretty prints $(lh metrics team --id "$ZENITH" | wc -l) lines (one screen is 30; advisory)"
           echo "--pretty views: PASS"
 
       - name: Show Lighthouse container logs on failure
