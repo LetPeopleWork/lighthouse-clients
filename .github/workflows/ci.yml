@@ -336,6 +336,35 @@ jobs:
             || (echo "FAIL: Project Orion not found in portfolio list"; exit 1)
           echo "Portfolio assertion: PASS"
 
+      # Each line checks that --pretty prints words only the readable view prints (the generic view prints
+      # wire names), and that --json is still the facts, without those words.
+      - name: Verify --pretty views
+        shell: bash
+        run: |
+          expect_pretty() {   # expect_pretty <anchor> <json-mode: facts|"exact:<line>"> <lh args…>
+            anchor="$1"; mode="$2"; shift 2
+            pretty=$(lh "$@");        printf '%s\n' "$pretty"
+            grep -qF -- "$anchor" <<<"$pretty" || { echo "FAIL: '$anchor' not in: lh $* (generic view?)"; exit 1; }
+            json=$(lh "$@" --json)
+            case "$mode" in
+              exact:*) [ "$json" = "${mode#exact:}" ] || { echo "FAIL: lh $* --json changed: $json"; exit 1; } ;;
+              *) jq -e . >/dev/null <<<"$json" || { echo "FAIL: lh $* --json is not JSON"; exit 1; }
+                 ! grep -qF -- "$anchor" <<<"$json" || { echo "FAIL: pretty wording leaked into lh $* --json"; exit 1; } ;;
+            esac
+          }
+          ZENITH=$(lh team list --json | jq -r '.[] | select(.name == "Team Zenith") | .id')
+          [ -n "$ZENITH" ] || { echo "FAIL: Team Zenith has no id in lh team list --json"; exit 1; }
+
+          echo "Waiting for Team Zenith's forecast to answer..."
+          deadline=$((SECONDS + 120))
+          until lh forecast manual --team-id "$ZENITH" --remaining 10 --json 2>/dev/null \
+              | jq -e '.whenForecasts | length > 0' >/dev/null 2>&1; do
+            [ "$SECONDS" -lt "$deadline" ] || { echo "FAIL: Team Zenith's forecast never answered"; exit 1; }
+            sleep 3
+          done
+          expect_pretty "When will 10 Work Items be done?" facts forecast manual --team-id "$ZENITH" --remaining 10
+          echo "--pretty views: PASS"
+
       - name: Show Lighthouse container logs on failure
         if: failure()
         run: docker logs lighthouse-smoke || true
