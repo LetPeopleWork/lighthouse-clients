@@ -138,7 +138,7 @@ This is the recommended approach for CI/CD pipelines and environments where secr
 
 Payload-producing commands support three output modes:
 
-- `pretty` is for people, and the default. Commands with a readable view state their answer as the web does, in the instance's own terminology: `lh refinement get`, `lh forecast manual` (a heading, the When and How Many tables, the likelihood sentence) and `lh forecast backtest` (a heading, the period, and the percentiles with the actual drawn among them). Every other command, and any answer in a shape the CLI does not recognise, prints a generic indented view that surfaces `name` / `id`. Its layout and wording may change in any minor release.
+- `pretty` is for people, and the default. Commands with a readable view state their answer as the web does, in the instance's own terminology: `lh refinement get`, `lh forecast manual` (a heading, the When and How Many tables, the likelihood sentence), `lh forecast backtest` (a heading, the period, and the percentiles with the actual drawn among them) and `lh metrics team` / `lh metrics portfolio` without `--metrics` (the dashboard's headline on one screen: a heading with the range, the headline numbers, the Cycle Time and Work Item Age percentiles, and one line per over-time metric). Every other command, and any answer in a shape the CLI does not recognise, prints a generic indented view that surfaces `name` / `id`. Its layout and wording may change in any minor release.
 - `json` returns the raw endpoint payload JSON.
 - `toon` converts the endpoint payload to [TOON](https://github.com/toon-format/toon), which is often easier to feed into LLM prompts.
 

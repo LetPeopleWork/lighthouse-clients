@@ -3,8 +3,10 @@ import {
   daysInRange,
   describeBlockedNow,
   describeBlockedOverTime,
+  describeInProgressNow,
   describeMetricsHeading,
   describePercentileRows,
+  describePredictabilityScore,
   describeProcessBehaviorOverTime,
   describeTotalThroughput,
   describeTotalWorkItemAge,
@@ -291,6 +293,29 @@ describe("the metrics headline wording", () => {
         { terms: SEEDED_TERMS, name: "Gravity" },
       ),
     ).toBe("Gravity · Tue 6 Oct 2026 – Tue 6 Oct 2026 (1 day)");
+  });
+
+  it("leaves out a System WIP Limit that is not set, and counts Features for a Portfolio", () => {
+    const now = { count: 4, items: [] };
+
+    expect(describeInProgressNow(now, "team", SEEDED_TERMS, undefined)).toEqual(
+      { label: "Work Items in Progress", value: "4", detail: "" },
+    );
+    expect(describeInProgressNow(now, "portfolio", SEEDED_TERMS, 5)).toEqual({
+      label: "Features in Progress",
+      value: "4",
+      detail: "System WIP Limit: 5 Features",
+    });
+  });
+
+  it("shows '—' for a Predictability Score Lighthouse did not send", () => {
+    expect(
+      describePredictabilityScore({ score: undefined }, "team", SEEDED_TERMS)
+        .value,
+    ).toBe("—");
+    expect(
+      describePredictabilityScore({ score: 0.634 }, "team", SEEDED_TERMS).value,
+    ).toBe("63.4%");
   });
 
   it("averages the total over every day of the range, to one decimal, as the dashboard does", () => {

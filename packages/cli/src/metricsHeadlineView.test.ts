@@ -152,7 +152,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @boundary @US-02 — SystemWipQuickSetting.tsx omits the limit when none is set
-  it.skip("leaves out the WIP limit for a Team that has none", async () => {
+  it("leaves out the WIP limit for a Team that has none", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: ok(gravity({ name: "Meridian", id: 4, systemWIPLimit: 0 })),
     });
@@ -170,7 +170,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @error @version-skew @US-02 — a server older than v26.7.3.1 flags no Work Item as blocked
-  it.skip("leaves out the blocked count when Lighthouse does not say which Work Items are blocked", async () => {
+  it("leaves out the blocked count when Lighthouse does not say which Work Items are blocked", async () => {
     const withoutFlags = (
       gravitysMetrics().getTeamWip as { value: unknown[] }
     ).value.map((item) => {
@@ -224,7 +224,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @US-02 @kpi — KPI-5
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -243,7 +243,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @error @infrastructure-failure @US-02 — D4 + C14
-  it.skip("heads the headline with the Team's id, in the seeded words, when neither name nor terms can be read", async () => {
+  it("heads the headline with the Team's id, in the seeded words, when neither name nor terms can be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: refused("forbidden", "You may not read this Team"),
       getTerminology: refused("unexpected", "Terminology is unavailable"),
@@ -263,7 +263,7 @@ describe("lh metrics team --pretty, the headline", () => {
 
 describe("lh metrics portfolio --pretty, the headline", () => {
   // @driving_port @US-02 — a Portfolio counts Features
-  it.skip("counts Features for Ocean Explorer over its 90 days", async () => {
+  it("counts Features for Ocean Explorer over its 90 days", async () => {
     const lighthouse = aLighthouse({
       getPortfolio: ok(oceanExplorer()),
       ...oceanExplorersMetrics(),

@@ -23,14 +23,15 @@ const withoutComments = (source: string): string =>
 const renderers = sourcesIn(cliSource, /Output\.ts$/u);
 const wordings = sourcesIn(clientSource, /Wording\.ts$/u);
 
-// This story's new wording and output modules; refinement's predate the shared resolver.
+// Every wording and output module takes its words from the terminology, except refinement's, which predate
+// the shared resolver. The date and table helpers they share are held to the same rule.
+const predatesTheResolver = /^refinement/u;
 const storyModules = [
-  ...sourcesIn(
-    clientSource,
-    /^(forecastWording|answerWording|calendarDates)\.ts$/u,
-  ),
-  ...sourcesIn(cliSource, /^(forecastOutput|table)\.ts$/u),
-];
+  ...wordings,
+  ...renderers,
+  ...sourcesIn(clientSource, /^calendarDates\.ts$/u),
+  ...sourcesIn(cliSource, /^table\.ts$/u),
+].filter(([file]) => !predatesTheResolver.test(file));
 
 const clientMethodCall =
   /\.(get|list|run|create|update|delete|refresh|cast|add|take|check)[A-Z]\w*\s*\(/u;
@@ -39,7 +40,18 @@ describe("the readable views keep words, layout and reads apart", () => {
   it("finds the modules it checks", () => {
     expect(renderers.map(([file]) => file)).toContain("forecastOutput.ts");
     expect(wordings.map(([file]) => file)).toContain("forecastWording.ts");
-    expect(storyModules).toHaveLength(5);
+    const checked = storyModules.map(([file]) => file);
+    expect(checked).toEqual(
+      expect.arrayContaining([
+        "forecastWording.ts",
+        "forecastOutput.ts",
+        "metricsWording.ts",
+        "metricsOutput.ts",
+      ]),
+    );
+    expect(checked.filter((file) => predatesTheResolver.test(file))).toEqual(
+      [],
+    );
   });
 
   it.each(renderers)("%s renders facts and reads nothing", (_file, source) => {
