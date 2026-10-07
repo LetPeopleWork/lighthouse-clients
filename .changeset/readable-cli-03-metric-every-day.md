@@ -35,3 +35,6 @@ view, exit 0, as before. `--json` and `--toon` are unchanged. The client package
 function per metric and `describeAsOfHeading`; `readPercentilesOverTime` now also reads the history's
 horizon, and `readWip` and `readCycleTime` also read each Work Item's ID, name, state, age, closed day and
 blocked-since day when Lighthouse sends them.
+
+With every term renamed, the day views print no seeded word of their own; Work Item names still print
+exactly as Lighthouse sends them.

@@ -79,7 +79,7 @@ export const gravitysWorkInProgress = () => [
   }),
   ...Array.from({ length: 6 }, (_, index) =>
     aWorkItem({
-      name: `Work Item ${index + 1}`,
+      name: `Polish item ${index + 1}`,
       id: 70 + index,
       referenceId: `GR-07${index}`,
       workItemAge: 2 + index,
@@ -212,7 +212,7 @@ export const timeInStateCandidates = () => ({
   items: Array.from({ length: 42 }, (_, index) => ({
     workItemId: 40 + index,
     referenceId: `GR-0${40 + index}`,
-    title: `Work Item ${index + 1}`,
+    title: `Backlog item ${index + 1}`,
     workItemType: "User Story",
   })),
 });
@@ -233,7 +233,7 @@ export const reviewsContributors = () => ({
     {
       workItemId: 58,
       referenceId: "GR-058",
-      title: "Throughput chart legend wraps",
+      title: "Burn-up chart legend wraps",
       type: "Bug",
       state: "Done",
       stateCategory: "Done",

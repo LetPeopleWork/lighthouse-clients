@@ -216,7 +216,7 @@ export const sevenTeams = () =>
       id,
       features: Array.from({ length: Number(featureCount) }, (_, index) => ({
         id: 100 + index,
-        name: `Feature ${index + 1}`,
+        name: `Roadmap goal ${index + 1}`,
       })),
     }),
   );
@@ -267,7 +267,7 @@ export const fivePortfolios = () =>
       id,
       features: Array.from({ length: Number(featureCount) }, (_, index) => ({
         id: 200 + index,
-        name: `Feature ${index + 1}`,
+        name: `Roadmap goal ${index + 1}`,
       })),
     }),
   );
@@ -359,7 +359,7 @@ export const oceanExplorersDeliveries = () => [
 const breakdown = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
     referenceId: `OE-0${10 + index}`,
-    name: `Feature ${index + 1}`,
+    name: `Roadmap goal ${index + 1}`,
     completion: 50,
     likelihood: 60,
     totalItems: 10,

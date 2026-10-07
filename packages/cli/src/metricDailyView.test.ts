@@ -247,7 +247,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @US-03 @kpi — KPI-5
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });

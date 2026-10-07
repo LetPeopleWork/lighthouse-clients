@@ -94,7 +94,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     expect(lines.slice(title + 1, title + 4)).toEqual([
       "ID Name Type State Days Contributed",
       "GR-064 Retry failed Jira sync User Story Review 6",
-      "GR-058 Throughput chart legend wraps Bug Done 4",
+      "GR-058 Burn-up chart legend wraps Bug Done 4",
     ]);
   });
 
@@ -164,7 +164,7 @@ describe("lh metrics --metrics cumulativeStateTime keeps the facts formats as th
     expect(
       createHash("sha256").update(result.stdout).digest("hex"),
     ).toMatchInlineSnapshot(
-      `"89fca95aa651d396e220296fa9ead9071218d7b31edc6780c7acdeec661c6cd9"`,
+      `"c656f664b6d043639436c78c61939c05d66508e5d565d4c36b741ad6eb3c239e"`,
     );
     expect(lighthouse.asked().sort()).toEqual([
       "getTeamCumulativeStateTime",

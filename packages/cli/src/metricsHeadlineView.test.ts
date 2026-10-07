@@ -319,7 +319,7 @@ describe("lh metrics keeps the facts formats as they are", () => {
 
     expect(result.exitCode).toBe(0);
     expect(sha256(result.stdout)).toMatchInlineSnapshot(
-      `"ff8e372932033ba8c785c77c09327b63c327b248a5c40719768b715387184de2"`,
+      `"d7e811c52e98ebce1dcf3abbeb0e072d21f4ed8fb66de7e97dfe1a70df5e24bd"`,
     );
     expect(JSON.parse(result.stdout)).toHaveProperty("workDistribution");
     expect([...lighthouse.asked()].sort()).toEqual(EVERY_METRICS_READ);
@@ -333,7 +333,7 @@ describe("lh metrics keeps the facts formats as they are", () => {
 
     expect(result.exitCode).toBe(0);
     expect(sha256(result.stdout)).toMatchInlineSnapshot(
-      `"fa198ef9db76b052e810fa4b5ba8ca51109bcd3ea660b979e3271032abfc9837"`,
+      `"d2d25186962e02ab85363224a2c1bde5a88ab2e3911db5c6ebf6781eb40687a0"`,
     );
     expect([...lighthouse.asked()].sort()).toEqual(EVERY_METRICS_READ);
   });
