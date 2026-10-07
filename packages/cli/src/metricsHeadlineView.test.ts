@@ -57,7 +57,7 @@ const sha256 = (text: string): string =>
 
 describe("lh metrics team --pretty, the headline", () => {
   // @driving_port @US-02 @kpi @contract-shape:pure-function — KPI-3: at most 30 lines
-  it.skip("shows Priya Gravity's headline numbers and percentiles on one screen", async () => {
+  it("shows Priya Gravity's headline numbers and percentiles on one screen", async () => {
     const lighthouse = gravitysLighthouse();
 
     const result = await lighthouse.run(metricsOfGravity());
@@ -75,7 +75,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @US-02 — D7: one line per over-time metric, every day one flag away
-  it.skip("summarises each over-time metric in one line and says where every day is", async () => {
+  it("summarises each over-time metric in one line and says where every day is", async () => {
     const result = await gravitysLighthouse().run(metricsOfGravity());
 
     const lines = shownLines(result.stdout);
@@ -94,7 +94,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @error @US-02 — AC-02.3: an empty series says the web's empty-state sentence (overTimeEmptyState.ts)
-  it.skip("says why an over-time metric with nothing recorded has no line of numbers", async () => {
+  it("says why an over-time metric with nothing recorded has no line of numbers", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamPercentilesOverTime: ok([]),
     });
@@ -108,7 +108,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @error @infrastructure-failure @US-02 — AC-02.4: a refused section prints its refusal in place
-  it.skip("shows a refused metric's reason in its own line and every other number around it", async () => {
+  it("shows a refused metric's reason in its own line and every other number around it", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamPredictabilityScore: refused(
         "dependency-failure",
@@ -129,7 +129,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @error @version-skew @US-02 — M2: render the rest, one line for the section lh does not recognise
-  it.skip("names a metric it cannot read as shown only with --json, and renders the rest", async () => {
+  it("names a metric it cannot read as shown only with --json, and renders the rest", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamTotalWorkItemAgeOverTime: ok({
         startDate: "2026-09-07",
@@ -193,7 +193,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @boundary @US-02 — AC-02.2: n days / 1 day, and — for a percentile one side lacks
-  it.skip("says '1 day' for a single day and '—' where a percentile is missing", async () => {
+  it("says '1 day' for a single day and '—' where a percentile is missing", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamCycleTimePercentiles: ok([
         { percentile: 50, value: 1 },
@@ -215,7 +215,7 @@ describe("lh metrics team --pretty, the headline", () => {
   });
 
   // @US-02 — D8: the CLI's own placeholder is not an answer
-  it.skip("does not print the work distribution placeholder", async () => {
+  it("does not print the work distribution placeholder", async () => {
     const result = await gravitysLighthouse().run(metricsOfGravity());
 
     expect(shownLines(result.stdout)[0]).toBe(HEADING);

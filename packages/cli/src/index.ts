@@ -8,6 +8,7 @@ import {
   type LighthouseClient,
   type MetricsDateRange,
   readAnswerWording,
+  readSystemWipLimit,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -19,6 +20,7 @@ import {
   mapApiResultToCliResult,
 } from "./commandResult";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
+import { renderMetricsHeadline } from "./metricsOutput";
 import {
   DEFAULT_OUTPUT_FORMAT,
   isOutputFormat,
@@ -2035,20 +2037,48 @@ const runMetricsGroup = async (
     return getErrorResult(definitionIdOrError.error);
   }
 
-  const payload = await buildMetricsPayload(
-    action,
-    entityId,
-    range,
-    client,
-    metricsFilterOrError,
-    viewOrError.view,
-    {
-      state: getOptionValue(args, "--state"),
-      itemIds: itemIdsOrError,
-      definitionId: definitionIdOrError.definitionId,
-    },
+  const buildPayload = () =>
+    buildMetricsPayload(
+      action,
+      entityId,
+      range,
+      client,
+      metricsFilterOrError,
+      viewOrError.view,
+      {
+        state: getOptionValue(args, "--state"),
+        itemIds: itemIdsOrError,
+        definitionId: definitionIdOrError.definitionId,
+      },
+    );
+  if (outputFormat !== "pretty" || metricsFilterOrError !== null) {
+    return mapApiResultToCliResult(
+      { ok: true, value: await buildPayload() },
+      outputFormat,
+    );
+  }
+
+  // One read of the Team or Portfolio gives both the heading's name and the System WIP Limit.
+  const owner = (
+    action === "team" ? client.getTeam(entityId) : client.getPortfolio(entityId)
+  ).catch(() => ({ ok: false as const, error: null }));
+  const [payload, wording, ownerRead] = await Promise.all([
+    buildPayload(),
+    readAnswerWording(client, {
+      term: action,
+      id: entityId,
+      read: () => owner,
+    }),
+    owner,
+  ]);
+  const systemWipLimit = readSystemWipLimit(
+    ownerRead.ok ? ownerRead.value : null,
   );
-  return mapApiResultToCliResult({ ok: true, value: payload }, outputFormat);
+  return mapApiResultToCliResult(
+    { ok: true, value: payload },
+    outputFormat,
+    (facts) => renderMetricsHeadline(facts, wording, systemWipLimit),
+  );
 };
 
 const runWorktrackingGroup = async (
