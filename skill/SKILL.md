@@ -252,7 +252,7 @@ export LIGHTHOUSE_API_KEY=<key>
 
 **Command reference**
 
-All commands support `--pretty` (default), `--json` (machine-readable), `--toon` (ASCII). Use `--json` when parsing output programmatically.
+All commands support `--pretty` (default), `--json` (machine-readable), `--toon` (ASCII). `--pretty` is for people: it reads like the web, in the instance's terminology, and its layout and wording may change in any minor release. Scripts and agents read `--json` or `--toon` (or the MCP tools' facts), which carry the facts unchanged. Use `--json` whenever you parse the output.
 
 ```bash
 # List
@@ -294,7 +294,7 @@ Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItem
 | Goal | Commands |
 |------|----------|
 | Team metrics this quarter | `lh team list --json` → `lh metrics team --id <id> --start-date ... --end-date ... --json` |
-| Forecast 20 items | `lh team list --json` → `lh forecast manual --team-id <id> --remaining 20` |
+| Forecast 20 items | `lh team list --json` → `lh forecast manual --team-id <id> --remaining 20 --json` |
 | Health check | `lh health check` |
 | Throughput + cycle time as JSON | `lh metrics team --id <id> --metrics throughput,cycleTime --json` |
 
@@ -365,6 +365,8 @@ Use the dedicated tools to retrieve work item age data:
 - Both over-time series hold the days Lighthouse **recorded**. By default it never fills in a day it missed, so an empty series on a recently upgraded server is honest emptiness, not a failure. Where a System Admin has switched on *Fill in past days on over-time charts* (a Preview, off by default), a read that finds missing days starts working them out in the background — a second call a little later may return more days; that is expected, not an inconsistency. Process-behaviour days without a usable baseline are omitted rather than zeroed — an empty series never means "a process pinned at zero". Say so plainly rather than reporting no data as a fault.
 
 All accept optional `startDate` / `endDate` parameters. Results include a `daily` array of `{ date, items[{id, name, referenceId, age}] }` (per-item) or `{ date, totalAge, itemCount }` (total).
+
+A tool that carries a `summary` states its answer there as the web does, in the instance's terminology: quote it to the user. Every other field is the facts, the same as the tool returned before it had a summary; reason over those. The forecast tools carry one: `lighthouse_forecast_manual` the heading and likelihood sentence, `lighthouse_forecast_backtest` the heading, period and actual Throughput.
 
 For age data on items within a specific *feature*, use `lighthouse_feature_workitems({id: <feature_id>})` — returns work items with a `workItemAge` field.
 

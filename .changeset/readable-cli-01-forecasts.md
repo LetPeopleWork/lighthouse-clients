@@ -41,6 +41,9 @@ terminology. Every other field is the facts exactly as before. Reading the words
 fails the tool, and an answer in a shape the tool does not recognise comes back as it always did, without a
 summary.
 
+`--pretty` is for people and its layout may change in any minor release; `--json`, `--toon` and the MCP tools'
+facts are the contract that scripts and agents read.
+
 `--json` and `--toon` are unchanged, and an answer in a shape the CLI does not recognise still prints the
 generic view. The client package gains `resolveTerms` / `readTerms`, `formatCalendarDay` /
 `formatTimestamp`, `readAnswerWording`, `readManualForecast` with its `describe…` wording, and
