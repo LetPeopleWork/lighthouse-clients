@@ -98,7 +98,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @boundary @US-01 — the web's thresholds (ForecastLevel.ts): ≤50 Risky, ≤70 Realistic, ≤85 Confident, else Certain
-  it.skip.each([
+  it.each([
     { chance: 30, level: "Risky" },
     { chance: 50, level: "Risky" },
     { chance: 51, level: "Realistic" },
