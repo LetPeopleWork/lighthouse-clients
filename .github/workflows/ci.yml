@@ -367,6 +367,19 @@ jobs:
           echo "lh metrics team --pretty prints $(lh metrics team --id "$ZENITH" | wc -l) lines (one screen is 30; advisory)"
           expect_pretty "Last Updated" facts team list
           expect_pretty "Deliveries per Portfolio:" facts portfolio list
+
+          # Scenario 0 replaces scenario 2, so these lines stay last; later checks go above them.
+          curl --fail --silent --insecure -X POST https://127.0.0.1:8443/api/v1/demo/scenarios/0/load
+          APOLLO=$(lh portfolio list --json | jq -r '.[] | select(.name == "Project Apollo") | .id')
+          [ -n "$APOLLO" ] || { echo "FAIL: Project Apollo has no id in lh portfolio list --json"; exit 1; }
+          echo "Waiting for Project Apollo's Delivery to take in its Features..."
+          deadline=$((SECONDS + 120))
+          until lh delivery list --portfolio-id "$APOLLO" --json 2>/dev/null \
+              | jq -e 'any(.[]; (.features | length) > 0)' >/dev/null 2>&1; do
+            [ "$SECONDS" -lt "$deadline" ] || { echo "FAIL: Project Apollo's Delivery never took in its Features"; exit 1; }
+            sleep 3
+          done
+          expect_pretty "Delivery Date" facts delivery list --portfolio-id "$APOLLO"
           echo "--pretty views: PASS"
 
       - name: Show Lighthouse container logs on failure
