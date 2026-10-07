@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   describeManualForecastSummary,
   type ManualForecastView,
+  placeActualAmongPercentiles,
+  readBacktest,
   readManualForecast,
 } from "./forecastWording";
 import { SEEDED_TERMS } from "./terminology";
@@ -152,4 +154,88 @@ describe("describeManualForecastSummary", () => {
       ),
     ).toBe("Gravity · 25 Work Items · target Fri 30 Oct 2026");
   });
+});
+
+describe("readBacktest", () => {
+  const backtest = () => ({
+    startDate: "2026-09-01",
+    endDate: "2026-09-30",
+    historicalStartDate: "2026-07-01",
+    historicalEndDate: "2026-08-31",
+    percentiles: [{ probability: 85, value: 18 }],
+    actualThroughput: 21,
+    filterApplied: false,
+    excludedSummary: null,
+  });
+
+  it("picks the facts Backtest Results states", () => {
+    expect(readBacktest(backtest())).toEqual({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      historicalStartDate: "2026-07-01",
+      historicalEndDate: "2026-08-31",
+      percentiles: [{ probability: 85, value: 18 }],
+      actualThroughput: 21,
+    });
+  });
+
+  it.each([
+    { field: "startDate", value: "September" },
+    { field: "historicalEndDate", value: undefined },
+    { field: "percentiles", value: [{ probability: 85 }] },
+    { field: "actualThroughput", value: "21" },
+  ])(
+    "does not recognise an answer whose $field is $value",
+    ({ field, value }) => {
+      expect(readBacktest({ ...backtest(), [field]: value })).toBeNull();
+    },
+  );
+});
+
+describe("placeActualAmongPercentiles", () => {
+  const percentiles = [
+    { probability: 95, value: 15 },
+    { probability: 50, value: 24 },
+    { probability: 85, value: 18 },
+    { probability: 70, value: 21 },
+  ];
+  const placed = (actualThroughput: number) => {
+    const { above, below } = placeActualAmongPercentiles({
+      percentiles,
+      actualThroughput,
+    });
+    return [above, below].map((rows) => rows.map((row) => row.probability));
+  };
+
+  it.each([
+    {
+      given: "above every percentile",
+      actual: 30,
+      above: [],
+      below: [50, 70, 85, 95],
+    },
+    {
+      given: "between two percentiles",
+      actual: 19,
+      above: [50, 70],
+      below: [85, 95],
+    },
+    {
+      given: "below every percentile",
+      actual: 10,
+      above: [50, 70, 85, 95],
+      below: [],
+    },
+    {
+      given: "equal to a percentile",
+      actual: 21,
+      above: [50, 70],
+      below: [85, 95],
+    },
+  ])(
+    "orders the rows by chance and puts an actual $given after the rows it reaches",
+    ({ actual, above, below }) => {
+      expect(placed(actual)).toEqual([above, below]);
+    },
+  );
 });

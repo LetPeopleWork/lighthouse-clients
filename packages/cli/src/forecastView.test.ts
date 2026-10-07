@@ -399,7 +399,7 @@ describe("lh forecast manual --pretty", () => {
 
 describe("lh forecast backtest --pretty", () => {
   // @driving_port @US-01 @contract-shape:pure-function
-  it.skip("shows Lena where September's actual landed among the forecast percentiles", async () => {
+  it("shows Lena where September's actual landed among the forecast percentiles", async () => {
     const lighthouse = gravitysLighthouse();
 
     const result = await lighthouse.run(backtestOfGravity());
@@ -419,7 +419,7 @@ describe("lh forecast backtest --pretty", () => {
   });
 
   // @boundary @US-01 — the chart's dashed line, in text (D9 / CHOSEN WORDING)
-  it.skip.each([
+  it.each([
     { actual: 30, after: "Chance Work Items", before: "50% 24" },
     { actual: 19, after: "70% 21", before: "85% 18" },
     { actual: 10, after: "95% 15", before: undefined },
@@ -444,7 +444,7 @@ describe("lh forecast backtest --pretty", () => {
   );
 
   // @error @infrastructure-failure @US-01
-  it.skip("heads the backtest with the Team's id when its name cannot be read", async () => {
+  it("heads the backtest with the Team's id when its name cannot be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: refused("unexpected", "Lighthouse did not answer"),
     });

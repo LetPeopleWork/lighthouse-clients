@@ -283,21 +283,41 @@ describe("every lh form is accounted for", () => {
   });
 });
 
+// Later slices move their forms into the delivered set as they ship.
+const DELIVERED_SLICES: ReadonlySet<string> = new Set(["01"]);
+const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
+  DELIVERED_SLICES.has(form.slice),
+);
+const PENDING_FORMS = CHANGING_FORMS.filter(
+  (form) => !DELIVERED_SLICES.has(form.slice),
+);
+
 describe("every converted lh form has a view of its own", () => {
   // @driving_port @US-01..@US-09 @kpi — KPI-1: 0 forms left on the generic view
-  it.skip.each(CHANGING_FORMS)(
+  const noLongerTheGenericView = async ({
+    args,
+  }: {
+    readonly args: readonly string[];
+  }) => {
+    const lighthouse = aLighthouse(everyRead());
+
+    const pretty = await lighthouse.run(args);
+    const generic = await genericViewOf(lighthouse, args);
+
+    expect(pretty.exitCode).toBe(0);
+    expect(pretty.stderr).toBe("");
+    expect(pretty.stdout).not.toBe(generic);
+    expect(pretty.stdout).not.toContain("undefined");
+  };
+
+  it.each(DELIVERED_FORMS)(
     "slice $slice: `lh $args` no longer prints the generic view",
-    async ({ args }) => {
-      const lighthouse = aLighthouse(everyRead());
+    noLongerTheGenericView,
+  );
 
-      const pretty = await lighthouse.run(args);
-      const generic = await genericViewOf(lighthouse, args);
-
-      expect(pretty.exitCode).toBe(0);
-      expect(pretty.stderr).toBe("");
-      expect(pretty.stdout).not.toBe(generic);
-      expect(pretty.stdout).not.toContain("undefined");
-    },
+  it.skip.each(PENDING_FORMS)(
+    "slice $slice: `lh $args` no longer prints the generic view",
+    noLongerTheGenericView,
   );
 
   // @driving_port @US-09 @kpi — the 42nd form

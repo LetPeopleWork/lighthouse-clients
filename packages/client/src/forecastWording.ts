@@ -170,3 +170,74 @@ export const describeManualForecastLikelihood = (
   }
   return `Likelihood to close ${countOf(forecast, wording)} by ${dayOf(forecast.targetDate)}: ${answer}`;
 };
+
+/** The backtest as Backtest Results states it: the forecast percentiles for a past period and what was actually done. */
+export type BacktestView = {
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly historicalStartDate: string;
+  readonly historicalEndDate: string;
+  readonly percentiles: readonly ForecastChanceOfCount[];
+  readonly actualThroughput: number;
+};
+
+/** The backtest's facts, or null when one it cannot be stated without is missing or mistyped. */
+export const readBacktest = (value: unknown): BacktestView | null => {
+  if (!isFacts(value)) {
+    return null;
+  }
+  const { startDate, endDate, historicalStartDate, historicalEndDate } = value;
+  const percentiles = readEvery(value.percentiles, readChanceOfCount);
+  if (
+    !isDay(startDate) ||
+    !isDay(endDate) ||
+    !isDay(historicalStartDate) ||
+    !isDay(historicalEndDate) ||
+    percentiles === null ||
+    !isNumber(value.actualThroughput)
+  ) {
+    return null;
+  }
+  return {
+    startDate,
+    endDate,
+    historicalStartDate,
+    historicalEndDate,
+    percentiles,
+    actualThroughput: value.actualThroughput,
+  };
+};
+
+/**
+ * The percentiles lowest chance first, split where the actual falls, as the chart's dashed line sits
+ * among the bars. An actual equal to a percentile goes after it: that percentile was reached.
+ */
+export const placeActualAmongPercentiles = ({
+  percentiles,
+  actualThroughput,
+}: Pick<BacktestView, "percentiles" | "actualThroughput">): {
+  readonly above: ForecastChanceOfCount[];
+  readonly below: ForecastChanceOfCount[];
+} => {
+  const ordered = [...percentiles].sort(
+    (left, right) => left.probability - right.probability,
+  );
+  const firstMissed = ordered.findIndex((row) => row.value < actualThroughput);
+  const split = firstMissed === -1 ? ordered.length : firstMissed;
+  return { above: ordered.slice(0, split), below: ordered.slice(split) };
+};
+
+/** "Gravity · Backtest Results". */
+export const describeBacktestSummary = (wording: AnswerWording): string =>
+  `${wording.name} · Backtest Results`;
+
+/** "Period: Tue 1 Sep 2026 to Wed 30 Sep 2026 (historical data: Wed 1 Jul 2026 to Mon 31 Aug 2026)". */
+export const describeBacktestPeriod = (backtest: BacktestView): string =>
+  `Period: ${dayOf(backtest.startDate)} to ${dayOf(backtest.endDate)} (historical data: ${dayOf(backtest.historicalStartDate)} to ${dayOf(backtest.historicalEndDate)})`;
+
+/** "Actual Throughput: 21 Work Items". */
+export const describeBacktestActual = (
+  backtest: BacktestView,
+  wording: AnswerWording,
+): string =>
+  `Actual ${wording.terms.throughput}: ${backtest.actualThroughput} ${wording.terms.workItems}`;

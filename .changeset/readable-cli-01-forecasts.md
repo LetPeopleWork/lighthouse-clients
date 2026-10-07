@@ -26,6 +26,15 @@ ends with `Use filtered Throughput` when the forecast used the Team's filtered T
 read can fail the command: when the Terminology cannot be read the seeded words are used, and when the
 Team cannot be read the heading starts `Team [id: 3]`.
 An instance that has renamed every term sees its own word for each one throughout the forecast.
+
+`lh forecast backtest` now reads like Backtest Results under `--pretty`: `Gravity · Backtest Results`, the
+period and its historical data as calendar days, and the forecast percentiles from 50% to 95%, with the
+actual drawn as a `── Actual Throughput: 21 Work Items ──` line where it fell among them, the way the
+chart draws its dashed line: first when it beat the 50% value, last when it fell short of the 95% value,
+and after a percentile it equals. The web's Average bar is not shown. When the Team cannot be read the
+heading starts `Team [id: 3]`.
+
 `--json` and `--toon` are unchanged, and an answer in a shape the CLI does not recognise still prints the
 generic view. The client package gains `resolveTerms` / `readTerms`, `formatCalendarDay` /
-`formatTimestamp`, `readAnswerWording` and `readManualForecast` with its `describe…` wording.
+`formatTimestamp`, `readAnswerWording`, `readManualForecast` with its `describe…` wording, and
+`readBacktest` with `placeActualAmongPercentiles` and its `describeBacktest…` wording.

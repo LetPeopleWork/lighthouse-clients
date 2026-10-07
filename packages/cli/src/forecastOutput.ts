@@ -1,12 +1,18 @@
 import {
   type AnswerWording,
+  describeBacktestActual,
+  describeBacktestPeriod,
+  describeBacktestSummary,
   describeHowManyTitle,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
   describeWhenTitle,
+  type ForecastChanceOfCount,
   formatCalendarDay,
   levelOf,
   type ManualForecastView,
+  placeActualAmongPercentiles,
+  readBacktest,
   readManualForecast,
 } from "@letpeoplework/lighthouse-client";
 import { toTableLines } from "./table";
@@ -68,6 +74,40 @@ export const renderManualForecast = (
     likelihood === null ? [] : [likelihood],
   ]
     .filter((section) => section.length > 0)
+    .map((section) => section.join("\n"))
+    .join("\n\n");
+};
+
+const percentileCells = ({
+  probability,
+  value,
+}: ForecastChanceOfCount): string[] => [`${probability}%`, String(value)];
+
+/** Backtest Results as the web shows it, the actual drawn as a line among the percentiles, or null when the answer is not in a shape it knows. */
+export const renderBacktest = (
+  value: unknown,
+  wording: AnswerWording,
+): string | null => {
+  const backtest = readBacktest(value);
+  if (backtest === null) {
+    return null;
+  }
+  const { above, below } = placeActualAmongPercentiles(backtest);
+  const [header = "", ...rows] = toTableLines([
+    ["Chance", wording.terms.workItems],
+    ...above.map(percentileCells),
+    ...below.map(percentileCells),
+  ]);
+  return [
+    [describeBacktestSummary(wording), describeBacktestPeriod(backtest)],
+    [
+      "Forecast Percentiles",
+      header,
+      ...rows.slice(0, above.length),
+      `── ${describeBacktestActual(backtest, wording)} ──`,
+      ...rows.slice(above.length),
+    ],
+  ]
     .map((section) => section.join("\n"))
     .join("\n\n");
 };

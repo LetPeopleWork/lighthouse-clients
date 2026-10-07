@@ -18,7 +18,7 @@ import {
   isCliCommandResult,
   mapApiResultToCliResult,
 } from "./commandResult";
-import { renderManualForecast } from "./forecastOutput";
+import { renderBacktest, renderManualForecast } from "./forecastOutput";
 import {
   DEFAULT_OUTPUT_FORMAT,
   isOutputFormat,
@@ -1952,15 +1952,30 @@ const runBacktestForecastCommand = async (
   }
 
   const client = dependencies.createClient(connectionOrError);
-  return mapApiResultToCliResult(
-    await client.runBacktest(teamId, {
-      startDate,
-      endDate,
-      historicalStartDate: histStartDate,
-      historicalEndDate: histEndDate,
-      applyFilterOverride: filterOrError.applyFilterOverride,
+  const input = {
+    startDate,
+    endDate,
+    historicalStartDate: histStartDate,
+    historicalEndDate: histEndDate,
+    applyFilterOverride: filterOrError.applyFilterOverride,
+  };
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(
+      await client.runBacktest(teamId, input),
+      outputFormat,
+    );
+  }
+
+  const [backtest, wording] = await Promise.all([
+    client.runBacktest(teamId, input),
+    readAnswerWording(client, {
+      term: "team",
+      id: teamId,
+      read: () => client.getTeam(teamId),
     }),
-    outputFormat,
+  ]);
+  return mapApiResultToCliResult(backtest, outputFormat, (facts) =>
+    renderBacktest(facts, wording),
   );
 };
 
