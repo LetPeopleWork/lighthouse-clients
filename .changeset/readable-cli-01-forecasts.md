@@ -25,6 +25,7 @@ Fri 30 Oct 2026` for `--target-date` alone, which also show only the When or onl
 ends with `Use filtered Throughput` when the forecast used the Team's filtered Throughput. Neither extra
 read can fail the command: when the Terminology cannot be read the seeded words are used, and when the
 Team cannot be read the heading starts `Team [id: 3]`.
+An instance that has renamed every term sees its own word for each one throughout the forecast.
 `--json` and `--toon` are unchanged, and an answer in a shape the CLI does not recognise still prints the
 generic view. The client package gains `resolveTerms` / `readTerms`, `formatCalendarDay` /
 `formatTimestamp`, `readAnswerWording` and `readManualForecast` with its `describe…` wording.

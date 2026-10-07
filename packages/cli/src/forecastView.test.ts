@@ -289,7 +289,7 @@ describe("lh forecast manual --pretty", () => {
   });
 
   // @US-01 @kpi — KPI-5: every configurable word is the instance's
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
       runManualForecast: ok(gravitysForecast({ filterApplied: true })),
@@ -305,7 +305,7 @@ describe("lh forecast manual --pretty", () => {
     expect(lines).toContain(
       "Likelihood to close 25 Tickets by Fri 30 Oct 2026: 48.20%",
     );
-    expect(lines[0]).toContain("Use filtered Delivery Rate");
+    expect(lines[0]).toContain("Use filtered Flow Rate");
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 

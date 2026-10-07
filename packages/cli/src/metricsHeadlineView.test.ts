@@ -235,7 +235,7 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(lines).toContain(
       "Tickets in Progress 9 System Load Limit: 10 Tickets",
     );
-    expect(lines).toContain("Total Delivery Rate 31 1.0 / day");
+    expect(lines).toContain("Total Flow Rate 31 1.0 / day");
     expect(lines).toContain("Stuck Tickets 2");
     expect(lines).toContain("Total Ticket Age 84 days across 9 Tickets");
     expect(lines).toContain("Percentile Flow Time Ticket Age");

@@ -257,7 +257,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     );
 
     const lines = shownLines(result.stdout);
-    expect(lines).toContain("Total Delivery Rate: 31 Tickets, 1.0 / day");
+    expect(lines).toContain("Total Flow Rate: 31 Tickets, 1.0 / day");
     expect(lines).toContain("Date Tickets closed");
     expect(lines).toContain("Stuck Tickets: 1 on Mon 7 Sep → 2 on Tue 6 Oct");
     expect(seededWordsIn(result.stdout)).toEqual([]);

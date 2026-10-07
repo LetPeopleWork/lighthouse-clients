@@ -56,7 +56,7 @@ export const EVERY_TERM_RENAMED: Readonly<Record<string, string>> = {
   feature: "Outcome",
   features: "Outcomes",
   cycleTime: "Flow Time",
-  throughput: "Delivery Rate",
+  throughput: "Flow Rate",
   workInProgress: "Ongoing Work",
   wip: "Load",
   workItemAge: "Ticket Age",
