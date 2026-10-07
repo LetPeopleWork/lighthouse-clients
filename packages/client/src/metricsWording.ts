@@ -366,10 +366,20 @@ export const readBlocked = (
 ): MetricHistoryView<BlockedCountSnapshot> | null =>
   readHistory(value, readBlockedCount);
 
+/** The percentiles' history and how many days back each day's percentiles look, when Lighthouse says. */
+export type PercentilesOverTimeView =
+  MetricHistoryView<PercentilesOverTimeSnapshot> & {
+    readonly horizon: number | undefined;
+  };
+
 export const readPercentilesOverTime = (
   value: unknown,
-): MetricHistoryView<PercentilesOverTimeSnapshot> | null =>
-  readHistory(value, readPercentilesSnapshot);
+): PercentilesOverTimeView | null => {
+  const view = readHistory(value, readPercentilesSnapshot);
+  return view === null || !isFacts(value)
+    ? null
+    : { ...view, horizon: isNumber(value.horizon) ? value.horizon : undefined };
+};
 
 export const readProcessBehaviorOverTime = (
   value: unknown,
@@ -805,3 +815,98 @@ export const describeBlockedOverTime = (
     (first, last) =>
       fromFirstToLast(first, last, (entry) => String(entry.blockedCount)),
   );
+
+// ── One metric, every day ────────────────────────────────────────────────────
+
+/**
+ * One metric over its days: the sentence that answers it, its day table with the header row first, and
+ * the web's empty-chart sentence in place of a table when Lighthouse has recorded no day.
+ */
+export type MetricDayView = { readonly sentence: string } & MetricDays;
+
+type MetricDays =
+  | { readonly rows: readonly (readonly string[])[] }
+  | { readonly note: string };
+
+const dayTable = <T>(
+  header: readonly string[],
+  entries: readonly T[],
+  row: (entry: T) => readonly string[],
+): MetricDays =>
+  entries.length === 0
+    ? { note: OVER_TIME_EMPTY_SENTENCE }
+    : { rows: [header, ...entries.map(row)] };
+
+/** "Total Throughput: 31 Work Items, 1.0 / day", then the count closed on each day. */
+export const describeThroughputDays = (
+  chart: DailyCountChartView,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => {
+  const counted = countedOf(scope, terms);
+  return {
+    sentence: `${metricsHeadlineLabel("throughput", scope, terms)}: ${countOf(chart.total, counted)}, ${perDay(chart)}`,
+    ...dayTable(["Date", `${counted.many} closed`], chart.daily, (day) => [
+      dayOf(day.date),
+      String(day.count),
+    ]),
+  };
+};
+
+/** "Total Work Item Age: 84 days across 9 Work Items on Tue 6 Oct 2026", then each day's total. */
+export const describeTotalWorkItemAgeDays = (
+  view: TotalWorkItemAgeOverTimeResult,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => {
+  const label = metricsHeadlineLabel("totalWorkItemAge", scope, terms);
+  const counted = countedOf(scope, terms);
+  const last = latestBy(view.daily, (day) => day.date);
+  return {
+    sentence:
+      last === undefined
+        ? label
+        : `${label}: ${describeDays(last.totalAge)} across ${countOf(last.itemCount, counted)} on ${dayOf(last.date)}`,
+    ...dayTable(["Date", label, counted.many], view.daily, (day) => [
+      dayOf(day.date),
+      describeDays(day.totalAge),
+      String(day.itemCount),
+    ]),
+  };
+};
+
+/** "Cycle Time over the last 30 days, per recorded day", then each recorded day's percentiles. */
+export const describePercentilesOverTimeDays = (
+  view: PercentilesOverTimeView,
+  terms: Terms,
+): MetricDayView => ({
+  sentence:
+    view.horizon === undefined
+      ? `${terms.cycleTime} per recorded day`
+      : `${terms.cycleTime} over the last ${describeDays(view.horizon)}, per recorded day`,
+  ...dayTable(["Date", "50th", "70th", "85th", "95th"], view.history, (day) => [
+    dayOf(day.recordedAt),
+    describeDays(day.p50),
+    describeDays(day.p70),
+    describeDays(day.p85),
+    describeDays(day.p95),
+  ]),
+});
+
+/** "Throughput natural process limits per recorded day", then each recorded day's limits. */
+export const describeProcessBehaviorOverTimeDays = (
+  view: MetricHistoryView<ProcessBehaviorSnapshot>,
+  terms: Terms,
+): MetricDayView => ({
+  sentence: `${terms.throughput} natural process limits per recorded day`,
+  ...dayTable(
+    ["Date", "Lower limit", "Average", "Upper limit"],
+    view.history,
+    (day) => [
+      dayOf(day.recordedAt),
+      limitOf(day.lnpl),
+      day.average.toFixed(1),
+      limitOf(day.unpl),
+    ],
+  ),
+});

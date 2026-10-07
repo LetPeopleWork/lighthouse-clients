@@ -7,15 +7,20 @@ import {
   describeOverTimeHeading,
   describePercentileRows,
   describePercentilesOverTime,
+  describePercentilesOverTimeDays,
   describePredictabilityScore,
   describeProcessBehaviorOverTime,
+  describeProcessBehaviorOverTimeDays,
   describeRefusedMetric,
+  describeThroughputDays,
   describeTotalArrivals,
   describeTotalThroughput,
   describeTotalWorkItemAge,
+  describeTotalWorkItemAgeDays,
   describeUnknownMetric,
   isMetricRefusal,
   type MetricAnswer,
+  type MetricDayView,
   type MetricLine,
   type MetricsHeadlinePart,
   type MetricsSubject,
@@ -233,4 +238,92 @@ export const renderMetricsHeadline = (
     .filter((section) => section.length > 0)
     .map((section) => section.join("\n"))
     .join("\n\n");
+};
+
+// A metric's day view, or null when its section is refused or in a shape this version cannot read.
+type DayViewRenderer = (
+  subject: MetricsSubject,
+  wording: AnswerWording,
+) => MetricDayView | null;
+
+const dayViewOf =
+  <T>(
+    key: string,
+    read: Reader<T>,
+    describe: (
+      view: T,
+      subject: MetricsSubject,
+      wording: AnswerWording,
+    ) => MetricDayView,
+  ): DayViewRenderer =>
+  (subject, wording) => {
+    const answer = readMetricAnswer(subject.sections[key], read);
+    return answer === null || isMetricRefusal(answer)
+      ? null
+      : describe(answer, subject, wording);
+  };
+
+// One entry per metric name `--metrics` accepts; a name without one prints the generic view.
+const DAY_VIEWS: Readonly<Partial<Record<string, DayViewRenderer>>> = {
+  throughput: dayViewOf(
+    "throughput",
+    readThroughput,
+    (chart, subject, wording) =>
+      describeThroughputDays(chart, subject.scope, wording.terms),
+  ),
+  totalWorkItemAge: dayViewOf(
+    "totalWorkItemAge",
+    readTotalWorkItemAge,
+    (view, subject, wording) =>
+      describeTotalWorkItemAgeDays(view, subject.scope, wording.terms),
+  ),
+  percentilesOverTime: dayViewOf(
+    "percentilesOverTime",
+    readPercentilesOverTime,
+    (view, _subject, wording) =>
+      describePercentilesOverTimeDays(view, wording.terms),
+  ),
+  processBehaviorOverTime: dayViewOf(
+    "processBehaviorOverTime",
+    readProcessBehaviorOverTime,
+    (view, _subject, wording) =>
+      describeProcessBehaviorOverTimeDays(view, wording.terms),
+  ),
+};
+
+const dayViewLines = (view: MetricDayView): string[] => [
+  view.sentence,
+  "",
+  ...("rows" in view ? toTableLines(view.rows) : [view.note]),
+];
+
+/**
+ * The metrics asked for by name, in the order asked: the heading, then each one's sentence and every
+ * day it has. Null when any of them has no day view yet, is refused or comes in a shape it does not know,
+ * so the command prints the generic view exactly as before.
+ */
+export const renderMetricDays = (
+  value: unknown,
+  wording: AnswerWording,
+  names: readonly string[],
+): string | null => {
+  const subject = readMetricsSubject(value);
+  if (subject === null || names.length === 0) {
+    return null;
+  }
+  const views: MetricDayView[] = [];
+  for (const name of names) {
+    const view = DAY_VIEWS[name]?.(subject, wording) ?? null;
+    if (view === null) {
+      return null;
+    }
+    views.push(view);
+  }
+  return [
+    describeMetricsHeading(subject, wording),
+    ...views.flatMap((view, index) => [
+      ...(index === 0 ? [] : [""]),
+      ...dayViewLines(view),
+    ]),
+  ].join("\n");
 };

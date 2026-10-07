@@ -6,10 +6,14 @@ import {
   describeInProgressNow,
   describeMetricsHeading,
   describePercentileRows,
+  describePercentilesOverTimeDays,
   describePredictabilityScore,
   describeProcessBehaviorOverTime,
+  describeProcessBehaviorOverTimeDays,
+  describeThroughputDays,
   describeTotalThroughput,
   describeTotalWorkItemAge,
+  describeTotalWorkItemAgeDays,
   OVER_TIME_EMPTY_SENTENCE,
   ordinalOf,
   readArrivals,
@@ -440,5 +444,138 @@ describe("the metrics headline wording", () => {
         SEEDED_TERMS,
       ),
     ).toMatchObject({ value: OVER_TIME_EMPTY_SENTENCE, detail: "" });
+  });
+});
+
+describe("one metric, every day", () => {
+  it("states Throughput's total for a Portfolio in Features, then the count of each day as Lighthouse dated it", () => {
+    expect(
+      describeThroughputDays(
+        {
+          ...RANGE,
+          total: 1,
+          daily: [
+            { date: "2026-09-07T00:00:00Z", count: 1 },
+            { date: "2026-09-08", count: 0 },
+          ],
+        },
+        "portfolio",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Total Throughput: 1 Feature, 0.0 / day",
+      rows: [
+        ["Date", "Features closed"],
+        ["Mon 7 Sep 2026", "1"],
+        ["Tue 8 Sep 2026", "0"],
+      ],
+    });
+  });
+
+  it("states Total Work Item Age as on its latest day, and says why a series with no day has no rows", () => {
+    expect(
+      describeTotalWorkItemAgeDays(
+        {
+          ...RANGE,
+          daily: [
+            { date: "2026-10-06", totalAge: 1, itemCount: 1 },
+            { date: "2026-09-07", totalAge: 61, itemCount: 7 },
+          ],
+        },
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence:
+        "Total Work Item Age: 1 day across 1 Work Item on Tue 6 Oct 2026",
+      rows: [
+        ["Date", "Total Work Item Age", "Work Items"],
+        ["Tue 6 Oct 2026", "1 day", "1"],
+        ["Mon 7 Sep 2026", "61 days", "7"],
+      ],
+    });
+    expect(
+      describeTotalWorkItemAgeDays(
+        { ...RANGE, daily: [] },
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Total Work Item Age",
+      note: OVER_TIME_EMPTY_SENTENCE,
+    });
+  });
+
+  it("names the percentiles' horizon only when Lighthouse states it", () => {
+    const snapshot = {
+      recordedAt: "2026-09-07",
+      metricType: "CycleTime" as const,
+      p50: 1,
+      p70: 2,
+      p85: 3,
+      p95: 4,
+    };
+    expect(
+      describePercentilesOverTimeDays(
+        { ...RANGE, horizon: 30, history: [snapshot] },
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Cycle Time over the last 30 days, per recorded day",
+      rows: [
+        ["Date", "50th", "70th", "85th", "95th"],
+        ["Mon 7 Sep 2026", "1 day", "2 days", "3 days", "4 days"],
+      ],
+    });
+    expect(
+      describePercentilesOverTimeDays(
+        { ...RANGE, horizon: undefined, history: [] },
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Cycle Time per recorded day",
+      note: OVER_TIME_EMPTY_SENTENCE,
+    });
+  });
+
+  it("reads the percentiles' horizon when the history carries one", () => {
+    const history = { ...RANGE, history: [] };
+    expect(readPercentilesOverTime({ ...history, horizon: 30 })).toEqual({
+      ...history,
+      horizon: 30,
+    });
+    expect(readPercentilesOverTime(history)).toEqual({
+      ...history,
+      horizon: undefined,
+    });
+  });
+
+  it("lists each recorded day's process limits, the limits to one decimal and the average always with one", () => {
+    expect(
+      describeProcessBehaviorOverTimeDays(
+        {
+          ...RANGE,
+          history: [
+            { recordedAt: "2026-09-07", lnpl: 0, average: 1, unpl: 3.44 },
+          ],
+        },
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Throughput natural process limits per recorded day",
+      rows: [
+        ["Date", "Lower limit", "Average", "Upper limit"],
+        ["Mon 7 Sep 2026", "0", "1.0", "3.4"],
+      ],
+    });
+    expect(
+      describeProcessBehaviorOverTimeDays(
+        { ...RANGE, history: [] },
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Throughput natural process limits per recorded day",
+      note: OVER_TIME_EMPTY_SENTENCE,
+    });
   });
 });

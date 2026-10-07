@@ -42,7 +42,7 @@ const NOTHING_RECORDED =
 
 describe("lh metrics team --metrics <name> --pretty", () => {
   // @driving_port @US-03 @contract-shape:pure-function
-  it.skip("shows Priya each day's throughput under the total", async () => {
+  it("shows Priya each day's throughput under the total", async () => {
     const result = await gravitysLighthouse().run(
       metricOfGravity("throughput"),
     );
@@ -174,7 +174,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @error @US-03 — AC-03.2: overTimeEmptyState.ts, verbatim
-  it.skip.each([
+  it.each([
     { metric: "percentilesOverTime", read: "getTeamPercentilesOverTime" },
     {
       metric: "processBehaviorOverTime",
@@ -264,7 +264,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @error @version-skew @US-03 — D5 + M1: one metric lh cannot read prints the generic view, silently
-  it.skip("shows the facts as they came when the one metric asked for has a shape lh does not know", async () => {
+  it("shows the facts as they came when the one metric asked for has a shape lh does not know", async () => {
     const recognised = await gravitysLighthouse().run(
       metricOfGravity("totalWorkItemAge"),
     );
@@ -286,7 +286,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
   });
 
   // @boundary @US-03 @reader-time-zone — D15
-  it.skip.each(["America/Adak", "Pacific/Kiritimati"])(
+  it.each(["America/Adak", "Pacific/Kiritimati"])(
     "dates each day as Lighthouse recorded it for a reader in %s",
     async (zone) => {
       const result = await inTimeZone(zone, () =>

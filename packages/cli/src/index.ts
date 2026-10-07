@@ -20,7 +20,7 @@ import {
   mapApiResultToCliResult,
 } from "./commandResult";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
-import { renderMetricsHeadline } from "./metricsOutput";
+import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
   DEFAULT_OUTPUT_FORMAT,
   isOutputFormat,
@@ -2051,7 +2051,7 @@ const runMetricsGroup = async (
         definitionId: definitionIdOrError.definitionId,
       },
     );
-  if (outputFormat !== "pretty" || metricsFilterOrError !== null) {
+  if (outputFormat !== "pretty") {
     return mapApiResultToCliResult(
       { ok: true, value: await buildPayload() },
       outputFormat,
@@ -2074,10 +2074,15 @@ const runMetricsGroup = async (
   const systemWipLimit = readSystemWipLimit(
     ownerRead.ok ? ownerRead.value : null,
   );
+  const asked =
+    metricsFilterOrError === null ? null : [...metricsFilterOrError];
   return mapApiResultToCliResult(
     { ok: true, value: payload },
     outputFormat,
-    (facts) => renderMetricsHeadline(facts, wording, systemWipLimit),
+    (facts) =>
+      asked === null
+        ? renderMetricsHeadline(facts, wording, systemWipLimit)
+        : renderMetricDays(facts, wording, asked),
   );
 };
 
