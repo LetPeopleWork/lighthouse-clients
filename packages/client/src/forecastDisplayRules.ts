@@ -1,21 +1,67 @@
-// RED scaffold (story 6218, slice 01): the web's forecast display rules, restated once for the CLI and the
-// MCP summaries. DELIVER slice 01 replaces the bodies and exports the module from index.ts.
-export const __SCAFFOLD__ = true;
+// The web's forecast display rules, restated once so the CLI and the MCP summaries read a forecast the way
+// the browser does. The parity tests name the web file each rule mirrors; re-read it when that file changes.
 
 export type ForecastLevelName = "Certain" | "Confident" | "Realistic" | "Risky";
 
 export type LikelihoodPrecision = "round" | "fixed2";
 
-export const levelOf = (_chance: number | null): ForecastLevelName | null => {
-  throw new Error("Not yet implemented -- RED scaffold");
+export const CANNOT_FORECAST_SHORT = "Cannot forecast";
+
+export const INSUFFICIENT_FORECAST_DATA_SHORT = "Not enough data";
+
+const RISKY_UP_TO = 50;
+const REALISTIC_UP_TO = 70;
+const CONFIDENT_UP_TO = 85;
+const CERTAINTY_CAP_THRESHOLD = 95;
+
+export const levelOf = (chance: number | null): ForecastLevelName | null => {
+  // No forecast is its own state, not a bad one: null must not read as "Risky".
+  if (chance === null) {
+    return null;
+  }
+  if (chance <= RISKY_UP_TO) {
+    return "Risky";
+  }
+  if (chance <= REALISTIC_UP_TO) {
+    return "Realistic";
+  }
+  if (chance <= CONFIDENT_UP_TO) {
+    return "Confident";
+  }
+  return "Certain";
 };
 
 export const formatLikelihood = (
-  _value: number,
-  _options: {
+  value: number,
+  options: {
     readonly hasRemainingWork: boolean;
     readonly precision: LikelihoodPrecision;
   },
 ): string => {
-  throw new Error("Not yet implemented -- RED scaffold");
+  // A finished piece of work is certain, so only an open one is capped below a promise of 100%.
+  if (value > CERTAINTY_CAP_THRESHOLD && options.hasRemainingWork) {
+    return `>${CERTAINTY_CAP_THRESHOLD}%`;
+  }
+  if (options.precision === "round") {
+    return `${Math.round(value)}%`;
+  }
+  return `${value.toFixed(2)}%`;
+};
+
+export const likelihoodAnswer = (facts: {
+  readonly likelihood: number | null;
+  readonly cannotBeForecast: boolean;
+  readonly hasRemainingWork: boolean;
+  // An older Lighthouse does not say; then the history is not called thin.
+  readonly hasSufficientData?: boolean;
+  readonly precision: LikelihoodPrecision;
+}): string => {
+  if (facts.cannotBeForecast || facts.likelihood === null) {
+    return CANNOT_FORECAST_SHORT;
+  }
+  // Thin history only matters while there is still work to forecast.
+  if (facts.hasRemainingWork && facts.hasSufficientData === false) {
+    return INSUFFICIENT_FORECAST_DATA_SHORT;
+  }
+  return formatLikelihood(facts.likelihood, facts);
 };

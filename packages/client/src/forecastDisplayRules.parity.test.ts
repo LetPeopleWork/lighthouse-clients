@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { formatLikelihood, levelOf } from "./forecastDisplayRules";
+import {
+  formatLikelihood,
+  levelOf,
+  likelihoodAnswer,
+} from "./forecastDisplayRules";
 
-// Story 6218, slice 01 (DSN-7). The web decides a forecast's level and how a likelihood reads in the browser;
+// The web decides a forecast's level and how a likelihood reads in the browser;
 // the clients restate those rules. Each row is a case the web's own tests pin, naming the file it mirrors, so
 // the two cannot drift apart unnoticed on this side. A change on the web does not fail this suite: re-read
 // the named file when it changes.
 
 describe("the web's forecast display rules, restated for the clients", () => {
   // @boundary @US-01 @contract-shape:pure-function — ForecastLevel.ts: ≤50 Risky, ≤70 Realistic, ≤85 Confident
-  it.skip.each([
+  it.each([
     { chance: 0, level: "Risky" },
     { chance: 50, level: "Risky" },
     { chance: 50.01, level: "Realistic" },
@@ -27,7 +31,7 @@ describe("the web's forecast display rules, restated for the clients", () => {
   );
 
   // @boundary @US-01 @US-06 @contract-shape:pure-function — formatLikelihood.ts, CERTAINTY_CAP_THRESHOLD = 95
-  it.skip.each([
+  it.each([
     { value: 95, hasRemainingWork: true, precision: "fixed2", reads: "95.00%" },
     {
       value: 95.01,
@@ -60,4 +64,58 @@ describe("the web's forecast display rules, restated for the clients", () => {
       );
     },
   );
+});
+
+describe("the one answer a likelihood gives, in the web's order", () => {
+  const forecastable = {
+    likelihood: 78.2,
+    cannotBeForecast: false,
+    hasRemainingWork: true,
+    hasSufficientData: true,
+    precision: "round",
+  } as const;
+
+  it.each([
+    {
+      why: "the forecast cannot be made, even on thin history",
+      facts: { cannotBeForecast: true, hasSufficientData: false },
+      reads: "Cannot forecast",
+    },
+    {
+      why: "Lighthouse gives no likelihood",
+      facts: { likelihood: null },
+      reads: "Cannot forecast",
+    },
+    {
+      why: "history is thin while work remains",
+      facts: { hasSufficientData: false },
+      reads: "Not enough data",
+    },
+    {
+      why: "history is thin but the work is done",
+      facts: {
+        hasSufficientData: false,
+        hasRemainingWork: false,
+        likelihood: 100,
+      },
+      reads: "100%",
+    },
+    {
+      why: "an older Lighthouse does not say whether history is thin",
+      facts: { hasSufficientData: undefined },
+      reads: "78%",
+    },
+    {
+      why: "the likelihood is above the cap while work remains",
+      facts: { likelihood: 98.6 },
+      reads: ">95%",
+    },
+    {
+      why: "two decimals are asked for",
+      facts: { likelihood: 48.2034, precision: "fixed2" },
+      reads: "48.20%",
+    },
+  ] as const)("reads '$reads' when $why", ({ facts, reads }) => {
+    expect(likelihoodAnswer({ ...forecastable, ...facts })).toBe(reads);
+  });
 });
