@@ -18,6 +18,8 @@ import {
   describeProcessBehaviorOverTimeDays,
   describeRefusedMetric,
   describeThroughputDays,
+  describeTimeInState,
+  describeTimeInStateDays,
   describeTotalArrivals,
   describeTotalThroughput,
   describeTotalWorkItemAge,
@@ -48,6 +50,7 @@ import {
   readWip,
   readWorkItemAge,
   readWorkItemAgePercentiles,
+  timeInStateItemCount,
 } from "@letpeoplework/lighthouse-client";
 import { toTableLines } from "./table";
 
@@ -115,6 +118,7 @@ const lineCells = (line: MetricLine): string[] => [
 const headlineLines = (
   walk: Walk,
   systemWipLimit: number | undefined,
+  pickedItemCount: number | undefined,
 ): MetricLine[] => {
   const { scope } = walk.subject;
   const { terms } = walk.wording;
@@ -146,6 +150,20 @@ const headlineLines = (
       "predictabilityScore",
       readPredictabilityScore,
       (view) => [describePredictabilityScore(view, scope, terms)],
+    ),
+    ...walk.section(
+      "cumulativeStateTime",
+      "cumulativeStateTime",
+      readCumulativeStateTime,
+      (view) =>
+        nested(walk, "cumulativeStateTime", view.bar, (bar) => [
+          describeTimeInState(
+            bar,
+            timeInStateItemCount(view, pickedItemCount),
+            scope,
+            terms,
+          ),
+        ]),
     ),
   ];
 };
@@ -206,12 +224,6 @@ const overTimeSection = (walk: Walk): string[] => {
     ]),
     // Not on the headline yet; read so a shape this version does not know is still named.
     ...walk.section("workItemAge", "workItemAge", readWorkItemAge, () => []),
-    ...walk.section(
-      "cumulativeStateTime",
-      "cumulativeStateTime",
-      readCumulativeStateTime,
-      () => [],
-    ),
   ];
   return lines.length === 0
     ? []
@@ -230,13 +242,14 @@ export const renderMetricsHeadline = (
   value: unknown,
   wording: AnswerWording,
   systemWipLimit: number | undefined,
+  pickedItemCount?: number,
 ): string | null => {
   const subject = readMetricsSubject(value);
   if (subject === null) {
     return null;
   }
   const walk = walkOf(subject, wording);
-  const headline = headlineLines(walk, systemWipLimit);
+  const headline = headlineLines(walk, systemWipLimit, pickedItemCount);
   return [
     [describeMetricsHeading(subject, wording)],
     headline.length === 0 ? [] : toTableLines(headline.map(lineCells)),
@@ -253,6 +266,7 @@ type DayFacts = {
   readonly wording: AnswerWording;
   readonly systemWipLimit: number | undefined;
   readonly cycleTimeDefinitionName: string | undefined;
+  readonly pickedItemCount: number | undefined;
 };
 
 // A metric's day view, or null when a section it needs is refused or in a shape this version cannot read.
@@ -345,6 +359,30 @@ const workItemAgeDays: DayView = {
   },
 };
 
+const timeInStateDays = overTheRange(
+  ({ subject, wording, pickedItemCount }) => {
+    const view = sectionOf(
+      subject,
+      "cumulativeStateTime",
+      readCumulativeStateTime,
+    );
+    if (view === null || !answered(view.bar)) {
+      return null;
+    }
+    // A drill-down asked for and refused leaves the whole view to the generic one, as any refused part does.
+    if (view.items !== undefined && !answered(view.items)) {
+      return null;
+    }
+    return describeTimeInStateDays(
+      view.bar,
+      timeInStateItemCount(view, pickedItemCount),
+      view.items,
+      subject.scope,
+      wording.terms,
+    );
+  },
+);
+
 // One entry per metric name `--metrics` accepts; a name without one prints the generic view.
 const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
   throughput: dayViewOf(
@@ -358,6 +396,7 @@ const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
   ),
   wip: wipDays,
   cycleTime: cycleTimeDays,
+  cumulativeStateTime: timeInStateDays,
   workItemAge: workItemAgeDays,
   predictabilityScore: dayViewOf(
     "predictabilityScore",
@@ -388,8 +427,10 @@ const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
   ),
 };
 
-const tableLines = (days: MetricDays): string[] =>
-  "rows" in days ? toTableLines(days.rows) : [days.note];
+const tableLines = (days: MetricDays): string[] => [
+  ...(days.title === undefined ? [] : [days.title]),
+  ...("rows" in days ? toTableLines(days.rows) : [days.note]),
+];
 
 const dayViewLines = (view: MetricDayView): string[] => [
   view.sentence,
@@ -412,6 +453,7 @@ export const renderMetricDays = (
   owner: {
     readonly systemWipLimit?: number;
     readonly cycleTimeDefinitionName?: string;
+    readonly pickedItemCount?: number;
   } = {},
 ): string | null => {
   const subject = readMetricsSubject(value);
@@ -423,6 +465,7 @@ export const renderMetricDays = (
     wording,
     systemWipLimit: owner.systemWipLimit,
     cycleTimeDefinitionName: owner.cycleTimeDefinitionName,
+    pickedItemCount: owner.pickedItemCount,
   };
   const views: MetricDayView[] = [];
   let asOf = true;

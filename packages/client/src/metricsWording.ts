@@ -947,9 +947,11 @@ export type MetricDayView = { readonly sentence: string } & (
   | { readonly tables: readonly MetricDays[] }
 );
 
-export type MetricDays =
+/** A table, or the sentence that stands in for it, with the title the dashboard puts above it, if any. */
+export type MetricDays = { readonly title?: string } & (
   | { readonly rows: readonly (readonly string[])[] }
-  | { readonly note: string };
+  | { readonly note: string }
+);
 
 const dayTable = <T>(
   header: readonly string[],
@@ -1228,6 +1230,118 @@ export const describeProcessBehaviorOverTimeDays = (
     ],
   ),
 });
+
+/** What the web's Time in State chart says when it has no state to show. */
+export const NO_DATA_YET = "No data yet.";
+
+/**
+ * How many Work Items Time in State is across: the ones picked with --item-ids, otherwise every one the web
+ * offers to pick from; absent when Lighthouse refused that list and none were picked.
+ */
+export const timeInStateItemCount = (
+  view: CumulativeStateTimeView,
+  picked: number | undefined,
+): number | undefined =>
+  picked ??
+  (isMetricRefusal(view.candidates) ? undefined : view.candidates.items.length);
+
+const statesOf = (count: number): string =>
+  count === 1 ? "1 state" : `${count} states`;
+
+const acrossOf = (
+  itemCount: number | undefined,
+  scope: MetricsScope,
+  terms: Terms,
+): string =>
+  itemCount === undefined
+    ? ""
+    : `across ${countOf(itemCount, countedOf(scope, terms))}`;
+
+/** "Time in State  4 states  across 42 Work Items". */
+export const describeTimeInState = (
+  bar: CumulativeStateTimeResult,
+  itemCount: number | undefined,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricLine => ({
+  label: metricsHeadlineLabel("cumulativeStateTime", scope, terms),
+  value: statesOf(bar.states.length),
+  detail: acrossOf(itemCount, scope, terms),
+});
+
+const inWorkflowOrder = (
+  states: readonly CumulativeStateTimeStateRow[],
+): readonly CumulativeStateTimeStateRow[] =>
+  [...states].sort((left, right) => left.workflowOrder - right.workflowOrder);
+
+const contributorsOf = (
+  contributors: CumulativeStateTimeItemsResult,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDays => {
+  const title = `${countedOf(scope, terms).many} contributing to ${contributors.state}`;
+  return contributors.items.length === 0
+    ? { title, note: NO_DATA_YET }
+    : {
+        title,
+        rows: [
+          ["ID", "Name", "Type", "State", "Days Contributed"],
+          ...contributors.items.map((item) => [
+            item.referenceId,
+            item.title,
+            item.type,
+            item.state,
+            String(item.daysContributed),
+          ]),
+        ],
+      };
+};
+
+const stateRowOf = (state: CumulativeStateTimeStateRow): readonly string[] => [
+  state.state,
+  String(state.totalDays),
+  String(state.itemCount),
+  String(state.completedItemCount),
+  String(state.ongoingItemCount),
+  `${state.meanDays.toFixed(1)} days`,
+  state.medianDays === null ? ABSENT : describeDays(state.medianDays),
+];
+
+/**
+ * "Time in State across 42 Work Items", then one row per state in workflow order with the facts the web's
+ * tooltip shows, and the Work Items contributing to a state when one was asked for. Mean and median are
+ * printed as Lighthouse sent them, never worked out again.
+ */
+export const describeTimeInStateDays = (
+  bar: CumulativeStateTimeResult,
+  itemCount: number | undefined,
+  contributors: CumulativeStateTimeItemsResult | undefined,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricDayView => {
+  const label = metricsHeadlineLabel("cumulativeStateTime", scope, terms);
+  const across = acrossOf(itemCount, scope, terms);
+  const header = [
+    "State",
+    "Total days",
+    countedOf(scope, terms).many,
+    "Completed",
+    "Ongoing",
+    "Mean",
+    "Median",
+  ];
+  const states: MetricDays =
+    bar.states.length === 0
+      ? { note: NO_DATA_YET }
+      : { rows: [header, ...inWorkflowOrder(bar.states).map(stateRowOf)] };
+  return {
+    sentence: across === "" ? label : `${label} ${across}`,
+    tables:
+      contributors === undefined
+        ? [states]
+        : [states, contributorsOf(contributors, scope, terms)],
+  };
+};
 
 const notesOf = (view: MetricDayView): readonly string[] =>
   ("tables" in view ? view.tables : [view]).flatMap((days) =>

@@ -2115,10 +2115,16 @@ const runMetricsGroup = async (
     outputFormat,
     (facts) =>
       asked === null
-        ? renderMetricsHeadline(facts, wording, systemWipLimit)
+        ? renderMetricsHeadline(
+            facts,
+            wording,
+            systemWipLimit,
+            itemIdsOrError?.length,
+          )
         : renderMetricDays(facts, wording, asked, {
             systemWipLimit,
             cycleTimeDefinitionName,
+            pickedItemCount: itemIdsOrError?.length,
           }),
   );
 };

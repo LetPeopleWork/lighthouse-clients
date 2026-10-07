@@ -19,7 +19,6 @@ import {
 } from "../test-support/cliHarness";
 
 // Story 6218, slice 04 (US-04): Time in State as a table in workflow order, with its drill-down.
-// Every scenario but the format guard is pending until DELIVER slice 04 un-skips it.
 
 const timeInStateOfGravity = (...flags: string[]) => [
   "metrics",
@@ -45,7 +44,7 @@ const STATES_IN_WORKFLOW_ORDER = [
 
 describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   // @driving_port @US-04 @contract-shape:pure-function
-  it.skip("shows Priya where Gravity's time goes, one state per row in workflow order", async () => {
+  it("shows Priya where Gravity's time goes, one state per row in workflow order", async () => {
     const lighthouse = gravitysLighthouse();
 
     const result = await lighthouse.run(timeInStateOfGravity());
@@ -61,7 +60,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   });
 
   // @boundary @US-04 — AC-04.1
-  it.skip("says '—' for a state without a median", async () => {
+  it("says '—' for a state without a median", async () => {
     const result = await gravitysLighthouse().run(timeInStateOfGravity());
 
     expect(shownLines(result.stdout)).toContain("Test 61 23 20 3 2.7 days —");
@@ -69,7 +68,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   });
 
   // @US-04 — AC-04.3: the picker's list is the web's control, not an answer
-  it.skip("does not print the list of Work Items the web offers to pick from", async () => {
+  it("does not print the list of Work Items the web offers to pick from", async () => {
     const result = await gravitysLighthouse().run(timeInStateOfGravity());
 
     expect(shownLines(result.stdout)[1]).toBe(
@@ -79,7 +78,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   });
 
   // @driving_port @US-04 — the drill-down dialog, verbatim
-  it.skip("lists the Work Items contributing to Review with their days", async () => {
+  it("lists the Work Items contributing to Review with their days", async () => {
     const lighthouse = gravitysLighthouse();
 
     const result = await lighthouse.run(
@@ -99,7 +98,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   });
 
   // @boundary @US-04 — AC-04.2: the picked subset narrows the count, as the web narrows it
-  it.skip("counts only the Work Items Priya picked", async () => {
+  it("counts only the Work Items Priya picked", async () => {
     const result = await gravitysLighthouse().run(
       timeInStateOfGravity("--item-ids", "61,64"),
     );
@@ -110,7 +109,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   });
 
   // @US-04 @kpi — KPI-5
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -129,7 +128,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
   });
 
   // @error @version-skew @US-04 — D5 + M1
-  it.skip("shows the facts as they came when the states arrive without their workflow order", async () => {
+  it("shows the facts as they came when the states arrive without their workflow order", async () => {
     const recognised = await gravitysLighthouse().run(timeInStateOfGravity());
     expect(shownLines(recognised.stdout)).toContain(
       STATES_IN_WORKFLOW_ORDER[0],

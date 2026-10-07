@@ -42,6 +42,7 @@ const HEADLINE = [
   "Blocked Work Items 2",
   "Total Work Item Age 84 days across 9 Work Items",
   "Predictability Score 63.4%",
+  "Time in State 4 states across 42 Work Items",
 ];
 
 const PERCENTILES = [

@@ -17,12 +17,15 @@ import {
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
   describeThroughputDays,
+  describeTimeInState,
+  describeTimeInStateDays,
   describeTotalThroughput,
   describeTotalWorkItemAge,
   describeTotalWorkItemAgeDays,
   describeWipDays,
   describeWorkItemAgeDays,
   describeWorkItemAgePercentiles,
+  NO_DATA_YET,
   OVER_TIME_EMPTY_SENTENCE,
   ordinalOf,
   PREDICTABILITY_SCORE_EXPLANATION,
@@ -43,6 +46,7 @@ import {
   readWip,
   readWorkItemAge,
   readWorkItemAgePercentiles,
+  timeInStateItemCount,
 } from "./metricsWording";
 import { SEEDED_TERMS } from "./terminology";
 
@@ -999,5 +1003,104 @@ describe("one metric as an assistant is told it", () => {
       "Work Items in Progress: 0",
       OVER_TIME_EMPTY_SENTENCE,
     ]);
+  });
+});
+
+describe("Time in State", () => {
+  const candidates = (count: number) => ({
+    items: Array.from({ length: count }, (_, index) => ({
+      workItemId: 40 + index,
+      referenceId: `GR-0${40 + index}`,
+      title: `Backlog item ${index + 1}`,
+      workItemType: "User Story",
+    })),
+  });
+
+  it("cannot be read when a state comes without its place in the workflow", () => {
+    const [review] = states().states;
+    const { workflowOrder: _notSent, ...unordered } = review;
+
+    expect(
+      readCumulativeStateTime({
+        bar: { states: [unordered] },
+        candidates: candidates(1),
+      }),
+    ).toBeNull();
+  });
+
+  it("is across the Work Items picked, otherwise every one offered to pick from", () => {
+    const view = readCumulativeStateTime({
+      bar: states(),
+      candidates: candidates(42),
+    });
+    if (view === null) {
+      throw new Error("Time in State should read");
+    }
+
+    expect(timeInStateItemCount(view, undefined)).toBe(42);
+    expect(timeInStateItemCount(view, 2)).toBe(2);
+    expect(
+      timeInStateItemCount(
+        { ...view, candidates: { refused: "forbidden: No access" } },
+        undefined,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("says on the headline how many states and across how many Work Items", () => {
+    expect(describeTimeInState(states(), 42, "team", SEEDED_TERMS)).toEqual({
+      label: "Time in State",
+      value: "1 state",
+      detail: "across 42 Work Items",
+    });
+    expect(
+      describeTimeInState(
+        { states: [...states().states, ...states().states] },
+        1,
+        "portfolio",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      label: "Time in State",
+      value: "2 states",
+      detail: "across 1 Feature",
+    });
+    expect(
+      describeTimeInState(states(), undefined, "team", SEEDED_TERMS).detail,
+    ).toBe("");
+  });
+
+  it("says there is no data yet when Lighthouse sends no state", () => {
+    expect(
+      describeTimeInStateDays(
+        { states: [] },
+        42,
+        undefined,
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({
+      sentence: "Time in State across 42 Work Items",
+      tables: [{ note: NO_DATA_YET }],
+    });
+    expect(NO_DATA_YET).toBe("No data yet.");
+  });
+
+  it("titles the Work Items contributing to a state, and says when none did", () => {
+    const view = describeTimeInStateDays(
+      states(),
+      undefined,
+      { state: "Review", items: [] },
+      "team",
+      SEEDED_TERMS,
+    );
+
+    expect(view).toMatchObject({
+      sentence: "Time in State",
+      tables: [
+        { rows: [expect.any(Array), expect.any(Array)] },
+        { title: "Work Items contributing to Review", note: NO_DATA_YET },
+      ],
+    });
   });
 });
