@@ -120,6 +120,14 @@ export const describeDeliveryListTitle = (
 export const describeNoDeliveries = (terms: Terms): string =>
   `No ${terms.deliveries}`;
 
+/** How many Deliveries the list holds, in the instance's words: "No Deliveries", "1 Delivery", "4 Deliveries". */
+export const describeDeliveryCount = (count: number, terms: Terms): string => {
+  if (count === 0) {
+    return describeNoDeliveries(terms);
+  }
+  return `${count} ${count === 1 ? terms.delivery : terms.deliveries}`;
+};
+
 /** The list's column headings: the card's header facts, its four forecast chances narrowed to the 85% one. */
 export const describeDeliveryListHeadings = (terms: Terms): string[] => [
   "Name",

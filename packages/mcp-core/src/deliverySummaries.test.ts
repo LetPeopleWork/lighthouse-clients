@@ -14,8 +14,7 @@ import {
   summaryBlockOf,
 } from "../test-support/mcpHarness";
 
-// Story 6218, slice 06: the Delivery tools. The list keeps its facts and adds a count (M3); the recorded days
-// add the heading lh prints. Pending until DELIVER slice 06.
+// The Delivery tools: the list keeps its facts and adds a count; the recorded days add the heading lh prints.
 
 const deliveriesAssistant = (reads = {}) =>
   anAssistantOn({
@@ -29,8 +28,8 @@ const Q4_HEADING =
   "Delivery [id: 11] · Delivery Date Tue 15 Dec 2026 · recorded since Tue 15 Sep 2026";
 
 describe("the Delivery tools' summary", () => {
-  // @driving_port @US-06 @contract-shape:bounded-change — M3
-  it.skip.each([
+  // @driving_port @US-06 @contract-shape:bounded-change
+  it.each([
     { deliveries: oceanExplorersDeliveries(), says: "summary: 4 Deliveries" },
     { deliveries: [aDelivery()], says: "summary: 1 Delivery" },
   ])(
@@ -51,7 +50,7 @@ describe("the Delivery tools' summary", () => {
   );
 
   // @driving_port @US-06 @contract-shape:bounded-change
-  it.skip("keeps the summarised recorded days as they are and adds their heading in a second block", async () => {
+  it("keeps the summarised recorded days as they are and adds their heading in a second block", async () => {
     const result = await deliveriesAssistant().call(
       "lighthouse_delivery_metrics",
       {
@@ -65,7 +64,7 @@ describe("the Delivery tools' summary", () => {
   });
 
   // @driving_port @US-06 @contract-shape:bounded-change
-  it.skip("hands the detailed recorded days over with their heading as a summary field", async () => {
+  it("hands the detailed recorded days over with their heading as a summary field", async () => {
     const result = await deliveriesAssistant().call(
       "lighthouse_delivery_metrics",
       {

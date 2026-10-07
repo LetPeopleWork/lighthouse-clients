@@ -7,6 +7,8 @@ import {
   describeBacktestSummary,
   describeBlockedDays,
   describeCycleTimeDays,
+  describeDeliveryCount,
+  describeDeliveryMetricsHeading,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
   describeMetricSummary,
@@ -32,6 +34,8 @@ import {
   readBlocked,
   readCycleTimeDefinitionName,
   readCycleTimePercentiles,
+  readDeliveryList,
+  readDeliveryMetricsHistory,
   readManualForecast,
   readOwnerList,
   readPercentilesOverTime,
@@ -1096,13 +1100,14 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
   {
     name: "lighthouse_delivery_list",
-    description: "List deliveries for a portfolio by portfolio ID.",
+    description:
+      "List deliveries for a portfolio by portfolio ID. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
   {
     name: "lighthouse_delivery_metrics",
     description:
-      'Get a delivery\'s recorded trend by delivery ID: one row per day with total, done and remaining work, the epic count and the likelihood. Set detail to "epics" for the per-epic breakdown and the forecast distribution, which are far larger. Forward-only, so it starts at the first recorded snapshot. Requires Lighthouse newer than v26.5.29.5.',
+      "Get a delivery's recorded trend by delivery ID: one row per day with total, done and remaining work, the epic count and the likelihood. Set detail to \"epics\" for the per-epic breakdown and the forecast distribution, which are far larger. Forward-only, so it starts at the first recorded snapshot. `summary` states the delivery and its date as lh heads them, in the instance's terminology: a second text block beside the rows, a field of the detailed payload. Requires Lighthouse newer than v26.5.29.5.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2593,14 +2598,24 @@ export const createMcpCoreRuntime = (
           "delivery: invalid id (portfolio id required)",
         );
       }
-      const result = await client.listDeliveries(id);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `deliveries: ${encodePayload(result.value)}`,
+      const [result, terms] = await Promise.all([
+        client.listDeliveries(id),
+        readTerms(client),
+      ]);
+      if (!result.ok) {
+        return getErrorToolResult(
+          `delivery: ${result.error.category} (${result.error.reason})`,
         );
       }
-      return getErrorToolResult(
-        `delivery: ${result.error.category} (${result.error.reason})`,
+      return withSummary(
+        "deliveries",
+        result.value,
+        summaryOrNull(() => {
+          const deliveries = readDeliveryList(result.value);
+          return deliveries === null
+            ? null
+            : describeDeliveryCount(deliveries.length, terms);
+        }),
       );
     }
 
@@ -2614,19 +2629,29 @@ export const createMcpCoreRuntime = (
       const wantsEpics =
         (argumentsPayload as { readonly detail?: unknown } | null)?.detail ===
         "epics";
-      const result = await client.getDeliveryMetricsHistory(id);
+      const [result, terms] = await Promise.all([
+        client.getDeliveryMetricsHistory(id),
+        readTerms(client),
+      ]);
       if (!result.ok) {
         return getErrorToolResult(
           `delivery metrics: ${result.error.category} (${result.error.reason})`,
         );
       }
-      // Summarised by default (ADR-121): a 90-day window over fifteen epics is more breakdown
-      // objects than an assistant should be handed to answer "how has the scope moved?".
+      // Summarised by default: a 90-day window over fifteen epics is more breakdown objects than an
+      // assistant should be handed to answer "how has the scope moved?".
       const payload = wantsEpics
         ? result.value
         : summariseDeliveryMetricsHistory(result.value);
-      return getSuccessToolResult(
-        `delivery metrics: ${encodePayload(payload)}`,
+      return withSummary(
+        "delivery metrics",
+        payload,
+        summaryOrNull(() => {
+          const history = readDeliveryMetricsHistory(result.value);
+          return history === null
+            ? null
+            : describeDeliveryMetricsHeading(history, id, terms);
+        }),
       );
     }
 

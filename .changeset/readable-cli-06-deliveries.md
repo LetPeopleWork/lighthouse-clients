@@ -31,7 +31,16 @@ by. The flag keeps its name; the output says Features. Every day's detail stays 
 with no recorded day prints the heading, then `No data yet.` A history in a shape the view cannot fully
 read prints the generic view, exit 0, as before. `--json` and `--toon` are unchanged.
 
-The client package gains `readDeliveryList`, `describeDeliveryListTitle`, `describeNoDeliveries`,
+The Delivery tools state their answer
+
+`lighthouse_delivery_list` keeps its facts block and adds a second block counting the Deliveries in the
+instance's words: `summary: 4 Deliveries`, `summary: 1 Delivery`, or `summary: No Deliveries`.
+`lighthouse_delivery_metrics` states the Delivery, its Delivery Date and its first recorded day as
+`lh delivery metrics` heads them: in a second block beside the day-by-day rows, or as a `summary` field
+beside the facts when `detail` is `"epics"`. When the answer is in a shape the summary cannot read, the
+facts go out exactly as before, and the tool never fails because of it.
+
+The client package gains `readDeliveryList`, `describeDeliveryListTitle`, `describeNoDeliveries`, `describeDeliveryCount`,
 `describeDeliveryListHeadings`, `describeDeliveryDone`, `describeDeliveryLikelihood`,
 `describeDeliveryRow`, `deliveryLikelihoodAnswer`, `OVERDUE_SHORT` and the `DeliveryListItem` and
 `DeliveryListOwner` types, and for the recorded days `readDeliveryMetricsHistory`, `latestRecordedDay`,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeDeliveryCount,
   describeDeliveryDone,
   describeDeliveryFeatureHeadings,
   describeDeliveryFeatureRow,
@@ -112,6 +113,16 @@ describe("the Deliveries list's words", () => {
       "Forecast 85%",
     ]);
     expect(describeNoDeliveries(renamed)).toBe("No Releases");
+  });
+
+  it.each([
+    { count: 0, terms: SEEDED_TERMS, says: "No Deliveries" },
+    { count: 1, terms: SEEDED_TERMS, says: "1 Delivery" },
+    { count: 4, terms: SEEDED_TERMS, says: "4 Deliveries" },
+    { count: 0, terms: renamed, says: "No Releases" },
+    { count: 1, terms: renamed, says: "1 Release" },
+  ])("counts $count Deliveries as '$says'", ({ count, terms, says }) => {
+    expect(describeDeliveryCount(count, terms)).toBe(says);
   });
 
   it("counts the work done out of the whole", () => {
