@@ -1,9 +1,11 @@
+import { isCalendarDay } from "./calendarDates";
 import type {
   LighthouseClient,
   RefinementNeed,
   TeamRefinement,
   TerminologyEntry,
 } from "./index";
+import { readTerms, resolveTerms, type Terms } from "./terminology";
 
 /** The words an instance may rename that the refinement need is stated in. */
 export type RefinementTerms = {
@@ -19,31 +21,19 @@ export type RefinementWording = {
   readonly terms: RefinementTerms;
 };
 
-const SEEDED_REFINEMENT_TERMS: RefinementTerms = {
-  workItem: "Work Item",
-  workItems: "Work Items",
-  team: "Team",
-  refinement: "Refinement",
-};
-
 const NOT_ENOUGH_DATA =
   "Not enough data yet — need at least 5 days with completed items to forecast.";
 
-/** The instance's words, a blank or missing one falling back to the seeded word, as on the web. */
+const toRefinementTerms = (terms: Terms): RefinementTerms => ({
+  workItem: terms.workItem,
+  workItems: terms.workItems,
+  team: terms.team,
+  refinement: terms.refinement,
+});
+
 const resolveRefinementTerms = (
   terminology: readonly TerminologyEntry[] | null,
-): RefinementTerms => {
-  const wordFor = (key: keyof RefinementTerms): string => {
-    const entry = terminology?.find((candidate) => candidate.key === key);
-    return entry?.value || entry?.defaultValue || SEEDED_REFINEMENT_TERMS[key];
-  };
-  return {
-    workItem: wordFor("workItem"),
-    workItems: wordFor("workItems"),
-    team: wordFor("team"),
-    refinement: wordFor("refinement"),
-  };
-};
+): RefinementTerms => toRefinementTerms(resolveTerms(terminology));
 
 const nameTheTeam = (
   team: unknown,
@@ -189,22 +179,6 @@ const describeHeading = (
   wording: RefinementWording,
 ): string =>
   `${wording.teamName} · ${describeNextRefinement(refinement, wording.terms)}`;
-
-const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/u;
-
-// Rejects a day the calendar does not have, such as 2026-02-30, which Date would roll into March.
-const isCalendarDay = (value: string | null): boolean => {
-  if (value === null || !CALENDAR_DAY.test(value)) {
-    return false;
-  }
-  const [year, month, day] = value.split("-").map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return (
-    parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-  );
-};
 
 /** A verdict with every fact it is said with. */
 type ShownVerdict = {
@@ -356,7 +330,4 @@ export type RefinementTermsSource = Pick<LighthouseClient, "getTerminology">;
 /** The instance's words alone, the seeded ones standing in when terminology cannot be read. */
 export const readRefinementTerms = async (
   source: RefinementTermsSource,
-): Promise<RefinementTerms> => {
-  const terminology = await source.getTerminology();
-  return resolveRefinementTerms(terminology.ok ? terminology.value : null);
-};
+): Promise<RefinementTerms> => toRefinementTerms(await readTerms(source));
