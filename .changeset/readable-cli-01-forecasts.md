@@ -34,6 +34,13 @@ chart draws its dashed line: first when it beat the 50% value, last when it fell
 and after a percentile it equals. The web's Average bar is not shown. When the Team cannot be read the
 heading starts `Team [id: 3]`.
 
+The MCP tools `lighthouse_forecast_manual` and `lighthouse_forecast_backtest` now return a `summary` beside
+their facts: the same heading and sentence `lh` prints for the same answer (the manual forecast's heading and
+likelihood sentence; the backtest's heading, period and actual Throughput), in the instance's own
+terminology. Every other field is the facts exactly as before. Reading the words and the Team's name never
+fails the tool, and an answer in a shape the tool does not recognise comes back as it always did, without a
+summary.
+
 `--json` and `--toon` are unchanged, and an answer in a shape the CLI does not recognise still prints the
 generic view. The client package gains `resolveTerms` / `readTerms`, `formatCalendarDay` /
 `formatTimestamp`, `readAnswerWording`, `readManualForecast` with its `describe…` wording, and

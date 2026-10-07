@@ -28,6 +28,26 @@ export const getSuccessToolResult = (text: string): McpToolResult => ({
   ],
 });
 
+const isFactsObject = (
+  value: unknown,
+): value is Readonly<Record<string, unknown>> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * The facts under their label, with the answer stated as the web does beside them. Without a summary the
+ * facts go out exactly as they always have, so an assistant reading them never sees a different shape.
+ */
+export const withSummary = (
+  label: string,
+  facts: unknown,
+  summary: string | null,
+): McpToolResult =>
+  getSuccessToolResult(
+    `${label}: ${encodePayload(
+      summary !== null && isFactsObject(facts) ? { summary, ...facts } : facts,
+    )}`,
+  );
+
 export const getErrorToolResult = (text: string): McpToolResult => ({
   isError: true,
   content: [

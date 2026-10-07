@@ -1,5 +1,14 @@
 import {
+  type AnswerWording,
   type DeliveryMetricsHistory,
+  describeBacktestActual,
+  describeBacktestPeriod,
+  describeBacktestSummary,
+  describeManualForecastLikelihood,
+  describeManualForecastSummary,
+  readAnswerWording,
+  readBacktest,
+  readManualForecast,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -17,6 +26,7 @@ import {
   getNumericId,
   getSuccessToolResult,
   type McpToolResult,
+  withSummary,
 } from "./toolResult";
 
 export type { McpVoterKeyStore } from "./refinementTools";
@@ -1100,7 +1110,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_forecast_manual",
     description:
-      "Run a manual forecast for a team by ID with optional remaining items and target date. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied.",
+      "Run a manual forecast for a team by ID with optional remaining items and target date. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied. `summary` states the answer as the web does, in the instance's terminology: the heading, then the likelihood sentence when both remaining items and a target date were given.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1122,7 +1132,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_forecast_backtest",
     description:
-      "Run a forecast backtest for a team by ID using forecast and historical date ranges. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied.",
+      "Run a forecast backtest for a team by ID using forecast and historical date ranges. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied. `summary` states the answer as the web does, in the instance's terminology: the heading, the period with its historical data, and the actual throughput.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1262,6 +1272,43 @@ const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
   return typeof value === "number" && Number.isInteger(value)
     ? value
     : undefined;
+};
+
+const linesOf = (...lines: readonly (string | null)[]): string =>
+  lines.filter((line) => line !== null).join("\n");
+
+const readTeamWording = (client: McpRuntimeClient, teamId: number) =>
+  readAnswerWording(client, {
+    term: "team",
+    id: teamId,
+    read: () => client.getTeam(teamId),
+  });
+
+const describeManualForecastAnswer = (
+  facts: unknown,
+  wording: AnswerWording,
+): string | null => {
+  const forecast = readManualForecast(facts);
+  return forecast === null
+    ? null
+    : linesOf(
+        describeManualForecastSummary(forecast, wording),
+        describeManualForecastLikelihood(forecast, wording),
+      );
+};
+
+const describeBacktestAnswer = (
+  facts: unknown,
+  wording: AnswerWording,
+): string | null => {
+  const backtest = readBacktest(facts);
+  return backtest === null
+    ? null
+    : linesOf(
+        describeBacktestSummary(wording),
+        describeBacktestPeriod(backtest),
+        describeBacktestActual(backtest, wording),
+      );
 };
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
@@ -2342,13 +2389,20 @@ export const createMcpCoreRuntime = (
 
       const applyFilterOverride = getApplyFilterOverride(argumentsPayload);
 
-      const result = await client.runManualForecast(id, {
-        remainingItems,
-        targetDate,
-        applyFilterOverride,
-      });
+      const [result, wording] = await Promise.all([
+        client.runManualForecast(id, {
+          remainingItems,
+          targetDate,
+          applyFilterOverride,
+        }),
+        readTeamWording(client, id),
+      ]);
       if (result.ok) {
-        return getSuccessToolResult(`forecast: ${encodePayload(result.value)}`);
+        return withSummary(
+          "forecast",
+          result.value,
+          describeManualForecastAnswer(result.value, wording),
+        );
       }
       return getErrorToolResult(
         `forecast: ${result.error.category} (${result.error.reason})`,
@@ -2387,15 +2441,22 @@ export const createMcpCoreRuntime = (
 
       const applyFilterOverride = getApplyFilterOverride(argumentsPayload);
 
-      const result = await client.runBacktest(id, {
-        startDate,
-        endDate,
-        historicalStartDate,
-        historicalEndDate,
-        applyFilterOverride,
-      });
+      const [result, wording] = await Promise.all([
+        client.runBacktest(id, {
+          startDate,
+          endDate,
+          historicalStartDate,
+          historicalEndDate,
+          applyFilterOverride,
+        }),
+        readTeamWording(client, id),
+      ]);
       if (result.ok) {
-        return getSuccessToolResult(`backtest: ${encodePayload(result.value)}`);
+        return withSummary(
+          "backtest",
+          result.value,
+          describeBacktestAnswer(result.value, wording),
+        );
       }
       return getErrorToolResult(
         `backtest: ${result.error.category} (${result.error.reason})`,

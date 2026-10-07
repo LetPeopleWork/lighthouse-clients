@@ -42,7 +42,7 @@ const gravitysAssistant = (reads = {}) =>
 
 describe("the forecast tools' summary", () => {
   // @driving_port @US-01 @contract-shape:bounded-change
-  it.skip("hands an assistant the manual forecast's facts together with the heading and sentence lh prints", async () => {
+  it("hands an assistant the manual forecast's facts together with the heading and sentence lh prints", async () => {
     const assistant = gravitysAssistant();
 
     const result = await assistant.call(MANUAL, manualArguments);
@@ -57,7 +57,7 @@ describe("the forecast tools' summary", () => {
   });
 
   // @driving_port @US-01 @contract-shape:bounded-change
-  it.skip("hands an assistant the backtest's facts together with its heading and period", async () => {
+  it("hands an assistant the backtest's facts together with its heading and period", async () => {
     const assistant = gravitysAssistant();
 
     const result = await assistant.call(BACKTEST, backtestArguments);
@@ -73,7 +73,7 @@ describe("the forecast tools' summary", () => {
   });
 
   // @error @infrastructure-failure @US-01 — the summary's reads never fail the tool
-  it.skip("words the summary with the seeded words and the Team's id when neither can be read", async () => {
+  it("words the summary with the seeded words and the Team's id when neither can be read", async () => {
     const assistant = gravitysAssistant({
       getTeam: refused("forbidden", "You may not read this Team"),
       getTerminology: refused("unexpected", "Terminology is unavailable"),
@@ -88,7 +88,7 @@ describe("the forecast tools' summary", () => {
   });
 
   // @US-01 @kpi — KPI-5
-  it.skip("words the summary in the instance's renamed terms", async () => {
+  it("words the summary in the instance's renamed terms", async () => {
     const assistant = gravitysAssistant({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -101,7 +101,7 @@ describe("the forecast tools' summary", () => {
   });
 
   // @error @version-skew @US-01 — ADR-224 rule 3: no recognised shape, no summary, today's answer exactly
-  it.skip("adds no summary to an answer it does not recognise, and hands the facts over as they came", async () => {
+  it("adds no summary to an answer it does not recognise, and hands the facts over as they came", async () => {
     const { whenForecasts, ...rest } = gravitysForecast();
     const reshaped = { ...rest, completionForecasts: whenForecasts };
     // The same tool states a summary while the answer has the shape it knows.
@@ -117,7 +117,7 @@ describe("the forecast tools' summary", () => {
   });
 
   // @driving_port @US-01
-  it.skip.each([MANUAL, BACKTEST])(
+  it.each([MANUAL, BACKTEST])(
     "tells an assistant in %s's description that `summary` states the answer as the web does",
     (tool) => {
       const assistant = gravitysAssistant();
