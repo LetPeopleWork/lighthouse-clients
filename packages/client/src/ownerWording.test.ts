@@ -5,11 +5,13 @@ import {
   describeOwnerListHeadings,
   describeOwnerListTitle,
   describeOwnerName,
+  describePortfolioSummary,
   describeTags,
   describeTeamSummary,
   NOT_SENT,
   NOT_SET,
   readOwnerList,
+  readPortfolio,
   readTeam,
 } from "./ownerWording";
 import { resolveTerms, SEEDED_TERMS } from "./terminology";
@@ -246,5 +248,108 @@ describe("describeTeamSummary", () => {
     { case: "not a Team", value: [team] },
   ])("reads null for $case", ({ value }) => {
     expect(readTeam(value)).toBeNull();
+  });
+});
+
+describe("describePortfolioSummary", () => {
+  const portfolio = {
+    id: 2,
+    name: "Ocean Explorer",
+    lastUpdated: "2026-10-06T04:58:00Z",
+    serviceLevelExpectationProbability: 85,
+    serviceLevelExpectationRange: 45,
+    systemWIPLimit: 5,
+    involvedTeams: [
+      { id: 3, name: "Gravity" },
+      { id: 6, name: "Voyager" },
+    ],
+    features: [{ id: 1 }, { id: 2 }],
+  };
+
+  const linesFor = (
+    facts: Record<string, unknown>,
+    terms = SEEDED_TERMS,
+  ): string[] => {
+    const summary = readPortfolio({ ...portfolio, ...facts });
+    if (summary === null) {
+      throw new Error("the Portfolio should read");
+    }
+    return describePortfolioSummary(summary, terms);
+  };
+
+  it("states the SLE and System WIP Limit in Features and the Feature WIP in Teams", () => {
+    expect(linesFor({}).slice(2)).toEqual([
+      "Service Level Expectation: 85% of Features within 45 days or less",
+      "System WIP Limit: 5 Features",
+      "Feature WIP: 2 Teams",
+      "Teams: Gravity [id: 3], Voyager [id: 6]",
+      "Features: 2",
+    ]);
+  });
+
+  it.each([
+    {
+      setting: "no Team working on it",
+      facts: { involvedTeams: [] },
+      lines: [`Feature WIP: ${NOT_SET}`, `Teams: ${NOT_SENT}`],
+    },
+    {
+      setting: "one Team working on it",
+      facts: { involvedTeams: [{ id: 3, name: "Gravity" }] },
+      lines: ["Feature WIP: 1 Team", "Teams: Gravity [id: 3]"],
+    },
+    {
+      setting: "no SLE range",
+      facts: { serviceLevelExpectationRange: 0 },
+      lines: [`Service Level Expectation: ${NOT_SET}`],
+    },
+    {
+      setting: "no System WIP Limit",
+      facts: { systemWIPLimit: 0 },
+      lines: [`System WIP Limit: ${NOT_SET}`],
+    },
+    {
+      setting: "a single System WIP Limit",
+      facts: { systemWIPLimit: 1 },
+      lines: ["System WIP Limit: 1 Feature"],
+    },
+    {
+      setting: "no Features",
+      facts: { features: undefined },
+      lines: [`Features: ${NOT_SENT}`],
+    },
+    {
+      setting: "no last update",
+      facts: { lastUpdated: undefined },
+      lines: [`Last Updated on ${NOT_SENT}`],
+    },
+  ])("says $lines for a Portfolio with $setting", ({ facts, lines }) => {
+    expect(linesFor(facts)).toEqual(expect.arrayContaining(lines));
+  });
+
+  it("speaks the instance's words", () => {
+    const terms = resolveTerms([
+      { key: "feature", value: "Epic" },
+      { key: "features", value: "Epics" },
+      { key: "team", value: "Squad" },
+      { key: "teams", value: "Squads" },
+      { key: "wip", value: "Load" },
+    ]);
+    expect(linesFor({}, terms)).toEqual(
+      expect.arrayContaining([
+        "System Load Limit: 5 Epics",
+        "Epic Load: 2 Squads",
+        "Squads: Gravity [id: 3], Voyager [id: 6]",
+        "Epics: 2",
+      ]),
+    );
+  });
+
+  it.each([
+    { case: "no id", value: { ...portfolio, id: undefined } },
+    { case: "no name", value: { ...portfolio, name: "" } },
+    { case: "not a Portfolio", value: [portfolio] },
+  ])("reads null for $case", ({ value }) => {
+    expect(readPortfolio(value)).toBeNull();
   });
 });

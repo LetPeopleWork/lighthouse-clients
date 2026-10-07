@@ -206,7 +206,7 @@ describe("lh team get --pretty", () => {
 
 describe("lh portfolio list and get --pretty", () => {
   // @driving_port @US-05 — D10: a hint instead of one Delivery read per Portfolio
-  it.skip("lists the Portfolios and points at their Deliveries without fetching them", async () => {
+  it("lists the Portfolios and points at their Deliveries without fetching them", async () => {
     const lighthouse = aLighthouse({ listPortfolios: ok(fivePortfolios()) });
 
     const result = await inZurich(() => lighthouse.run(["portfolio", "list"]));
@@ -227,7 +227,7 @@ describe("lh portfolio list and get --pretty", () => {
   });
 
   // @driving_port @US-05 — PortfolioFeatureWipQuickSetting.tsx counts the involved Teams
-  it.skip("tells Lena Ocean Explorer's settings as the Portfolio page states them", async () => {
+  it("tells Lena Ocean Explorer's settings as the Portfolio page states them", async () => {
     const lighthouse = aLighthouse({ getPortfolio: ok(oceanExplorer()) });
 
     const result = await inZurich(() =>
@@ -247,7 +247,7 @@ describe("lh portfolio list and get --pretty", () => {
   });
 
   // @error @US-05 — a Portfolio no Team works on
-  it.skip("says 'Not set' for the Feature WIP of a Portfolio no Team works on", async () => {
+  it("says 'Not set' for the Feature WIP of a Portfolio no Team works on", async () => {
     const lighthouse = aLighthouse({
       getPortfolio: ok(aPortfolio({ involvedTeams: [] })),
     });

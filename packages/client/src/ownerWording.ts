@@ -179,10 +179,15 @@ export const readTeam = (value: unknown): TeamSummary | null => {
 const countOf = (count: number, one: string, many: string): string =>
   `${count} ${count === 1 ? one : many}`;
 
-const describeSle = (team: TeamSummary, terms: Terms): string =>
-  team.sleProbability === undefined || team.sleRange === undefined
+type SleSettings = Pick<TeamSummary, "sleProbability" | "sleRange">;
+
+const describeSle = (
+  { sleProbability, sleRange }: SleSettings,
+  items: string,
+): string =>
+  sleProbability === undefined || sleRange === undefined
     ? NOT_SET
-    : `${Math.round(team.sleProbability)}% of ${terms.workItems} within ${team.sleRange} days or less`;
+    : `${Math.round(sleProbability)}% of ${items} within ${sleRange} days or less`;
 
 const describeLimit = (
   limit: number | undefined,
@@ -216,7 +221,7 @@ export const describeTeamSummary = (
 ): string[] => [
   describeOwnerName(team),
   `Last Updated on ${describeLastUpdated(team.lastUpdated)}`,
-  `${terms.serviceLevelExpectation}: ${describeSle(team, terms)}`,
+  `${terms.serviceLevelExpectation}: ${describeSle(team, terms.workItems)}`,
   `System ${terms.wip} Limit: ${describeLimit(team.systemWipLimit, terms.workItem, terms.workItems)}`,
   `${terms.feature} ${terms.wip}: ${describeLimit(team.featureWip, terms.feature, terms.features)}`,
   `${terms.throughput}: ${describeThroughput(team.throughput)}`,
@@ -224,4 +229,54 @@ export const describeTeamSummary = (
   `${terms.features}: ${team.featureCount ?? NOT_SENT}`,
   ...(team.tags.length === 0 ? [] : [`Tags: ${describeTags(team.tags)}`]),
   `${terms.workItem} Types: ${describeList(team.workItemTypes)}`,
+];
+
+/**
+ * A Portfolio as its page states it. Its Feature WIP is the number of Teams working on it, so it has no
+ * setting of its own.
+ */
+export type PortfolioSummary = {
+  readonly id: number;
+  readonly name: string;
+  readonly lastUpdated: string | undefined;
+  readonly sleProbability: number | undefined;
+  readonly sleRange: number | undefined;
+  readonly systemWipLimit: number | undefined;
+  readonly teams: readonly OwnerReference[];
+  readonly featureCount: number | undefined;
+};
+
+/** The Portfolio as its page states it, or null when the answer does not say which Portfolio it is. */
+export const readPortfolio = (value: unknown): PortfolioSummary | null => {
+  const named = readOwnerListItem(value);
+  if (named === null || !isRecord(value)) {
+    return null;
+  }
+  return {
+    id: named.id,
+    name: named.name,
+    lastUpdated: named.lastUpdated,
+    sleProbability: positiveOf(value.serviceLevelExpectationProbability),
+    sleRange: positiveOf(value.serviceLevelExpectationRange),
+    systemWipLimit: positiveOf(value.systemWIPLimit),
+    teams: referencesOf(value.involvedTeams),
+    featureCount: named.featureCount,
+  };
+};
+
+/**
+ * The Portfolio page's heading and settings, one line each, in the instance's words. Its Feature WIP
+ * reads 'Not set' when no Team works on it, as the page's quick setting does.
+ */
+export const describePortfolioSummary = (
+  portfolio: PortfolioSummary,
+  terms: Terms,
+): string[] => [
+  describeOwnerName(portfolio),
+  `Last Updated on ${describeLastUpdated(portfolio.lastUpdated)}`,
+  `${terms.serviceLevelExpectation}: ${describeSle(portfolio, terms.features)}`,
+  `System ${terms.wip} Limit: ${describeLimit(portfolio.systemWipLimit, terms.feature, terms.features)}`,
+  `${terms.feature} ${terms.wip}: ${describeLimit(positiveOf(portfolio.teams.length), terms.team, terms.teams)}`,
+  `${terms.teams}: ${describeList(portfolio.teams.map(describeOwnerName))}`,
+  `${terms.features}: ${portfolio.featureCount ?? NOT_SENT}`,
 ];

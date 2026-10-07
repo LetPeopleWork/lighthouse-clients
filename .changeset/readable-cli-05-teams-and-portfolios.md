@@ -4,7 +4,7 @@
 "@letpeoplework/lighthouse-mcp-core": minor
 ---
 
-`lh team list` reads like the Overview's Teams table, and `lh team get` like the Team page
+`lh team list` and `lh portfolio list` read like the Overview's tables, and `lh team get` and `lh portfolio get` like their pages
 
 Under `--pretty`, `lh team list` now prints the title `Teams` and a table with the Overview's columns:
 the Team's name with its id beside it (`Gravity [id: 3]`), how many Features it owns (`1 Feature`,
@@ -22,7 +22,19 @@ Features it owns, its tags when it has some, and its Work Item Types. A setting 
 `Not set`, as on the web, and an instance that renamed its terms sees its own words. A Team that
 arrives without its name or id prints the generic view, exit 0. `--json` and `--toon` are unchanged.
 
+Under `--pretty`, `lh portfolio list` prints the title `Portfolios` and the same table, then one line
+pointing at each Portfolio's Deliveries: `Deliveries per Portfolio: lh delivery list --portfolio-id <id>`.
+The web shows the Deliveries in the table; the CLI points at them instead, so the list stays a single
+read however many Portfolios there are.
+
+Under `--pretty`, `lh portfolio get` states the Portfolio as its page does: its name and id, when it
+was last updated, then the Service Level Expectation (`85% of Features within 45 days or less`), the
+System WIP Limit (`5 Features`), the Feature WIP as the number of Teams working on it (`3 Teams`, or
+`Not set` when no Team does), those Teams by name and id, and how many Features it owns. An instance
+that renamed its terms sees its own words. A Portfolio that arrives without its name or id prints the
+generic view, exit 0. `--json` and `--toon` are unchanged.
+
 The client package gains `readOwnerList`, `describeOwnerListTitle`, `describeOwnerListHeadings`,
 `describeOwnerName`, `describeFeatureCount`, `describeTags`, `describeLastUpdated`, `NOT_SENT`,
-`readTeam`, `describeTeamSummary`, `NOT_SET` and the `TeamSummary`, `ThroughputDates` and
-`OwnerReference` types.
+`readTeam`, `describeTeamSummary`, `readPortfolio`, `describePortfolioSummary`, `NOT_SET` and the
+`TeamSummary`, `PortfolioSummary`, `ThroughputDates` and `OwnerReference` types.

@@ -30,7 +30,12 @@ import {
   OUTPUT_FORMAT_FLAGS,
   type OutputFormat,
 } from "./output";
-import { renderOwnerList, renderTeam } from "./ownerOutput";
+import {
+  renderOwnerList,
+  renderPortfolio,
+  renderPortfolioList,
+  renderTeam,
+} from "./ownerOutput";
 import {
   findRefinementCommand,
   type VoterDependencies,
@@ -1789,17 +1794,39 @@ const runPortfolioGroup = async (
   const client = dependencies.createClient(connectionOrError);
 
   const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
-    list: async () =>
-      mapApiResultToCliResult(await client.listPortfolios(), outputFormat),
+    list: async () => {
+      if (outputFormat !== "pretty") {
+        return mapApiResultToCliResult(
+          await client.listPortfolios(),
+          outputFormat,
+        );
+      }
+      const [portfolios, terms] = await Promise.all([
+        client.listPortfolios(),
+        readTerms(client),
+      ]);
+      return mapApiResultToCliResult(portfolios, outputFormat, (facts) =>
+        renderPortfolioList(facts, terms),
+      );
+    },
     get: async () => {
       const portfolioId = getRequiredIdOption(args, "--id");
       if (portfolioId === null) {
         return getErrorResult("Missing required --id for portfolio get.");
       }
 
-      return mapApiResultToCliResult(
-        await client.getPortfolio(portfolioId),
-        outputFormat,
+      if (outputFormat !== "pretty") {
+        return mapApiResultToCliResult(
+          await client.getPortfolio(portfolioId),
+          outputFormat,
+        );
+      }
+      const [portfolio, terms] = await Promise.all([
+        client.getPortfolio(portfolioId),
+        readTerms(client),
+      ]);
+      return mapApiResultToCliResult(portfolio, outputFormat, (facts) =>
+        renderPortfolio(facts, terms),
       );
     },
     create: async () => {

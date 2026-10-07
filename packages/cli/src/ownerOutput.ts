@@ -4,10 +4,12 @@ import {
   describeOwnerListHeadings,
   describeOwnerListTitle,
   describeOwnerName,
+  describePortfolioSummary,
   describeTags,
   describeTeamSummary,
   type OwnerKind,
   readOwnerList,
+  readPortfolio,
   readTeam,
   type Terms,
 } from "@letpeoplework/lighthouse-client";
@@ -43,6 +45,40 @@ export const renderTeam = (value: unknown, terms: Terms): string | null => {
   if (team === null) {
     return null;
   }
-  const [name, lastUpdated, ...settings] = describeTeamSummary(team, terms);
-  return [name, lastUpdated, "", ...settings].join("\n");
+  return asPage(describeTeamSummary(team, terms));
 };
+
+/** The Portfolio as its page states it, heading then settings, or null when the answer does not say which Portfolio it is. */
+export const renderPortfolio = (
+  value: unknown,
+  terms: Terms,
+): string | null => {
+  const portfolio = readPortfolio(value);
+  if (portfolio === null) {
+    return null;
+  }
+  return asPage(describePortfolioSummary(portfolio, terms));
+};
+
+/**
+ * The Portfolios as the Overview lists them. Where the web shows each Portfolio's Deliveries, this points
+ * at the command that lists them, so the list costs one read instead of one more per Portfolio.
+ */
+export const renderPortfolioList = (
+  value: unknown,
+  terms: Terms,
+): string | null => {
+  const table = renderOwnerList(value, "portfolio", terms);
+  if (table === null) {
+    return null;
+  }
+  return [
+    table,
+    "",
+    `${terms.deliveries} per ${terms.portfolio}: lh delivery list --portfolio-id <id>`,
+  ].join("\n");
+};
+
+// The heading and when it was last updated stand apart from the settings beneath them, as on the page.
+const asPage = ([name, lastUpdated, ...settings]: string[]): string =>
+  [name, lastUpdated, "", ...settings].join("\n");
