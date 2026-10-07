@@ -10,6 +10,7 @@ import {
   readAnswerWording,
   readCycleTimeDefinitionName,
   readSystemWipLimit,
+  readTerms,
   summariseDeliveryMetricsHistory,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -29,6 +30,7 @@ import {
   OUTPUT_FORMAT_FLAGS,
   type OutputFormat,
 } from "./output";
+import { renderOwnerList } from "./ownerOutput";
 import {
   findRefinementCommand,
   type VoterDependencies,
@@ -1662,8 +1664,18 @@ const runTeamGroup = async (
   const client = dependencies.createClient(connectionOrError);
 
   const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
-    list: async () =>
-      mapApiResultToCliResult(await client.listTeams(), outputFormat),
+    list: async () => {
+      if (outputFormat !== "pretty") {
+        return mapApiResultToCliResult(await client.listTeams(), outputFormat);
+      }
+      const [teams, terms] = await Promise.all([
+        client.listTeams(),
+        readTerms(client),
+      ]);
+      return mapApiResultToCliResult(teams, outputFormat, (facts) =>
+        renderOwnerList(facts, "team", terms),
+      );
+    },
     get: async () => {
       const teamId = getRequiredIdOption(args, "--id");
       if (teamId === null) {

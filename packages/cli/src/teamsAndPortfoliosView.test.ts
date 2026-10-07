@@ -29,7 +29,7 @@ const inZurich = <T>(body: () => Promise<T>) => inTimeZone(READERS_ZONE, body);
 
 describe("lh team list --pretty", () => {
   // @driving_port @US-05 @contract-shape:pure-function
-  it.skip("shows Lena every Team in the Overview's table, with the id beside the name", async () => {
+  it("shows Lena every Team in the Overview's table, with the id beside the name", async () => {
     const lighthouse = aLighthouse({ listTeams: ok(sevenTeams()) });
 
     const result = await inZurich(() => lighthouse.run(["team", "list"]));
@@ -48,7 +48,7 @@ describe("lh team list --pretty", () => {
   });
 
   // @US-05 — the Tags column the web shows; Lighthouse sends no tags today, so it stays empty until one does
-  it.skip("lists a Team's tags when Lighthouse sends them", async () => {
+  it("lists a Team's tags when Lighthouse sends them", async () => {
     const lighthouse = aLighthouse({
       listTeams: ok([aTeam({ tags: ["mobile", "payments"] })]),
     });
@@ -61,7 +61,7 @@ describe("lh team list --pretty", () => {
   });
 
   // @error @US-05 — AC-05.4: a missing cell says —
-  it.skip("says '—' for a Team Lighthouse sent without a last update", async () => {
+  it("says '—' for a Team Lighthouse sent without a last update", async () => {
     const { lastUpdated: _notSent, ...pulsar } = aTeam({
       name: "Pulsar",
       id: 5,
@@ -75,7 +75,7 @@ describe("lh team list --pretty", () => {
   });
 
   // @error @version-skew @US-05 — AC-05.4 + M1: one item without name and id sends the whole list to the generic view
-  it.skip("shows the list as it came when a Team in it has no name or id", async () => {
+  it("shows the list as it came when a Team in it has no name or id", async () => {
     const recognised = await aLighthouse({ listTeams: ok(sevenTeams()) }).run([
       "team",
       "list",
@@ -93,7 +93,7 @@ describe("lh team list --pretty", () => {
   });
 
   // @boundary @US-05 @reader-time-zone — D15: Last Updated is the reader's local time
-  it.skip.each([
+  it.each([
     { zone: "America/Adak", reads: "Mon 5 Oct 2026, 20:14" },
     { zone: "Pacific/Kiritimati", reads: "Tue 6 Oct 2026, 19:14" },
   ])(

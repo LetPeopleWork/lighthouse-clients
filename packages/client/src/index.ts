@@ -3070,6 +3070,7 @@ export * from "./calendarDates";
 export * from "./forecastDisplayRules";
 export * from "./forecastWording";
 export * from "./metricsWording";
+export * from "./ownerWording";
 export * from "./refinementVoteWording";
 export * from "./refinementVoting";
 export * from "./refinementWording";
