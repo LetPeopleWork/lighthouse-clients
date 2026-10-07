@@ -6,8 +6,11 @@ import {
   describeOwnerListTitle,
   describeOwnerName,
   describeTags,
+  describeTeamSummary,
   NOT_SENT,
+  NOT_SET,
   readOwnerList,
+  readTeam,
 } from "./ownerWording";
 import { resolveTerms, SEEDED_TERMS } from "./terminology";
 
@@ -131,5 +134,117 @@ describe("describeLastUpdated", () => {
 
   it("shows a timestamp it cannot read as it came", () => {
     expect(describeLastUpdated("not a date")).toBe("not a date");
+  });
+});
+
+describe("describeTeamSummary", () => {
+  const team = {
+    id: 3,
+    name: "Gravity",
+    serviceLevelExpectationProbability: 85,
+    serviceLevelExpectationRange: 12,
+    systemWIPLimit: 10,
+    featureWip: 2,
+    useFixedDatesForThroughput: false,
+    throughputStartDate: "2026-09-07T00:00:00Z",
+    throughputEndDate: "2026-10-06T00:00:00Z",
+    portfolios: [{ id: 1, name: "Apollo" }],
+    features: [{ id: 1 }],
+    workItemTypes: ["Bug"],
+  };
+
+  const linesFor = (facts: Record<string, unknown>): string[] => {
+    const summary = readTeam({ ...team, ...facts });
+    if (summary === null) {
+      throw new Error("the Team should read");
+    }
+    return describeTeamSummary(summary, SEEDED_TERMS);
+  };
+
+  it.each([
+    {
+      setting: "no SLE probability",
+      facts: { serviceLevelExpectationProbability: undefined },
+      line: `Service Level Expectation: ${NOT_SET}`,
+    },
+    {
+      setting: "no SLE range",
+      facts: { serviceLevelExpectationRange: 0 },
+      line: `Service Level Expectation: ${NOT_SET}`,
+    },
+    {
+      setting: "no System WIP Limit",
+      facts: { systemWIPLimit: undefined },
+      line: `System WIP Limit: ${NOT_SET}`,
+    },
+    {
+      setting: "a negative System WIP Limit",
+      facts: { systemWIPLimit: -1 },
+      line: `System WIP Limit: ${NOT_SET}`,
+    },
+    {
+      setting: "no Feature WIP",
+      facts: { featureWip: undefined },
+      line: `Feature WIP: ${NOT_SET}`,
+    },
+    {
+      setting: "no Throughput dates",
+      facts: { throughputEndDate: undefined },
+      line: `Throughput: ${NOT_SENT}`,
+    },
+    {
+      setting: "no rolling or fixed flag",
+      facts: { useFixedDatesForThroughput: undefined },
+      line: "Throughput: Mon 7 Sep 2026 to Tue 6 Oct 2026",
+    },
+    {
+      setting: "no Portfolios",
+      facts: { portfolios: undefined },
+      line: `Portfolios: ${NOT_SENT}`,
+    },
+    {
+      setting: "no Features",
+      facts: { features: undefined },
+      line: `Features: ${NOT_SENT}`,
+    },
+    {
+      setting: "no Work Item Types",
+      facts: { workItemTypes: [] },
+      line: `Work Item Types: ${NOT_SENT}`,
+    },
+    {
+      setting: "no last update",
+      facts: { lastUpdated: undefined },
+      line: `Last Updated on ${NOT_SENT}`,
+    },
+  ])("says '$line' for a Team with $setting", ({ facts, line }) => {
+    expect(linesFor(facts)).toContain(line);
+  });
+
+  it("counts a single System WIP Limit in the singular", () => {
+    expect(linesFor({ systemWIPLimit: 1 })).toContain(
+      "System WIP Limit: 1 Work Item",
+    );
+  });
+
+  it("gives Tags a line only when the Team has some", () => {
+    expect(linesFor({}).some((line) => line.startsWith("Tags"))).toBe(false);
+    expect(linesFor({ tags: ["mobile", "payments"] })).toContain(
+      "Tags: mobile, payments",
+    );
+  });
+
+  it("skips a Portfolio it cannot name", () => {
+    expect(
+      linesFor({ portfolios: [{ id: 1, name: "Apollo" }, { id: 2 }] }),
+    ).toContain("Portfolios: Apollo [id: 1]");
+  });
+
+  it.each([
+    { case: "no id", value: { ...team, id: undefined } },
+    { case: "no name", value: { ...team, name: "" } },
+    { case: "not a Team", value: [team] },
+  ])("reads null for $case", ({ value }) => {
+    expect(readTeam(value)).toBeNull();
   });
 });

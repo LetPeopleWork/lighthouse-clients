@@ -30,7 +30,7 @@ import {
   OUTPUT_FORMAT_FLAGS,
   type OutputFormat,
 } from "./output";
-import { renderOwnerList } from "./ownerOutput";
+import { renderOwnerList, renderTeam } from "./ownerOutput";
 import {
   findRefinementCommand,
   type VoterDependencies,
@@ -1682,9 +1682,18 @@ const runTeamGroup = async (
         return getErrorResult("Missing required --id for team get.");
       }
 
-      return mapApiResultToCliResult(
-        await client.getTeam(teamId),
-        outputFormat,
+      if (outputFormat !== "pretty") {
+        return mapApiResultToCliResult(
+          await client.getTeam(teamId),
+          outputFormat,
+        );
+      }
+      const [team, terms] = await Promise.all([
+        client.getTeam(teamId),
+        readTerms(client),
+      ]);
+      return mapApiResultToCliResult(team, outputFormat, (facts) =>
+        renderTeam(facts, terms),
       );
     },
     create: async () => {

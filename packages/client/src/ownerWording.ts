@@ -1,4 +1,4 @@
-import { formatTimestamp } from "./calendarDates";
+import { formatCalendarDay, formatTimestamp } from "./calendarDates";
 import type { Terms } from "./terminology";
 
 /** What owns Features in Lighthouse: a Team or a Portfolio. */
@@ -96,3 +96,132 @@ export const describeTags = (tags: readonly string[]): string =>
 /** When it was last updated, in the reader's local time; the mark when it never was. */
 export const describeLastUpdated = (wire: string | undefined): string =>
   wire === undefined ? NOT_SENT : (formatTimestamp(wire) ?? wire);
+
+/** A Team's Throughput dates, already resolved, and whether they roll forward or stay fixed. */
+export type ThroughputDates = {
+  readonly start: string;
+  readonly end: string;
+  readonly fixed: boolean | undefined;
+};
+
+/** Another Team or Portfolio by what it is called and its id. */
+export type OwnerReference = Pick<OwnerListItem, "id" | "name">;
+
+/**
+ * A Team as its page states it. A setting left unset, which Lighthouse sends as 0, and a fact it did not
+ * send both stay undefined.
+ */
+export type TeamSummary = {
+  readonly id: number;
+  readonly name: string;
+  readonly lastUpdated: string | undefined;
+  readonly sleProbability: number | undefined;
+  readonly sleRange: number | undefined;
+  readonly systemWipLimit: number | undefined;
+  readonly featureWip: number | undefined;
+  readonly throughput: ThroughputDates | undefined;
+  readonly portfolios: readonly OwnerReference[];
+  readonly featureCount: number | undefined;
+  readonly tags: readonly string[];
+  readonly workItemTypes: readonly string[];
+};
+
+/** What the Team page's quick settings say for a setting nobody gave a value. */
+export const NOT_SET = "Not set";
+
+const positiveOf = (value: unknown): number | undefined =>
+  typeof value === "number" && value > 0 ? value : undefined;
+
+const referencesOf = (value: unknown): OwnerReference[] =>
+  Array.isArray(value)
+    ? value.flatMap((entry) => {
+        const reference = readOwnerListItem(entry);
+        return reference === null
+          ? []
+          : [{ id: reference.id, name: reference.name }];
+      })
+    : [];
+
+const throughputOf = (
+  team: Record<string, unknown>,
+): ThroughputDates | undefined => {
+  const start = textOf(team.throughputStartDate);
+  const end = textOf(team.throughputEndDate);
+  if (start === undefined || end === undefined) {
+    return undefined;
+  }
+  const fixed = team.useFixedDatesForThroughput;
+  return { start, end, fixed: typeof fixed === "boolean" ? fixed : undefined };
+};
+
+/** The Team as its page states it, or null when the answer does not say which Team it is. */
+export const readTeam = (value: unknown): TeamSummary | null => {
+  const named = readOwnerListItem(value);
+  if (named === null || !isRecord(value)) {
+    return null;
+  }
+  return {
+    id: named.id,
+    name: named.name,
+    lastUpdated: named.lastUpdated,
+    sleProbability: positiveOf(value.serviceLevelExpectationProbability),
+    sleRange: positiveOf(value.serviceLevelExpectationRange),
+    systemWipLimit: positiveOf(value.systemWIPLimit),
+    featureWip: positiveOf(value.featureWip),
+    throughput: throughputOf(value),
+    portfolios: referencesOf(value.portfolios),
+    featureCount: named.featureCount,
+    tags: named.tags,
+    workItemTypes: tagsOf(value.workItemTypes),
+  };
+};
+
+const countOf = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`;
+
+const describeSle = (team: TeamSummary, terms: Terms): string =>
+  team.sleProbability === undefined || team.sleRange === undefined
+    ? NOT_SET
+    : `${Math.round(team.sleProbability)}% of ${terms.workItems} within ${team.sleRange} days or less`;
+
+const describeLimit = (
+  limit: number | undefined,
+  one: string,
+  many: string,
+): string => (limit === undefined ? NOT_SET : countOf(limit, one, many));
+
+const describeDay = (wire: string): string => formatCalendarDay(wire) ?? wire;
+
+const describeThroughput = (dates: ThroughputDates | undefined): string => {
+  if (dates === undefined) {
+    return NOT_SENT;
+  }
+  const span = `${describeDay(dates.start)} to ${describeDay(dates.end)}`;
+  if (dates.fixed === undefined) {
+    return span;
+  }
+  return `${span} ${dates.fixed ? "(fixed dates)" : "(rolling)"}`;
+};
+
+const describeList = (entries: readonly string[]): string =>
+  entries.length === 0 ? NOT_SENT : entries.join(", ");
+
+/**
+ * The Team page's heading and settings, one line each, in the instance's words. Tags get a line only
+ * when there are some, because Lighthouse sends a Team without them.
+ */
+export const describeTeamSummary = (
+  team: TeamSummary,
+  terms: Terms,
+): string[] => [
+  describeOwnerName(team),
+  `Last Updated on ${describeLastUpdated(team.lastUpdated)}`,
+  `${terms.serviceLevelExpectation}: ${describeSle(team, terms)}`,
+  `System ${terms.wip} Limit: ${describeLimit(team.systemWipLimit, terms.workItem, terms.workItems)}`,
+  `${terms.feature} ${terms.wip}: ${describeLimit(team.featureWip, terms.feature, terms.features)}`,
+  `${terms.throughput}: ${describeThroughput(team.throughput)}`,
+  `${terms.portfolios}: ${describeList(team.portfolios.map(describeOwnerName))}`,
+  `${terms.features}: ${team.featureCount ?? NOT_SENT}`,
+  ...(team.tags.length === 0 ? [] : [`Tags: ${describeTags(team.tags)}`]),
+  `${terms.workItem} Types: ${describeList(team.workItemTypes)}`,
+];

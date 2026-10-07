@@ -114,7 +114,7 @@ describe("lh team list --pretty", () => {
 
 describe("lh team get --pretty", () => {
   // @driving_port @US-05 @contract-shape:pure-function
-  it.skip("tells Lena Gravity's settings as the Team page states them", async () => {
+  it("tells Lena Gravity's settings as the Team page states them", async () => {
     const lighthouse = aLighthouse({ getTeam: ok(gravity()) });
 
     const result = await inZurich(() =>
@@ -136,7 +136,7 @@ describe("lh team get --pretty", () => {
   });
 
   // @error @US-05 — SleQuickSetting.tsx, SystemWipQuickSetting.tsx, FeatureWipQuickSetting.tsx
-  it.skip("says 'Not set' for each setting Meridian has left unset", async () => {
+  it("says 'Not set' for each setting Meridian has left unset", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok(
         aTeam({
@@ -159,7 +159,7 @@ describe("lh team get --pretty", () => {
   });
 
   // @boundary @US-05 — C15: the resolved dates, rolling or fixed; one Feature in the singular
-  it.skip("says the Throughput dates are fixed, and counts a single Feature WIP in the singular", async () => {
+  it("says the Throughput dates are fixed, and counts a single Feature WIP in the singular", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok(
         aTeam({
@@ -182,7 +182,7 @@ describe("lh team get --pretty", () => {
   });
 
   // @US-05 @kpi — KPI-5
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok(gravity()),
       listTeams: ok(sevenTeams()),
