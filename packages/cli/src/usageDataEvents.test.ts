@@ -65,7 +65,7 @@ const REFINEMENT_OF_GRAVITY = ["refinement", "get", "--team-id", "3"];
 describe("each mapped command reports its web event once, after it succeeded", () => {
   // @US-04 @driving_port @real-io @kpi @contract-shape:bounded-change
   // KPI-3: the client share of each mirrored event. Seven commands here; the forecast is slice 02's.
-  it.skip.each<[string, readonly string[], string]>([
+  it.each<[string, readonly string[], string]>([
     [
       "team create",
       ["team", "create", "--payload-file", "@team"],

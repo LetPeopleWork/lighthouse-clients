@@ -3,6 +3,7 @@ import {
   readTerms,
   type Terms,
   type TermsSource,
+  type UsageDataEventName,
   type UsageDataOccurrence,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -24,6 +25,24 @@ export type CliCommandResult = {
   readonly stderr: string;
   readonly usage?: CliCommandUsage;
 };
+
+/** The commands whose success the web counts too, each by the event name the web reports for it. */
+export const REPORTED_COMMANDS = {
+  "team create": "TeamCreated",
+  "team delete": "TeamDeleted",
+  "team refresh": "TeamRefreshTriggered",
+  "portfolio create": "PortfolioCreated",
+  "portfolio delete": "PortfolioDeleted",
+  "portfolio refresh": "PortfolioRefreshTriggered",
+  "forecast manual": "TeamManualForecastRun",
+} as const satisfies Readonly<Record<string, UsageDataEventName>>;
+
+export type ReportedCommand = keyof typeof REPORTED_COMMANDS;
+
+/** What one successful run of `command` counts. */
+export const occurrencesOf = (
+  command: ReportedCommand,
+): readonly UsageDataOccurrence[] => [{ name: REPORTED_COMMANDS[command] }];
 
 /** The result as it is, counting `occurrences` when Lighthouse answered the command successfully. */
 export const withUsage = (

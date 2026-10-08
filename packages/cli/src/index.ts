@@ -28,6 +28,7 @@ import {
   isCliCommandResult,
   mapApiResultInTerms,
   mapApiResultToCliResult,
+  occurrencesOf,
   withUsage,
 } from "./commandResult";
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
@@ -1745,12 +1746,17 @@ const runTeamGroup = async (
         return payloadOrError;
       }
 
-      return answerOwnerWrite(client.createTeam(payloadOrError), {
-        verb: "Created",
-        kind: "team",
-        outputFormat,
-        termsSource: client,
-      });
+      const created = client.createTeam(payloadOrError);
+      return withUsage(
+        await answerOwnerWrite(created, {
+          verb: "Created",
+          kind: "team",
+          outputFormat,
+          termsSource: client,
+        }),
+        await created,
+        occurrencesOf("team create"),
+      );
     },
     update: async () => {
       const teamId = getRequiredIdOption(args, "--id");
@@ -1780,17 +1786,22 @@ const runTeamGroup = async (
         return getErrorResult("Missing required --id for team delete.");
       }
 
-      return confirmRecordlessWrite(
-        await client.deleteTeam(teamId),
-        outputFormat,
-        `Team deleted: ${teamId}`,
-        async () =>
-          describeOwnerWriteConfirmation(
-            "Deleted",
-            "team",
-            { id: teamId },
-            await readTerms(client),
-          ),
+      const deleted = await client.deleteTeam(teamId);
+      return withUsage(
+        await confirmRecordlessWrite(
+          deleted,
+          outputFormat,
+          `Team deleted: ${teamId}`,
+          async () =>
+            describeOwnerWriteConfirmation(
+              "Deleted",
+              "team",
+              { id: teamId },
+              await readTerms(client),
+            ),
+        ),
+        deleted,
+        occurrencesOf("team delete"),
       );
     },
     refresh: async () => {
@@ -1799,12 +1810,21 @@ const runTeamGroup = async (
         return getErrorResult("Missing required --id for team refresh.");
       }
 
-      return confirmRecordlessWrite(
-        await client.refreshTeam(teamId),
-        outputFormat,
-        `Team refreshed: ${teamId}`,
-        async () =>
-          describeRefreshConfirmation("team", teamId, await readTerms(client)),
+      const refreshed = await client.refreshTeam(teamId);
+      return withUsage(
+        await confirmRecordlessWrite(
+          refreshed,
+          outputFormat,
+          `Team refreshed: ${teamId}`,
+          async () =>
+            describeRefreshConfirmation(
+              "team",
+              teamId,
+              await readTerms(client),
+            ),
+        ),
+        refreshed,
+        occurrencesOf("team refresh"),
       );
     },
   };
@@ -1865,12 +1885,17 @@ const runPortfolioGroup = async (
         return payloadOrError;
       }
 
-      return answerOwnerWrite(client.createPortfolio(payloadOrError), {
-        verb: "Created",
-        kind: "portfolio",
-        outputFormat,
-        termsSource: client,
-      });
+      const created = client.createPortfolio(payloadOrError);
+      return withUsage(
+        await answerOwnerWrite(created, {
+          verb: "Created",
+          kind: "portfolio",
+          outputFormat,
+          termsSource: client,
+        }),
+        await created,
+        occurrencesOf("portfolio create"),
+      );
     },
     update: async () => {
       const portfolioId = getRequiredIdOption(args, "--id");
@@ -1903,17 +1928,22 @@ const runPortfolioGroup = async (
         return getErrorResult("Missing required --id for portfolio delete.");
       }
 
-      return confirmRecordlessWrite(
-        await client.deletePortfolio(portfolioId),
-        outputFormat,
-        `Portfolio deleted: ${portfolioId}`,
-        async () =>
-          describeOwnerWriteConfirmation(
-            "Deleted",
-            "portfolio",
-            { id: portfolioId },
-            await readTerms(client),
-          ),
+      const deleted = await client.deletePortfolio(portfolioId);
+      return withUsage(
+        await confirmRecordlessWrite(
+          deleted,
+          outputFormat,
+          `Portfolio deleted: ${portfolioId}`,
+          async () =>
+            describeOwnerWriteConfirmation(
+              "Deleted",
+              "portfolio",
+              { id: portfolioId },
+              await readTerms(client),
+            ),
+        ),
+        deleted,
+        occurrencesOf("portfolio delete"),
       );
     },
     refresh: async () => {
@@ -1922,16 +1952,21 @@ const runPortfolioGroup = async (
         return getErrorResult("Missing required --id for portfolio refresh.");
       }
 
-      return confirmRecordlessWrite(
-        await client.refreshPortfolio(portfolioId),
-        outputFormat,
-        `Portfolio refreshed: ${portfolioId}`,
-        async () =>
-          describeRefreshConfirmation(
-            "portfolio",
-            portfolioId,
-            await readTerms(client),
-          ),
+      const refreshed = await client.refreshPortfolio(portfolioId);
+      return withUsage(
+        await confirmRecordlessWrite(
+          refreshed,
+          outputFormat,
+          `Portfolio refreshed: ${portfolioId}`,
+          async () =>
+            describeRefreshConfirmation(
+              "portfolio",
+              portfolioId,
+              await readTerms(client),
+            ),
+        ),
+        refreshed,
+        occurrencesOf("portfolio refresh"),
       );
     },
   };
@@ -1954,8 +1989,6 @@ const readTeamWording = (client: CliClientOperations, teamId: number) =>
     id: teamId,
     read: () => client.getTeam(teamId),
   });
-
-const A_MANUAL_FORECAST = [{ name: "TeamManualForecastRun" }] as const;
 
 const runManualForecastCommand = async (
   args: readonly string[],
@@ -1997,7 +2030,7 @@ const runManualForecastCommand = async (
     return withUsage(
       mapApiResultToCliResult(forecast, outputFormat),
       forecast,
-      A_MANUAL_FORECAST,
+      occurrencesOf("forecast manual"),
     );
   }
 
@@ -2010,7 +2043,7 @@ const runManualForecastCommand = async (
       renderManualForecast(facts, wording),
     ),
     forecast,
-    A_MANUAL_FORECAST,
+    occurrencesOf("forecast manual"),
   );
 };
 
