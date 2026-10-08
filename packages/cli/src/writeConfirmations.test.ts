@@ -12,9 +12,9 @@ import {
 } from "../../../test-support/lighthouseAnswers";
 import { aLighthouse } from "../test-support/cliHarness";
 
-// Story 6218, slice 08 (US-08): every write confirms in one line, and a refresh says it was queued. The
-// blackout line carries the schedule exactly as Lighthouse words it in `summary`. Every scenario but the
-// format guards is pending until DELIVER slice 08 un-skips it.
+// Under --pretty every write confirms in one line, in the instance's words, and a refresh says it was
+// queued. The blackout line carries the schedule exactly as Lighthouse words it in `summary`. A missing
+// name, a missing description or unreadable terms never fail the confirmation.
 
 const PAYLOAD_FILES = {
   "lightspeed.json": JSON.stringify({ name: "Lightspeed" }),
@@ -122,7 +122,7 @@ describe("lh writes --pretty", () => {
   );
 
   // @error @version-skew @US-08 — AC-08.2: a write answer without a name
-  it.skip("names the new Team by its id when Lighthouse's answer carries no name", async () => {
+  it("names the new Team by its id when Lighthouse's answer carries no name", async () => {
     const lighthouse = sofiasLighthouse({ createTeam: ok({ id: 9 }) });
 
     const result = await lighthouse.run([
@@ -137,7 +137,7 @@ describe("lh writes --pretty", () => {
   });
 
   // @error @US-08 — a rule without a description says only the schedule
-  it.skip("confirms a blackout rule without a description by its schedule alone", async () => {
+  it("confirms a blackout rule without a description by its schedule alone", async () => {
     const lighthouse = sofiasLighthouse({
       createRecurringBlackoutRule: ok(aBlackoutRule({ description: "" })),
     });
@@ -155,7 +155,7 @@ describe("lh writes --pretty", () => {
   });
 
   // @US-08 @kpi — KPI-5: the entity word is the instance's
-  it.skip("names the Team and Portfolio in the words an instance has renamed them to", async () => {
+  it("names the Team and Portfolio in the words an instance has renamed them to", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -178,7 +178,7 @@ describe("lh writes --pretty", () => {
   });
 
   // @error @infrastructure-failure @US-08 — D4
-  it.skip("confirms in the seeded words when the instance's terms cannot be read", async () => {
+  it("confirms in the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: refused("unexpected", "Terminology is unavailable"),
     });

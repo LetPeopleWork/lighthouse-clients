@@ -18,3 +18,7 @@ Portfolio refresh, now print that one line, for example `Refresh queued: Team [i
 it in the background.` A refresh used to say `Team refreshed: 3`, though Lighthouse only queues it. Under
 `--json` and `--toon` nothing changes: create and update hand back the written record, and delete and
 refresh keep today's lines (`Team deleted: 9`, `Team refreshed: 3`, …).
+
+A confirmation never fails on a word: an answer without a name is confirmed by its id (`Created: Team [id:
+9].`), a rule without a description by its schedule alone, and when the instance's terms cannot be read the
+seeded words stand in.

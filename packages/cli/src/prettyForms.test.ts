@@ -292,6 +292,7 @@ const DELIVERED_SLICES: ReadonlySet<string> = new Set([
   "05",
   "06",
   "07",
+  "08",
 ]);
 const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
   DELIVERED_SLICES.has(form.slice),
