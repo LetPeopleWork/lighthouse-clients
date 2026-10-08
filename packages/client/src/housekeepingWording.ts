@@ -2,14 +2,24 @@ import type { CliConnection, DayOfWeek, RecurringBlackoutRule } from "./index";
 import type { Terms } from "./terminology";
 import { isRecord } from "./wireFacts";
 
-const isStringList = (value: unknown): value is readonly string[] =>
-  Array.isArray(value) && value.every((entry) => typeof entry === "string");
+const DAYS_OF_WEEK: ReadonlySet<unknown> = new Set<DayOfWeek>([
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+]);
+
+const isWeekdayList = (value: unknown): value is readonly DayOfWeek[] =>
+  Array.isArray(value) && value.every((entry) => DAYS_OF_WEEK.has(entry));
 
 const readBlackoutRule = (value: unknown): RecurringBlackoutRule | null => {
   if (
     !isRecord(value) ||
     typeof value.id !== "number" ||
-    !isStringList(value.weekdays) ||
+    !isWeekdayList(value.weekdays) ||
     typeof value.intervalWeeks !== "number" ||
     typeof value.start !== "string" ||
     (value.end !== null && typeof value.end !== "string") ||
@@ -21,7 +31,7 @@ const readBlackoutRule = (value: unknown): RecurringBlackoutRule | null => {
   }
   return {
     id: value.id,
-    weekdays: value.weekdays as readonly DayOfWeek[],
+    weekdays: value.weekdays,
     intervalWeeks: value.intervalWeeks,
     start: value.start,
     end: value.end,

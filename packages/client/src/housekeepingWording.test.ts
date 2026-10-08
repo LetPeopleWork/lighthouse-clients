@@ -42,6 +42,7 @@ describe("readBlackoutRules", () => {
     [{ ...focusFriday, summary: undefined }],
     [{ ...focusFriday, id: "5" }],
     [{ ...focusFriday, weekdays: "Friday" }],
+    [{ ...focusFriday, weekdays: ["Fryday"] }],
     [{ ...focusFriday, intervalWeeks: "2" }],
     [{ ...focusFriday, start: undefined }],
     [{ ...focusFriday, end: 7 }],
