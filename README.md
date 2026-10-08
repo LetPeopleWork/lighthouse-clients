@@ -125,11 +125,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how the packages fit together, the co
 Release model and ownership boundaries are documented in `docs/release-model.md`.
 Deployment details for npm, GitHub Releases, and hosted MCP images are documented in `docs/deployment.md`.
 
-## Manual Releases
+## Releases
 
-- CI checks: GitHub workflow `Client CI`
-- Manual environment-gated release: GitHub workflow `Release Clients`
-- Release options:
-	- npm package publish
-	- GitHub Release with CLI binaries and install/uninstall scripts
-	- GHCR image publish for `@letpeoplework/lighthouse-mcp-http`
+Everything runs in one GitHub workflow, `Client CI` (`.github/workflows/ci.yml`). Its `release` job runs after the checks on every push to `main` and waits at the `Release` environment for the maintainer's approval.
+
+1. Run `pnpm release:version` on `main` and commit and push the version bumps and changelogs it writes. The job publishes only versions that are not on npm yet.
+2. Approve the `Release` environment on that push's CI run.
+
+The job publishes the npm packages, creates a GitHub Release with the CLI binaries, install/uninstall scripts, MCPB bundle and skill zip, and pushes the `mcp-http` image to GHCR when its version is new. See `docs/deployment.md` for details.

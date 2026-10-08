@@ -28,9 +28,9 @@ Business/domain behavior must be implemented in shared packages (`@letpeoplework
   - Stage the generated `.changeset/*.md` file alongside your other changes.
   - The pre-commit hook enforces this: commits that touch `packages/<name>/src/` or
     `packages/<name>/package.json` will be blocked unless a new `.changeset/*.md` is also staged.
-2. Apply version updates:
+2. Apply version updates on `main`, then commit and push them:
   - `pnpm release:version`
-3. Publish packages:
+3. Approve the `Release` environment on that push's CI run; the `release` job in `.github/workflows/ci.yml` publishes with:
   - `pnpm release:publish`
 
 ## Build/Test Quality Gates

@@ -7,7 +7,7 @@ Define release and deployment paths for Lighthouse clients, CLI, and hosted MCP 
 - Package distribution uses npm for all public packages.
 - CLI distribution uses both npm and GitHub Releases.
 - Hosted MCP runtime uses npm package release and GHCR container release.
-- Manual release is environment-gated through GitHub Actions workflow dispatch.
+- Releases run from the `release` job in `.github/workflows/ci.yml` on a push to `main`, held at the `Release` environment until the maintainer approves.
 
 ## Repository Scope and GitHub Releases
 GitHub Releases can be created from this repository without requiring a separate repository.
@@ -21,8 +21,8 @@ This repository is intentionally dedicated to client deliverables, so release ta
 - After install, the `lh` command is available globally.
 
 ### GitHub Releases
-- Release workflow builds standalone CLI binaries for Linux, macOS, and Windows.
-- Assets are attached to the selected release tag.
+- The release job builds standalone CLI binaries for Linux, macOS, and Windows.
+- Each approved release run creates a GitHub Release tagged `v<YYYY.MM.DD>.<CI run number>` and attaches the assets to it.
 - Installer helpers are published as release assets: `install.sh`, `uninstall.sh`, `install.ps1`, and `uninstall.ps1`.
 
 #### Installer environment variables
@@ -42,21 +42,29 @@ When running inside GitHub Actions (i.e. `GITHUB_OUTPUT` is set), the installer 
 ### MCPB Bundle (stdio)
 - Asset: `lighthouse-mcp-stdio.mcpb` — attached to every [GitHub Release](https://github.com/LetPeopleWork/lighthouse-clients/releases).
 - Allows one-click installation into MCP clients that support MCPB (e.g. Claude Desktop).
-- The bundle is built and validated in the release workflow using `@anthropic-ai/mcpb`.
+- The bundle is built and validated in the release job using `@anthropic-ai/mcpb`.
 - The bundle is fully self-contained: the MCP server runtime (`mcpb-runtime.cjs`) is bundled inside the `.mcpb` file alongside the launcher. When installed, the MCP client runs the bundled launcher which starts the server in-process without npx or any additional npm install.
 
 ### Container
 - Image: `ghcr.io/letpeoplework/lighthouse-clients/mcp-http`
-- Published through the release workflow when container publish is enabled.
+- Published by the release job, tagged with the `mcp-http` package version and `latest`, only when no image with that version exists yet.
 
 ## Release Workflow
-- Workflow: `Release Clients`
-- Trigger: manual (`workflow_dispatch`)
-- Environment gate: `Development`, `Staging`, or `Release`
-- Optional publish switches:
-  - npm publish
-  - GitHub Release publish
-  - GHCR container publish
+There is one workflow, `Client CI` (`.github/workflows/ci.yml`). Its `release` job runs after `verify` on every push to `main` and waits at the `Release` environment for the maintainer's approval. A newer push to `main` replaces a release still waiting for approval.
+
+To cut a release:
+1. On `main`, run `pnpm release:version` (with `GITHUB_TOKEN_CHANGESET` set to a GitHub token; the changelog entries link to commits and authors). It consumes the pending `.changeset/*.md` files, bumps the package versions and writes the changelogs.
+2. Commit and push that change. The release job only publishes versions that are not on npm yet, so the bump has to be on `main` before the job runs.
+3. Approve the `Release` environment on that push's CI run.
+
+The approved job then:
+- publishes every package whose version is not on npm yet (`pnpm release:publish`, with provenance);
+- builds the CLI binaries, the `mcp-stdio` MCPB bundle and the skill zip, and creates the GitHub Release with them and the install/uninstall scripts;
+- builds and pushes the `mcp-http` container if its version has no image yet.
+
+After it, `smoke-platform` installs the published CLI from npm on Linux, macOS and Windows, and `smoke-integration` runs it against a Lighthouse container with demo data.
+
+Approving a run without a version bump publishes nothing to npm or GHCR, but still creates a GitHub Release.
 
 ## Required Secrets
 - Default GitHub token is used for GitHub Releases and GHCR push
@@ -72,5 +80,5 @@ When running inside GitHub Actions (i.e. `GITHUB_OUTPUT` is set), the installer 
 - Trusted publisher fields must match exactly:
   - Organization: `LetPeopleWork`
   - Repository: `lighthouse-clients`
-  - Workflow filename: `release.yml`
-  - Environment: leave empty to allow all release environments, or set one exact value and use only that value in workflow dispatch.
+  - Workflow filename: `ci.yml`
+  - Environment: `Release` (or leave it empty)
