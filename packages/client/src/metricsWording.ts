@@ -744,12 +744,13 @@ export const describeBlockedNow = (
 /**
  * The sentences that stand in for what a WIP answer cannot show: no System WIP Limit, a Lighthouse that does
  * not say which Work Items are Blocked (which is not the same as none being Blocked), and nothing in progress.
+ * A limit of null means the Team or Portfolio could not be read; it may well have one, so nothing is said.
  */
 export const describeWhatWipLeavesUnsaid = (
   now: InProgressNowView,
   scope: MetricsScope,
   terms: Terms,
-  systemWipLimit: number | undefined,
+  systemWipLimit: number | undefined | null,
 ): readonly string[] => {
   const counted = countedOf(scope, terms);
   const blockedUnknown =
@@ -1463,7 +1464,7 @@ export const readServiceLevelExpectation = (
 /** The SLE Risk's title, the sentence that counts what is at risk, and one row per Work Item, highest risk first. */
 export type SleRiskWording = {
   readonly title: string;
-  readonly sentence: string;
+  readonly sentence: string | null;
   readonly rows: readonly (readonly string[])[];
 };
 
@@ -1517,10 +1518,13 @@ const sleRiskRow = (
 const sleRiskSentence = (
   entries: readonly SleRiskView[],
   wording: AnswerWording,
-  sle: ServiceLevelExpectation | undefined,
-): string => {
+  sle: ServiceLevelExpectation | undefined | null,
+): string | null => {
   const { terms } = wording;
   const counted = countedOf("team", terms);
+  if (entries.length === 0 && sle === null) {
+    return null;
+  }
   if (entries.length === 0) {
     return sle === undefined
       ? `${wording.name} has no ${terms.sle}, so there is no ${terms.sle} Risk.`
@@ -1532,7 +1536,7 @@ const sleRiskSentence = (
   const noun = entries.length === 1 ? counted.one : counted.many;
   const verb = atRisk === 1 || entries.length === 1 ? "is" : "are";
   const target =
-    sle === undefined
+    sle === undefined || sle === null
       ? ""
       : ` (${Math.round(sle.probability)}% within ${describeDays(sle.days)})`;
   return `${atRisk} of ${entries.length} ${noun} in progress ${verb} at risk of missing the ${terms.sle}${target}.`;
@@ -1541,19 +1545,22 @@ const sleRiskSentence = (
 /**
  * "2 of 8 Work Items in progress are at risk of missing the SLE (85% within 7 days).", then every Work Item
  * highest risk first with its risk and the finished Work Items behind it. The names and ages come from
- * today's Work Items in progress; without them each Work Item is still listed by its reference.
+ * today's Work Items in progress; without them each Work Item is still listed by its reference. An SLE of
+ * null means the Team could not be read: it may well have one, so an empty answer gets no sentence at all.
  */
 export const describeSleRiskNow = (
   entries: readonly SleRiskView[],
   wording: AnswerWording,
-  sle: ServiceLevelExpectation | undefined,
+  sle: ServiceLevelExpectation | undefined | null,
   inProgress: readonly InProgressItem[] | undefined,
 ): SleRiskWording => ({
   title: `${wording.terms.sle} Risk`,
   sentence: sleRiskSentence(entries, wording, sle),
   rows: [...entries]
     .sort((left, right) => right.risk - left.risk)
-    .map((entry) => sleRiskRow(entry, sle, wording.terms, inProgress)),
+    .map((entry) =>
+      sleRiskRow(entry, sle ?? undefined, wording.terms, inProgress),
+    ),
 });
 
 // ── Process Behaviour Charts ─────────────────────────────────────────────────
