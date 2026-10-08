@@ -177,7 +177,7 @@ describe("each mapped command reports its web event once, after it succeeded", (
 
   // @US-04 @driving_port @real-io @property @contract-shape:pure-function
   // On a Refinement day with Work Items listed, the verdict the Refinement shows; None when it shows no number.
-  it.skip.each<["Below" | "In" | "Above" | null, string]>([
+  it.each<["Below" | "In" | "Above" | null, string]>([
     ["Below", "Below"],
     ["In", "In"],
     ["Above", "Above"],
@@ -203,7 +203,7 @@ describe("each mapped command reports its web event once, after it succeeded", (
   );
 
   // @US-04 @driving_port @real-io @boundary @contract-shape:unbounded-preservation
-  it.skip.each<[string, RefinementFacts]>([
+  it.each<[string, RefinementFacts]>([
     [
       "on a day that is not the Team's Refinement day",
       { isRefinementDay: false },

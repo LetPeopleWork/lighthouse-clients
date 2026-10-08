@@ -5,6 +5,7 @@ import {
   isDoNotTrackSet,
   planUsageDataStep,
   readUsageDataState,
+  refinementDayVerdictOf,
   sizingMomentOf,
   type TerminalStreams,
   type UsageDataPlan,
@@ -308,4 +309,23 @@ describe("when a vote counts as cast, relative to the Team's Refinement", () => 
       );
     },
   );
+});
+
+// The same cases the web's Refinement tab reports its verdict by: only a Refinement day with Work Items listed
+// counts, and a Refinement that shows no number counts as None. The day is Lighthouse's answer.
+describe("which verdict a Refinement day showed", () => {
+  it.each<
+    [string, boolean, number, "Below" | "In" | "Above" | null, string | null]
+  >([
+    ["a Refinement day showing Below", true, 3, "Below", "Below"],
+    ["a Refinement day showing In", true, 3, "In", "In"],
+    ["a Refinement day showing Above", true, 1, "Above", "Above"],
+    ["a Refinement day showing no number", true, 3, null, "None"],
+    ["another day", false, 3, "Below", null],
+    ["a Refinement day with no Work Item listed", true, 0, "Below", null],
+  ])("on %s", (_day, isRefinementDay, workItemsListed, verdict, reported) => {
+    expect(
+      refinementDayVerdictOf({ isRefinementDay, workItemsListed, verdict }),
+    ).toBe(reported);
+  });
 });

@@ -18,10 +18,17 @@ export type SizingUsageDataEventName =
   | "TeamSizingVoteCast"
   | "TeamSizingReadinessReached";
 
+/** The usage event that says which verdict a Team's Refinement showed on its Refinement day. */
+export type VerdictUsageDataEventName = "TeamRefinementDayVerdictShown";
+
 /** The usage events a client reports, by the names Lighthouse already counts for the web. */
 export type UsageDataEventName =
   | PlainUsageDataEventName
-  | SizingUsageDataEventName;
+  | SizingUsageDataEventName
+  | VerdictUsageDataEventName;
+
+/** Fewer Work Items ready than needed, enough, more than enough, or no number at all. */
+export type UsageDataRefinementVerdict = "Below" | "In" | "Above" | "None";
 
 export type UsageDataSizingMoment =
   | "NoCadence"
@@ -34,6 +41,10 @@ export type UsageDataOccurrence =
   | {
       readonly name: SizingUsageDataEventName;
       readonly sizingMoment: UsageDataSizingMoment;
+    }
+  | {
+      readonly name: VerdictUsageDataEventName;
+      readonly refinementVerdict: UsageDataRefinementVerdict;
     };
 
 /** What Lighthouse's answer about a Team's Refinement says about today. */
@@ -54,6 +65,28 @@ export const sizingMomentOf = ({
     return "NoCadence";
   }
   return isRefinementDay ? "OnRefinementDay" : "OnOtherDay";
+};
+
+/** What Lighthouse's answer about a Team's Refinement says about today's verdict. */
+export type RefinementDayFacts = {
+  readonly isRefinementDay: boolean;
+  readonly workItemsListed: number;
+  readonly verdict: "Below" | "In" | "Above" | null;
+};
+
+/**
+ * The verdict worth counting, or null when there is none: only a Refinement day with Work Items listed
+ * counts, since without any the Refinement says so instead of showing a verdict. The web counts it the same way.
+ */
+export const refinementDayVerdictOf = ({
+  isRefinementDay,
+  workItemsListed,
+  verdict,
+}: RefinementDayFacts): UsageDataRefinementVerdict | null => {
+  if (!isRefinementDay || workItemsListed === 0) {
+    return null;
+  }
+  return verdict ?? "None";
 };
 
 export type UsageDataEvent = UsageDataOccurrence & {

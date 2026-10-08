@@ -15,6 +15,7 @@ import {
   readNameOfMyVote,
   readRefinementWording,
   readVoteRefusal,
+  refinementDayVerdictOf,
   STANDALONE_VOTER_KEY_SCOPE,
   sizingMomentOf,
   type TeamRefinement,
@@ -262,6 +263,29 @@ const mapVoteResultToCliResult = async (
         await readVoteRefusal(client, result.error, GIVE_YOUR_NAME),
       );
 
+const occurrencesOfARead = (
+  answered: LighthouseApiResult<TeamRefinement>,
+): readonly UsageDataOccurrence[] => {
+  if (!answered.ok) {
+    return [];
+  }
+  const refinement = answered.value;
+  const refinementVerdict = refinementDayVerdictOf({
+    isRefinementDay: refinement.isRefinementDay,
+    workItemsListed: refinement.workItems.length,
+    verdict: refinement.need.verdict,
+  });
+  return refinementVerdict === null
+    ? []
+    : [{ name: "TeamRefinementDayVerdictShown", refinementVerdict }];
+};
+
+const withVerdictShown = (
+  printed: CliCommandResult,
+  answered: LighthouseApiResult<TeamRefinement>,
+): CliCommandResult =>
+  withUsage(printed, answered, occurrencesOfARead(answered));
+
 const runRefinementGet: RefinementCommand = async (
   args,
   outputFormat,
@@ -278,9 +302,10 @@ const runRefinementGet: RefinementCommand = async (
     voterKey: await loadKeptVoterKey(connection, dependencies),
   };
   if (outputFormat !== "pretty") {
-    return mapApiResultToCliResult(
-      await client.getTeamRefinement(teamId, readOptions),
-      outputFormat,
+    const answered = await client.getTeamRefinement(teamId, readOptions);
+    return withVerdictShown(
+      mapApiResultToCliResult(answered, outputFormat),
+      answered,
     );
   }
 
@@ -294,8 +319,11 @@ const runRefinementGet: RefinementCommand = async (
   if (!wording.ok) {
     return mapApiResultToCliResult(wording, outputFormat);
   }
-  return mapApiResultToCliResult(refinement, outputFormat, (facts) =>
-    renderRefinement(facts, wording.value),
+  return withVerdictShown(
+    mapApiResultToCliResult(refinement, outputFormat, (facts) =>
+      renderRefinement(facts, wording.value),
+    ),
+    refinement,
   );
 };
 
