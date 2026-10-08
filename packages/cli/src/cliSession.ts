@@ -18,18 +18,25 @@ import {
   STANDALONE_VOTER_KEY_SCOPE,
   settleUsageDataStep,
   type TerminalStreams,
+  USAGE_DATA_BUDGET_MS,
   usageDataStoreFor,
   validateLighthouseConnectivity,
+  withdrawUsageData,
 } from "@letpeoplework/lighthouse-client";
 import { Agent, fetch as undiciFetch } from "undici";
 import type { CliCommandUsage } from "./commandResult";
-import { type RunCliCommandDependencies, runCliCommand } from "./index";
+import {
+  type RunCliCommandDependencies,
+  runCliCommand,
+  type UnreadableUsageDataFile,
+} from "./index";
 import { isOutputFormat, type OutputFormat } from "./output";
 import {
   readUsageDataAnswer,
   USAGE_DATA_CHANGE_ANY_TIME,
   USAGE_DATA_QUESTION,
   type UsageDataStatus,
+  type UsageDataTurnedOff,
   usageDataNotRecorded,
 } from "./usageDataQuestion";
 
@@ -230,35 +237,62 @@ const lighthouseOf = (connection: CliConnection): string =>
     ? connection.endpointUrl
     : STANDALONE_VOTER_KEY_SCOPE;
 
-// Reading the status gets the same one-second allowance as sending, so a Lighthouse that never answers
-// cannot hold the command up.
-const USAGE_DATA_STATUS_BUDGET_MS = 1_000;
+const lighthouseNamedOf = (connection: CliConnection): string =>
+  connection.mode === "server"
+    ? connection.endpointUrl
+    : "the standalone Lighthouse";
+
+const usageDataStoreOf = (connection: CliConnection, env: SessionEnv) =>
+  usageDataStoreFor(
+    createFileUsageDataStore(getUsageDataStorePath(env)),
+    lighthouseOf(connection),
+  );
+
+const unreadableUsageDataFile = (env: SessionEnv): UnreadableUsageDataFile => ({
+  unreadableFile: getUsageDataStorePath(env),
+});
 
 const loadUsageDataStatus = async (
   connection: CliConnection,
   env: SessionEnv,
-): Promise<UsageDataStatus | { readonly unreadableFile: string }> => {
-  const storePath = getUsageDataStorePath(env);
-  const stored = await createFileUsageDataStore(storePath).read(
-    lighthouseOf(connection),
-  );
+): Promise<UsageDataStatus | UnreadableUsageDataFile> => {
+  const stored = await usageDataStoreOf(connection, env).read();
   if (stored === "unreadable") {
-    return { unreadableFile: storePath };
+    return unreadableUsageDataFile(env);
   }
   return {
-    lighthouse:
-      connection.mode === "server"
-        ? connection.endpointUrl
-        : "the standalone Lighthouse",
+    lighthouse: lighthouseNamedOf(connection),
     stored,
     state: await createSessionClient(connection, env).getUsageDataState({
-      signal: AbortSignal.timeout(USAGE_DATA_STATUS_BUDGET_MS),
+      signal: AbortSignal.timeout(USAGE_DATA_BUDGET_MS),
     }),
     doNotTrack: isDoNotTrackSet(env),
   };
 };
 
-const commandDependencies = (env: SessionEnv): RunCliCommandDependencies => {
+const turnUsageDataOff = async (
+  connection: CliConnection,
+  env: SessionEnv,
+  now: () => Date,
+): Promise<UsageDataTurnedOff | UnreadableUsageDataFile> => {
+  const withdrawal = await withdrawUsageData({
+    lighthouse: createSessionClient(connection, env),
+    store: usageDataStoreOf(connection, env),
+    now,
+  });
+  if (withdrawal === "unreadable") {
+    return unreadableUsageDataFile(env);
+  }
+  return {
+    lighthouse: lighthouseNamedOf(connection),
+    toldLighthouse: withdrawal === "off",
+  };
+};
+
+const commandDependencies = (
+  env: SessionEnv,
+  now: () => Date,
+): RunCliCommandDependencies => {
   const configPath = getConfigPath(env);
   const voterKeys = () => createFileVoterKeyStore(getVoterKeyStorePath(env));
   const load = () => loadPersistedStorage(configPath);
@@ -298,6 +332,7 @@ const commandDependencies = (env: SessionEnv): RunCliCommandDependencies => {
     createClient: (connection) => createSessionClient(connection, env),
     getEnvApiKey: () => getEnvApiKey(env),
     loadUsageDataStatus: (connection) => loadUsageDataStatus(connection, env),
+    turnUsageDataOff: (connection) => turnUsageDataOff(connection, env, now),
   };
 };
 
@@ -316,10 +351,7 @@ const settleUsageData = async (
   const outcome = await settleUsageDataStep(
     {
       lighthouse: createSessionClient(connection, env),
-      store: usageDataStoreFor(
-        createFileUsageDataStore(getUsageDataStorePath(env)),
-        lighthouse,
-      ),
+      store: usageDataStoreOf(connection, env),
       source: "Cli",
       env,
       now,
@@ -344,7 +376,7 @@ export const runCliSession = async (
   io: CliSessionIo,
   dependencies: CliSessionDependencies,
 ): Promise<number> => {
-  const commands = commandDependencies(dependencies.env);
+  const commands = commandDependencies(dependencies.env, dependencies.now);
   const result = await runCliCommand(args, commands);
 
   if (result.stdout.length > 0) {

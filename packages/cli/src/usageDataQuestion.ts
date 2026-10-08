@@ -69,12 +69,15 @@ const instanceLine = (state: LighthouseApiResult<UsageDataState>): string => {
     : PREDATES;
 };
 
+const answerLine = (lighthouse: string, answer: string): string =>
+  `Usage data from lh to ${lighthouse}: ${answer}`;
+
 /** The lines `lh config usage-data` prints: the answer, what the Lighthouse allows, and DO_NOT_TRACK when in force. */
 export const describeUsageDataStatus = (
   status: UsageDataStatus,
 ): readonly string[] => {
   const lines = [
-    `Usage data from lh to ${status.lighthouse}: ${answerShown(status.stored)}`,
+    answerLine(status.lighthouse, answerShown(status.stored)),
     instanceLine(status.state),
   ];
   return status.doNotTrack
@@ -83,6 +86,26 @@ export const describeUsageDataStatus = (
         "DO_NOT_TRACK is set, so lh sends no usage data whatever is stored.",
       ]
     : lines;
+};
+
+/** What `lh config usage-data off` did: off is kept, and the Lighthouse was told or could not be. */
+export type UsageDataTurnedOff = {
+  /** How the Lighthouse is named to the person. */
+  readonly lighthouse: string;
+  readonly toldLighthouse: boolean;
+};
+
+/** The lines `lh config usage-data off` prints, saying so when the Lighthouse could not be told. */
+export const describeUsageDataOff = (
+  turnedOff: UsageDataTurnedOff,
+): readonly string[] => {
+  const off = `${answerLine(turnedOff.lighthouse, "off")}. Nothing more is sent.`;
+  return turnedOff.toldLighthouse
+    ? [off]
+    : [
+        off,
+        "Could not tell this Lighthouse; the yes it holds lapses by itself within 30 days.",
+      ];
 };
 
 /** The refusal when the answers file is not one lh can read; it is left as it was. */

@@ -42,6 +42,16 @@ describe("the file usage data store", () => {
     expect(await store.read(LIGHTHOUSE)).toEqual(A_NO);
   });
 
+  it("drops a yes's token from the file when a No replaces it", async () => {
+    const filePath = anAnswersFile();
+    const store = createFileUsageDataStore(filePath);
+    await store.answer(LIGHTHOUSE, A_YES);
+
+    await store.replace(LIGHTHOUSE, A_NO);
+
+    expect(await readFile(filePath, "utf8")).not.toContain("lenas-token");
+  });
+
   it.each([
     "not json",
     '{"version":2,"answers":{}}',

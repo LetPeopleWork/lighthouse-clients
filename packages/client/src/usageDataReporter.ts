@@ -46,8 +46,8 @@ export type UsageDataOutcome =
   | "unanswered"
   | "not-recorded";
 
-// A command's own answer must never wait on usage data for longer than this, whatever Lighthouse does.
-const SEND_BUDGET_MS = 1_000;
+/** A command's own answer never waits on usage data for longer than this, whatever Lighthouse does. */
+export const USAGE_DATA_BUDGET_MS = 1_000;
 // The person has just said yes and is waiting to see it recorded, so the grant is given longer.
 const GRANT_BUDGET_MS = 5_000;
 
@@ -157,7 +157,7 @@ const settle = async (
   dependencies: UsageDataReporterDependencies,
   step: UsageDataStep,
 ): Promise<UsageDataOutcome> => {
-  const signal = AbortSignal.timeout(SEND_BUDGET_MS);
+  const signal = AbortSignal.timeout(USAGE_DATA_BUDGET_MS);
   const doNotTrack = isDoNotTrackSet(dependencies.env);
   const facts: UsageDataStepFacts = {
     doNotTrack,
@@ -187,6 +187,57 @@ const settle = async (
     }),
     signal,
   );
+};
+
+/** How turning usage data off ended. Never carries the consent token. */
+export type UsageDataWithdrawal =
+  | "off"
+  | "off-lighthouse-not-told"
+  | "unreadable";
+
+export type UsageDataWithdrawalDependencies = {
+  readonly lighthouse: Pick<LighthouseClient, "revokeUsageData">;
+  readonly store: LighthouseUsageDataStore;
+  readonly now: () => Date;
+};
+
+const toldLighthouse = async (
+  lighthouse: UsageDataWithdrawalDependencies["lighthouse"],
+  token: string,
+): Promise<boolean> => {
+  try {
+    const revoked = await lighthouse.revokeUsageData({
+      token,
+      signal: AbortSignal.timeout(USAGE_DATA_BUDGET_MS),
+    });
+    return revoked.ok;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Turns usage data off for one Lighthouse: keeps a No in place of whatever was kept, then withdraws a yes
+ * at Lighthouse with its token. Off is kept even when Lighthouse cannot be told; an unreadable answers file
+ * is left as it was.
+ */
+export const withdrawUsageData = async (
+  dependencies: UsageDataWithdrawalDependencies,
+): Promise<UsageDataWithdrawal> => {
+  const stored = await dependencies.store.read();
+  if (stored === "unreadable") {
+    return "unreadable";
+  }
+  await dependencies.store.replace({
+    answer: "no",
+    decidedAt: dependencies.now().toISOString(),
+  });
+  if (stored?.answer !== "yes") {
+    return "off";
+  }
+  return (await toldLighthouse(dependencies.lighthouse, stored.token))
+    ? "off"
+    : "off-lighthouse-not-told";
 };
 
 /**

@@ -8,6 +8,7 @@ import {
   settleUsageDataStep,
   type UsageDataOutcome,
   type UsageDataStep,
+  withdrawUsageData,
 } from "./usageDataReporter";
 import type {
   LighthouseUsageDataStore,
@@ -40,6 +41,8 @@ type LighthouseBehaviour = {
   readonly stateFor?: (token: string | undefined) => unknown;
   /** Takes usage data requests and never answers them, as a hung server does. */
   readonly neverAnswers?: boolean;
+  /** Answers every usage data request with this failing status. */
+  readonly failsWith?: number;
 };
 
 const reply = (status: number, body?: unknown): ConnectivityFetchResponse => ({
@@ -87,6 +90,9 @@ const aLighthouse = (behaviour: LighthouseBehaviour = {}) => {
     seen.push({ route, token: tokenOf(init), body });
     if (behaviour.neverAnswers === true) {
       return hangUntilAborted(init?.signal);
+    }
+    if (behaviour.failsWith !== undefined) {
+      return reply(behaviour.failsWith, { title: "Something went wrong." });
     }
     switch (route) {
       case "state":
@@ -241,5 +247,75 @@ describe("an outcome never carries the consent token", () => {
     for (const token of [KEPT_TOKEN, MINTED_TOKEN, "lapsed-token"]) {
       expect(JSON.stringify(outcome)).not.toContain(token);
     }
+  });
+});
+
+describe("withdrawing usage data", () => {
+  const withdraw = (
+    lighthouse: ReturnType<typeof aLighthouse>,
+    store: LighthouseUsageDataStore,
+  ) =>
+    withdrawUsageData({ lighthouse: lighthouse.client, store, now: () => NOW });
+
+  const A_NO_NOW = { answer: "no", decidedAt: NOW.toISOString() };
+
+  it("withdraws a yes with its token and keeps a No in its place", async () => {
+    const lighthouse = aLighthouse();
+    const { store, kept } = aStore(aYesConfirmed(1 * HOUR));
+
+    const withdrawal = await withdraw(lighthouse, store);
+
+    expect(withdrawal).toBe("off");
+    expect(lighthouse.seen).toEqual([
+      { route: "consent", token: KEPT_TOKEN, body: undefined },
+    ]);
+    expect(kept()).toEqual(A_NO_NOW);
+  });
+
+  it.each<[string, LighthouseBehaviour]>([
+    ["fails", { failsWith: 500 }],
+    ["never answers", { neverAnswers: true }],
+  ])(
+    "is off all the same, within a second, when Lighthouse %s, and says Lighthouse was not told",
+    async (_, behaviour) => {
+      const lighthouse = aLighthouse(behaviour);
+      const { store, kept } = aStore(aYesConfirmed(1 * HOUR));
+      const started = performance.now();
+
+      const withdrawal = await withdraw(lighthouse, store);
+
+      expect(performance.now() - started).toBeLessThan(1_500);
+      expect(withdrawal).toBe("off-lighthouse-not-told");
+      expect(kept()).toEqual(A_NO_NOW);
+    },
+  );
+
+  it.each<[string, StoredUsageDataAnswer | undefined]>([
+    ["nobody asked", undefined],
+    ["a No is kept", { answer: "no", decidedAt: "2026-10-01T08:00:00.000Z" }],
+  ])("keeps a No and asks Lighthouse nothing when %s", async (_, stored) => {
+    const lighthouse = aLighthouse();
+    const { store, kept } = aStore(stored);
+
+    const withdrawal = await withdraw(lighthouse, store);
+
+    expect(withdrawal).toBe("off");
+    expect(lighthouse.seen).toEqual([]);
+    expect(kept()).toEqual(A_NO_NOW);
+  });
+
+  it("leaves an unreadable answers file as it was and asks Lighthouse nothing", async () => {
+    const lighthouse = aLighthouse();
+    const { store, kept } = aStore(undefined);
+    const unreadable: LighthouseUsageDataStore = {
+      ...store,
+      read: async () => "unreadable",
+    };
+
+    const withdrawal = await withdraw(lighthouse, unreadable);
+
+    expect(withdrawal).toBe("unreadable");
+    expect(lighthouse.seen).toEqual([]);
+    expect(kept()).toBeUndefined();
   });
 });

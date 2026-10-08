@@ -184,6 +184,7 @@ const UNCHANGED_ON_PURPOSE: Readonly<Record<string, string>> = {
   "connection status": "already Label: value lines",
   "config output": "already sentences (show and set)",
   "config voter": "already sentences (show and set)",
+  "config usage-data": "already sentences (status and off)",
   help: "usage text, not a Lighthouse answer",
 };
 

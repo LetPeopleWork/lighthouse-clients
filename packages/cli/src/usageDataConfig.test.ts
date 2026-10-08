@@ -163,7 +163,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
 
   // @US-03 @driving_port @real-io @error @contract-shape:unbounded-preservation
   // The one place the answers file is the command's own answer, so an unreadable one is refused by name.
-  it.skip("refuses, naming the file, when the answers file cannot be read, and leaves it as it was", async () => {
+  it("refuses, naming the file, when the answers file cannot be read, and leaves it as it was", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
     await writeFile(usageDataFileOf(lena), "not json", "utf8");
@@ -176,7 +176,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @error @contract-shape:pure-function
-  it.skip("needs a connection, as every other command that names a Lighthouse does", async () => {
+  it("needs a connection, as every other command that names a Lighthouse does", async () => {
     const nobodysMachine = aMachine();
 
     const run = await lhOn(nobodysMachine).run(STATUS);
@@ -188,7 +188,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @error @contract-shape:pure-function
-  it.skip("answers anything but on or off with the group's help, exit 1", async () => {
+  it("answers anything but on or off with the group's help, exit 1", async () => {
     const lighthouse = await aFakeLighthouse();
 
     const run = await lhOn(await lenaAt(lighthouse)).run([
@@ -203,7 +203,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @contract-shape:pure-function
-  it.skip("is listed in the config group's help", async () => {
+  it("is listed in the config group's help", async () => {
     const run = await lhOn(aMachine()).run(["config"]);
 
     expect(run.stdout).toContain("lh config usage-data");
@@ -340,7 +340,7 @@ describe("the lines lh config usage-data prints, from what it knows", () => {
 describe("lh config usage-data off withdraws the yes and stops sending", () => {
   // @US-03 @driving_port @real-io @kpi @contract-shape:bounded-change
   // KPI-5: 0 sends after off.
-  it.skip("withdraws Lena's grant at her Lighthouse, forgets the token, and sends nothing afterwards", async () => {
+  it("withdraws Lena's grant at her Lighthouse, forgets the token, and sends nothing afterwards", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaWhoSaidYes(lighthouse);
     const token = lighthouse.mintedTokens()[0];
@@ -363,7 +363,7 @@ describe("lh config usage-data off withdraws the yes and stops sending", () => {
 
   // @US-03 @driving_port @real-io @error @infrastructure-failure @contract-shape:bounded-change
   // Offline: the answer is off all the same, and Lena is told her Lighthouse was not.
-  it.skip.each<["by-failing" | "never"]>([["by-failing"], ["never"]])(
+  it.each<["by-failing" | "never"]>([["by-failing"], ["never"]])(
     "turns usage data off even when the withdrawal cannot reach Lighthouse (it answers %s), and says so",
     async (consentAnswers) => {
       const lighthouse = await aFakeLighthouse();
@@ -385,7 +385,7 @@ describe("lh config usage-data off withdraws the yes and stops sending", () => {
 
   // @US-03 @driving_port @real-io @boundary @contract-shape:bounded-change
   // Off is always allowed: under the administrator's stop, under DO_NOT_TRACK, before anyone asked.
-  it.skip.each<[string, UsageDataSide, Readonly<Record<string, string>>]>([
+  it.each<[string, UsageDataSide, Readonly<Record<string, string>>]>([
     ["before anyone asked", {}, {}],
     ["under the administrator's stop", { administratorDisabled: true }, {}],
     ["under DO_NOT_TRACK", {}, { DO_NOT_TRACK: "1" }],

@@ -57,8 +57,10 @@ import {
   type VoterDependencies,
 } from "./refinementCommands";
 import {
+  describeUsageDataOff,
   describeUsageDataStatus,
   type UsageDataStatus,
+  type UsageDataTurnedOff,
   usageDataFileUnreadable,
 } from "./usageDataQuestion";
 import {
@@ -172,8 +174,14 @@ export type RunCliCommandDependencies = {
   /** What `lh config usage-data` shows for one Lighthouse, or the answers file when it cannot be read. */
   readonly loadUsageDataStatus?: (
     connection: CliConnection,
-  ) => Promise<UsageDataStatus | { readonly unreadableFile: string }>;
+  ) => Promise<UsageDataStatus | UnreadableUsageDataFile>;
+  /** Turns usage data off for one Lighthouse, or names the answers file when it cannot be read. */
+  readonly turnUsageDataOff?: (
+    connection: CliConnection,
+  ) => Promise<UsageDataTurnedOff | UnreadableUsageDataFile>;
 } & VoterDependencies;
+
+export type UnreadableUsageDataFile = { readonly unreadableFile: string };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1173,6 +1181,8 @@ const getConfigGroupHelpText = (): string =>
     "  lh config output set --format <pretty|toon|json>",
     "  lh config voter",
     "  lh config voter set --name <name>",
+    "  lh config usage-data",
+    "  lh config usage-data off",
   ].join("\n");
 
 const getRefinementGroupHelpText = (): string =>
@@ -2597,11 +2607,40 @@ const runConfigVoter = async (
   return getSuccessResult(`Voter name set to ${name}.`);
 };
 
+const usageDataCommandFor = (
+  subject: string | undefined,
+  dependencies: RunCliCommandDependencies,
+):
+  | ((
+      connection: CliConnection,
+    ) => Promise<readonly string[] | UnreadableUsageDataFile>)
+  | undefined => {
+  const { loadUsageDataStatus, turnUsageDataOff } = dependencies;
+  if (subject === undefined && loadUsageDataStatus !== undefined) {
+    return async (connection) => {
+      const status = await loadUsageDataStatus(connection);
+      return "unreadableFile" in status
+        ? status
+        : describeUsageDataStatus(status);
+    };
+  }
+  if (subject === "off" && turnUsageDataOff !== undefined) {
+    return async (connection) => {
+      const turnedOff = await turnUsageDataOff(connection);
+      return "unreadableFile" in turnedOff
+        ? turnedOff
+        : describeUsageDataOff(turnedOff);
+    };
+  }
+  return undefined;
+};
+
 const runConfigUsageData = async (
   subject: string | undefined,
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
-  if (subject !== undefined || dependencies.loadUsageDataStatus === undefined) {
+  const command = usageDataCommandFor(subject, dependencies);
+  if (command === undefined) {
     return getUnknownSubcommandResult(
       getConfigGroupHelpText(),
       "config usage-data",
@@ -2614,11 +2653,11 @@ const runConfigUsageData = async (
     return connectionOrError;
   }
 
-  const status = await dependencies.loadUsageDataStatus(connectionOrError);
-  if ("unreadableFile" in status) {
-    return getErrorResult(usageDataFileUnreadable(status.unreadableFile));
+  const lines = await command(connectionOrError);
+  if ("unreadableFile" in lines) {
+    return getErrorResult(usageDataFileUnreadable(lines.unreadableFile));
   }
-  return getSuccessResult(describeUsageDataStatus(status).join("\n"));
+  return getSuccessResult(lines.join("\n"));
 };
 
 const runConfigGroup = async (
