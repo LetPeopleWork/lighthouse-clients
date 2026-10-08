@@ -14,9 +14,11 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { Agent, fetch as undiciFetch } from "undici";
+import { version as SERVER_VERSION } from "../package.json" with {
+  type: "json",
+};
 
 const SERVER_NAME = "lighthouse";
-const SERVER_VERSION = "0.2.5";
 
 const getNormalizedExplicitUrl = (value: string): string | null => {
   const trimmed = value.trim();

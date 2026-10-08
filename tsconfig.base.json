@@ -9,6 +9,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
     "types": ["vitest/globals", "node"],
     "paths": {
       "@letpeoplework/lighthouse-client": ["./packages/client/src/index.ts"],

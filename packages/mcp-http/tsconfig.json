@@ -4,7 +4,7 @@
     "composite": true,
     "outDir": "dist-types"
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "package.json"],
   "exclude": ["src/**/*.test.ts"],
   "references": [
     {

@@ -4,6 +4,6 @@
     "composite": false,
     "paths": {}
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "package.json"],
   "exclude": ["src/**/*.test.ts"]
 }

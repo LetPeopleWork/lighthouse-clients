@@ -12,9 +12,11 @@ import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Agent, fetch as undiciFetch } from "undici";
+import { version as SERVER_VERSION } from "../package.json" with {
+  type: "json",
+};
 
 const SERVER_NAME = "@letpeoplework/lighthouse-mcp-http";
-const SERVER_VERSION = "0.1.0";
 
 export type McpOAuthConfig = {
   readonly issuer: string;
