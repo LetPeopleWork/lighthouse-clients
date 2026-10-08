@@ -1886,6 +1886,49 @@ describe("SLE Risk, read and said", () => {
       ],
     });
   });
+
+  it("reads no entry whose miss count is anything but a number or null", () => {
+    expect(
+      readSleRisk([
+        { ...risk("GR-1", 55, 11, 6), finishedItemsThatWentOnToMiss: "6" },
+      ]),
+    ).toBeNull();
+    expect(
+      readSleRisk([
+        {
+          ...risk("GR-1", 55, 11, 6),
+          finishedItemsThatWentOnToMiss: undefined,
+        },
+      ]),
+    ).toBeNull();
+  });
+
+  it("reads an SLE of one day at one percent", () => {
+    expect(
+      readServiceLevelExpectation({
+        serviceLevelExpectationRange: 1,
+        serviceLevelExpectationProbability: 1,
+      }),
+    ).toEqual({ probability: 1, days: 1 });
+  });
+
+  // A Team that could not be read may well have an SLE, so neither its absence nor its numbers are said.
+  it("claims nothing about the SLE of a Team that could not be read", () => {
+    expect(describeSleRiskNow([], GRAVITY, null, []).sentence).toBeNull();
+    expect(
+      describeSleRiskNow([risk("GR-1", 80, 4, 3)], GRAVITY, null, undefined),
+    ).toEqual({
+      title: "SLE Risk",
+      sentence: "1 of 1 Work Item in progress is at risk of missing the SLE.",
+      rows: [
+        [
+          "GR-1",
+          "80%",
+          "3 of 4 finished Work Items that reached this age went past the SLE",
+        ],
+      ],
+    });
+  });
 });
 
 describe("a Process Behaviour Chart, read and said", () => {
@@ -2135,5 +2178,32 @@ describe("a Process Behaviour Chart, read and said", () => {
         baselineConfigured: true,
       }),
     ).toBe("Small Shift on Wed 7 Oct");
+  });
+
+  it("names every signal Lighthouse sends by the product's name for it", () => {
+    expect(
+      sentenceOf(
+        chartOf(
+          day("2026-10-05", ["LargeChange"]),
+          day("2026-10-06", ["ModerateChange"]),
+          day("2026-10-07", ["ModerateShift"]),
+          day("2026-10-08", ["SmallShift"]),
+        ),
+      ),
+    ).toBe(
+      "Large Change on Mon 5 Oct; Moderate Change on Tue 6 Oct; Moderate Shift on Wed 7 Oct; Small Shift on Thu 8 Oct",
+    );
+  });
+
+  it.each([
+    ["a day that is not a day", chartOf(null)],
+    ["a day without its date", chartOf({ yValue: 3, specialCauses: [] })],
+    ["a day without its signals", chartOf({ xValue: "2026-10-07" })],
+    [
+      "a day with one signal it knows and one it does not",
+      chartOf(day("2026-10-07", ["LargeChange", "Wobble"])),
+    ],
+  ])("reads no chart with %s", (_case, value) => {
+    expect(readProcessBehaviorChart(value)).toBeNull();
   });
 });
