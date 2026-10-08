@@ -166,7 +166,6 @@ export type RunCliCommandDependencies = {
   readonly saveOutputFormat: (outputFormat: OutputFormat) => Promise<void>;
   readonly readTextFile: (filePath: string) => Promise<string>;
   readonly prompt: (question: string) => Promise<string>;
-  readonly openBrowser: (url: string) => Promise<void>;
   readonly validateConnectivity: (
     url: string,
     insecure?: boolean,
@@ -2941,7 +2940,6 @@ export const getDefaultDependencies = (): RunCliCommandDependencies => ({
     throw new Error("No file reader configured.");
   },
   prompt: async () => "",
-  openBrowser: async () => undefined,
   validateConnectivity: async () => ({
     category: "unreachable" as const,
     reason: "No connectivity validator configured.",

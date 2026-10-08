@@ -232,7 +232,6 @@ const getDependencies = (overrides?: {
           throw new Error(`File not mocked: ${filePath}`);
         }),
       prompt: async () => promptQueue.shift() ?? "",
-      openBrowser: async () => undefined,
       validateConnectivity:
         overrides?.validateConnectivity ??
         (async (url) => ({

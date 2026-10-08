@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -166,26 +165,6 @@ const createFetch = (insecure?: boolean): typeof globalThis.fetch => {
   };
 };
 
-const openBrowser = async (url: string): Promise<void> => {
-  let cmd: string;
-  let openArgs: string[];
-  if (process.platform === "win32") {
-    cmd = "cmd";
-    openArgs = ["/c", "start", "", url];
-  } else if (process.platform === "darwin") {
-    cmd = "open";
-    openArgs = [url];
-  } else {
-    cmd = "xdg-open";
-    openArgs = [url];
-  }
-  return new Promise<void>((resolve) => {
-    const child = spawn(cmd, openArgs, { detached: true, stdio: "ignore" });
-    child.unref();
-    resolve();
-  });
-};
-
 const prompt = async (question: string): Promise<string> => {
   const rl = createInterface({
     input: process.stdin,
@@ -333,7 +312,6 @@ const commandDependencies = (
     saveVoterKey: async (lighthouse, key) => voterKeys().save(lighthouse, key),
     readTextFile: async (filePath) => readFile(filePath, "utf8"),
     prompt,
-    openBrowser,
     validateConnectivity: async (url, insecure) =>
       validateLighthouseConnectivity(
         { kind: "explicit", lighthouseUrl: url },

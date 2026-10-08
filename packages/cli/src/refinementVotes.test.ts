@@ -294,7 +294,6 @@ const aLighthouse = (
       throw new Error(`File not mocked: ${filePath}`);
     },
     prompt: async () => "",
-    openBrowser: async () => undefined,
     validateConnectivity: async () => ({
       category: "unreachable",
       reason: "not used",

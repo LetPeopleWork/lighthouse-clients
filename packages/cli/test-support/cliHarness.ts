@@ -80,7 +80,6 @@ export const aLighthouse = (
       return content;
     },
     prompt: async () => "",
-    openBrowser: async () => undefined,
     validateConnectivity: async () => ({
       category: "unreachable",
       reason: "not used",
