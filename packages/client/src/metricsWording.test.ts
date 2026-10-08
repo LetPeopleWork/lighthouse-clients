@@ -1561,12 +1561,13 @@ describe("the metrics wording at its edges", () => {
     const view = describeWipDays(
       {
         asOfDate: "2026-10-06",
-        count: 4,
+        count: 5,
         items: [
           item("GR-1"),
           item("GR-2", 0),
           item("GR-3", 5),
           item("GR-4", 1),
+          item("GR-5"),
         ],
       },
       { ...RANGE, daily: [] },
@@ -1580,7 +1581,7 @@ describe("the metrics wording at its edges", () => {
       list !== undefined && "rows" in list
         ? list.rows.slice(1).map((row) => row[0])
         : [],
-    ).toEqual(["GR-3", "GR-4", "GR-2", "GR-1"]);
+    ).toEqual(["GR-3", "GR-4", "GR-2", "GR-1", "GR-5"]);
   });
 
   it("names a day's oldest Work Item wherever it is listed", () => {

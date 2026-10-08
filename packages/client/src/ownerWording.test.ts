@@ -396,9 +396,15 @@ describe("what a Team's settings must look like to be stated", () => {
     ).toBeUndefined();
   });
 
-  it("reads no Throughput dates when either end is missing", () => {
+  it("reads no Throughput dates when the last one is missing", () => {
     expect(
       readTeam({ ...gravityTeam, throughputEndDate: undefined })?.throughput,
+    ).toBeUndefined();
+  });
+
+  it("reads no Throughput dates when the first one is missing", () => {
+    expect(
+      readTeam({ ...gravityTeam, throughputStartDate: undefined })?.throughput,
     ).toBeUndefined();
   });
 
