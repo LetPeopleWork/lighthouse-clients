@@ -77,7 +77,7 @@ const northwindFixture = (): string =>
 
 describe("the eval fixture server plays the Lighthouse a fixture describes", () => {
   // @real-io @adapter-integration @contract-shape:bounded-change
-  it.skip("answers a listed read with the fixture's body, whatever its query", async () => {
+  it("answers a listed read with the fixture's body, whatever its query", async () => {
     const lighthouse = await serving(
       aFixture({
         version: "v26.10.8.1",
@@ -96,7 +96,7 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
 
   // @real-io @adapter-integration @contract-shape:bounded-change
   // The version decides which reads a client lets through, so an older Lighthouse is one field away.
-  it.skip("reports the fixture's version as its own", async () => {
+  it("reports the fixture's version as its own", async () => {
     const lighthouse = await serving(
       aFixture({ version: "v26.9.9.9", routes: {} }),
     );
@@ -110,7 +110,7 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
 
   // @error @real-io @adapter-integration @contract-shape:bounded-change
   // A read the fixture forgot must be visible, not answered with something made up.
-  it.skip("answers 404 to a route the fixture does not list, and prints that request", async () => {
+  it("answers 404 to a route the fixture does not list, and prints that request", async () => {
     const lighthouse = await serving(
       aFixture({ version: "v26.10.8.1", routes: {} }),
     );
@@ -128,7 +128,7 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
 
   // @error @real-io @adapter-integration @contract-shape:bounded-change
   // "No vote before the person confirmed" is scored from this log, so every write has to appear in it.
-  it.skip("prints every write it receives", async () => {
+  it("prints every write it receives", async () => {
     const vote = "POST /api/v1/teams/3/refinement/work-items/GR-051/votes";
     const lighthouse = await serving(
       aFixture({ version: "v26.10.8.1", routes: { [vote]: {} } }),
@@ -145,7 +145,7 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
 
   // @real-io @adapter-integration @contract-shape:bounded-change
   // The general skill's own fixture, read by lh as an assistant would read it.
-  it.skip("serves the general skill's Northwind fixture to lh, which reads Gravity's Work Items in progress from it", async () => {
+  it("serves the general skill's Northwind fixture to lh, which reads Gravity's Work Items in progress from it", async () => {
     const lighthouse = await serving(northwindFixture());
     expect(lighthouse.url).not.toBeNull();
     const priya = await connectedTo(aMachine(), lighthouse.url ?? "");
