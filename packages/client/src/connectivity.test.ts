@@ -63,7 +63,7 @@ describe("parseStandaloneDiscoveryContract", () => {
 
   it("rejects payloads with unsupported contract version", () => {
     const parsed = parseStandaloneDiscoveryContract(
-      JSON.stringify(getStandaloneContract({ contractVersion: 2 })),
+      JSON.stringify({ ...getStandaloneContract(), contractVersion: 2 }),
     );
 
     expect(parsed.isValid).toBe(false);

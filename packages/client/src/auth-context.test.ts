@@ -1,35 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { createLighthouseAuthContext } from "./index";
+import {
+  createLighthouseAuthContext,
+  type LighthouseAuthStore,
+  type StoredLighthouseAuth,
+} from "./index";
 
-type PersistedAuthState =
-  | {
-      readonly kind: "api-key";
-      readonly value: string;
-      readonly headerName?: string;
-    }
-  | {
-      readonly kind: "bearer-token";
-      readonly token: string;
-    }
-  | {
-      readonly kind: "none";
-    };
-
-const getStore = (initialState: PersistedAuthState | null = null) => {
+const getStore = (initialState: StoredLighthouseAuth | null = null) => {
   let state = initialState;
-
-  return {
-    store: {
-      load: async () => state,
-      save: async (nextState: PersistedAuthState) => {
-        state = nextState;
-      },
-      clear: async () => {
-        state = null;
-      },
+  const store: LighthouseAuthStore = {
+    load: async () => state,
+    save: async (nextState) => {
+      state = nextState;
     },
-    getState: () => state,
+    clear: async () => {
+      state = null;
+    },
   };
+
+  return { store, getState: () => state };
 };
 
 describe("createLighthouseAuthContext", () => {

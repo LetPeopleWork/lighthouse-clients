@@ -2,383 +2,52 @@ import type {
   CliConnection,
   CliServerConnection,
   ConnectivityValidationResult,
+  CumulativeStateTimeCandidatesResult,
+  CumulativeStateTimeItemsResult,
+  CumulativeStateTimeResult,
+  RecurringBlackoutRule,
 } from "@letpeoplework/lighthouse-client";
 import { describe, expect, it, vi } from "vitest";
 import { type RunCliCommandDependencies, runCliCommand } from "./index";
 import type { OutputFormat } from "./output";
 
-type MockClient = {
-  readonly checkConnectivity: () => Promise<{
-    readonly category:
-      | "success"
-      | "unreachable"
-      | "misconfigured"
-      | "unauthorized"
-      | "dependency-failure"
-      | "unexpected";
-    readonly reason?: string;
-  }>;
-  readonly getVersion: () => Promise<
-    | {
-        readonly ok: true;
-        readonly value: string;
-      }
-    | {
-        readonly ok: false;
-        readonly error: {
-          readonly category: string;
-          readonly reason: string;
-        };
-      }
-  >;
-  readonly listWorkTrackingConnections: () => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getWorkTrackingConnection: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly listTeams: () => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getTeam: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly createTeam: (payload: unknown) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly updateTeam: (
-    id: number,
-    payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly deleteTeam: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: undefined;
-  }>;
-  readonly refreshTeam: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: undefined;
-  }>;
-  readonly listPortfolios: () => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getPortfolio: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly createPortfolio: (payload: unknown) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly updatePortfolio: (
-    id: number,
-    payload: unknown,
-  ) => Promise<
-    | {
-        readonly ok: true;
-        readonly value: unknown;
-      }
-    | {
-        readonly ok: false;
-        readonly error: {
-          readonly category: string;
-          readonly reason: string;
-          readonly statusCode?: number;
-        };
-      }
-  >;
-  readonly deletePortfolio: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: undefined;
-  }>;
-  readonly refreshPortfolio: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: undefined;
-  }>;
-  readonly getTeamThroughput: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getTeamArrivals: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getTeamWipOverTime: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getTeamWip: (
-    id: number,
-    asOfDate: string,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getTeamCycleTimePercentiles: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getTeamCycleTimeData: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getTeamPredictabilityScore: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getTeamWorkItemAgeOverTime: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getTeamWorkItemAgePercentiles: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getTeamTotalWorkItemAgeOverTime: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getPortfolioThroughput: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getPortfolioCycleTimePercentiles: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getPortfolioArrivals: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getPortfolioWipOverTime: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getPortfolioWip: (
-    id: number,
-    asOfDate: string,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getPortfolioCycleTimeData: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getPortfolioPredictabilityScore: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getPortfolioWorkItemAgeOverTime: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getPortfolioWorkItemAgePercentiles: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getPortfolioTotalWorkItemAgeOverTime: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly getTeamCumulativeStateTime: (
-    id: number,
-    range?: unknown,
-    itemIds?: readonly number[],
-  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
-  readonly getTeamCumulativeStateTimeItems: (
-    id: number,
-    state: string,
-    range?: unknown,
-    itemIds?: readonly number[],
-  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
-  readonly getTeamCumulativeStateTimeCandidates: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
-  readonly getPortfolioCumulativeStateTime: (
-    id: number,
-    range?: unknown,
-    itemIds?: readonly number[],
-  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
-  readonly getPortfolioCumulativeStateTimeItems: (
-    id: number,
-    state: string,
-    range?: unknown,
-    itemIds?: readonly number[],
-  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
-  readonly getPortfolioCumulativeStateTimeCandidates: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{ readonly ok: true; readonly value: unknown }>;
-  readonly getTeamBlockedCountHistory: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
-  readonly getPortfolioBlockedCountHistory: (
-    id: number,
-    range?: unknown,
-  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
-  readonly getTeamPercentilesOverTime: (
-    id: number,
-    range?: unknown,
-    metricType?: unknown,
-    horizon?: number,
-  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
-  readonly getPortfolioPercentilesOverTime: (
-    id: number,
-    range?: unknown,
-    metricType?: unknown,
-    horizon?: number,
-  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
-  readonly getTeamProcessBehaviorOverTime: (
-    id: number,
-    range?: unknown,
-    metricType?: unknown,
-  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
-  readonly getPortfolioProcessBehaviorOverTime: (
-    id: number,
-    range?: unknown,
-    metricType?: unknown,
-  ) => Promise<{ readonly ok: true; readonly value: readonly unknown[] }>;
-  readonly getFeaturesByIds: (ids: readonly number[]) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getFeaturesByReferences: (refs: readonly string[]) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getFeatureWorkItems: (featureId: number) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly listDeliveries: (portfolioId: number) => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly getDeliveryMetricsHistory: (deliveryId: number) => Promise<{
-    readonly ok: boolean;
-    readonly value?: unknown;
-    readonly error?: { readonly category: string; readonly reason: string };
-  }>;
-  readonly createDelivery: (
-    portfolioId: number,
-    payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly updateDelivery: (
-    deliveryId: number,
-    payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly deleteDelivery: (deliveryId: number) => Promise<{
-    readonly ok: true;
-    readonly value: undefined;
-  }>;
-  readonly getRecurringBlackoutRules: () => Promise<{
-    readonly ok: true;
-    readonly value: readonly unknown[];
-  }>;
-  readonly createRecurringBlackoutRule: (payload: unknown) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly updateRecurringBlackoutRule: (
-    id: number,
-    payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly deleteRecurringBlackoutRule: (id: number) => Promise<{
-    readonly ok: true;
-    readonly value: undefined;
-  }>;
-  readonly runManualForecast: (
-    teamId: number,
-    payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
-  readonly runBacktest: (
-    teamId: number,
-    payload: unknown,
-  ) => Promise<{
-    readonly ok: true;
-    readonly value: unknown;
-  }>;
+type MockClient = ReturnType<RunCliCommandDependencies["createClient"]>;
+
+const getBlackoutRule = (
+  overrides: Partial<RecurringBlackoutRule>,
+): RecurringBlackoutRule => ({
+  id: 1,
+  weekdays: ["Monday"],
+  intervalWeeks: 1,
+  start: "2026-06-01",
+  end: null,
+  description: "",
+  summary: "",
+  ...overrides,
+});
+
+const notStubbed = (name: string) => async (): Promise<never> => {
+  throw new Error(`${name} is not stubbed in this test`);
 };
 
 const getDefaultMockClient = (): MockClient => ({
-  checkConnectivity: async () => ({ category: "success" }),
+  getTeamSettings: notStubbed("getTeamSettings"),
+  getTeamRefinement: notStubbed("getTeamRefinement"),
+  castRefinementVote: notStubbed("castRefinementVote"),
+  addRefinementComment: notStubbed("addRefinementComment"),
+  takeBackRefinementVote: notStubbed("takeBackRefinementVote"),
+  getRefinementLog: notStubbed("getRefinementLog"),
+  getTerminology: notStubbed("getTerminology"),
+  checkConnectivity: async () => ({
+    category: "success",
+    endpoint: {
+      mode: "explicit",
+      lighthouseUrl: "http://localhost:5000",
+      apiBaseUrl: "http://localhost:5000/api",
+      healthCheckUrl: "http://localhost:5000/api/v1/healthcheck",
+    },
+    serverVersion: "1.0.0",
+  }),
   getVersion: async () => ({ ok: true, value: "v1.2.3" }),
   listWorkTrackingConnections: async () => ({
     ok: true,
@@ -511,13 +180,13 @@ const getDefaultMockClient = (): MockClient => ({
   updateDelivery: async () => ({ ok: true, value: {} }),
   deleteDelivery: async () => ({ ok: true, value: undefined }),
   getRecurringBlackoutRules: async () => ({ ok: true, value: [] }),
-  createRecurringBlackoutRule: async (payload: unknown) => ({
+  createRecurringBlackoutRule: async (payload) => ({
     ok: true,
-    value: payload,
+    value: getBlackoutRule(payload),
   }),
-  updateRecurringBlackoutRule: async (id: number, payload: unknown) => ({
+  updateRecurringBlackoutRule: async (id, payload) => ({
     ok: true,
-    value: { id, ...((payload as Record<string, unknown>) ?? {}) },
+    value: getBlackoutRule({ ...payload, id }),
   }),
   deleteRecurringBlackoutRule: async () => ({ ok: true, value: undefined }),
   runManualForecast: async () => ({ ok: true, value: {} }),
@@ -637,7 +306,9 @@ describe("runCliCommand", () => {
         reason: "Connectivity check failed with status 401.",
         statusCode: 401,
         endpoint: {
+          mode: "explicit",
           lighthouseUrl: "http://localhost:5000",
+          apiBaseUrl: "http://localhost:5000/api",
           healthCheckUrl: "http://localhost:5000/api/v1/healthcheck",
         },
       }),
@@ -657,7 +328,9 @@ describe("runCliCommand", () => {
         category: "unreachable",
         reason: "Connection refused",
         endpoint: {
+          mode: "explicit",
           lighthouseUrl: "http://bad-host",
+          apiBaseUrl: "http://bad-host/api",
           healthCheckUrl: "http://bad-host/api/v1/healthcheck",
         },
       }),
@@ -736,7 +409,9 @@ describe("runCliCommand", () => {
             category: "unreachable",
             reason: "fetch failed",
             endpoint: {
+              mode: "explicit",
               lighthouseUrl: "https://localhost:48332",
+              apiBaseUrl: "https://localhost:48332/api",
               healthCheckUrl: "https://localhost:48332/api/v1/version/current",
             },
           };
@@ -896,7 +571,9 @@ describe("runCliCommand", () => {
         category: "unreachable",
         reason: "certificate verify failed",
         endpoint: {
+          mode: "explicit",
           lighthouseUrl: "https://localhost:48332",
+          apiBaseUrl: "https://localhost:48332/api",
           healthCheckUrl: "https://localhost:48332/api/v1/version/current",
         },
       }),
@@ -1430,7 +1107,7 @@ describe("runCliCommand", () => {
     const updatePortfolio = vi.fn(async () => ({
       ok: false as const,
       error: {
-        category: "concurrency-conflict",
+        category: "concurrency-conflict" as const,
         reason:
           "This portfolio was changed by someone else. Re-fetch the current settings to obtain the latest concurrency token, then re-apply your change.",
         statusCode: 409,
@@ -1564,6 +1241,7 @@ describe("runCliCommand", () => {
       readonly wip: Record<string, unknown>;
       readonly cycleTime: Record<string, unknown>;
       readonly blocked: Record<string, unknown>;
+      readonly arrivals: Record<string, unknown>;
     };
     expect(payload.scope).toBe("team");
     expect(payload.id).toBe(1);
@@ -1885,11 +1563,41 @@ describe("runCliCommand", () => {
   });
 
   it("bundles bar, candidates and drill-down for --metrics cumulativeStateTime and passes state + item-ids", async () => {
-    const bar = { states: [{ state: "Doing", totalDays: 12 }] };
-    const candidates = { items: [{ workItemId: 3, referenceId: "A-3" }] };
-    const items = {
+    const bar: CumulativeStateTimeResult = {
+      states: [
+        {
+          state: "Doing",
+          workflowOrder: 1,
+          totalDays: 12,
+          completedContributionDays: 0,
+          ongoingContributionDays: 12,
+          itemCount: 1,
+          completedItemCount: 0,
+          ongoingItemCount: 1,
+          meanDays: 12,
+          medianDays: 12,
+        },
+      ],
+    };
+    const candidates: CumulativeStateTimeCandidatesResult = {
+      items: [
+        { workItemId: 3, referenceId: "A-3", title: "A", workItemType: "Bug" },
+      ],
+    };
+    const items: CumulativeStateTimeItemsResult = {
       state: "Doing",
-      items: [{ workItemId: 3, daysContributed: 12 }],
+      items: [
+        {
+          workItemId: 3,
+          referenceId: "A-3",
+          title: "A",
+          type: "Bug",
+          state: "Doing",
+          stateCategory: "Doing",
+          url: null,
+          daysContributed: 12,
+        },
+      ],
     };
     const getTeamCumulativeStateTime = vi.fn(async () => ({
       ok: true as const,
@@ -2513,10 +2221,12 @@ describe("runCliCommand", () => {
   });
 
   it("threads --filter filtered through manual forecast as applyFilterOverride=true", async () => {
-    const runManualForecast = vi.fn(async () => ({
-      ok: true as const,
-      value: {},
-    }));
+    const runManualForecast = vi.fn(
+      async (_teamId: number, _payload: unknown) => ({
+        ok: true as const,
+        value: {},
+      }),
+    );
     const { dependencies } = getDependencies({
       connection: {
         mode: "server",
@@ -2548,7 +2258,10 @@ describe("runCliCommand", () => {
   });
 
   it("threads --filter raw through backtest as applyFilterOverride=false", async () => {
-    const runBacktest = vi.fn(async () => ({ ok: true as const, value: {} }));
+    const runBacktest = vi.fn(async (_teamId: number, _payload: unknown) => ({
+      ok: true as const,
+      value: {},
+    }));
     const { dependencies } = getDependencies({
       connection: {
         mode: "server",
@@ -2835,7 +2548,7 @@ describe("runCliCommand", () => {
   });
 
   it("lists recurring blackout rules", async () => {
-    const rules = [{ id: 3, description: "Sprint review" }];
+    const rules = [getBlackoutRule({ id: 3, description: "Sprint review" })];
     const { dependencies } = getDependencies({
       connection: {
         mode: "server",
@@ -2855,9 +2568,9 @@ describe("runCliCommand", () => {
   });
 
   it("creates a recurring blackout rule from a JSON payload", async () => {
-    const createRecurringBlackoutRule = vi.fn(async () => ({
+    const createRecurringBlackoutRule = vi.fn(async (_payload: unknown) => ({
       ok: true as const,
-      value: { id: 4 },
+      value: getBlackoutRule({ id: 4 }),
     }));
     const { dependencies } = getDependencies({
       connection: {
@@ -2890,10 +2603,12 @@ describe("runCliCommand", () => {
   });
 
   it("updates a recurring blackout rule by id", async () => {
-    const updateRecurringBlackoutRule = vi.fn(async () => ({
-      ok: true as const,
-      value: { id: 7 },
-    }));
+    const updateRecurringBlackoutRule = vi.fn(
+      async (_id: number, _payload: unknown) => ({
+        ok: true as const,
+        value: getBlackoutRule({ id: 7 }),
+      }),
+    );
     const { dependencies } = getDependencies({
       connection: {
         mode: "server",

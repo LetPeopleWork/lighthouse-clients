@@ -1,31 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { queryServerAuthMode, startCliAuthSession } from "./index";
 
-type MockResponse = {
-  readonly ok: boolean;
-  readonly status: number;
-  readonly text: () => Promise<string>;
-  readonly json: () => Promise<unknown>;
-};
-
+// The helpers read only these four members of a fetch Response, so the stub carries just those.
 const getResponse = (response: {
   readonly ok: boolean;
   readonly status: number;
   readonly text?: string;
   readonly json?: unknown;
-}): MockResponse => ({
-  ok: response.ok,
-  status: response.status,
-  text: async () => response.text ?? "",
-  json: async () => response.json ?? {},
-});
+}): Response =>
+  ({
+    ok: response.ok,
+    status: response.status,
+    text: async () => response.text ?? "",
+    json: async () => response.json ?? {},
+  }) as Partial<Response> as Response;
 
 describe("CLI auth helpers", () => {
   it("normalizes trailing slash endpoint when querying auth mode", async () => {
     let calledUrl = "";
     const result = await queryServerAuthMode("http://localhost:5000/", {
       fetch: async (url) => {
-        calledUrl = url;
+        calledUrl = String(url);
         return getResponse({
           ok: true,
           status: 200,
@@ -71,7 +66,7 @@ describe("CLI auth helpers", () => {
     let calledUrl = "";
     const result = await startCliAuthSession("http://localhost:5000", {
       fetch: async (url) => {
-        calledUrl = url;
+        calledUrl = String(url);
         return getResponse({
           ok: true,
           status: 200,
@@ -98,7 +93,7 @@ describe("CLI auth helpers", () => {
     let calledUrl = "";
     const result = await startCliAuthSession("http://localhost:5000/", {
       fetch: async (url) => {
-        calledUrl = url;
+        calledUrl = String(url);
         return getResponse({
           ok: true,
           status: 200,
