@@ -23,6 +23,36 @@ const anAnswersFile = () =>
   join(aTempDirectory("lighthouse-usage-data-"), "usage-data.json");
 
 describe("the file usage data store", () => {
+  it.each<[string, StoredUsageDataAnswer | undefined]>([
+    ["nothing is kept", undefined],
+    ["a No is kept", A_NO],
+    ["a yes with another token is kept", { ...A_YES, token: "marcos-token" }],
+  ])("renews nothing when %s", async (_when, kept) => {
+    const store = createFileUsageDataStore(anAnswersFile());
+    if (kept !== undefined) {
+      await store.answer(LIGHTHOUSE, kept);
+    }
+
+    const renewed = await store.renew(LIGHTHOUSE, A_YES.token, A_YES);
+
+    expect(renewed).toBe(false);
+    expect(await store.read(LIGHTHOUSE)).toEqual(kept);
+  });
+
+  it("renews the yes it holds the token of", async () => {
+    const store = createFileUsageDataStore(anAnswersFile());
+    await store.answer(LIGHTHOUSE, A_YES);
+    const confirmedAgain = {
+      ...A_YES,
+      confirmedAt: "2026-10-09T08:00:00.000Z",
+    };
+
+    const renewed = await store.renew(LIGHTHOUSE, A_YES.token, confirmedAgain);
+
+    expect(renewed).toBe(true);
+    expect(await store.read(LIGHTHOUSE)).toEqual(confirmedAgain);
+  });
+
   it("keeps the first answer given and turns away a later one", async () => {
     const store = createFileUsageDataStore(anAnswersFile());
 
@@ -57,6 +87,9 @@ describe("the file usage data store", () => {
     '{"version":2,"answers":{}}',
     `{"version":1,"answers":[${JSON.stringify(A_NO)}]}`,
     '{"version":1,"answers":{"standalone":{"answer":"maybe"}}}',
+    '{"version":1,"answers":5}',
+    '{"version":1,"answers":null}',
+    "null",
   ])(
     "reads a file of another shape (%s) as unreadable and never writes over it",
     async (content) => {
@@ -66,7 +99,7 @@ describe("the file usage data store", () => {
 
       expect(await store.read(LIGHTHOUSE)).toBe("unreadable");
       await expect(store.answer(LIGHTHOUSE, A_YES)).rejects.toThrow(
-        "cannot be read",
+        `The usage data file ${filePath} cannot be read; fix or remove it.`,
       );
       await expect(store.replace(LIGHTHOUSE, A_YES)).rejects.toThrow(
         "cannot be read",

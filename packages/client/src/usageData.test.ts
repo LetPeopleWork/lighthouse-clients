@@ -4,8 +4,10 @@ import {
   isAPersonAtTheTerminal,
   isDoNotTrackSet,
   planUsageDataStep,
+  readStoredUsageDataAnswer,
   readUsageDataState,
   refinementDayVerdictOf,
+  type StoredUsageDataAnswer,
   sizingMomentOf,
   type TerminalStreams,
   type UsageDataPlan,
@@ -162,6 +164,72 @@ describe("reading Lighthouse's usage data state", () => {
   ])("refuses %j as a state", (json) => {
     expect(readUsageDataState(json)).toBeNull();
   });
+
+  it("refuses a state whose administrator switch is not true or false", () => {
+    expect(
+      readUsageDataState({ mayAsk: true, administratorDisabled: "no" }),
+    ).toBeNull();
+  });
+
+  it.each<[string, Record<string, unknown>, Partial<UsageDataState>]>([
+    [
+      "a decision that is not text as none",
+      { decision: 5 },
+      { decision: null },
+    ],
+    [
+      "sources that are not all text as none labelled",
+      { acceptedSources: ["Cli", 3] },
+      { acceptedSources: null },
+    ],
+  ])("reads %s", (_what, served, read) => {
+    expect(
+      readUsageDataState({
+        mayAsk: true,
+        administratorDisabled: false,
+        ...served,
+      }),
+    ).toMatchObject(read);
+  });
+});
+
+describe("reading an answer kept in the answers file", () => {
+  it.each<[string, unknown, StoredUsageDataAnswer | null]>([
+    [
+      "a yes, keeping only its token and when it was confirmed",
+      { answer: "yes", token: TOKEN, confirmedAt: anHourAgo, note: "x" },
+      { answer: "yes", token: TOKEN, confirmedAt: anHourAgo },
+    ],
+    [
+      "a No, keeping only when it was decided",
+      { answer: "no", decidedAt: anHourAgo, confirmedAt: anHourAgo },
+      { answer: "no", decidedAt: anHourAgo },
+    ],
+    ["a yes without a token", { answer: "yes", confirmedAt: anHourAgo }, null],
+    [
+      "a yes whose token is not text",
+      { answer: "yes", token: 7, confirmedAt: anHourAgo },
+      null,
+    ],
+    ["a yes never confirmed", { answer: "yes", token: TOKEN }, null],
+    ["a token with no answer", { token: TOKEN, confirmedAt: anHourAgo }, null],
+    [
+      "a No that carries a yes's fields instead of its own",
+      { answer: "no", token: TOKEN, confirmedAt: anHourAgo },
+      null,
+    ],
+    ["a No never decided", { answer: "no" }, null],
+    ["a decision time with no answer", { decidedAt: anHourAgo }, null],
+    [
+      "an answer that is neither",
+      { answer: "maybe", decidedAt: anHourAgo },
+      null,
+    ],
+    ["nothing", null, null],
+    ["a list", [], null],
+  ])("reads %s", (_what, kept, read) => {
+    expect(readStoredUsageDataAnswer(kept)).toEqual(read);
+  });
 });
 
 describe("planning a usage data step", () => {
@@ -200,6 +268,31 @@ describe("planning a usage data step", () => {
       batch: A_FORECAST_BATCH,
       reconfirmed: false,
     });
+  });
+
+  it("sends a yes confirmed this very moment without reading the state", () => {
+    expect(
+      planUsageDataStep(
+        facts({
+          stored: {
+            answer: "yes",
+            token: TOKEN,
+            confirmedAt: NOW.toISOString(),
+          },
+        }),
+      ),
+    ).toMatchObject({ kind: "send", reconfirmed: false });
+  });
+
+  it("reads the state first for a yes confirmed exactly a day ago", () => {
+    const aDayAgo = new Date(NOW.getTime() - 24 * HOUR).toISOString();
+    expect(
+      planUsageDataStep(
+        facts({
+          stored: { answer: "yes", token: TOKEN, confirmedAt: aDayAgo },
+        }),
+      ),
+    ).toEqual({ kind: "read-state", token: TOKEN });
   });
 
   it.each([twoDaysAgo, twoDaysAhead, "not a date"])(

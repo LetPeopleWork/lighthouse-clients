@@ -619,3 +619,91 @@ describe("switching usage data on without a question", () => {
     expect(kept()).toBeUndefined();
   });
 });
+
+describe("what a question ends in", () => {
+  it("keeps nothing and asks Lighthouse nothing more after Ctrl-C", async () => {
+    const lighthouse = aLighthouse();
+    const { store, kept } = aStore(undefined);
+
+    const outcome = await settle(lighthouse, store, {
+      ...aForecastRun,
+      ask: async () => null,
+    });
+
+    expect(outcome).toBe("unanswered");
+    expect(kept()).toBeUndefined();
+    expect(lighthouse.seen.map(({ route }) => route)).toEqual(["state"]);
+  });
+
+  it("ends in nothing when a No cannot be kept because another answer was kept first", async () => {
+    const lighthouse = aLighthouse();
+    const { store } = aStore(undefined);
+    const notKept: LighthouseUsageDataStore = {
+      ...store,
+      answer: async () => false,
+    };
+
+    const outcome = await settle(lighthouse, notKept, {
+      ...aForecastRun,
+      ask: async () => "no",
+    });
+
+    expect(outcome).toBe("nothing");
+  });
+});
+
+describe("a grant Lighthouse no longer recognises and will not grant again", () => {
+  it("sends nothing and keeps the yes as it was", async () => {
+    const lighthouse = aLighthouse({
+      stateFor: aStateRecognising(MINTED_TOKEN),
+      grantFailsWith: 503,
+    });
+    const { store, kept } = aStore(aYesConfirmed(31 * 24 * HOUR));
+
+    const outcome = await settle(lighthouse, store);
+
+    expect(outcome).toBe("nothing");
+    expect(lighthouse.seen.map(({ route }) => route)).toEqual([
+      "state",
+      "consent",
+    ]);
+    expect(kept()).toEqual(aYesConfirmed(31 * 24 * HOUR));
+  });
+});
+
+describe("the answers file is not read", () => {
+  it.each<[string, Readonly<Record<string, string>>, UsageDataStep]>([
+    ["under DO_NOT_TRACK", { DO_NOT_TRACK: "1" }, aForecastRun],
+    [
+      "after a command that did not reach Lighthouse",
+      {},
+      { ...aForecastRun, reached: false },
+    ],
+  ])("%s", async (_, env, step) => {
+    const lighthouse = aLighthouse();
+    let reads = 0;
+    const { store } = aStore(aYesConfirmed(HOUR));
+    const counted: LighthouseUsageDataStore = {
+      ...store,
+      read: async () => {
+        reads += 1;
+        return store.read();
+      },
+    };
+
+    const outcome = await settleUsageDataStep(
+      {
+        lighthouse: lighthouse.client,
+        store: counted,
+        source: "Cli",
+        env,
+        now: () => NOW,
+      },
+      step,
+    );
+
+    expect(outcome).toBe("nothing");
+    expect(reads).toBe(0);
+    expect(lighthouse.seen).toEqual([]);
+  });
+});
