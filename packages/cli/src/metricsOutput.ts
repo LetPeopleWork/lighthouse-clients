@@ -32,6 +32,7 @@ import {
   describeWorkItemAgeDays,
   type InProgressItem,
   isMetricRefusal,
+  isProcessBehaviorMetricType,
   type MetricAnswer,
   type MetricDays,
   type MetricDayView,
@@ -454,15 +455,25 @@ const chartRow = (
   return [title, sentence];
 };
 
+const isKnownChart = (
+  entry: [string, unknown],
+): entry is [ProcessBehaviorMetricType, unknown] =>
+  isProcessBehaviorMetricType(entry[0]);
+
 // One line per chart, its title as the web titles it, then what Lighthouse found on it. The charts are keyed
-// by the chart types lh itself asked for, in the order it asked.
+// by the chart types lh itself asked for, in the order it asked; a key it cannot have asked for leaves the
+// whole section unread, as any other part in a shape this version does not know.
 const processBehaviorChartDays = overTheRange(({ subject, wording }) => {
   const section = subject.sections.processBehaviorChart;
   if (!isRecord(section) || !isRecord(section.charts)) {
     return null;
   }
-  const rows = Object.entries(section.charts).map(([chartType, chart]) =>
-    chartRow(chartType as ProcessBehaviorMetricType, chart, wording.terms),
+  const charts = Object.entries(section.charts);
+  if (!charts.every(isKnownChart)) {
+    return null;
+  }
+  const rows = charts.map(([chartType, chart]) =>
+    chartRow(chartType, chart, wording.terms),
   );
   return rows.length === 0
     ? null

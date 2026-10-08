@@ -3321,6 +3321,7 @@ export * from "./forecastWording";
 export * from "./housekeepingWording";
 export * from "./metricsWording";
 export * from "./ownerWording";
+export { isProcessBehaviorMetricType } from "./processBehaviorChartTypes";
 export * from "./refinementVoteWording";
 export * from "./refinementVoting";
 export * from "./refinementWording";
