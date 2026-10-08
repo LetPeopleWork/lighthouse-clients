@@ -111,6 +111,25 @@ describe("the usage data port asks at most once in a process", () => {
     },
   );
 
+  it("does not ask when it cannot tell whether a question is due", async () => {
+    const settled: UsageDataStep[] = [];
+    const { asked, ask } = countingAsk("yes");
+    const port = askingOnceInThisProcess({
+      mightAsk: async () => {
+        throw new Error("The usage data file cannot be read");
+      },
+      settle: async (step) => {
+        settled.push(step);
+        await step.ask?.();
+      },
+    });
+
+    await port(aStep(ask));
+
+    expect(settled).toEqual([aStep()]);
+    expect(asked.times).toBe(0);
+  });
+
   it("never fails the call when settling or deciding goes wrong", async () => {
     const failing = askingOnceInThisProcess({
       mightAsk: async () => {
@@ -234,6 +253,15 @@ describe("the question through the assistant", () => {
         },
         { timeout: USAGE_DATA_QUESTION_TIMEOUT_MS },
       ],
+    ]);
+  });
+
+  it("puts the question in the approved words, one line each", () => {
+    expect(USAGE_DATA_ELICITATION_MESSAGE.split("\n")).toEqual([
+      "May Lighthouse send usage data?",
+      "The Lighthouse MCP server tells your Lighthouse which tools you use (never names, ids, URLs or anything you typed), so we can see what helps.",
+      "Details: https://docs.lighthouse.letpeople.work/settings/usagedata.html",
+      "(change any time: lh config usage-data on|off)",
     ]);
   });
 
