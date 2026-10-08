@@ -224,7 +224,7 @@ describe("each mapped command reports its web event once, after it succeeded", (
 
 describe("refused, failed and unmapped commands report nothing", () => {
   // @US-04 @driving_port @real-io @error @contract-shape:unbounded-preservation
-  it.skip.each<
+  it.each<
     [
       string,
       readonly string[],
@@ -263,10 +263,9 @@ describe("refused, failed and unmapped commands report nothing", () => {
   });
 
   // @US-04 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
-  // KPI-3's guard: no client bar on an event the clients have no action for, and no new meaning under an
-  // old name (backtest is not a reality check; a comment or a take-back is not a vote; an edit is not a
-  // first set-up).
-  it.skip.each<[string, readonly string[]]>([
+  // No client bar on an event the clients have no action for, and no new meaning under an old name
+  // (backtest is not a reality check; a comment or a take-back is not a vote; an edit is not a first set-up).
+  it.each<[string, readonly string[]]>([
     [
       "forecast backtest",
       [
@@ -321,7 +320,7 @@ describe("refused, failed and unmapped commands report nothing", () => {
   });
 
   // @US-04 @driving_port @real-io @boundary @contract-shape:bounded-change
-  it.skip("reports one verdict for one lh refinement get, however many Work Items it lists", async () => {
+  it("reports one verdict for one lh refinement get, however many Work Items it lists", async () => {
     const lighthouse = await aFakeLighthouse({
       refinement: { isRefinementDay: true, workItemsListed: 3 },
     });

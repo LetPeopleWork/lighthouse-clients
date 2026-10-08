@@ -37,6 +37,21 @@ describe("which commands count, and what each counts", () => {
     },
   );
 
+  // Each of these has a web action it resembles, so mapping one would give an old event name a new meaning.
+  it.each([
+    "forecast backtest",
+    "refinement comment",
+    "refinement take-back",
+    "team update",
+    "portfolio update",
+    "team list",
+    "team get",
+    "portfolio list",
+    "version get",
+  ])("lh %s is not among the commands that count", (command) => {
+    expect(Object.keys(REPORTED_COMMANDS)).not.toContain(command);
+  });
+
   it("counts nothing when the command did not succeed, however Lighthouse answered", () => {
     const refused = withUsage(
       getErrorResult("misconfigured: no such team"),
