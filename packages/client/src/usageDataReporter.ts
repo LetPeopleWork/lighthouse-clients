@@ -119,15 +119,20 @@ const recordYes = async (
   if (!granted.ok) {
     return "not-recorded";
   }
+  let kept: boolean;
   try {
-    return (await dependencies.store.answer(
+    kept = await dependencies.store.answer(
       yesGivenNow(dependencies, granted.value),
-    ))
-      ? "kept-yes"
-      : "nothing";
+    );
   } catch {
+    await toldLighthouse(dependencies.lighthouse, granted.value);
     return "not-recorded";
   }
+  if (!kept) {
+    await toldLighthouse(dependencies.lighthouse, granted.value);
+    return "nothing";
+  }
+  return "kept-yes";
 };
 
 const askAndRecord = async (
@@ -257,7 +262,7 @@ export type UsageDataSwitchOn =
 export type UsageDataSwitchOnDependencies = {
   readonly lighthouse: Pick<
     LighthouseClient,
-    "getUsageDataState" | "grantUsageData"
+    "getUsageDataState" | "grantUsageData" | "revokeUsageData"
   >;
   readonly store: LighthouseUsageDataStore;
   readonly source: ClientUsageDataSource;
@@ -314,7 +319,12 @@ export const switchUsageDataOn = async (
   if (!granted.ok) {
     return "not-recorded";
   }
-  await dependencies.store.replace(yesGivenNow(dependencies, granted.value));
+  try {
+    await dependencies.store.replace(yesGivenNow(dependencies, granted.value));
+  } catch (error: unknown) {
+    await toldLighthouse(dependencies.lighthouse, granted.value);
+    throw error;
+  }
   return "on";
 };
 

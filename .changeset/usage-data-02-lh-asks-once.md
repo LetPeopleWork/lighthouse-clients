@@ -8,3 +8,5 @@
 When a yes cannot be recorded, `lh` names the Lighthouse as `lh config usage-data` does: its URL, or "the standalone Lighthouse".
 
 A yes turned off with `lh config usage-data off` while another `lh` was renewing it stays off: the renewal sends nothing and withdraws the grant it was given.
+
+A yes Lighthouse granted but your machine could not keep (another answer was kept first, or the answers file could not be written) is withdrawn at Lighthouse rather than left granted with nobody holding it.

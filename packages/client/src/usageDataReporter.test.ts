@@ -249,6 +249,66 @@ describe("a grant Lighthouse no longer recognises", () => {
   });
 });
 
+describe("a grant minted for a yes that cannot be kept", () => {
+  const A_GRANT_THEN_ITS_WITHDRAWAL = [
+    { route: "consent", token: undefined, body: { decision: "granted" } },
+    { route: "consent", token: MINTED_TOKEN, body: undefined },
+  ];
+
+  it.each<[string, () => Promise<boolean>, UsageDataOutcome]>([
+    ["another answer was kept first", async () => false, "nothing"],
+    [
+      "the answers file cannot be written",
+      async () => {
+        throw new Error("The usage data file is in use; try again.");
+      },
+      "not-recorded",
+    ],
+  ])("is withdrawn after a yes when %s", async (_, answer, expected) => {
+    const lighthouse = aLighthouse();
+    const { store } = aStore(undefined);
+    const notKept: LighthouseUsageDataStore = { ...store, answer };
+
+    const outcome = await settle(lighthouse, notKept, {
+      ...aForecastRun,
+      ask: async () => "yes",
+    });
+
+    expect(outcome).toBe(expected);
+    expect(lighthouse.seen).toEqual([
+      { route: "state", token: undefined, body: undefined },
+      ...A_GRANT_THEN_ITS_WITHDRAWAL,
+    ]);
+  });
+
+  it("is withdrawn when switching on cannot write the answers file, and switching on still fails", async () => {
+    const lighthouse = aLighthouse();
+    const { store } = aStore(undefined);
+    const unwritable: LighthouseUsageDataStore = {
+      ...store,
+      replace: async () => {
+        throw new Error("The usage data file is in use; try again.");
+      },
+    };
+
+    const switching = switchUsageDataOn({
+      lighthouse: lighthouse.client,
+      store: unwritable,
+      source: "Cli",
+      env: {},
+      now: () => NOW,
+    });
+
+    await expect(switching).rejects.toThrow(
+      "The usage data file is in use; try again.",
+    );
+    expect(lighthouse.seen).toEqual([
+      { route: "state", token: undefined, body: undefined },
+      ...A_GRANT_THEN_ITS_WITHDRAWAL,
+    ]);
+  });
+});
+
 describe("an outcome never carries the consent token", () => {
   it.each<
     [string, StoredUsageDataAnswer | undefined, UsageDataStep, UsageDataOutcome]
