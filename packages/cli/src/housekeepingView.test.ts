@@ -18,7 +18,7 @@ import {
 } from "../test-support/cliHarness";
 
 // Story 6218, slice 09 (US-09): the housekeeping commands read as the web's settings pages, its footer, or a
-// plain sentence. Every scenario but the format and failure guards is pending until DELIVER slice 09.
+// plain sentence.
 
 const HACKATHON = aBlackoutRule({
   id: 6,
@@ -55,7 +55,7 @@ const sofiasLighthouse = (reads = {}, options = {}) =>
 
 describe("lh blackout list --pretty", () => {
   // @driving_port @US-09 @contract-shape:pure-function — BlackoutSettings.tsx
-  it.skip("shows Sofia the recurring blackout rules as the settings page lists them", async () => {
+  it("shows Sofia the recurring blackout rules as the settings page lists them", async () => {
     const lighthouse = sofiasLighthouse();
 
     const result = await lighthouse.run(["blackout", "list"]);
@@ -70,7 +70,7 @@ describe("lh blackout list --pretty", () => {
   });
 
   // @boundary @US-09 — chosen wording
-  it.skip("says so when there are no recurring blackout rules", async () => {
+  it("says so when there are no recurring blackout rules", async () => {
     const lighthouse = sofiasLighthouse({ getRecurringBlackoutRules: ok([]) });
 
     const result = await lighthouse.run(["blackout", "list"]);
@@ -80,7 +80,7 @@ describe("lh blackout list --pretty", () => {
   });
 
   // @boundary @US-09 — a rule without a description
-  it.skip("leaves the Description cell empty for a rule without one", async () => {
+  it("leaves the Description cell empty for a rule without one", async () => {
     const lighthouse = sofiasLighthouse({
       getRecurringBlackoutRules: ok([aBlackoutRule({ description: "" })]),
     });
@@ -216,7 +216,7 @@ describe("lh worktracking --pretty", () => {
 
 describe("lh version get and lh health check --pretty", () => {
   // @driving_port @US-09 @contract-shape:pure-function — LighthouseVersion.tsx
-  it.skip("shows the version as the footer does", async () => {
+  it("shows the version as the footer does", async () => {
     const result = await sofiasLighthouse().run(["version", "get"]);
 
     expect(result.exitCode).toBe(0);
@@ -224,7 +224,7 @@ describe("lh version get and lh health check --pretty", () => {
   });
 
   // @driving_port @US-09 @contract-shape:pure-function — chosen wording
-  it.skip("says the Lighthouse it is connected to is reachable", async () => {
+  it("says the Lighthouse it is connected to is reachable", async () => {
     const result = await sofiasLighthouse().run(["health", "check"]);
 
     expect(result.exitCode).toBe(0);
@@ -234,7 +234,7 @@ describe("lh version get and lh health check --pretty", () => {
   });
 
   // @boundary @US-09 — chosen wording
-  it.skip("says the standalone Lighthouse is reachable", async () => {
+  it("says the standalone Lighthouse is reachable", async () => {
     const lighthouse = sofiasLighthouse(
       {},
       { connection: { mode: "standalone" } },

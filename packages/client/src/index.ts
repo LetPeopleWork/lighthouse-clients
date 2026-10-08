@@ -3071,6 +3071,7 @@ export * from "./deliveryWording";
 export * from "./featureWording";
 export * from "./forecastDisplayRules";
 export * from "./forecastWording";
+export * from "./housekeepingWording";
 export * from "./metricsWording";
 export * from "./ownerWording";
 export * from "./refinementVoteWording";

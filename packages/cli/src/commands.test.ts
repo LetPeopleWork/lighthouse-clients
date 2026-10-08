@@ -1201,7 +1201,10 @@ describe("runCliCommand", () => {
       },
     });
 
-    const result = await runCliCommand(["health", "check"], dependencies);
+    const result = await runCliCommand(
+      ["health", "check", "--json"],
+      dependencies,
+    );
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("success");

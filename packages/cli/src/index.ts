@@ -7,7 +7,9 @@ import {
   describeBlackoutRuleWriteConfirmation,
   describeFeatureTitle,
   describeOwnerWriteConfirmation,
+  describeReachable,
   describeRefreshConfirmation,
+  describeVersion,
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
@@ -29,6 +31,7 @@ import {
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
 import { renderFeatureList, renderFeatureWorkItems } from "./featureOutput";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
+import { renderBlackoutRuleList } from "./housekeepingOutput";
 import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
   DEFAULT_OUTPUT_FORMAT,
@@ -2485,6 +2488,7 @@ const runBlackoutGroup = async (
       mapApiResultToCliResult(
         await client.getRecurringBlackoutRules(),
         outputFormat,
+        renderBlackoutRuleList,
       ),
     create: async () => {
       const payloadOrError = await getJsonPayload(
@@ -2692,6 +2696,7 @@ const runRefinementGroup = async (
 
 const runHealthGroup = async (
   action: string | undefined,
+  outputFormat: OutputFormat,
   dependencies: RunCliCommandDependencies,
 ): Promise<CliCommandResult> => {
   if (action === undefined) {
@@ -2714,7 +2719,11 @@ const runHealthGroup = async (
   const client = dependencies.createClient(connectionOrError);
   const health = await client.checkConnectivity();
   if (health.category === "success") {
-    return getSuccessResult("success");
+    return getSuccessResult(
+      outputFormat === "pretty"
+        ? describeReachable(connectionOrError)
+        : "success",
+    );
   }
 
   return getErrorResult(`${health.category}: ${health.reason}`);
@@ -2743,7 +2752,11 @@ const runVersionGroup = async (
   }
 
   const client = dependencies.createClient(connectionOrError);
-  return mapApiResultToCliResult(await client.getVersion(), outputFormat);
+  return mapApiResultToCliResult(
+    await client.getVersion(),
+    outputFormat,
+    describeVersion,
+  );
 };
 
 // ── main command router ───────────────────────────────────────────────────────
@@ -2810,7 +2823,7 @@ export const runCliCommand = async (
   }
 
   if (scope === "health") {
-    return runHealthGroup(action, dependencies);
+    return runHealthGroup(action, outputFormat, dependencies);
   }
 
   if (scope === "version") {
