@@ -1,4 +1,4 @@
-import type { LighthouseClient } from "./index";
+import type { LighthouseApiResult, LighthouseClient } from "./index";
 import {
   type ClientUsageDataSource,
   isDoNotTrackSet,
@@ -6,6 +6,7 @@ import {
   type UsageDataBatch,
   type UsageDataOccurrence,
   type UsageDataPlan,
+  type UsageDataState,
   type UsageDataStepFacts,
 } from "./usageData";
 import type { LighthouseUsageDataStore } from "./usageDataStore";
@@ -65,7 +66,7 @@ const send = async (
 };
 
 const yesGivenNow = (
-  dependencies: UsageDataReporterDependencies,
+  dependencies: Pick<UsageDataReporterDependencies, "now">,
   token: string,
 ) =>
   ({
@@ -238,6 +239,80 @@ export const withdrawUsageData = async (
   return (await toldLighthouse(dependencies.lighthouse, stored.token))
     ? "off"
     : "off-lighthouse-not-told";
+};
+
+/** How turning usage data on ended. Never carries the consent token. */
+export type UsageDataSwitchOn =
+  | "on"
+  | "do-not-track"
+  | "administrator-stopped"
+  | "predates"
+  | "could-not-ask"
+  | "not-recorded"
+  | "unreadable";
+
+export type UsageDataSwitchOnDependencies = {
+  readonly lighthouse: Pick<
+    LighthouseClient,
+    "getUsageDataState" | "grantUsageData"
+  >;
+  readonly store: LighthouseUsageDataStore;
+  readonly source: ClientUsageDataSource;
+  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly now: () => Date;
+};
+
+// A Lighthouse without the usage data routes answers 404, which the client reports as misconfigured.
+const refusalOf = (
+  state: LighthouseApiResult<UsageDataState>,
+  source: ClientUsageDataSource,
+): UsageDataSwitchOn | null => {
+  if (!state.ok) {
+    return state.error.category === "misconfigured"
+      ? "predates"
+      : "could-not-ask";
+  }
+  if (state.value.administratorDisabled) {
+    return "administrator-stopped";
+  }
+  return state.value.acceptedSources?.includes(source) === true
+    ? null
+    : "predates";
+};
+
+/**
+ * Turns usage data on for one Lighthouse without a question: a yes replaces whatever was kept. Nothing is
+ * asked of Lighthouse under DO_NOT_TRACK, and nothing is kept when Lighthouse refuses, predates labelled
+ * sources or cannot be asked; a yes already kept is left as it is, so no second grant is minted.
+ */
+export const switchUsageDataOn = async (
+  dependencies: UsageDataSwitchOnDependencies,
+): Promise<UsageDataSwitchOn> => {
+  if (isDoNotTrackSet(dependencies.env)) {
+    return "do-not-track";
+  }
+  const stored = await dependencies.store.read();
+  if (stored === "unreadable") {
+    return "unreadable";
+  }
+  const state = await dependencies.lighthouse.getUsageDataState({
+    signal: AbortSignal.timeout(USAGE_DATA_BUDGET_MS),
+  });
+  const refusal = refusalOf(state, dependencies.source);
+  if (refusal !== null) {
+    return refusal;
+  }
+  if (stored?.answer === "yes") {
+    return "on";
+  }
+  const granted = await dependencies.lighthouse.grantUsageData({
+    signal: AbortSignal.timeout(GRANT_BUDGET_MS),
+  });
+  if (!granted.ok) {
+    return "not-recorded";
+  }
+  await dependencies.store.replace(yesGivenNow(dependencies, granted.value));
+  return "on";
 };
 
 /**

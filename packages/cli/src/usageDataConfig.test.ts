@@ -407,7 +407,7 @@ describe("lh config usage-data off withdraws the yes and stops sending", () => {
 describe("lh config usage-data on records a yes without a question", () => {
   // @US-03 @driving_port @real-io @contract-shape:bounded-change
   // Sofia's build agent: no terminal, so it is never asked, and she switches it on deliberately.
-  it.skip("switches Sofia's build agent on, so its later forecasts are reported from the command line", async () => {
+  it("switches Sofia's build agent on, so its later forecasts are reported from the command line", async () => {
     const lighthouse = await aFakeLighthouse();
     const buildAgent = await lenaAt(lighthouse);
 
@@ -438,7 +438,7 @@ describe("lh config usage-data on records a yes without a question", () => {
 
   // @US-03 @driving_port @real-io @contract-shape:bounded-change
   // The command is the person's explicit, later decision: it replaces an earlier No.
-  it.skip("replaces Marco's earlier No with a yes", async () => {
+  it("replaces Marco's earlier No with a yes", async () => {
     const lighthouse = await aFakeLighthouse();
     const marco = await lenaAt(lighthouse);
     await anEarlierAnswer(marco, lighthouse.url, aNo());
@@ -454,7 +454,7 @@ describe("lh config usage-data on records a yes without a question", () => {
 
   // @US-03 @driving_port @real-io @error @contract-shape:unbounded-preservation
   // Recording a yes against something already stopped writes down a decision that cannot take effect.
-  it.skip("records nothing under the administrator's stop, says why, and exits 0", async () => {
+  it("records nothing under the administrator's stop, says why, and exits 0", async () => {
     const lighthouse = await aFakeLighthouse({
       usageData: { administratorDisabled: true },
     });
@@ -470,7 +470,7 @@ describe("lh config usage-data on records a yes without a question", () => {
 
   // @US-03 @driving_port @real-io @error @contract-shape:unbounded-preservation
   // No client records under DO_NOT_TRACK; the CI smoke step reads exactly this line.
-  it.skip("records nothing under DO_NOT_TRACK, prints the DO_NOT_TRACK line and makes no request", async () => {
+  it("records nothing under DO_NOT_TRACK, prints the DO_NOT_TRACK line and makes no request", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
 
@@ -484,7 +484,7 @@ describe("lh config usage-data on records a yes without a question", () => {
 
   // @US-03 @driving_port @real-io @error @version-skew @kpi @contract-shape:unbounded-preservation
   // KPI-4: switching on against a Lighthouse that cannot label lh would only mislabel lh as a browser.
-  it.skip("records nothing against a Lighthouse that predates labelled sources, and says so", async () => {
+  it("records nothing against a Lighthouse that predates labelled sources, and says so", async () => {
     const lighthouse = await aFakeLighthouse({
       usageData: { acceptedSources: null },
     });
@@ -501,7 +501,7 @@ describe("lh config usage-data on records a yes without a question", () => {
   // @US-03 @driving_port @real-io @error @infrastructure-failure @contract-shape:unbounded-preservation
   // AFK default: a Lighthouse that cannot be asked records nothing and fails the command, since what was
   // asked for did not happen.
-  it.skip("records nothing when the Lighthouse cannot be asked, says so, and exits 1", async () => {
+  it("records nothing when the Lighthouse cannot be asked, says so, and exits 1", async () => {
     const lighthouse = await aFakeLighthouse({
       usageData: { answers: "by-failing" },
     });
@@ -517,7 +517,7 @@ describe("lh config usage-data on records a yes without a question", () => {
 
 describe("the consent token stays a secret", () => {
   // @US-03 @driving_port @real-io @security @contract-shape:unbounded-preservation
-  it.skip("is never shown by status, on or off", async () => {
+  it("is never shown by status, on or off", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
 

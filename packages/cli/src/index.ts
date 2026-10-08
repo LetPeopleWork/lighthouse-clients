@@ -58,9 +58,11 @@ import {
 } from "./refinementCommands";
 import {
   describeUsageDataOff,
+  describeUsageDataOn,
   describeUsageDataStatus,
   type UsageDataStatus,
   type UsageDataTurnedOff,
+  type UsageDataTurnedOn,
   usageDataFileUnreadable,
 } from "./usageDataQuestion";
 import {
@@ -179,6 +181,10 @@ export type RunCliCommandDependencies = {
   readonly turnUsageDataOff?: (
     connection: CliConnection,
   ) => Promise<UsageDataTurnedOff | UnreadableUsageDataFile>;
+  /** Turns usage data on for one Lighthouse without a question, or names the answers file when it cannot be read. */
+  readonly turnUsageDataOn?: (
+    connection: CliConnection,
+  ) => Promise<UsageDataTurnedOn | UnreadableUsageDataFile>;
 } & VoterDependencies;
 
 export type UnreadableUsageDataFile = { readonly unreadableFile: string };
@@ -1182,7 +1188,7 @@ const getConfigGroupHelpText = (): string =>
     "  lh config voter",
     "  lh config voter set --name <name>",
     "  lh config usage-data",
-    "  lh config usage-data off",
+    "  lh config usage-data on|off",
   ].join("\n");
 
 const getRefinementGroupHelpText = (): string =>
@@ -2607,30 +2613,43 @@ const runConfigVoter = async (
   return getSuccessResult(`Voter name set to ${name}.`);
 };
 
+const usageDataResultOf = <T extends object>(
+  done: T | UnreadableUsageDataFile,
+  describe: (done: T) => CliCommandResult,
+): CliCommandResult =>
+  "unreadableFile" in done
+    ? getErrorResult(usageDataFileUnreadable(done.unreadableFile))
+    : describe(done);
+
+const linesResult = (lines: readonly string[]): CliCommandResult =>
+  getSuccessResult(lines.join("\n"));
+
 const usageDataCommandFor = (
   subject: string | undefined,
   dependencies: RunCliCommandDependencies,
-):
-  | ((
-      connection: CliConnection,
-    ) => Promise<readonly string[] | UnreadableUsageDataFile>)
-  | undefined => {
-  const { loadUsageDataStatus, turnUsageDataOff } = dependencies;
+): ((connection: CliConnection) => Promise<CliCommandResult>) | undefined => {
+  const { loadUsageDataStatus, turnUsageDataOff, turnUsageDataOn } =
+    dependencies;
   if (subject === undefined && loadUsageDataStatus !== undefined) {
-    return async (connection) => {
-      const status = await loadUsageDataStatus(connection);
-      return "unreadableFile" in status
-        ? status
-        : describeUsageDataStatus(status);
-    };
+    return async (connection) =>
+      usageDataResultOf(await loadUsageDataStatus(connection), (status) =>
+        linesResult(describeUsageDataStatus(status)),
+      );
   }
   if (subject === "off" && turnUsageDataOff !== undefined) {
-    return async (connection) => {
-      const turnedOff = await turnUsageDataOff(connection);
-      return "unreadableFile" in turnedOff
-        ? turnedOff
-        : describeUsageDataOff(turnedOff);
-    };
+    return async (connection) =>
+      usageDataResultOf(await turnUsageDataOff(connection), (turnedOff) =>
+        linesResult(describeUsageDataOff(turnedOff)),
+      );
+  }
+  if (subject === "on" && turnUsageDataOn !== undefined) {
+    return async (connection) =>
+      usageDataResultOf(await turnUsageDataOn(connection), (turnedOn) => {
+        const report = describeUsageDataOn(turnedOn);
+        return report.failed
+          ? getErrorResult(report.lines.join("\n"))
+          : linesResult(report.lines);
+      });
   }
   return undefined;
 };
@@ -2653,11 +2672,7 @@ const runConfigUsageData = async (
     return connectionOrError;
   }
 
-  const lines = await command(connectionOrError);
-  if ("unreadableFile" in lines) {
-    return getErrorResult(usageDataFileUnreadable(lines.unreadableFile));
-  }
-  return getSuccessResult(lines.join("\n"));
+  return command(connectionOrError);
 };
 
 const runConfigGroup = async (

@@ -3,14 +3,18 @@ import type {
   StoredUsageDataAnswer,
   UsageDataQuestionAnswer,
   UsageDataState,
+  UsageDataSwitchOn,
 } from "@letpeoplework/lighthouse-client";
+
+const USAGE_DATA_DETAILS =
+  "Details: https://docs.lighthouse.letpeople.work/settings/usagedata.html";
 
 /** The question lh asks once per Lighthouse, below a command's answer, on stderr. No is the default. */
 export const USAGE_DATA_QUESTION = [
   "May Lighthouse send usage data?",
   "lh tells your Lighthouse which commands you use (never names, ids,",
   "URLs or anything you typed), so we can see what helps.",
-  "Details: https://docs.lighthouse.letpeople.work/settings/usagedata.html",
+  USAGE_DATA_DETAILS,
   "Send usage data from lh? [y/N]",
 ].join("\n");
 
@@ -46,6 +50,10 @@ export type UsageDataStatus = {
 
 const PREDATES =
   "This Lighthouse does not take usage data from lh (it predates it).";
+const COULD_NOT_ASK =
+  "Could not ask this Lighthouse whether it allows usage data.";
+const DO_NOT_TRACK_IS_SET =
+  "DO_NOT_TRACK is set, so lh sends no usage data whatever is stored.";
 
 const answerShown = (stored: StoredUsageDataAnswer | undefined): string => {
   if (stored === undefined) {
@@ -57,9 +65,7 @@ const answerShown = (stored: StoredUsageDataAnswer | undefined): string => {
 // A Lighthouse without the usage data routes answers 404, which the client reports as misconfigured.
 const instanceLine = (state: LighthouseApiResult<UsageDataState>): string => {
   if (!state.ok) {
-    return state.error.category === "misconfigured"
-      ? PREDATES
-      : "Could not ask this Lighthouse whether it allows usage data.";
+    return state.error.category === "misconfigured" ? PREDATES : COULD_NOT_ASK;
   }
   if (state.value.administratorDisabled) {
     return "This Lighthouse's administrator has stopped usage data, so nothing is sent.";
@@ -80,12 +86,7 @@ export const describeUsageDataStatus = (
     answerLine(status.lighthouse, answerShown(status.stored)),
     instanceLine(status.state),
   ];
-  return status.doNotTrack
-    ? [
-        ...lines,
-        "DO_NOT_TRACK is set, so lh sends no usage data whatever is stored.",
-      ]
-    : lines;
+  return status.doNotTrack ? [...lines, DO_NOT_TRACK_IS_SET] : lines;
 };
 
 /** What `lh config usage-data off` did: off is kept, and the Lighthouse was told or could not be. */
@@ -106,6 +107,53 @@ export const describeUsageDataOff = (
         off,
         "Could not tell this Lighthouse; the yes it holds lapses by itself within 30 days.",
       ];
+};
+
+/** What `lh config usage-data on` did for one Lighthouse; an unreadable answers file is refused before this. */
+export type UsageDataTurnedOn = {
+  /** How the Lighthouse is named to the person. */
+  readonly lighthouse: string;
+  readonly outcome: Exclude<UsageDataSwitchOn, "unreadable">;
+};
+
+/** The lines `lh config usage-data on` prints, and whether they report a failure. */
+export type UsageDataOnReport = {
+  readonly lines: readonly string[];
+  readonly failed: boolean;
+};
+
+/** The lines `lh config usage-data on` prints: on, or why nothing was changed. */
+export const describeUsageDataOn = (
+  turnedOn: UsageDataTurnedOn,
+): UsageDataOnReport => {
+  switch (turnedOn.outcome) {
+    case "on":
+      return {
+        lines: [
+          `${answerLine(turnedOn.lighthouse, "on")}.`,
+          USAGE_DATA_DETAILS,
+        ],
+        failed: false,
+      };
+    case "do-not-track":
+      return { lines: [DO_NOT_TRACK_IS_SET], failed: false };
+    case "administrator-stopped":
+      return {
+        lines: [
+          "This Lighthouse's administrator has stopped usage data; nothing was changed.",
+        ],
+        failed: false,
+      };
+    case "predates":
+      return { lines: [PREDATES], failed: false };
+    case "could-not-ask":
+      return { lines: [COULD_NOT_ASK], failed: true };
+    case "not-recorded":
+      return {
+        lines: [usageDataNotRecorded(turnedOn.lighthouse)],
+        failed: true,
+      };
+  }
 };
 
 /** The refusal when the answers file is not one lh can read; it is left as it was. */

@@ -6,8 +6,10 @@ import {
 import type { StoredUsageDataAnswer } from "./usageData";
 import {
   settleUsageDataStep,
+  switchUsageDataOn,
   type UsageDataOutcome,
   type UsageDataStep,
+  type UsageDataSwitchOn,
   withdrawUsageData,
 } from "./usageDataReporter";
 import type {
@@ -43,6 +45,8 @@ type LighthouseBehaviour = {
   readonly neverAnswers?: boolean;
   /** Answers every usage data request with this failing status. */
   readonly failsWith?: number;
+  /** Answers a grant with this failing status. */
+  readonly grantFailsWith?: number;
 };
 
 const reply = (status: number, body?: unknown): ConnectivityFetchResponse => ({
@@ -101,7 +105,9 @@ const aLighthouse = (behaviour: LighthouseBehaviour = {}) => {
           (behaviour.stateFor ?? aStateRecognising(KEPT_TOKEN))(tokenOf(init)),
         );
       case "consent":
-        return reply(200, { token: MINTED_TOKEN });
+        return behaviour.grantFailsWith === undefined
+          ? reply(200, { token: MINTED_TOKEN })
+          : reply(behaviour.grantFailsWith, { title: "Something went wrong." });
       default:
         return reply(204);
     }
@@ -315,6 +321,182 @@ describe("withdrawing usage data", () => {
     const withdrawal = await withdraw(lighthouse, unreadable);
 
     expect(withdrawal).toBe("unreadable");
+    expect(lighthouse.seen).toEqual([]);
+    expect(kept()).toBeUndefined();
+  });
+});
+
+describe("switching usage data on without a question", () => {
+  const A_NO = { answer: "no", decidedAt: "2026-10-01T08:00:00.000Z" } as const;
+  const A_YES_NOW = {
+    answer: "yes",
+    token: MINTED_TOKEN,
+    confirmedAt: NOW.toISOString(),
+  };
+  const stateWith = (state: {
+    readonly administratorDisabled?: boolean;
+    readonly acceptedSources?: readonly string[] | null;
+  }) => ({
+    stateFor: () => ({
+      decision: null,
+      mayAsk: false,
+      administratorDisabled: state.administratorDisabled ?? false,
+      acceptedSources:
+        state.acceptedSources === undefined
+          ? ["Browser", "Cli", "Mcp"]
+          : state.acceptedSources,
+    }),
+  });
+
+  type Row = [
+    string,
+    Readonly<Record<string, string>>,
+    LighthouseBehaviour,
+    UsageDataSwitchOn,
+    readonly UsageDataRoute[],
+    boolean,
+  ];
+
+  it.each<Row>([
+    ["Lighthouse takes it", {}, {}, "on", ["state", "consent"], true],
+    [
+      "DO_NOT_TRACK is 0",
+      { DO_NOT_TRACK: "0" },
+      {},
+      "on",
+      ["state", "consent"],
+      true,
+    ],
+    [
+      "DO_NOT_TRACK is set",
+      { DO_NOT_TRACK: "1" },
+      {},
+      "do-not-track",
+      [],
+      false,
+    ],
+    [
+      "DO_NOT_TRACK is true",
+      { DO_NOT_TRACK: "true" },
+      stateWith({ administratorDisabled: true }),
+      "do-not-track",
+      [],
+      false,
+    ],
+    [
+      "the administrator stopped it",
+      {},
+      stateWith({ administratorDisabled: true }),
+      "administrator-stopped",
+      ["state"],
+      false,
+    ],
+    [
+      "the administrator stopped it and lh is not labelled",
+      {},
+      stateWith({ administratorDisabled: true, acceptedSources: null }),
+      "administrator-stopped",
+      ["state"],
+      false,
+    ],
+    [
+      "Lighthouse predates labelled sources",
+      {},
+      stateWith({ acceptedSources: null }),
+      "predates",
+      ["state"],
+      false,
+    ],
+    [
+      "Lighthouse labels others but not lh",
+      {},
+      stateWith({ acceptedSources: ["Browser", "Mcp"] }),
+      "predates",
+      ["state"],
+      false,
+    ],
+    [
+      "Lighthouse has no usage data routes",
+      {},
+      { failsWith: 404 },
+      "predates",
+      ["state"],
+      false,
+    ],
+    [
+      "Lighthouse fails",
+      {},
+      { failsWith: 500 },
+      "could-not-ask",
+      ["state"],
+      false,
+    ],
+    [
+      "Lighthouse never answers",
+      {},
+      { neverAnswers: true },
+      "could-not-ask",
+      ["state"],
+      false,
+    ],
+    [
+      "the grant fails",
+      {},
+      { grantFailsWith: 500 },
+      "not-recorded",
+      ["state", "consent"],
+      false,
+    ],
+  ])(
+    "ends %s, keeping a yes only when one was granted",
+    async (_, env, behaviour, outcome, routes, keptYes) => {
+      const lighthouse = aLighthouse(behaviour);
+      const { store, kept } = aStore(A_NO);
+
+      const switched = await switchUsageDataOn({
+        lighthouse: lighthouse.client,
+        store,
+        source: "Cli",
+        env,
+        now: () => NOW,
+      });
+
+      expect(switched).toBe(outcome);
+      expect(lighthouse.seen.map(({ route }) => route)).toEqual(routes);
+      expect(kept()).toEqual(keptYes ? A_YES_NOW : A_NO);
+    },
+  );
+
+  it("leaves a yes already kept as it is and mints no second grant", async () => {
+    const lighthouse = aLighthouse();
+    const { store, kept } = aStore(aYesConfirmed(1 * HOUR));
+
+    const switched = await switchUsageDataOn({
+      lighthouse: lighthouse.client,
+      store,
+      source: "Cli",
+      env: {},
+      now: () => NOW,
+    });
+
+    expect(switched).toBe("on");
+    expect(lighthouse.seen.map(({ route }) => route)).toEqual(["state"]);
+    expect(kept()).toEqual(aYesConfirmed(1 * HOUR));
+  });
+
+  it("leaves an unreadable answers file as it was and asks Lighthouse nothing", async () => {
+    const lighthouse = aLighthouse();
+    const { store, kept } = aStore(undefined);
+
+    const switched = await switchUsageDataOn({
+      lighthouse: lighthouse.client,
+      store: { ...store, read: async () => "unreadable" },
+      source: "Cli",
+      env: {},
+      now: () => NOW,
+    });
+
+    expect(switched).toBe("unreadable");
     expect(lighthouse.seen).toEqual([]);
     expect(kept()).toBeUndefined();
   });

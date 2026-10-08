@@ -17,6 +17,7 @@ import {
   loadStandaloneDiscoveryContract,
   STANDALONE_VOTER_KEY_SCOPE,
   settleUsageDataStep,
+  switchUsageDataOn,
   type TerminalStreams,
   USAGE_DATA_BUDGET_MS,
   usageDataStoreFor,
@@ -37,6 +38,7 @@ import {
   USAGE_DATA_QUESTION,
   type UsageDataStatus,
   type UsageDataTurnedOff,
+  type UsageDataTurnedOn,
   usageDataNotRecorded,
 } from "./usageDataQuestion";
 
@@ -289,6 +291,23 @@ const turnUsageDataOff = async (
   };
 };
 
+const turnUsageDataOn = async (
+  connection: CliConnection,
+  env: SessionEnv,
+  now: () => Date,
+): Promise<UsageDataTurnedOn | UnreadableUsageDataFile> => {
+  const outcome = await switchUsageDataOn({
+    lighthouse: createSessionClient(connection, env),
+    store: usageDataStoreOf(connection, env),
+    source: "Cli",
+    env,
+    now,
+  });
+  return outcome === "unreadable"
+    ? unreadableUsageDataFile(env)
+    : { lighthouse: lighthouseNamedOf(connection), outcome };
+};
+
 const commandDependencies = (
   env: SessionEnv,
   now: () => Date,
@@ -333,6 +352,7 @@ const commandDependencies = (
     getEnvApiKey: () => getEnvApiKey(env),
     loadUsageDataStatus: (connection) => loadUsageDataStatus(connection, env),
     turnUsageDataOff: (connection) => turnUsageDataOff(connection, env, now),
+    turnUsageDataOn: (connection) => turnUsageDataOn(connection, env, now),
   };
 };
 
