@@ -328,7 +328,14 @@ describe("refused, failed and unmapped commands report nothing", () => {
 
     await lhAt(priya).run(REFINEMENT_OF_GRAVITY);
 
-    expect(reported(lighthouse)).toHaveLength(1);
+    expect(reported(lighthouse)).toEqual([
+      {
+        source: "Cli",
+        events: [
+          expect.objectContaining({ name: "TeamRefinementDayVerdictShown" }),
+        ],
+      },
+    ]);
   });
 });
 
