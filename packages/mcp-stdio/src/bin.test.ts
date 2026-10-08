@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,6 +7,7 @@ import {
   getVoterKeyStorePath,
 } from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
+import { aTempDirectory } from "../../../test-support/tempDirectories";
 import { runMcpStdioRuntime } from "./bin";
 import { createLocalVoterKeyStore } from "./runtime";
 
@@ -15,7 +15,7 @@ describe("the local voter key store", () => {
   it("keeps the assistant's key where the lh command line keeps its own, for the one Lighthouse", async () => {
     const env = {
       LIGHTHOUSE_CLI_CONFIG_PATH: join(
-        mkdtempSync(join(tmpdir(), "lighthouse-mcp-stdio-voter-")),
+        aTempDirectory("lighthouse-mcp-stdio-voter-"),
         "cli-config.json",
       ),
     };

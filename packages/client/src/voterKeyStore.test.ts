@@ -1,12 +1,11 @@
-import { mkdtempSync } from "node:fs";
 import { chmod, readFile, stat, utimes, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { aTempDirectory } from "../../../test-support/tempDirectories";
 import { createFileVoterKeyStore, getVoterKeyStorePath } from "./index";
 
 const aStoreFile = () =>
-  join(mkdtempSync(join(tmpdir(), "lighthouse-voter-keys-")), "keys.json");
+  join(aTempDirectory("lighthouse-voter-keys-"), "keys.json");
 
 describe("the file voter key store", () => {
   it("keeps one key per Lighthouse, readable by its owner only", async () => {

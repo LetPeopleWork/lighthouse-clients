@@ -1,10 +1,11 @@
-import { mkdtempSync, symlinkSync } from "node:fs";
+import { symlinkSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { aTempDirectory } from "../../../test-support/tempDirectories";
 import { isDirectExecution, renderCliBanner, runCli } from "./bin";
 
 const writeStandaloneLockfile = async (
@@ -76,8 +77,8 @@ describe("cli binary entrypoint", () => {
     const stderr = vi.fn<(message: string) => void>();
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
     process.env.LIGHTHOUSE_CLI_CONFIG_PATH = join(
-      tmpdir(),
-      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-cli-bin-test-"),
+      "cli-config.json",
     );
 
     try {
@@ -104,8 +105,8 @@ describe("cli binary entrypoint", () => {
     const stderr = vi.fn<(message: string) => void>();
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
     process.env.LIGHTHOUSE_CLI_CONFIG_PATH = join(
-      tmpdir(),
-      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-cli-bin-test-"),
+      "cli-config.json",
     );
 
     try {
@@ -133,8 +134,8 @@ describe("cli binary entrypoint", () => {
     const stderr = vi.fn<(message: string) => void>();
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
     process.env.LIGHTHOUSE_CLI_CONFIG_PATH = join(
-      tmpdir(),
-      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-cli-bin-test-"),
+      "cli-config.json",
     );
 
     try {
@@ -158,8 +159,8 @@ describe("cli binary entrypoint", () => {
     const stdout = vi.fn<(message: string) => void>();
     const stderr = vi.fn<(message: string) => void>();
     const configPath = join(
-      tmpdir(),
-      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-cli-bin-test-"),
+      "cli-config.json",
     );
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
     process.env.LIGHTHOUSE_CLI_CONFIG_PATH = configPath;
@@ -189,8 +190,8 @@ describe("cli binary entrypoint", () => {
     const stdout = vi.fn<(message: string) => void>();
     const stderr = vi.fn<(message: string) => void>();
     const configPath = join(
-      tmpdir(),
-      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-cli-bin-test-"),
+      "cli-config.json",
     );
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
     process.env.LIGHTHOUSE_CLI_CONFIG_PATH = configPath;
@@ -242,12 +243,12 @@ describe("cli binary entrypoint", () => {
     const stdout = vi.fn<(message: string) => void>();
     const stderr = vi.fn<(message: string) => void>();
     const configPath = join(
-      tmpdir(),
-      `lighthouse-cli-bin-test-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-cli-bin-test-"),
+      "cli-config.json",
     );
     const lockfilePath = join(
-      tmpdir(),
-      `lighthouse-standalone-lock-${Date.now()}-${Math.random()}.json`,
+      aTempDirectory("lighthouse-standalone-lock-"),
+      "standalone.lock.json",
     );
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
     const previousLockfilePath =
@@ -322,7 +323,7 @@ describe("cli binary entrypoint", () => {
     const stdout = vi.fn<(message: string) => void>();
     const stderr = vi.fn<(message: string) => void>();
     const configPath = join(
-      mkdtempSync(join(tmpdir(), "lighthouse-cli-voter-")),
+      aTempDirectory("lighthouse-cli-voter-"),
       "cli-config.json",
     );
     const previousConfigPath = process.env.LIGHTHOUSE_CLI_CONFIG_PATH;
@@ -399,7 +400,7 @@ describe("isDirectExecution", () => {
 
   it("returns true when process.argv[1] is a symlink pointing to this module", () => {
     const realPath = fileURLToPath(import.meta.url);
-    const tmpDir = mkdtempSync(join(tmpdir(), "lh-symlink-test-"));
+    const tmpDir = aTempDirectory("lh-symlink-test-");
     const symlinkPath = join(tmpDir, "lh");
     symlinkSync(realPath, symlinkPath);
 
