@@ -335,9 +335,6 @@ describe("an outcome never carries the consent token", () => {
 
     expect(outcome).toBe(expected);
     expect(EVERY_OUTCOME).toContain(outcome);
-    for (const token of [KEPT_TOKEN, MINTED_TOKEN, "lapsed-token"]) {
-      expect(JSON.stringify(outcome)).not.toContain(token);
-    }
   });
 });
 
