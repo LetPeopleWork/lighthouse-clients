@@ -36,3 +36,9 @@ A chart whose limits mean little names no signal: a chart without a baseline say
 its limits come from the range shown, and a chart Lighthouse could not compute says why, in Lighthouse's own
 words. A blackout day is listed as one and never as a signal. A chart from a Lighthouse that predates blackout
 days and baselines still has its signals named, and the chart itself always comes back unchanged.
+
+`lh metrics team --metrics processBehaviorChart` reads every Process Behaviour Chart of the Team at once, and
+`lh metrics portfolio` reads Feature Size too. `--json` and `--toon` hand over each chart unchanged, keyed by
+chart type, with the range; a chart Lighthouse cannot answer carries its refusal while the others still come
+back. The charts are read only when named, and `pbc`, `processbehaviorchart` and `processbehaviourchart` name
+them too.

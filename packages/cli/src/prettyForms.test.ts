@@ -29,7 +29,7 @@ import { aLighthouse } from "../test-support/cliHarness";
 import { formatPayload } from "./output";
 
 // Every `lh` form that answers a question or confirms a change has its own view,
-// and every form is accounted for. The list below is the contract: 43 forms change, 10 stay as they are on
+// and every form is accounted for. The list below is the contract: 44 forms change, 10 stay as they are on
 // purpose, each with its reason. The first describe is a guard: a new subcommand or metric that nobody placed on
 // either list fails it.
 
@@ -96,6 +96,7 @@ const CHANGING_FORMS: readonly {
   ].map((metric) => ({ slice: "03", args: METRICS(metric) })),
   { slice: "04", args: METRICS("cumulativeStateTime") },
   { slice: "sle-risk", args: METRICS("sleRisk") },
+  { slice: "process-behaviour-charts", args: METRICS("processBehaviorChart") },
   { slice: "05", args: ["team", "list"] },
   { slice: "05", args: ["team", "get", "--id", "3"] },
   { slice: "05", args: ["portfolio", "list"] },
@@ -171,7 +172,7 @@ const CHANGING_FORMS: readonly {
   { slice: "09", args: ["health", "check"] },
 ];
 
-// The standalone health sentence is the 43rd form: same command, another connection.
+// The standalone health sentence is the 44th form: same command, another connection.
 const STANDALONE_HEALTH_CHECK = { slice: "09", args: ["health", "check"] };
 
 const UNCHANGED_ON_PURPOSE: Readonly<Record<string, string>> = {
@@ -267,7 +268,7 @@ describe("every lh form is accounted for", () => {
     ]);
     expect(offered.size).toBeGreaterThan(20);
     expect([...offered].filter((form) => !accountedFor.has(form))).toEqual([]);
-    expect(CHANGING_FORMS.length + 1).toBe(43);
+    expect(CHANGING_FORMS.length + 1).toBe(44);
   });
 
   it("gives every metric name lh accepts its own form", async () => {
@@ -280,7 +281,7 @@ describe("every lh form is accounted for", () => {
     const listed = CHANGING_FORMS.filter((form) =>
       form.args.includes("--metrics"),
     ).map((form) => form.args[form.args.indexOf("--metrics") + 1]);
-    expect(allowed).toHaveLength(12);
+    expect(allowed).toHaveLength(13);
     expect([...listed].sort()).toEqual([...allowed].sort());
   });
 });
@@ -324,7 +325,7 @@ describe("every converted lh form has a view of its own", () => {
     noLongerTheGenericView,
   );
 
-  // The 43rd form
+  // The 44th form
   it("slice 09: `lh health check` on a standalone Lighthouse no longer prints today's line", async () => {
     const lighthouse = aLighthouse(everyRead(), {
       connection: { mode: "standalone" },

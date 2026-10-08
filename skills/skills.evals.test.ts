@@ -320,8 +320,7 @@ describe("every skill's eval cases can be run as written", () => {
   });
 
   // @contract-shape:pure-function
-  // Pending until the clients carry the WIP, SLE Risk and chart reads; then nothing is still to come.
-  it.skip("every tool a case names exists in the clients", () => {
+  it("every tool a case names exists in the clients", () => {
     const existing = toolsThatExist();
     const unknown = caseFiles().flatMap((file) =>
       file.cases.flatMap((entry) =>

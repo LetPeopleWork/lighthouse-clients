@@ -12,6 +12,8 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
+  type ProcessBehaviorChart,
+  type ProcessBehaviorMetricType,
   readAnswerWording,
   readCycleTimeDefinitionName,
   readFeatureWording,
@@ -21,6 +23,7 @@ import {
   readSystemWipLimit,
   readTerms,
   summariseDeliveryMetricsHistory,
+  type TeamProcessBehaviorMetricType,
 } from "@letpeoplework/lighthouse-client";
 import {
   type CliCommandResult,
@@ -139,6 +142,8 @@ type CliDomainClientLike = Pick<
   | "getTeamProcessBehaviorOverTime"
   | "getPortfolioProcessBehaviorOverTime"
   | "getTeamSleRisk"
+  | "getTeamProcessBehaviorChart"
+  | "getPortfolioProcessBehaviorChart"
   | "getTeamCumulativeStateTime"
   | "getTeamCumulativeStateTimeItems"
   | "getTeamCumulativeStateTimeCandidates"
@@ -401,6 +406,7 @@ const METRIC_KEYS = [
   "percentilesOverTime",
   "processBehaviorOverTime",
   "sleRisk",
+  "processBehaviorChart",
 ] as const;
 
 type MetricKey = (typeof METRIC_KEYS)[number];
@@ -430,7 +436,25 @@ const METRIC_ALIASES: Record<string, MetricKey> = {
   pbcovertime: "processBehaviorOverTime",
   slerisk: "sleRisk",
   sleRisk: "sleRisk",
+  processbehaviorchart: "processBehaviorChart",
+  processBehaviorChart: "processBehaviorChart",
+  processbehaviourchart: "processBehaviorChart",
+  pbc: "processBehaviorChart",
 };
+
+const TEAM_CHART_TYPES: readonly TeamProcessBehaviorMetricType[] = [
+  "Throughput",
+  "Arrivals",
+  "Wip",
+  "WorkItemAge",
+  "CycleTime",
+];
+
+// Feature Size is charted for Portfolios only.
+const PORTFOLIO_CHART_TYPES: readonly ProcessBehaviorMetricType[] = [
+  ...TEAM_CHART_TYPES,
+  "FeatureSize",
+];
 
 const ALLOWED_METRIC_DISPLAY = METRIC_KEYS.join(", ");
 
@@ -1284,6 +1308,35 @@ const getUnknownSubcommandResult = (
     ].join("\n"),
   );
 
+/** Every chart of the Team or Portfolio, read in parallel and keyed by chart type; a chart that cannot be read carries its refusal. */
+const readEveryChart = async (
+  scope: "team" | "portfolio",
+  entityId: number,
+  range: MetricsDateRange,
+  client: CliDomainClientLike,
+): Promise<Record<string, unknown>> => {
+  const reads: readonly (readonly [
+    ProcessBehaviorMetricType,
+    Promise<LighthouseApiResult<ProcessBehaviorChart>>,
+  ])[] =
+    scope === "team"
+      ? TEAM_CHART_TYPES.map((chartType) => [
+          chartType,
+          client.getTeamProcessBehaviorChart(entityId, range, chartType),
+        ])
+      : PORTFOLIO_CHART_TYPES.map((chartType) => [
+          chartType,
+          client.getPortfolioProcessBehaviorChart(entityId, range, chartType),
+        ]);
+  const results = await Promise.allSettled(reads.map(([, read]) => read));
+  return Object.fromEntries(
+    reads.map(([chartType], index) => [
+      chartType,
+      getMetricValueOrError(results[index] as (typeof results)[number]),
+    ]),
+  );
+};
+
 const buildMetricsPayload = async (
   scope: "team" | "portfolio",
   entityId: number,
@@ -1336,6 +1389,7 @@ const buildMetricsPayload = async (
     percentilesOverTimeResult,
     processBehaviorOverTimeResult,
     sleRiskResult,
+    processBehaviorCharts,
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
@@ -1466,6 +1520,9 @@ const buildMetricsPayload = async (
     maybeFetch(isTeam && named("sleRisk"), () =>
       client.getTeamSleRisk(entityId),
     ),
+    named("processBehaviorChart")
+      ? readEveryChart(scope, entityId, range, client)
+      : Promise.resolve(null),
   ]);
 
   const throughputValue = resolveOrSkip(throughputResult);
@@ -1570,6 +1627,14 @@ const buildMetricsPayload = async (
       terms === null
         ? (sleRiskValue ?? getMetricUnavailableValue(unavailableReason))
         : getMetricUnavailableValue(`${terms.sle} Risk is for ${terms.teams}.`);
+  }
+
+  if (processBehaviorCharts !== null) {
+    payload.processBehaviorChart = {
+      startDate: range.startDate,
+      endDate: range.endDate,
+      charts: processBehaviorCharts,
+    };
   }
 
   if (needs("wip")) {

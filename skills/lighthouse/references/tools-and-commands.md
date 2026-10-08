@@ -167,8 +167,8 @@ Add `--json` to every command whose output you read.
 
 ## `--metrics` keys
 
-`lh metrics team` and `lh metrics portfolio` take a comma-separated list; without `--metrics` they return all but `sleRisk`, which is read only
-when named.
+`lh metrics team` and `lh metrics portfolio` take a comma-separated list; without `--metrics` they return all but `sleRisk` and `processBehaviorChart`,
+which are read only when named.
 
 | Key | Use it when | Over MCP |
 |---|---|---|
@@ -184,8 +184,10 @@ when named.
 | `--metrics percentilesOverTime` | Percentiles per recorded day; `lh` reads Cycle Time at the 30-day horizon. | `lighthouse_team_metrics_percentilesOverTime` |
 | `--metrics processBehaviorOverTime` | Process limits per recorded day. | `lighthouse_team_metrics_processBehaviorOverTime` |
 | `--metrics sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: each one's risk in percent, how many finished Work Items were still open at its age, and how many of those went on to miss. Teams only; reads today whatever the dates. | `lighthouse_team_metrics_sleRisk` (Teams only) |
+| `--metrics processBehaviorChart` | Every Process Behaviour Chart of the Team (Throughput, Arrivals, WIP, Total Work Item Age, Cycle Time) or Portfolio (also Feature Size) at once, keyed by chart type, with the signals Lighthouse found on each. Use it for "is something unusual going on" across all charts; never work a signal out yourself. | `lighthouse_team_metrics_processBehaviorChart`, one chart per call |
 
-`lh` also takes lower-case spellings (`--metrics cycletime`) and `pbcovertime` for `processBehaviorOverTime`.
+`lh` also takes lower-case spellings (`--metrics cycletime`), `pbcovertime` for `processBehaviorOverTime`, and `pbc` or
+`processbehaviourchart` for `processBehaviorChart`.
 
 ---
 

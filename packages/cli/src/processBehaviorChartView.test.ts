@@ -129,8 +129,7 @@ describe("Priya sees every chart of Gravity's and whether Lighthouse found a sig
   });
 
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("reads each of the Team's five charts once", async () => {
+  it("reads each of the Team's five charts once", async () => {
     const lighthouse = await gravitysLighthouse();
 
     await priyaRuns(lighthouse, chartsOfGravity());
@@ -139,8 +138,7 @@ describe("Priya sees every chart of Gravity's and whether Lighthouse found a sig
   });
 
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("hands over every chart unchanged with --json, by chart type", async () => {
+  it("hands over every chart unchanged with --json, by chart type", async () => {
     const lighthouse = await gravitysLighthouse({
       "totalWorkItemAge/pbc": totalAgeWithALargeChange(),
     });
@@ -191,8 +189,7 @@ describe("Priya sees every chart of Gravity's and whether Lighthouse found a sig
   });
 
   // @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip.each(["pbc", "processbehaviorchart", "processbehaviourchart"])(
+  it.each(["pbc", "processbehaviorchart", "processbehaviourchart"])(
     "takes %s for the charts too",
     async (alias) => {
       const lighthouse = await gravitysLighthouse();

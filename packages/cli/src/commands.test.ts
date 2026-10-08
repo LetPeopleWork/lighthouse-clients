@@ -165,6 +165,10 @@ const getDefaultMockClient = (): MockClient => ({
   getTeamProcessBehaviorOverTime: async () => ({ ok: true, value: [] }),
   getPortfolioProcessBehaviorOverTime: async () => ({ ok: true, value: [] }),
   getTeamSleRisk: async () => ({ ok: true, value: [] }),
+  getTeamProcessBehaviorChart: notStubbed("getTeamProcessBehaviorChart"),
+  getPortfolioProcessBehaviorChart: notStubbed(
+    "getPortfolioProcessBehaviorChart",
+  ),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),

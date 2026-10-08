@@ -88,8 +88,7 @@ describe("the metrics view without --metrics stays as it was", () => {
 
 describe("the two new selections are named in the help and taken by their names", () => {
   // @driving_port @contract-shape:bounded-change
-  // Pending until lh offers the two selections.
-  it.skip("lists them after the existing metrics", async () => {
+  it("lists them after the existing metrics", async () => {
     const run = await aLighthouse({}).run(["metrics"]);
 
     expect(run.stdout.split("\n")).toContain(
