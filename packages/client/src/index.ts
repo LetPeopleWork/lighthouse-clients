@@ -3068,6 +3068,7 @@ export const createLighthouseClient = (
 export * from "./answerWording";
 export * from "./calendarDates";
 export * from "./deliveryWording";
+export * from "./featureWording";
 export * from "./forecastDisplayRules";
 export * from "./forecastWording";
 export * from "./metricsWording";

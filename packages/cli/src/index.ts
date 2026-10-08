@@ -23,6 +23,7 @@ import {
   mapApiResultToCliResult,
 } from "./commandResult";
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
+import { renderFeatureList } from "./featureOutput";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
 import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
@@ -2222,6 +2223,23 @@ const runWorktrackingGroup = async (
   );
 };
 
+// Terminology is read only for the pretty view, so --json and --toon ask for the Features alone.
+const showFeatures = async (
+  features: Promise<LighthouseApiResult<unknown>>,
+  client: CliClientOperations,
+  outputFormat: OutputFormat,
+): Promise<CliCommandResult> => {
+  const [result, terms] = await Promise.all([
+    features,
+    outputFormat === "pretty" ? readTerms(client) : null,
+  ]);
+  return mapApiResultToCliResult(
+    result,
+    outputFormat,
+    terms === null ? undefined : (facts) => renderFeatureList(facts, terms),
+  );
+};
+
 const runFeatureGroup = async (
   action: string | undefined,
   args: readonly string[],
@@ -2246,10 +2264,7 @@ const runFeatureGroup = async (
         .split(",")
         .map((entry) => Number.parseInt(entry.trim(), 10))
         .filter((entry) => !Number.isNaN(entry));
-      return mapApiResultToCliResult(
-        await client.getFeaturesByIds(ids),
-        outputFormat,
-      );
+      return showFeatures(client.getFeaturesByIds(ids), client, outputFormat);
     }
 
     const refsRaw = getOptionValue(args, "--refs");
@@ -2258,8 +2273,9 @@ const runFeatureGroup = async (
         .split(",")
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
-      return mapApiResultToCliResult(
-        await client.getFeaturesByReferences(refs),
+      return showFeatures(
+        client.getFeaturesByReferences(refs),
+        client,
         outputFormat,
       );
     }

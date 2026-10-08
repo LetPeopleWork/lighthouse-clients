@@ -40,7 +40,7 @@ const FEATURE_LIST_HEADER =
 
 describe("lh feature get --pretty", () => {
   // @driving_port @US-07 @contract-shape:pure-function
-  it.skip("shows Marco his Features as the Feature list shows them", async () => {
+  it("shows Marco his Features as the Feature list shows them", async () => {
     const lighthouse = marcosLighthouse();
 
     const result = await lighthouse.run(threeFeaturesByReference);
@@ -62,7 +62,7 @@ describe("lh feature get --pretty", () => {
   });
 
   // @boundary @US-07 — ForecastedStartCell.tsx: an observed start outranks "cannot forecast"
-  it.skip.each([
+  it.each([
     {
       start: "an observed start",
       feature: {
@@ -131,7 +131,7 @@ describe("lh feature get --pretty", () => {
   );
 
   // @error @US-07 — D13: '—' when Lighthouse sends no 85% date
-  it.skip("says '—' for the completion when Lighthouse sends no 85% date", async () => {
+  it("says '—' for the completion when Lighthouse sends no 85% date", async () => {
     const lighthouse = marcosLighthouse({
       getFeaturesByIds: ok([aFeature({ forecasts: [] })]),
     });
@@ -166,7 +166,7 @@ describe("lh feature get --pretty", () => {
   });
 
   // @error @version-skew @US-07 — D5 + M1
-  it.skip("shows the Features as they came when one arrives without its per-Team work", async () => {
+  it("shows the Features as they came when one arrives without its per-Team work", async () => {
     const recognised = await marcosLighthouse().run(threeFeaturesByReference);
     expect(shownLines(recognised.stdout)[0]).toBe(FEATURE_LIST_HEADER);
     const { totalWork: _notSent, ...withoutWork } = aFeature();
