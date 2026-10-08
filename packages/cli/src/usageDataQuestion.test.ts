@@ -26,6 +26,7 @@ import {
   voterKeysFileOf,
   whereShown,
 } from "../test-support/lhSession";
+import { readUsageDataAnswer } from "./usageDataQuestion";
 
 // Story 6193, slice 02 (US-02). The first time Lena Fischer uses lh against a Lighthouse in a terminal, it
 // asks once, after the command's answer, in the maintainer's approved words, defaulting to No. A yes grants
@@ -118,7 +119,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
   });
 
   // @US-02 @driving_port @real-io @boundary @contract-shape:pure-function
-  it.skip.each(["y", "Y", "yes", "YES", "Yes", " y "])(
+  it.each(["y", "Y", "yes", "YES", "Yes", " y "])(
     "takes %j as a yes",
     async (typed) => {
       const lighthouse = await aFakeLighthouse();
@@ -134,7 +135,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
 
   // @US-02 @driving_port @real-io @boundary @error @kpi @contract-shape:bounded-change
   // Enter, or anything that is not a yes, is the default: No, final for that Lighthouse, and never posted.
-  it.skip.each(["", "n", "no", "N", "nope", "sure", "yep", "ja"])(
+  it.each(["", "n", "no", "N", "nope", "sure", "yep", "ja"])(
     "takes %j as a final No that is kept and never posted",
     async (typed) => {
       const lighthouse = await aFakeLighthouse();
@@ -575,4 +576,24 @@ describe("usage data never changes what lh answers", () => {
       expect(lighthouse.usageDataRequests().length).toBeGreaterThan(0);
     },
   );
+});
+
+describe("reading what was typed at the question", () => {
+  it.each(["y", "Y", "yes", "YES", "yEs", " y ", "\tyes\n"])(
+    "reads %j as yes",
+    (typed) => {
+      expect(readUsageDataAnswer(typed)).toBe("yes");
+    },
+  );
+
+  it.each(["", "   ", "n", "no", "ye", "yess", "y es", "yes please", "ja"])(
+    "reads %j as no",
+    (typed) => {
+      expect(readUsageDataAnswer(typed)).toBe("no");
+    },
+  );
+
+  it("reads nothing typed at all, Ctrl-C or end of input, as no answer", () => {
+    expect(readUsageDataAnswer(null)).toBeNull();
+  });
 });
