@@ -113,6 +113,53 @@ describe("the forecast tools' summary", () => {
     expect(factsBlockOf(result)).toBe(`${FORECAST_LABEL}${encode(reshaped)}`);
   });
 
+  // A field that throws when the summary reads it, and that the facts block does not carry: the only way
+  // to make wording the summary fail while the facts still go out.
+  const withAFieldThatCannotBeRead = (
+    answer: Record<string, unknown>,
+    field: string,
+  ) => {
+    const { [field]: _unreadable, ...facts } = answer;
+    Object.defineProperty(facts, field, {
+      enumerable: false,
+      get: () => {
+        throw new Error(`${field} cannot be read`);
+      },
+    });
+    return facts;
+  };
+
+  it.each([
+    {
+      tool: MANUAL,
+      label: FORECAST_LABEL,
+      args: manualArguments,
+      answer: withAFieldThatCannotBeRead(gravitysForecast(), "likelihood"),
+      read: "runManualForecast",
+    },
+    {
+      tool: BACKTEST,
+      label: "backtest: ",
+      args: backtestArguments,
+      answer: withAFieldThatCannotBeRead(
+        gravitysBacktest(),
+        "actualThroughput",
+      ),
+      read: "runBacktest",
+    },
+  ])(
+    "hands $tool's facts over without a summary when wording the summary fails",
+    async ({ tool, label, args, answer, read }) => {
+      const assistant = gravitysAssistant({ [read]: ok(answer) });
+
+      const result = await assistant.call(tool, args);
+
+      expect(result.isError).toBe(false);
+      expect(result.content).toHaveLength(1);
+      expect(factsBlockOf(result)).toBe(`${label}${encode(answer as never)}`);
+    },
+  );
+
   it.each([MANUAL, BACKTEST])(
     "tells an assistant in %s's description that `summary` states the answer as the web does",
     (tool) => {

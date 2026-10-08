@@ -2847,7 +2847,9 @@ export const createMcpCoreRuntime = (
         return withSummary(
           "forecast",
           result.value,
-          describeManualForecastAnswer(result.value, wording),
+          summaryOrNull(() =>
+            describeManualForecastAnswer(result.value, wording),
+          ),
         );
       }
       return getErrorToolResult(
@@ -2901,7 +2903,7 @@ export const createMcpCoreRuntime = (
         return withSummary(
           "backtest",
           result.value,
-          describeBacktestAnswer(result.value, wording),
+          summaryOrNull(() => describeBacktestAnswer(result.value, wording)),
         );
       }
       return getErrorToolResult(
