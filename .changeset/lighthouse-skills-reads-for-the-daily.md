@@ -31,3 +31,8 @@ An assistant can read one Process Behaviour Chart of a Team or Portfolio with
 naming the chart with `metricType` (Feature Size for Portfolios only). Lighthouse's chart comes back unchanged,
 beside a summary that names each signal Lighthouse found with the days it fired ("Large Change on Wed 7 Oct,
 Thu 8 Oct"), or says there are no signals.
+
+A chart whose limits mean little names no signal: a chart without a baseline says no baseline is set and that
+its limits come from the range shown, and a chart Lighthouse could not compute says why, in Lighthouse's own
+words. A blackout day is listed as one and never as a signal. A chart from a Lighthouse that predates blackout
+days and baselines still has its signals named, and the chart itself always comes back unchanged.

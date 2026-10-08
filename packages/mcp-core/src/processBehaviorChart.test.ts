@@ -136,8 +136,7 @@ describe("an assistant reads a chart and the signals Lighthouse found on it", ()
 
 describe("a chart whose limits mean little claims no signal", () => {
   // @error @contract-shape:pure-function
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("says no baseline is set and the limits come from the range shown, and names no signal", async () => {
+  it("says no baseline is set and the limits come from the range shown, and names no signal", async () => {
     const { summary, facts } = await readTotalWorkItemAge(
       chartWithoutABaseline(),
     );
@@ -148,8 +147,7 @@ describe("a chart whose limits mean little claims no signal", () => {
   });
 
   // @error @contract-shape:pure-function
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("passes on why Lighthouse could not compute the chart", async () => {
+  it("passes on why Lighthouse could not compute the chart", async () => {
     const { summary } = await readTotalWorkItemAge(chartNotReady());
 
     expect(summary).toContain(
@@ -160,8 +158,7 @@ describe("a chart whose limits mean little claims no signal", () => {
 
   // @error @contract-shape:pure-function
   // A blackout day is a day the Team did not work; whatever the chart flagged on it is not a signal.
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("lists a blackout day as one and never as a signal", async () => {
+  it("lists a blackout day as one and never as a signal", async () => {
     const { summary } = await readTotalWorkItemAge(
       throughputWithABlackoutDay(),
     );
@@ -172,8 +169,7 @@ describe("a chart whose limits mean little claims no signal", () => {
   });
 
   // @error @contract-shape:pure-function
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("still names the signals on a chart from a Lighthouse that predates blackout days and baselines", async () => {
+  it("still names the signals on a chart from a Lighthouse that predates blackout days and baselines", async () => {
     const { summary, facts } = await readTotalWorkItemAge(
       chartFromAnOlderLighthouse(),
     );
@@ -184,8 +180,7 @@ describe("a chart whose limits mean little claims no signal", () => {
   });
 
   // @error @contract-shape:pure-function
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("names no signal it cannot read, and still hands over the chart", async () => {
+  it("names no signal it cannot read, and still hands over the chart", async () => {
     const { result, summary, facts } = await readTotalWorkItemAge(
       chartWithCausesAsNumbers(),
     );

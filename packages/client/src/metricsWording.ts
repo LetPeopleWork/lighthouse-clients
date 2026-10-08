@@ -1570,15 +1570,25 @@ const NO_SIGNAL = "None";
 const isSignalName = (value: unknown): value is string =>
   value === NO_SIGNAL || SIGNALS.some(([wire]) => wire === value);
 
-/** One day on a chart and the signals Lighthouse found on it, by their wire names. */
+/** One day on a chart, the signals Lighthouse found on it by their wire names, and whether it was a blackout day. */
 export type ProcessBehaviorChartDay = {
   readonly day: string;
   readonly signals: readonly string[];
+  readonly blackout: boolean;
 };
 
+/**
+ * A chart as far as it can be said. `status` and `baselineConfigured` are null when the server did not send
+ * them (an older Lighthouse), so nothing is claimed about what was never said.
+ */
 export type ProcessBehaviorChartView = {
+  readonly status: string | null;
+  readonly statusReason: string;
+  readonly baselineConfigured: boolean | null;
   readonly days: readonly ProcessBehaviorChartDay[];
 };
+
+const READY = "Ready";
 
 const readChartDay = (value: unknown): ProcessBehaviorChartDay | null =>
   isRecord(value) &&
@@ -1588,12 +1598,13 @@ const readChartDay = (value: unknown): ProcessBehaviorChartDay | null =>
     ? {
         day: value.xValue,
         signals: value.specialCauses.filter((cause) => cause !== NO_SIGNAL),
+        blackout: value.isBlackout === true,
       }
     : null;
 
 /**
- * A chart's days and their signals, or null when a signal arrives as anything but its name: a number would
- * have to be guessed at, and a guessed signal is worse than none.
+ * A chart's status, baseline and days with their signals, or null when a signal arrives as anything but its
+ * name: a number would have to be guessed at, and a guessed signal is worse than none.
  */
 export const readProcessBehaviorChart = (
   value: unknown,
@@ -1602,7 +1613,17 @@ export const readProcessBehaviorChart = (
     return null;
   }
   const days = readEvery(value.dataPoints, readChartDay);
-  return days === null ? null : { days };
+  return days === null
+    ? null
+    : {
+        status: isText(value.status) ? value.status : null,
+        statusReason: isText(value.statusReason) ? value.statusReason : "",
+        baselineConfigured:
+          typeof value.baselineConfigured === "boolean"
+            ? value.baselineConfigured
+            : null,
+        days,
+      };
 };
 
 const chartSubject = (
@@ -1632,10 +1653,10 @@ export type ProcessBehaviorChartWording = {
   readonly sentence: string;
 };
 
-const signalsSentence = (chart: ProcessBehaviorChartView): string => {
+const signalsSaid = (days: readonly ProcessBehaviorChartDay[]): string => {
   const fired = SIGNALS.map(([wire, name]) => ({
     name,
-    days: chart.days
+    days: days
       .filter((day) => day.signals.includes(wire))
       .map((day) => shortDayOf(day.day)),
   })).filter((signal) => signal.days.length > 0);
@@ -1646,12 +1667,42 @@ const signalsSentence = (chart: ProcessBehaviorChartView): string => {
         .join("; ");
 };
 
-/** "Total Work Item Age Process Behaviour Chart", then each signal with the days it fired, or "No signals". */
+// Limits taken from the very range they judge cannot single a day out, so no signal is claimed on them.
+const limitsSaid = (chart: ProcessBehaviorChartView): string =>
+  chart.baselineConfigured === false
+    ? "No baseline is set, so the limits come from the range shown and no signal is named"
+    : signalsSaid(chart.days.filter((day) => !day.blackout));
+
+const blackoutDaysSaid = (chart: ProcessBehaviorChartView): string[] => {
+  const blackout = chart.days
+    .filter((day) => day.blackout)
+    .map((day) => shortDayOf(day.day));
+  if (blackout.length === 0) {
+    return [];
+  }
+  return [
+    `${blackout.length === 1 ? "Blackout day" : "Blackout days"} ${blackout.join(", ")}`,
+  ];
+};
+
+// A chart Lighthouse could not compute has no limits to judge by; its own reason is passed on word for word.
+const notReadySaid = (status: string, reason: string): string =>
+  reason === "" ? `Not ready (${status})` : `Not ready (${status}): ${reason}`;
+
+const chartSaid = (chart: ProcessBehaviorChartView): string =>
+  chart.status !== null && chart.status !== READY
+    ? notReadySaid(chart.status, chart.statusReason)
+    : [limitsSaid(chart), ...blackoutDaysSaid(chart)].join("; ");
+
+/**
+ * "Total Work Item Age Process Behaviour Chart", then each signal with the days it fired, or "No signals"; a chart
+ * that is not ready or has no baseline names no signal, and a blackout day is listed as one, never as a signal.
+ */
 export const describeProcessBehaviorChart = (
   chart: ProcessBehaviorChartView,
   metricType: ProcessBehaviorMetricType,
   terms: Terms,
 ): ProcessBehaviorChartWording => ({
   title: `${chartSubject(metricType, terms)} Process Behaviour Chart`,
-  sentence: signalsSentence(chart),
+  sentence: chartSaid(chart),
 });

@@ -1949,9 +1949,16 @@ describe("a Process Behaviour Chart, read and said", () => {
         ),
       ),
     ).toEqual({
+      status: "Ready",
+      statusReason: "",
+      baselineConfigured: null,
       days: [
-        { day: "2026-10-07", signals: ["LargeChange", "SmallShift"] },
-        { day: "2026-10-08", signals: [] },
+        {
+          day: "2026-10-07",
+          signals: ["LargeChange", "SmallShift"],
+          blackout: false,
+        },
+        { day: "2026-10-08", signals: [], blackout: false },
       ],
     });
   });
@@ -1994,5 +2001,81 @@ describe("a Process Behaviour Chart, read and said", () => {
       title: "Work In Progress Process Behaviour Chart",
       sentence: "No signals",
     });
+  });
+
+  const sentenceOf = (value: unknown): string | undefined => {
+    const chart = readProcessBehaviorChart(value);
+    return chart
+      ? describeProcessBehaviorChart(chart, "Throughput", SEEDED_TERMS).sentence
+      : undefined;
+  };
+
+  it("says a chart without a baseline takes its limits from the range shown, and names no signal", () => {
+    expect(
+      sentenceOf({
+        ...chartOf(day("2026-10-08", ["LargeChange"])),
+        baselineConfigured: false,
+      }),
+    ).toBe(
+      "No baseline is set, so the limits come from the range shown and no signal is named",
+    );
+  });
+
+  it("passes on the status and Lighthouse's reason for a chart that is not ready, and names no signal", () => {
+    expect(
+      sentenceOf({
+        ...chartOf(day("2026-10-08", ["LargeChange"])),
+        status: "BaselineInvalid",
+        statusReason: "The baseline ends before it starts.",
+      }),
+    ).toBe("Not ready (BaselineInvalid): The baseline ends before it starts.");
+  });
+
+  it("names only the status of a chart that is not ready when Lighthouse gives no reason", () => {
+    expect(
+      sentenceOf({
+        status: "InsufficientData",
+        statusReason: "",
+        dataPoints: [],
+      }),
+    ).toBe("Not ready (InsufficientData)");
+  });
+
+  it("lists blackout days as such and never names a signal on them", () => {
+    expect(
+      sentenceOf(
+        chartOf(
+          { ...day("2026-10-03", ["LargeChange"]), isBlackout: true },
+          { ...day("2026-10-04", ["SmallShift"]), isBlackout: true },
+          { ...day("2026-10-07", ["ModerateChange"]), isBlackout: false },
+        ),
+      ),
+    ).toBe("Moderate Change on Wed 7 Oct; Blackout days Sat 3 Oct, Sun 4 Oct");
+  });
+
+  it("still lists a blackout day on a chart without a baseline", () => {
+    expect(
+      sentenceOf({
+        ...chartOf({ ...day("2026-10-03", ["None"]), isBlackout: true }),
+        baselineConfigured: false,
+      }),
+    ).toBe(
+      "No baseline is set, so the limits come from the range shown and no signal is named; Blackout day Sat 3 Oct",
+    );
+  });
+
+  it("names the signals on a chart that says nothing of baselines, blackout days or its status", () => {
+    expect(
+      sentenceOf({ dataPoints: [day("2026-10-07", ["LargeChange"])] }),
+    ).toBe("Large Change on Wed 7 Oct");
+  });
+
+  it("names the signals on a chart whose baseline is set", () => {
+    expect(
+      sentenceOf({
+        ...chartOf(day("2026-10-07", ["SmallShift"])),
+        baselineConfigured: true,
+      }),
+    ).toBe("Small Shift on Wed 7 Oct");
   });
 });
