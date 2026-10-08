@@ -1,17 +1,12 @@
 import { randomBytes } from "node:crypto";
-import {
-  chmod,
-  mkdir,
-  open,
-  readFile,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { getNormalizedLighthouseUrl } from "./lighthouseUrl";
+import {
+  type OwnerOnlyJsonFile,
+  type OwnerOnlyJsonFileFormat,
+  ownerOnlyJsonFile,
+} from "./ownerOnlyJsonFile";
 
 /**
  * The voter keys this machine keeps, one per Lighthouse. The command line and the local MCP server share
@@ -89,134 +84,18 @@ const isKeyMap = (value: unknown): value is KeyMap =>
   !Array.isArray(value) &&
   Object.values(value).every((key) => typeof key === "string");
 
-const errorCodeOf = (error: unknown): string | undefined =>
-  (error as NodeJS.ErrnoException | null)?.code;
-
-const unreadableFile = (filePath: string): Error =>
-  new Error(`The voter key file ${filePath} cannot be read; fix or remove it.`);
-
-/** The keys in the file, none when there is no file yet, or null when the file is there but unreadable. */
-const readKeys = async (filePath: string): Promise<KeyMap | null> => {
-  let content: string;
-  try {
-    content = await readFile(filePath, "utf8");
-  } catch (error: unknown) {
-    return errorCodeOf(error) === "ENOENT" ? {} : null;
-  }
-  try {
-    const keys = (JSON.parse(content) as Partial<PersistedVoterKeys> | null)
-      ?.keys;
+const voterKeysFormat: OwnerOnlyJsonFileFormat<KeyMap> = {
+  name: "voter key file",
+  empty: {},
+  parse: (json) => {
+    const keys = (json as Partial<PersistedVoterKeys> | null)?.keys;
     return isKeyMap(keys) ? keys : null;
-  } catch {
-    return null;
-  }
+  },
+  serialize: (keys): PersistedVoterKeys => ({ version: 1, keys }),
 };
 
-const OWNER_ONLY_FILE = 0o600;
-const OWNER_ONLY_DIRECTORY = 0o700;
-
-// A lock older than this was left by a client that died holding it; no save takes anywhere near as long.
-const STALE_LOCK_MS = 10_000;
-const LOCK_WAIT_LIMIT_MS = 5_000;
-const FIRST_RETRY_MS = 5;
-const LONGEST_RETRY_MS = 100;
-
-const pause = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-const isStale = async (lockPath: string): Promise<boolean> => {
-  try {
-    return Date.now() - (await stat(lockPath)).mtimeMs > STALE_LOCK_MS;
-  } catch (error: unknown) {
-    return errorCodeOf(error) === "ENOENT";
-  }
-};
-
-const tryToTakeLock = async (lockPath: string): Promise<boolean> => {
-  try {
-    await (await open(lockPath, "wx", OWNER_ONLY_FILE)).close();
-    return true;
-  } catch (error: unknown) {
-    if (errorCodeOf(error) === "EEXIST") {
-      return false;
-    }
-    throw error;
-  }
-};
-
-// One writer at a time across every process sharing the file: only one of them can create the lock file,
-// and a writer that died holding it is outwaited rather than waited for forever.
-const withLock = async (
-  filePath: string,
-  work: () => Promise<void>,
-): Promise<void> => {
-  const lockPath = `${filePath}.lock`;
-  const giveUpAt = Date.now() + LOCK_WAIT_LIMIT_MS;
-  let retryMs = FIRST_RETRY_MS;
-  while (!(await tryToTakeLock(lockPath))) {
-    if (await isStale(lockPath)) {
-      await rm(lockPath, { force: true });
-      continue;
-    }
-    if (Date.now() > giveUpAt) {
-      throw new Error(
-        `The voter key file ${filePath} is in use by another lh or MCP server; try again.`,
-      );
-    }
-    await pause(retryMs);
-    retryMs = Math.min(retryMs * 2, LONGEST_RETRY_MS);
-  }
-  try {
-    await work();
-  } finally {
-    await rm(lockPath, { force: true });
-  }
-};
-
-// Written beside the file and renamed over it, so a reader never sees half a file and a crash mid-write
-// leaves the old one whole.
-const writeKeysAtomically = async (
-  filePath: string,
-  keys: KeyMap,
-): Promise<void> => {
-  const persisted: PersistedVoterKeys = { version: 1, keys };
-  const temporaryPath = join(
-    dirname(filePath),
-    `.${basename(filePath)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`,
-  );
-  try {
-    await writeFile(temporaryPath, JSON.stringify(persisted, null, 2), {
-      encoding: "utf8",
-      mode: OWNER_ONLY_FILE,
-      flag: "wx",
-    });
-    await chmod(temporaryPath, OWNER_ONLY_FILE);
-    await rename(temporaryPath, filePath);
-  } catch (error: unknown) {
-    await rm(temporaryPath, { force: true });
-    throw error;
-  }
-};
-
-// Re-read under the lock, so a key another client saved a moment ago is kept rather than written over.
-const updateKeys = async (
-  filePath: string,
-  update: (kept: KeyMap) => KeyMap,
-): Promise<void> => {
-  await mkdir(dirname(filePath), {
-    recursive: true,
-    mode: OWNER_ONLY_DIRECTORY,
-  });
-  await withLock(filePath, async () => {
-    const kept = await readKeys(filePath);
-    if (kept === null) {
-      throw unreadableFile(filePath);
-    }
-    await writeKeysAtomically(filePath, update(kept));
-  });
-};
+const voterKeysFile = (filePath: string): OwnerOnlyJsonFile<KeyMap> =>
+  ownerOnlyJsonFile(filePath, voterKeysFormat);
 
 // How earlier versions named a Lighthouse: the URL as each client was given it, less trailing slashes.
 const legacyScopeOf = (lighthouse: string): string =>
@@ -251,7 +130,7 @@ const moveLegacyKey = async (
   key: string,
 ): Promise<void> => {
   try {
-    await updateKeys(filePath, (kept) => ({
+    await voterKeysFile(filePath).update((kept) => ({
       ...withoutKey(kept, legacyScope),
       [scope]: kept[scope] ?? key,
     }));
@@ -264,7 +143,7 @@ const loadKey = async (
   filePath: string,
   lighthouse: string,
 ): Promise<string | null> => {
-  const keys = await readKeys(filePath);
+  const keys = await voterKeysFile(filePath).read();
   const scope = getVoterKeyScope(lighthouse);
   const kept = keys?.[scope];
   if (kept !== undefined) {
@@ -286,7 +165,7 @@ const loadKey = async (
 export const createFileVoterKeyStore = (filePath: string): VoterKeyStore => ({
   load: (lighthouse) => loadKey(filePath, lighthouse),
   save: (lighthouse, key) =>
-    updateKeys(filePath, (kept) => ({
+    voterKeysFile(filePath).update((kept) => ({
       ...kept,
       [getVoterKeyScope(lighthouse)]: key,
     })),
