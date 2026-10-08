@@ -270,7 +270,7 @@
         "throughputEndDate": "2026-10-06T00:00:00Z",
         "hasThroughputBlackoutOverlap": false,
         "hasForecastFilter": false,
-        "refinementConfigured": false
+        "refinementConfigured": true
       }
     ],
     "GET /api/v1/teams/3": {
@@ -375,7 +375,7 @@
       "throughputEndDate": "2026-10-06T00:00:00Z",
       "hasThroughputBlackoutOverlap": false,
       "hasForecastFilter": false,
-      "refinementConfigured": false
+      "refinementConfigured": true
     },
     "GET /api/v1/portfolios": [
       {
@@ -665,8 +665,29 @@
       }
     },
     "GET /api/v1/teams/6/refinement": {
-      "refinementConfigured": false,
-      "workItems": [],
+      "refinementConfigured": true,
+      "workItems": [
+        {
+          "referenceId": "VO-011",
+          "name": "Ballast pump alerts",
+          "url": "https://northwind.atlassian.net/browse/VO-011",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 0,
+          "myVote": null,
+          "split": {
+            "yes": 0,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "MoreVotersNeeded",
+          "missingVotes": 3,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        }
+      ],
       "yardstick": {
         "source": "Sle",
         "days": 7,

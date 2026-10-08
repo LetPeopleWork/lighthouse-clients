@@ -3,8 +3,11 @@ name: lighthouse-refinement
 description: >
   Lighthouse Refinement by LetPeopleWork: whether a Team tracked in Lighthouse is ready for its next
   Refinement, how many more Work Items to refine or whether to stop, and which Work Items are worth the
-  session's time. Use when a Product Owner or anyone preparing a Refinement asks "Are we ready for
-  Wednesday's Refinement?", "Do we need to refine more?" or "What should we talk about in Refinement?".
+  session's time; and, for a developer, which Work Items wait for their view and their own vote on each,
+  cast only once they confirm it. Use when a Product Owner or anyone preparing a Refinement asks "Are we
+  ready for Wednesday's Refinement?", "Do we need to refine more?" or "What should we talk about in
+  Refinement?", or when a developer asks "Do I need to prep for refinement?", wants to vote or comment on
+  a Work Item in refinement, or take a vote back.
   Not for: forecasts (when Work Items or a Feature will be done, how many by a date), flow metrics, or
   connecting to Lighthouse (the general lighthouse skill, this skill's companion); running the daily or
   deciding what to do today (the Lighthouse Daily Flow Review skill).
@@ -12,7 +15,7 @@ description: >
 
 # Lighthouse Refinement
 
-This skill answers one question before a Team's next Refinement: refine more, or stop, and which Work Items deserve the session's time. Lighthouse answers it on the Team's Refinement tab; you read the same answer and say it plainly.
+This skill answers two questions before a Team's next Refinement. For a Product Owner: refine more, or stop, and which Work Items deserve the session's time. For a developer: which Work Items wait for their view, and what is their own answer on each. Lighthouse answers both on the Team's Refinement tab; you read the same answer and say it plainly.
 
 Its companion is the general `lighthouse` skill. If no Lighthouse MCP tools are connected and `lh` is not set up, use that skill to connect. For anything that is not Refinement prep (a forecast, a flow metric, a chart), that skill answers, not this one.
 
@@ -59,10 +62,35 @@ Never state a ready count, a range or how many to refine without a verdict. When
 - `NoCadence`: "A Team admin can set a Refinement cadence to see how many Work Items are needed", in the Team's settings.
 - `InsufficientData`: Lighthouse needs at least 5 days with completed Work Items before it can forecast the range.
 
+## A developer's prep
+
+When a developer asks whether they need to prep for Refinement, or what waits for their view, make the same read and answer from it.
+
+1. **What waits for their view**: every row whose `myVote` is null, in the order `workItems` lists them. Never reorder them. Give each its `referenceId`, its name and its `url`.
+2. **The question for each** is the Team's yardstick, answered Yes, Yes, if… or No:
+   - `yardstick.source` `Sle`: "Can you do it in 7 days or less?" with `yardstick.days`, and say it is the Team's SLE at `yardstick.probability`%.
+   - `CycleTimeFallback`: the same question with `yardstick.days`, and say the Team has no SLE, so the days are its Cycle Time at `yardstick.probability`%.
+   - `Unavailable`: say Lighthouse has no yardstick for this Team yet, and ask whether each one is small enough to be pulled.
+
+   ```text
+   3 Gravity Work Items wait for your view. Your SLE is 7 days (85%).
+   For each: can you do it in 7 days or less? Yes, Yes, if… or No.
+     GR-051 Export Fleet Report to PDF      <link>
+     GR-055 Hull telemetry dashboard        <link>
+     GR-057 Sonar alert routing             <link>
+   ```
+
+3. **Nothing waiting**: say "Nothing waits for your view" and name the next Refinement from `nextRefinementDate`.
+4. **When Lighthouse cannot tell which votes are theirs**: without sign-in (`voterIdentity` `SelfDeclared`), Lighthouse knows only the votes cast from this same assistant as theirs; votes cast on the web page or from another machine show as not theirs. When no row has a `myVote` at all, say Lighthouse cannot tell which votes are theirs, and list every Work Item still needing votes (`missingVotes` above 0) instead.
+5. **A Work Item is a link.** To decide, the person opens its `url`. Never fetch or summarise its content.
+
+Whenever the person gives an answer on a Work Item, asks you to vote, comment or take a vote back, or asks you to vote for them, **read `references/voting.md` first** and follow it. It says how their words map onto Yes, Yes, if… and No, how a vote is confirmed before anything is sent, which name it carries, and where a vote can be cast when this server refuses it.
+
 ## Guardrails
 
-- **Humans decide.** Never cast, change or take back a vote for a Product Owner: never call `lighthouse_team_refinement_vote`, `lighthouse_team_refinement_comment` or `lighthouse_team_refinement_voteTakeBack`, and never run `lh refinement vote`. Never decide that a Work Item is ready and never reorder the backlog. Asked to "mark GR-051 as ready", change nothing: say readiness comes from the Team's votes (or its stage rule), and give the Work Item's `url` so the Team can vote on it.
-- **Work Items, never people.** Votes are counts. Never say who voted what, who has not voted, or who works on a Work Item.
+- **Humans decide.** A vote, a comment or a take-back is the person's own and is sent only after they confirmed that Work Item, that answer and that comment, one Work Item at a time, as `references/voting.md` says. Never vote on anyone's behalf and never in bulk. A Product Owner asking whether the Team is ready gets no write at all. Never decide that a Work Item is ready and never reorder the backlog. Asked to "mark GR-051 as ready", change nothing: say readiness comes from the Team's votes (or its stage rule), and give the Work Item's `url` so the Team can vote on it.
+- **Names are the person's own.** The name a vote carries is the one the person gives when asked; never take it from the system, an account or earlier messages.
+- **Work Items, never people.** Votes are counts; only the person's own vote is theirs to see. Never say who voted what, who has not voted, who works on a Work Item, or who should chase a question.
 - **A Work Item is a link.** Give its `url`; do not fetch or summarise its content.
 - **Usage data is the person's choice.** Never run `lh config usage-data on` or `lh config usage-data off` unless the user asked for exactly that, and never answer Lighthouse's usage-data question for them.
 - **Quote the tool's `summary`** as written; never round or restate its numbers.
