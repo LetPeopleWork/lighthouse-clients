@@ -19,7 +19,7 @@ skills/
 | `lighthouse-refinement` | Getting a Team ready for its next Refinement | `lighthouse-refinement-skill.zip` |
 | `lighthouse-daily-flow-review` | Walking the board in the daily | `lighthouse-daily-flow-review-skill.zip` |
 
-A skill whose folder does not exist yet has no zip. Its eval cases wait under
+A skill ships a zip once its folder has a `SKILL.md`. Eval cases written before their skill can wait under
 `test-support/pending-skill-evals/<name>/` and move into `skills/<name>/evals/` with its `SKILL.md`.
 
 ## Packing

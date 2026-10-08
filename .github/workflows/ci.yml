@@ -38,7 +38,7 @@ jobs:
         run: |
           out="$(mktemp -d)"
           bash scripts/pack-skills.sh "$out"
-          expected=(lighthouse lighthouse-refinement)
+          expected=(lighthouse lighthouse-refinement lighthouse-daily-flow-review)
           for name in "${expected[@]}"; do
             [[ -f "$out/$name-skill.zip" ]] || { echo "missing $name-skill.zip"; exit 1; }
           done
