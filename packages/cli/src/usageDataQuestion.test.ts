@@ -363,7 +363,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
 
 describe("a yes Lighthouse could not record", () => {
   // @US-02 @driving_port @real-io @error @infrastructure-failure @contract-shape:unbounded-preservation
-  it.skip("tells Lena her answer was not recorded, keeps nothing, and leaves the forecast's exit code alone", async () => {
+  it("tells Lena her answer was not recorded, keeps nothing, and leaves the forecast's exit code alone", async () => {
     const lighthouse = await aFakeLighthouse({
       usageData: { consentAnswers: "by-failing" },
     });
@@ -383,7 +383,7 @@ describe("a yes Lighthouse could not record", () => {
 
 describe("two answers at once: the first one given is the one kept", () => {
   // @US-02 @driving_port @real-io @boundary @contract-shape:bounded-change
-  it.skip("keeps the yes Lena gave in one terminal over the no she gave a moment later in another", async () => {
+  it("keeps the yes Lena gave in one terminal over the no she gave a moment later in another", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
     let releaseTheSecond: () => void = () => undefined;
@@ -410,22 +410,24 @@ describe("two answers at once: the first one given is the one kept", () => {
 
 describe("the answers file", () => {
   // @US-02 @driving_port @real-io @adapter-integration @security @contract-shape:bounded-change
-  // POSIX permissions: un-skip as it.skipIf(process.platform === "win32"), as the voter key test does.
-  it.skip("is readable by its owner only, beside the command line's config, and leaves the voter keys alone", async () => {
-    const lighthouse = await aFakeLighthouse();
-    const lena = await lenaAt(lighthouse);
-    const voterKeys = '{"version":1,"keys":{"standalone":"anas-key"}}';
-    await writeFile(voterKeysFileOf(lena), voterKeys, "utf8");
+  it.skipIf(process.platform === "win32")(
+    "is readable by its owner only, beside the command line's config, and leaves the voter keys alone",
+    async () => {
+      const lighthouse = await aFakeLighthouse();
+      const lena = await lenaAt(lighthouse);
+      const voterKeys = '{"version":1,"keys":{"standalone":"anas-key"}}';
+      await writeFile(voterKeysFileOf(lena), voterKeys, "utf8");
 
-    await lenaAnswers(lighthouse, "y", lena);
+      await lenaAnswers(lighthouse, "y", lena);
 
-    expect((await stat(usageDataFileOf(lena))).mode & 0o777).toBe(0o600);
-    expect(await readFile(voterKeysFileOf(lena), "utf8")).toBe(voterKeys);
-  });
+      expect((await stat(usageDataFileOf(lena))).mode & 0o777).toBe(0o600);
+      expect(await readFile(voterKeysFileOf(lena), "utf8")).toBe(voterKeys);
+    },
+  );
 
   // @US-02 @driving_port @real-io @error @contract-shape:unbounded-preservation
   // A file lh cannot read may hold a person's answers; it is never written over, and nobody is asked.
-  it.skip.each([
+  it.each([
     "not json",
     '{"version":2,"answers":{}}',
     '{"version":1,"answers":["a list"]}',
