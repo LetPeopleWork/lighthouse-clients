@@ -361,7 +361,6 @@ const settleUsageData = async (
   if (connection === null) {
     return;
   }
-  const lighthouse = lighthouseOf(connection);
   const { terminal, env, now } = dependencies;
   const outcome = await settleUsageDataStep(
     {
@@ -382,7 +381,7 @@ const settleUsageData = async (
   if (outcome === "kept-yes" || outcome === "kept-no") {
     io.stderr(USAGE_DATA_CHANGE_ANY_TIME);
   } else if (outcome === "not-recorded") {
-    io.stderr(usageDataNotRecorded(lighthouse));
+    io.stderr(usageDataNotRecorded(lighthouseNamedOf(connection)));
   }
 };
 
