@@ -68,6 +68,7 @@ import {
   type WriteVerb,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ElicitResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
   findRefinementTool,
@@ -85,9 +86,15 @@ import {
   withSummary,
   withSummaryBlock,
 } from "./toolResult";
+import {
+  askThroughTheAssistant,
+  type McpUsageDataPort,
+  usageDataOccurrencesOf,
+} from "./usageDataPort";
 
 export type { McpVoterKeyStore } from "./refinementTools";
 export type { McpToolResult } from "./toolResult";
+export * from "./usageDataPort";
 
 export type McpCorePackageContract = {
   readonly name: "@letpeoplework/lighthouse-mcp-core";
@@ -754,6 +761,8 @@ type McpRuntimeClient = {
 
 export type McpCoreRuntimeDependencies = {
   readonly createClient: () => McpRuntimeClient;
+  /** Where usage data goes; without it a tool call does exactly what it always did. */
+  readonly usageData?: McpUsageDataPort;
 } & RefinementToolDependencies;
 
 export type McpCoreRuntime = {
@@ -2915,8 +2924,16 @@ export const createMcpCoreRuntime = (
   },
 });
 
+/** The server, and through it what the assistant said it can do once it connected. */
+type McpToolServer = Pick<McpServer, "registerTool"> & {
+  readonly server?: Pick<McpServer["server"], "getClientCapabilities">;
+};
+
+const canElicit = (server: McpToolServer): boolean =>
+  server.server?.getClientCapabilities()?.elicitation !== undefined;
+
 export const registerMcpTools = (
-  server: Pick<McpServer, "registerTool">,
+  server: McpToolServer,
   dependencies: McpCoreRuntimeDependencies,
 ): void => {
   const runtime = createMcpCoreRuntime(dependencies);
@@ -2933,8 +2950,21 @@ export const registerMcpTools = (
           openWorldHint: false,
         },
       },
-      async (argumentsPayload) => {
+      async (argumentsPayload, extra) => {
         const result = await runtime.callTool(tool.name, argumentsPayload);
+        await dependencies.usageData?.({
+          reached: !result.isError,
+          occurrences: result.isError ? [] : usageDataOccurrencesOf(tool.name),
+          ask: canElicit(server)
+            ? askThroughTheAssistant((params, options) =>
+                extra.sendRequest(
+                  { method: "elicitation/create", params },
+                  ElicitResultSchema,
+                  { ...options, signal: extra.signal },
+                ),
+              )
+            : undefined,
+        });
         return {
           ...result,
           content: [...result.content],

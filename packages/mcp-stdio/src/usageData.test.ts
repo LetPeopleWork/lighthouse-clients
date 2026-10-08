@@ -126,7 +126,7 @@ const reported = (lighthouse: FakeLighthouse) =>
 
 describe("the local MCP server asks once, through the assistant", () => {
   // @US-05 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.skip("asks Priya once in her assistant, in the approved words, while her forecast reaches her unchanged", async () => {
+  it("asks Priya once in her assistant, in the approved words, while her forecast reaches her unchanged", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     const untouched = await (
@@ -159,7 +159,7 @@ describe("the local MCP server asks once, through the assistant", () => {
   });
 
   // @US-05 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.skip("reports Priya's later tool calls with source Mcp and never asks her again", async () => {
+  it("reports Priya's later tool calls with source Mcp and never asks her again", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     const assistant = await priyasAssistant(lighthouse, laptop, {
@@ -191,7 +191,7 @@ describe("the local MCP server asks once, through the assistant", () => {
 
   // @US-05 @driving_port @real-io @error @kpi @contract-shape:bounded-change
   // A decline is final, and lh on the same laptop honours it: one answer per Lighthouse per machine.
-  it.skip("keeps Marco's decline, and his lh asks nothing afterwards", async () => {
+  it("keeps Marco's decline, and his lh asks nothing afterwards", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     const assistant = await priyasAssistant(lighthouse, laptop, {
@@ -216,7 +216,7 @@ describe("the local MCP server asks once, through the assistant", () => {
 
   // @US-05 @driving_port @real-io @error @contract-shape:unbounded-preservation
   // Cancel, close or an error is no answer: nothing kept, not asked again this session, asked next session.
-  it.skip("keeps nothing when Priya closes the question, does not ask again this session, and asks in the next", async () => {
+  it("keeps nothing when Priya closes the question, does not ask again this session, and asks in the next", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     const assistant = await priyasAssistant(lighthouse, laptop, {
@@ -239,7 +239,7 @@ describe("the local MCP server asks once, through the assistant", () => {
   // @US-05 @driving_port @real-io @error @infrastructure-failure @contract-shape:unbounded-preservation
   // An assistant times a tool call out at 60 seconds by default; the question gives up at 50, so the
   // forecast is never lost to it.
-  it.skip("hands Priya her forecast after 50 seconds of silence, and keeps nothing", async () => {
+  it("hands Priya her forecast after 50 seconds of silence, and keeps nothing", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     const assistant = await priyasAssistant(lighthouse, laptop, {
@@ -260,7 +260,7 @@ describe("the local MCP server asks once, through the assistant", () => {
   });
 
   // @US-05 @driving_port @real-io @boundary @contract-shape:bounded-change
-  it.skip("asks once when Priya's assistant makes three calls at once", async () => {
+  it("asks once when Priya's assistant makes three calls at once", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     const assistant = await priyasAssistant(lighthouse, laptop, {

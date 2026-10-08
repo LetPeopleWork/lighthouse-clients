@@ -41,7 +41,9 @@ describe("usage data stays where it belongs", () => {
 
   it("is handled by code that never writes to the console or the process's streams", () => {
     const loud = sourcesSaying(/console\.|process\.std(out|err)/u).filter(
-      (path) => /^client\/src\/usageData[^/]*\.ts$/u.test(path),
+      (path) =>
+        /^client\/src\/usageData[^/]*\.ts$/u.test(path) ||
+        path === "mcp-core/src/usageDataPort.ts",
     );
 
     expect(loud).toEqual([]);
@@ -58,13 +60,16 @@ describe("usage data stays where it belongs", () => {
   });
 
   it("carries no field a person could have typed", () => {
-    type OpenFields<Shape> = {
-      [Field in keyof Shape]-?: string extends Shape[Field]
-        ? Field
-        : Shape[Field] extends string | number | boolean
-          ? never
-          : Field;
-    }[keyof Shape];
+    // One event kind at a time: across the whole union only the fields every kind shares would be seen.
+    type OpenFields<Shape> = Shape extends unknown
+      ? {
+          [Field in keyof Shape]-?: string extends Shape[Field]
+            ? Field
+            : Shape[Field] extends string | number | boolean
+              ? never
+              : Field;
+        }[keyof Shape]
+      : never;
 
     expectTypeOf<OpenFields<UsageDataEvent>>().toEqualTypeOf<never>();
   });
