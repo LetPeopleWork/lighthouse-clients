@@ -282,7 +282,7 @@ describe("the local MCP server asks once, through the assistant", () => {
 describe("the stored answer decides, wherever it was given", () => {
   // @US-05 @driving_port @real-io @contract-shape:bounded-change
   // An assistant that cannot ask: Lena switches it on with lh, against the same Lighthouse.
-  it.skip("reports Lena's refresh with source Mcp after she ran lh config usage-data on, though her assistant cannot ask", async () => {
+  it("reports Lena's refresh with source Mcp after she ran lh config usage-data on, though her assistant cannot ask", async () => {
     const lighthouse = await aFakeLighthouse();
     const laptop = await priyasLaptop(lighthouse);
     await lhOn(laptop).run(["config", "usage-data", "on"]);
@@ -303,7 +303,7 @@ describe("the stored answer decides, wherever it was given", () => {
   });
 
   // @US-05 @driving_port @real-io @error @contract-shape:unbounded-preservation
-  it.skip("asks nothing and sends nothing when the assistant cannot ask and nobody has answered", async () => {
+  it("asks nothing and sends nothing when the assistant cannot ask and nobody has answered", async () => {
     const lighthouse = await aFakeLighthouse();
     const assistant = await priyasAssistant(
       lighthouse,
@@ -319,7 +319,7 @@ describe("the stored answer decides, wherever it was given", () => {
 
   // @US-05 @driving_port @real-io @kpi @contract-shape:bounded-change
   // KPI-5: 0 repeat questions across the two surfaces.
-  it.skip.each<[string, Parameters<typeof anEarlierAnswer>[2], number]>([
+  it.each<[string, Parameters<typeof anEarlierAnswer>[2], number]>([
     ["a yes", aYesGiven("lenas-token", 1 * HOURS), 1],
     ["a No", aNo(), 0],
   ])(
@@ -342,7 +342,7 @@ describe("the stored answer decides, wherever it was given", () => {
 
   // @US-05 @driving_port @real-io @boundary @contract-shape:bounded-change
   // The server outlives many lh runs, so it reads the answer again just before it would ask.
-  it.skip("does not ask when lh answered since the server started", async () => {
+  it("does not ask when lh answered since the server started", async () => {
     const lighthouse = await aFakeLighthouse({ usageData: { mayAsk: false } });
     const laptop = await priyasLaptop(lighthouse);
     const assistant = await priyasAssistant(lighthouse, laptop, {
@@ -358,7 +358,7 @@ describe("the stored answer decides, wherever it was given", () => {
   });
 
   // @US-05 @driving_port @real-io @error @version-skew @kpi @contract-shape:unbounded-preservation
-  it.skip.each<[string, UsageDataSide, Readonly<Record<string, string>>]>([
+  it.each<[string, UsageDataSide, Readonly<Record<string, string>>]>([
     [
       "its administrator has stopped usage data",
       { administratorDisabled: true },

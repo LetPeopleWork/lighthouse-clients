@@ -282,6 +282,11 @@ describe("planning a usage data step", () => {
       { source: "Mcp", state: aState({ acceptedSources: ["Browser", "Mcp"] }) },
       { kind: "ask" },
     ],
+    [
+      "an MCP server it does not label",
+      { source: "Mcp", state: aState({ acceptedSources: ["Browser", "Cli"] }) },
+      NOTHING,
+    ],
     ["a state that cannot be read", { state: "unavailable" }, NOTHING],
     [
       "a command that was refused or never reached it",
@@ -291,6 +296,37 @@ describe("planning a usage data step", () => {
   ])("for an undecided Lighthouse with %s", (_why, given, plan) => {
     expect(planUsageDataStep(facts(given))).toEqual(plan);
   });
+
+  it.each<[string, UsageDataState["acceptedSources"], UsageDataPlan]>([
+    [
+      "labels it",
+      ["Browser", "Mcp"],
+      {
+        kind: "send",
+        token: TOKEN,
+        batch: { ...A_FORECAST_BATCH, source: "Mcp" },
+        reconfirmed: true,
+      },
+    ],
+    [
+      "labels only the browser and the command line",
+      ["Browser", "Cli"],
+      NOTHING,
+    ],
+  ])(
+    "for an MCP server's stale yes, when the Lighthouse %s",
+    (_why, acceptedSources, plan) => {
+      expect(
+        planUsageDataStep(
+          facts({
+            source: "Mcp",
+            stored: aStaleYes,
+            state: aState({ decision: "Granted", acceptedSources }),
+          }),
+        ),
+      ).toEqual(plan);
+    },
+  );
 });
 
 // The same cases the web's own vote casting is tested with, so a vote counts at the same moment from
