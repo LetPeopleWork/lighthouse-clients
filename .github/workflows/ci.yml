@@ -33,6 +33,16 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # The release packs the same way, so a skill that would not pack fails here, before anything is published.
+      - name: Pack skills (dry run)
+        run: |
+          out="$(mktemp -d)"
+          bash scripts/pack-skills.sh "$out"
+          expected=(lighthouse)
+          for name in "${expected[@]}"; do
+            [[ -f "$out/$name-skill.zip" ]] || { echo "missing $name-skill.zip"; exit 1; }
+          done
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -113,6 +123,10 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Before npm publish, so a skill that will not pack stops the release while nothing is out yet.
+      - name: Pack skills
+        run: bash scripts/pack-skills.sh release-assets
+
       - name: Publish npm packages
         run: pnpm release:publish --tag latest
         env:
@@ -141,11 +155,6 @@ jobs:
           npx -y @anthropic-ai/mcpb validate mcpb-staging/manifest.json
           npx -y @anthropic-ai/mcpb pack mcpb-staging/ release-assets/lighthouse-mcp-stdio.mcpb
 
-      - name: Pack skill folder
-        run: |
-          cd skill
-          zip -qr ../release-assets/lighthouse-skill.zip .
-
       - name: Copy install/uninstall scripts to release assets
         run: |
           cp scripts/install.sh release-assets/install.sh
@@ -159,6 +168,7 @@ jobs:
           tag_name: v${{ env.RELEASE_TAG }}
           name: Lighthouse Clients ${{ env.RELEASE_TAG }}
           prerelease: false
+          fail_on_unmatched_files: true
           files: |
             release-assets/lh-linux-x64.tar.gz
             release-assets/lh-darwin-x64.tar.gz
@@ -168,7 +178,7 @@ jobs:
             release-assets/install.ps1
             release-assets/uninstall.ps1
             release-assets/lighthouse-mcp-stdio.mcpb
-            release-assets/lighthouse-skill.zip
+            release-assets/*-skill.zip
 
       - name: Login to GHCR
         uses: docker/login-action@v4
