@@ -3,7 +3,7 @@ import {
   FEATURE_REQUIRES_SERVER_NEWER_THAN,
   isServerVersionNewerThan,
 } from "@letpeoplework/lighthouse-client";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   gravityBeforeTheDaily,
   gravitysSleRisk,
@@ -17,8 +17,10 @@ import {
 } from "../../../test-support/fakeLighthouse";
 import {
   EVERY_TERM_RENAMED,
+  ok,
   terminology,
 } from "../../../test-support/lighthouseAnswers";
+import { aLighthouse } from "../test-support/cliHarness";
 import {
   aMachine,
   connectedTo,
@@ -32,6 +34,16 @@ import {
 
 const THE_DAY = ["--start-date", "2026-09-09", "--end-date", "2026-10-08"];
 const SLE_RISK_ROUTE = "GET /teams/3/metrics/sleRisk";
+
+// SLE Risk is always today's, so the clock stands on the day the scenarios describe.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-08T09:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const gravitysLighthouse = (
   replies: Record<string, { status: number; body?: unknown }> = {},
@@ -143,6 +155,44 @@ describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () 
     expect(prose(run.stdout)).toContain(
       "2 of 3 Work Items in progress are at risk of missing the SLE (85% within 7 days).",
     );
+  });
+
+  // @error @contract-shape:bounded-change
+  // Lighthouse computes SLE Risk for today whatever range is asked, so the names, ages and heading are today's.
+  it("reads today's SLE Risk under today's date when the range ends in the past", async () => {
+    const olderAges = gravitysWorkInProgressToday().map((item) => ({
+      ...item,
+      workItemAge: item.workItemAge + 20,
+    }));
+    const lighthouse = aLighthouse({
+      getTeam: ok(gravityBeforeTheDaily()),
+      getTeamSleRisk: ok(gravitysSleRisk()),
+      getTeamWip: (_id: unknown, day: unknown) =>
+        ok(day === "2026-10-08" ? gravitysWorkInProgressToday() : olderAges),
+    });
+
+    const run = await lighthouse.run([
+      "metrics",
+      "team",
+      "--id",
+      "3",
+      "--start-date",
+      "2026-08-01",
+      "--end-date",
+      "2026-08-31",
+      "--metrics",
+      "sleRisk",
+      "--pretty",
+    ]);
+
+    expect(lines(run.stdout)).toContain("Gravity · as of Thu 8 Oct 2026");
+    expect(lineFor(run.stdout, "GR-063")).toContain("5 days");
+    expect(
+      lighthouse
+        .calls()
+        .filter((call) => call.read === "getTeamWip")
+        .map((call) => call.args[1]),
+    ).toEqual(["2026-10-08"]);
   });
 
   // @error @real-io @contract-shape:bounded-change

@@ -286,8 +286,12 @@ type DayFacts = {
 type DayViewRenderer = (facts: DayFacts) => MetricDayView | null;
 
 // Which heading a metric's day view sits under: the range, or the range's last day for a metric that
-// answers about now.
-type DayView = { readonly asOf: boolean; readonly render: DayViewRenderer };
+// answers about now, or today for a metric Lighthouse only ever answers for today, whatever the range.
+type DayView = {
+  readonly asOf: boolean;
+  readonly today?: boolean;
+  readonly render: DayViewRenderer;
+};
 
 const answered = <T>(answer: MetricAnswer<T> | null | undefined): answer is T =>
   answer !== null && answer !== undefined && !isMetricRefusal(answer);
@@ -407,6 +411,7 @@ const timeInStateDays = overTheRange(
 // The title, then the sentence and one line per Work Item beneath it, as the SLE Risk widget lists them.
 const sleRiskDays: DayView = {
   asOf: true,
+  today: true,
   render: ({ subject, wording, serviceLevelExpectation, inProgress }) => {
     const entries = sectionOf(subject, "sleRisk", readSleRisk);
     if (entries === null) {
@@ -555,6 +560,7 @@ export const renderMetricDays = (
     readonly pickedItemCount?: number;
     readonly serviceLevelExpectation?: ServiceLevelExpectation | null;
     readonly inProgress?: readonly InProgressItem[];
+    readonly today?: string;
   } = {},
 ): string | null => {
   const subject = readMetricsSubject(value);
@@ -572,6 +578,7 @@ export const renderMetricDays = (
   };
   const views: MetricDayView[] = [];
   let asOf = true;
+  let today = true;
   for (const name of names) {
     const entry = DAY_VIEWS[name];
     const view = entry?.render(facts) ?? null;
@@ -579,11 +586,14 @@ export const renderMetricDays = (
       return null;
     }
     asOf &&= entry.asOf;
+    today &&= entry.today === true;
     views.push(view);
   }
+  const asOfDay =
+    today && owner.today !== undefined ? { endDate: owner.today } : subject;
   return [
     asOf
-      ? describeAsOfHeading(subject, wording)
+      ? describeAsOfHeading(asOfDay, wording)
       : describeMetricsHeading(subject, wording),
     ...views.flatMap((view, index) => [
       ...(index === 0 ? [] : [""]),

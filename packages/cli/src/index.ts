@@ -9,6 +9,7 @@ import {
   describeReachable,
   describeRefreshConfirmation,
   describeVersion,
+  getDefaultMetricsDateRange,
   type InProgressItem,
   type LighthouseApiResult,
   type LighthouseClient,
@@ -2221,8 +2222,8 @@ const readCycleTimeDefinitionNameOf = async (
     : undefined;
 };
 
-// SLE Risk names only a reference; the Team's Work Items in progress on the day give each its name and age,
-// and without them every risk is still shown.
+// SLE Risk names only a reference; the Team's Work Items in progress today give each its name and age, and
+// without them every risk is still shown. Lighthouse computes SLE Risk for today whatever range is asked.
 const readInProgressForSleRiskOf = async (
   client: CliClientOperations,
   action: "team" | "portfolio",
@@ -2322,6 +2323,7 @@ const runMetricsGroup = async (
   ).catch(() => ({ ok: false as const, error: null }));
   const asked =
     metricsFilterOrError === null ? null : [...metricsFilterOrError];
+  const today = getDefaultMetricsDateRange().endDate;
   const [payload, wording, ownerRead, cycleTimeDefinitionName, inProgress] =
     await Promise.all([
       buildPayload(),
@@ -2338,13 +2340,7 @@ const runMetricsGroup = async (
         asked,
         definitionIdOrError.definitionId,
       ),
-      readInProgressForSleRiskOf(
-        client,
-        action,
-        entityId,
-        asked,
-        range.endDate,
-      ),
+      readInProgressForSleRiskOf(client, action, entityId, asked, today),
     ]);
   // A Team or Portfolio that could not be read may well have a limit and an SLE, so neither is called missing.
   const systemWipLimit = ownerRead.ok
@@ -2370,6 +2366,7 @@ const runMetricsGroup = async (
             pickedItemCount: itemIdsOrError?.length,
             serviceLevelExpectation,
             inProgress,
+            today,
           }),
   );
 };
