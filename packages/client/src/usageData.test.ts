@@ -5,6 +5,7 @@ import {
   isDoNotTrackSet,
   planUsageDataStep,
   readUsageDataState,
+  sizingMomentOf,
   type TerminalStreams,
   type UsageDataPlan,
   type UsageDataState,
@@ -289,4 +290,22 @@ describe("planning a usage data step", () => {
   ])("for an undecided Lighthouse with %s", (_why, given, plan) => {
     expect(planUsageDataStep(facts(given))).toEqual(plan);
   });
+});
+
+// The same cases the web's own vote casting is tested with, so a vote counts at the same moment from
+// either side. The day is Lighthouse's answer, never this machine's clock.
+describe("when a vote counts as cast, relative to the Team's Refinement", () => {
+  it.each<[string | null, boolean, string]>([
+    [null, false, "NoCadence"],
+    [null, true, "NoCadence"],
+    ["2026-10-08", true, "OnRefinementDay"],
+    ["2026-10-08", false, "OnOtherDay"],
+  ])(
+    "with next Refinement %s and Refinement day %s, it is %s",
+    (nextRefinementDate, isRefinementDay, moment) => {
+      expect(sizingMomentOf({ nextRefinementDate, isRefinementDay })).toBe(
+        moment,
+      );
+    },
+  );
 });

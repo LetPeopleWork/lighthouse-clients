@@ -15,7 +15,6 @@ import {
   isDoNotTrackSet,
   type LighthouseClient,
   loadStandaloneDiscoveryContract,
-  STANDALONE_VOTER_KEY_SCOPE,
   settleUsageDataStep,
   switchUsageDataOn,
   type TerminalStreams,
@@ -32,6 +31,7 @@ import {
   type UnreadableUsageDataFile,
 } from "./index";
 import { isOutputFormat, type OutputFormat } from "./output";
+import { lighthouseOf } from "./refinementCommands";
 import {
   readUsageDataAnswer,
   USAGE_DATA_CHANGE_ANY_TIME,
@@ -233,11 +233,6 @@ const createSessionClient = (
     { fetch: createFetch(connection.insecure) },
   );
 };
-
-const lighthouseOf = (connection: CliConnection): string =>
-  connection.mode === "server"
-    ? connection.endpointUrl
-    : STANDALONE_VOTER_KEY_SCOPE;
 
 const lighthouseNamedOf = (connection: CliConnection): string =>
   connection.mode === "server"

@@ -16,7 +16,10 @@ import {
   readRefinementWording,
   readVoteRefusal,
   STANDALONE_VOTER_KEY_SCOPE,
+  sizingMomentOf,
   type TeamRefinement,
+  type UsageDataOccurrence,
+  type UsageDataSizingMoment,
   type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -26,6 +29,7 @@ import {
   getSuccessResult,
   isCliCommandResult,
   mapApiResultToCliResult,
+  withUsage,
 } from "./commandResult";
 import type { OutputFormat } from "./output";
 import { renderRefinement } from "./refinementOutput";
@@ -121,8 +125,8 @@ const parseVoteTarget = (
   return { teamId, workItem };
 };
 
-/** Which Lighthouse a voter key belongs to: the server's URL, or the one standalone app on this machine. */
-const voterKeyScopeOf = (connection: CliConnection): string =>
+/** Which Lighthouse something kept belongs to: the server's URL, or the one standalone app on this machine. */
+export const lighthouseOf = (connection: CliConnection): string =>
   connection.mode === "server"
     ? connection.endpointUrl
     : STANDALONE_VOTER_KEY_SCOPE;
@@ -131,7 +135,7 @@ const voterKeyStoreOf = (
   connection: CliConnection,
   dependencies: VoterDependencies,
 ): LighthouseVoterKeyStore => {
-  const lighthouse = voterKeyScopeOf(connection);
+  const lighthouse = lighthouseOf(connection);
   return {
     load: async () => (await dependencies.loadVoterKey?.(lighthouse)) ?? null,
     save: async (key) => {
@@ -182,21 +186,18 @@ type WriteVoter = {
   readonly voterKey?: string;
 };
 
-const resolveWriteVoter = async (
+/** Who writes, and the Refinement as Lighthouse answered it when asked who that is. */
+type ResolvedWriter = {
+  readonly voter: WriteVoter;
+  readonly refinement: TeamRefinement;
+};
+
+const resolveVoterOf = async (
+  refinement: TeamRefinement,
   args: readonly string[],
-  outputFormat: OutputFormat,
   connection: CliConnection,
   dependencies: RefinementCommandDependencies,
-  teamId: number,
 ): Promise<WriteVoter | CliCommandResult> => {
-  const refinement = await readRefinement(
-    dependencies.createClient(connection),
-    teamId,
-    outputFormat,
-  );
-  if (isCliCommandResult(refinement)) {
-    return refinement;
-  }
   if (isSignedIn(refinement)) {
     return {};
   }
@@ -209,6 +210,44 @@ const resolveWriteVoter = async (
   }
   const voterKey = await keepCliVoterKey(connection, dependencies);
   return isCliCommandResult(voterKey) ? voterKey : { voterName, voterKey };
+};
+
+const resolveWriter = async (
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  connection: CliConnection,
+  dependencies: RefinementCommandDependencies,
+  teamId: number,
+): Promise<ResolvedWriter | CliCommandResult> => {
+  const refinement = await readRefinement(
+    dependencies.createClient(connection),
+    teamId,
+    outputFormat,
+  );
+  if (isCliCommandResult(refinement)) {
+    return refinement;
+  }
+  const voter = await resolveVoterOf(
+    refinement,
+    args,
+    connection,
+    dependencies,
+  );
+  return isCliCommandResult(voter) ? voter : { voter, refinement };
+};
+
+// Only Lighthouse's answer knows whether this vote is the one that made the Work Item Ready.
+const occurrencesOfAVote = (
+  sizingMoment: UsageDataSizingMoment,
+  answered: LighthouseApiResult<VotedRow>,
+): readonly UsageDataOccurrence[] => {
+  const cast: UsageDataOccurrence = {
+    name: "TeamSizingVoteCast",
+    sizingMoment,
+  };
+  return answered.ok && answered.value.madeReady
+    ? [cast, { name: "TeamSizingReadinessReached", sizingMoment }]
+    : [cast];
 };
 
 const mapVoteResultToCliResult = async (
@@ -282,16 +321,17 @@ const runRefinementVote: RefinementCommand = async (
       describeMissingCondition('add --comment "<what has to be true>"'),
     );
   }
-  const voter = await resolveWriteVoter(
+  const writer = await resolveWriter(
     args,
     outputFormat,
     connection,
     dependencies,
     target.teamId,
   );
-  if (isCliCommandResult(voter)) {
-    return voter;
+  if (isCliCommandResult(writer)) {
+    return writer;
   }
+  const { voter, refinement } = writer;
 
   const client = dependencies.createClient(connection);
   const result = await client.castRefinementVote(
@@ -299,12 +339,21 @@ const runRefinementVote: RefinementCommand = async (
     target.workItem,
     { answer, channel: CHANNEL, comment, ...voter },
   );
-  return mapVoteResultToCliResult(result, outputFormat, client, (row) =>
-    describeRecordedVote(
-      { workItem: target.workItem, voterName: voter.voterName },
-      answer,
-      row,
-    ),
+  const printed = await mapVoteResultToCliResult(
+    result,
+    outputFormat,
+    client,
+    (row) =>
+      describeRecordedVote(
+        { workItem: target.workItem, voterName: voter.voterName },
+        answer,
+        row,
+      ),
+  );
+  return withUsage(
+    printed,
+    result,
+    occurrencesOfAVote(sizingMomentOf(refinement), result),
   );
 };
 
@@ -322,16 +371,17 @@ const runRefinementComment: RefinementCommand = async (
   if (comment === undefined) {
     return getErrorResult("Missing required --text for refinement comment.");
   }
-  const voter = await resolveWriteVoter(
+  const writer = await resolveWriter(
     args,
     outputFormat,
     connection,
     dependencies,
     target.teamId,
   );
-  if (isCliCommandResult(voter)) {
-    return voter;
+  if (isCliCommandResult(writer)) {
+    return writer;
   }
+  const { voter } = writer;
 
   const client = dependencies.createClient(connection);
   const result = await client.addRefinementComment(

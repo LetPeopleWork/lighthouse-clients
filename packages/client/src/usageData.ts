@@ -3,8 +3,8 @@ export type UsageDataSource = "Browser" | "Cli" | "Mcp";
 
 export type ClientUsageDataSource = Exclude<UsageDataSource, "Browser">;
 
-/** The usage events a client reports, by the names Lighthouse already counts for the web. */
-export type UsageDataEventName =
+/** The usage events a client reports that carry nothing but their name. */
+export type PlainUsageDataEventName =
   | "TeamCreated"
   | "TeamDeleted"
   | "PortfolioCreated"
@@ -13,9 +13,47 @@ export type UsageDataEventName =
   | "TeamRefreshTriggered"
   | "PortfolioRefreshTriggered";
 
-/** Something a person did that is worth counting: a name from a closed list, never free text. */
-export type UsageDataOccurrence = {
-  readonly name: UsageDataEventName;
+/** The usage events that say when, relative to the Team's Refinement, a vote was cast. */
+export type SizingUsageDataEventName =
+  | "TeamSizingVoteCast"
+  | "TeamSizingReadinessReached";
+
+/** The usage events a client reports, by the names Lighthouse already counts for the web. */
+export type UsageDataEventName =
+  | PlainUsageDataEventName
+  | SizingUsageDataEventName;
+
+export type UsageDataSizingMoment =
+  | "NoCadence"
+  | "OnRefinementDay"
+  | "OnOtherDay";
+
+/** Something a person did that is worth counting: names and values from closed lists, never free text. */
+export type UsageDataOccurrence =
+  | { readonly name: PlainUsageDataEventName }
+  | {
+      readonly name: SizingUsageDataEventName;
+      readonly sizingMoment: UsageDataSizingMoment;
+    };
+
+/** What Lighthouse's answer about a Team's Refinement says about today. */
+export type RefinementMomentFacts = {
+  readonly nextRefinementDate: string | null;
+  readonly isRefinementDay: boolean;
+};
+
+/**
+ * When a vote was cast, from Lighthouse's answer rather than this machine's clock: Lighthouse counts days in
+ * the instance's time zone and knows which cadence days are blacked out. The web counts it the same way.
+ */
+export const sizingMomentOf = ({
+  nextRefinementDate,
+  isRefinementDay,
+}: RefinementMomentFacts): UsageDataSizingMoment => {
+  if (nextRefinementDate === null) {
+    return "NoCadence";
+  }
+  return isRefinementDay ? "OnRefinementDay" : "OnOtherDay";
 };
 
 export type UsageDataEvent = UsageDataOccurrence & {

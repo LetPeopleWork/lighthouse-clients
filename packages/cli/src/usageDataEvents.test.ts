@@ -107,7 +107,7 @@ describe("each mapped command reports its web event once, after it succeeded", (
 
   // @US-04 @driving_port @real-io @adapter-integration @kpi @contract-shape:bounded-change
   // The cross-repository contract, consumer side: lh sends exactly the body Lighthouse's own test posts.
-  it.skip("reports a Refinement-day vote that made GR-061 Ready as exactly the batch Lighthouse's own test takes in", async () => {
+  it("reports a Refinement-day vote that made GR-061 Ready as exactly the batch Lighthouse's own test takes in", async () => {
     const lighthouse = await aFakeLighthouse({
       refinement: { isRefinementDay: true },
       voteMadeReady: true,
@@ -125,7 +125,7 @@ describe("each mapped command reports its web event once, after it succeeded", (
   // @US-04 @driving_port @real-io @property @contract-shape:pure-function
   // The web's rule, restated from Lighthouse's answer: no next Refinement date is no cadence; a Refinement day
   // is that; any other day is another day. One vote, so only TeamSizingVoteCast.
-  it.skip.each<[string, RefinementFacts, string]>([
+  it.each<[string, RefinementFacts, string]>([
     [
       "a Team with no Refinement cadence",
       { nextRefinementDate: null },
@@ -155,7 +155,7 @@ describe("each mapped command reports its web event once, after it succeeded", (
   // @US-04 @driving_port @real-io @contract-shape:unbounded-preservation
   // The moment comes from the read every vote already makes, so a vote whose read fails is not cast, as
   // today, and nothing is reported for it.
-  it.skip("reports nothing when the read before Priya's vote is refused, and the vote is refused as today", async () => {
+  it("reports nothing when the read before Priya's vote is refused, and the vote is refused as today", async () => {
     const lighthouse = await aFakeLighthouse({
       replies: {
         "GET /teams/3/refinement": {

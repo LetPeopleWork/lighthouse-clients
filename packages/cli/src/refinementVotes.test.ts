@@ -574,6 +574,12 @@ describe("lh refinement vote, comment and take-back", () => {
       exitCode: 0,
       stdout: expect.any(String),
       stderr: "",
+      usage: {
+        reached: true,
+        occurrences: [
+          { name: "TeamSizingVoteCast", sizingMoment: "OnOtherDay" },
+        ],
+      },
     });
     expect(result.stdout.trim()).toBe(
       "Recorded: Ana Lima — Yes, if… on GR-051. GR-051: 2 more Yes needed.",
