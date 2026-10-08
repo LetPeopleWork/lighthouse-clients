@@ -14,7 +14,7 @@ import type { LighthouseUsageDataStore } from "./usageDataStore";
 /** The Lighthouse calls a reporter makes, none of them with a credential. */
 export type UsageDataLighthouse = Pick<
   LighthouseClient,
-  "getUsageDataState" | "grantUsageData" | "handInUsageData"
+  "getUsageDataState" | "grantUsageData" | "revokeUsageData" | "handInUsageData"
 >;
 
 export type UsageDataReporterDependencies = {
@@ -75,6 +75,19 @@ const yesGivenNow = (
     confirmedAt: dependencies.now().toISOString(),
   }) as const;
 
+const toldLighthouse = async (
+  lighthouse: Pick<LighthouseClient, "revokeUsageData">,
+  token: string,
+  signal: AbortSignal = AbortSignal.timeout(USAGE_DATA_BUDGET_MS),
+): Promise<boolean> => {
+  try {
+    const revoked = await lighthouse.revokeUsageData({ token, signal });
+    return revoked.ok;
+  } catch {
+    return false;
+  }
+};
+
 const regrantAndSend = async (
   dependencies: UsageDataReporterDependencies,
   formerToken: string,
@@ -85,10 +98,15 @@ const regrantAndSend = async (
   if (!granted.ok) {
     return "nothing";
   }
-  await dependencies.store.renew(
+  const kept = await dependencies.store.renew(
     formerToken,
     yesGivenNow(dependencies, granted.value),
   );
+  if (!kept) {
+    // The yes was turned off while this grant was minted: it must neither carry events nor stay live.
+    await toldLighthouse(dependencies.lighthouse, granted.value, signal);
+    return "nothing";
+  }
   return send(dependencies, granted.value, batch, signal);
 };
 
@@ -200,21 +218,6 @@ export type UsageDataWithdrawalDependencies = {
   readonly lighthouse: Pick<LighthouseClient, "revokeUsageData">;
   readonly store: LighthouseUsageDataStore;
   readonly now: () => Date;
-};
-
-const toldLighthouse = async (
-  lighthouse: UsageDataWithdrawalDependencies["lighthouse"],
-  token: string,
-): Promise<boolean> => {
-  try {
-    const revoked = await lighthouse.revokeUsageData({
-      token,
-      signal: AbortSignal.timeout(USAGE_DATA_BUDGET_MS),
-    });
-    return revoked.ok;
-  } catch {
-    return false;
-  }
 };
 
 /**

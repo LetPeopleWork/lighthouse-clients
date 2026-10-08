@@ -222,6 +222,31 @@ describe("a grant Lighthouse no longer recognises", () => {
       confirmedAt: NOW.toISOString(),
     });
   });
+
+  it("withdraws the new grant and sends nothing when the yes was turned off while it was granted again", async () => {
+    const lighthouse = aLighthouse({
+      stateFor: () => ({
+        decision: "Revoked",
+        mayAsk: false,
+        administratorDisabled: false,
+        acceptedSources: ["Browser", "Cli", "Mcp"],
+      }),
+    });
+    const { store } = aStore(aYesConfirmed(31 * 24 * HOUR));
+    const turnedOffMeanwhile: LighthouseUsageDataStore = {
+      ...store,
+      renew: async () => false,
+    };
+
+    const outcome = await settle(lighthouse, turnedOffMeanwhile);
+
+    expect(outcome).toBe("nothing");
+    expect(lighthouse.seen).toEqual([
+      { route: "state", token: KEPT_TOKEN, body: undefined },
+      { route: "consent", token: undefined, body: { decision: "granted" } },
+      { route: "consent", token: MINTED_TOKEN, body: undefined },
+    ]);
+  });
 });
 
 describe("an outcome never carries the consent token", () => {

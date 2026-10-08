@@ -30,6 +30,7 @@ const aSlowGrantingLighthouse = () => {
       await aMoment(50);
       return { ok: true, value: token };
     },
+    revokeUsageData: async () => ({ ok: true, value: undefined }),
     handInUsageData: async (batch, { token }) => {
       handedIn.push({ batch, token });
       return { ok: true, value: undefined };
@@ -89,6 +90,7 @@ describe("operatorsUsageDataPort", () => {
           };
         },
         grantUsageData: async () => ({ ok: true, value: "never-minted" }),
+        revokeUsageData: async () => ({ ok: true, value: undefined }),
         handInUsageData: async () => ({ ok: true, value: undefined }),
       };
       let clock = new Date("2026-10-08T09:00:00Z");
