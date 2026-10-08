@@ -3078,3 +3078,4 @@ export * from "./refinementVoting";
 export * from "./refinementWording";
 export * from "./terminology";
 export * from "./voterKeyStore";
+export * from "./writeWording";

@@ -110,7 +110,7 @@ const WRITES = [
 
 describe("lh writes --pretty", () => {
   // @driving_port @US-08 @contract-shape:bounded-change — AC-08.1: all 11 write forms
-  it.skip.each(WRITES)(
+  it.each(WRITES)(
     "confirms `lh $args` in one line: '$reads'",
     async ({ args, reads }) => {
       const result = await sofiasLighthouse().run(args);

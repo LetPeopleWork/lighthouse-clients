@@ -1323,7 +1323,7 @@ describe("runCliCommand", () => {
     });
 
     const result = await runCliCommand(
-      ["team", "refresh", "--id", "1"],
+      ["team", "refresh", "--id", "1", "--json"],
       dependencies,
     );
 
@@ -1388,7 +1388,7 @@ describe("runCliCommand", () => {
     expect(getResult.stdout).toContain("Portfolio A [id: 7]");
 
     const refreshResult = await runCliCommand(
-      ["portfolio", "refresh", "--id", "7"],
+      ["portfolio", "refresh", "--id", "7", "--json"],
       dependencies,
     );
 

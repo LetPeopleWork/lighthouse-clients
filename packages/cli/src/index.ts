@@ -4,7 +4,10 @@ import {
   type CliStandaloneConnection,
   type ConnectivityValidationResult,
   createLighthouseClient,
+  describeBlackoutRuleWriteConfirmation,
   describeFeatureTitle,
+  describeOwnerWriteConfirmation,
+  describeRefreshConfirmation,
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
@@ -44,6 +47,11 @@ import {
   findRefinementCommand,
   type VoterDependencies,
 } from "./refinementCommands";
+import {
+  answerOwnerWrite,
+  confirmRecordlessWrite,
+  renderBlackoutRuleWritten,
+} from "./writeOutput";
 
 export type { CliCommandResult } from "./commandResult";
 
@@ -1715,10 +1723,12 @@ const runTeamGroup = async (
         return payloadOrError;
       }
 
-      return mapApiResultToCliResult(
-        await client.createTeam(payloadOrError),
+      return answerOwnerWrite(client.createTeam(payloadOrError), {
+        verb: "Created",
+        kind: "team",
         outputFormat,
-      );
+        termsSource: client,
+      });
     },
     update: async () => {
       const teamId = getRequiredIdOption(args, "--id");
@@ -1735,10 +1745,12 @@ const runTeamGroup = async (
         return payloadOrError;
       }
 
-      return mapApiResultToCliResult(
-        await client.updateTeam(teamId, payloadOrError),
+      return answerOwnerWrite(client.updateTeam(teamId, payloadOrError), {
+        verb: "Updated",
+        kind: "team",
         outputFormat,
-      );
+        termsSource: client,
+      });
     },
     delete: async () => {
       const teamId = getRequiredIdOption(args, "--id");
@@ -1746,14 +1758,18 @@ const runTeamGroup = async (
         return getErrorResult("Missing required --id for team delete.");
       }
 
-      const result = await client.deleteTeam(teamId);
-      if (!result.ok) {
-        return getErrorResult(
-          `${result.error.category}: ${result.error.reason}`,
-        );
-      }
-
-      return getSuccessResult(`Team deleted: ${teamId}`);
+      return confirmRecordlessWrite(
+        await client.deleteTeam(teamId),
+        outputFormat,
+        `Team deleted: ${teamId}`,
+        async () =>
+          describeOwnerWriteConfirmation(
+            "Deleted",
+            "team",
+            { id: teamId },
+            await readTerms(client),
+          ),
+      );
     },
     refresh: async () => {
       const teamId = getRequiredIdOption(args, "--id");
@@ -1761,14 +1777,13 @@ const runTeamGroup = async (
         return getErrorResult("Missing required --id for team refresh.");
       }
 
-      const result = await client.refreshTeam(teamId);
-      if (!result.ok) {
-        return getErrorResult(
-          `${result.error.category}: ${result.error.reason}`,
-        );
-      }
-
-      return getSuccessResult(`Team refreshed: ${teamId}`);
+      return confirmRecordlessWrite(
+        await client.refreshTeam(teamId),
+        outputFormat,
+        `Team refreshed: ${teamId}`,
+        async () =>
+          describeRefreshConfirmation("team", teamId, await readTerms(client)),
+      );
     },
   };
 
@@ -1843,10 +1858,12 @@ const runPortfolioGroup = async (
         return payloadOrError;
       }
 
-      return mapApiResultToCliResult(
-        await client.createPortfolio(payloadOrError),
+      return answerOwnerWrite(client.createPortfolio(payloadOrError), {
+        verb: "Created",
+        kind: "portfolio",
         outputFormat,
-      );
+        termsSource: client,
+      });
     },
     update: async () => {
       const portfolioId = getRequiredIdOption(args, "--id");
@@ -1863,9 +1880,14 @@ const runPortfolioGroup = async (
         return payloadOrError;
       }
 
-      return mapApiResultToCliResult(
-        await client.updatePortfolio(portfolioId, payloadOrError),
-        outputFormat,
+      return answerOwnerWrite(
+        client.updatePortfolio(portfolioId, payloadOrError),
+        {
+          verb: "Updated",
+          kind: "portfolio",
+          outputFormat,
+          termsSource: client,
+        },
       );
     },
     delete: async () => {
@@ -1874,14 +1896,18 @@ const runPortfolioGroup = async (
         return getErrorResult("Missing required --id for portfolio delete.");
       }
 
-      const result = await client.deletePortfolio(portfolioId);
-      if (!result.ok) {
-        return getErrorResult(
-          `${result.error.category}: ${result.error.reason}`,
-        );
-      }
-
-      return getSuccessResult(`Portfolio deleted: ${portfolioId}`);
+      return confirmRecordlessWrite(
+        await client.deletePortfolio(portfolioId),
+        outputFormat,
+        `Portfolio deleted: ${portfolioId}`,
+        async () =>
+          describeOwnerWriteConfirmation(
+            "Deleted",
+            "portfolio",
+            { id: portfolioId },
+            await readTerms(client),
+          ),
+      );
     },
     refresh: async () => {
       const portfolioId = getRequiredIdOption(args, "--id");
@@ -1889,14 +1915,17 @@ const runPortfolioGroup = async (
         return getErrorResult("Missing required --id for portfolio refresh.");
       }
 
-      const result = await client.refreshPortfolio(portfolioId);
-      if (!result.ok) {
-        return getErrorResult(
-          `${result.error.category}: ${result.error.reason}`,
-        );
-      }
-
-      return getSuccessResult(`Portfolio refreshed: ${portfolioId}`);
+      return confirmRecordlessWrite(
+        await client.refreshPortfolio(portfolioId),
+        outputFormat,
+        `Portfolio refreshed: ${portfolioId}`,
+        async () =>
+          describeRefreshConfirmation(
+            "portfolio",
+            portfolioId,
+            await readTerms(client),
+          ),
+      );
     },
   };
 
@@ -2470,6 +2499,7 @@ const runBlackoutGroup = async (
       return mapApiResultToCliResult(
         await client.createRecurringBlackoutRule(payloadOrError),
         outputFormat,
+        renderBlackoutRuleWritten("Created"),
       );
     },
     update: async () => {
@@ -2490,6 +2520,7 @@ const runBlackoutGroup = async (
       return mapApiResultToCliResult(
         await client.updateRecurringBlackoutRule(ruleId, payloadOrError),
         outputFormat,
+        renderBlackoutRuleWritten("Updated"),
       );
     },
     delete: async () => {
@@ -2498,14 +2529,13 @@ const runBlackoutGroup = async (
         return getErrorResult("Missing required --id for blackout delete.");
       }
 
-      const result = await client.deleteRecurringBlackoutRule(ruleId);
-      if (!result.ok) {
-        return getErrorResult(
-          `${result.error.category}: ${result.error.reason}`,
-        );
-      }
-
-      return getSuccessResult(`Recurring blackout rule deleted: ${ruleId}`);
+      return confirmRecordlessWrite(
+        await client.deleteRecurringBlackoutRule(ruleId),
+        outputFormat,
+        `Recurring blackout rule deleted: ${ruleId}`,
+        async () =>
+          describeBlackoutRuleWriteConfirmation("Deleted", { id: ruleId }),
+      );
     },
   };
 
