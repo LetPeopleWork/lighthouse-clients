@@ -32,12 +32,12 @@ Lighthouse runs 10,000 simulations using historical throughput data. Each simula
 In these cases, the forecast will still work, but accuracy may be lower. After a few weeks of operating under the new conditions, the data will catch up.
 
 **Percentile interpretation:**
-- **95% (Certain):** Almost guaranteed — only 5% of simulations took longer
+- **95% (Very likely):** Only 5% of simulations took longer. Still not certain: only 100% is, and a 100% "how many" forecast says no more than "zero or more"
 - **85% (Likely):** High confidence — a solid commitment level
 - **70% (Moderate):** Reasonable expectation — some risk
 - **50% (Risky):** Coin flip — half the simulations took longer
 
-For stakeholder communication, recommend the 85th percentile as the default commitment level. Use 70% for internal planning.
+For stakeholder communication, give at least two likelihoods, each "on or before" a date or "or more" for a count, and ask which one to plan against. Recommend none as a default: what being late costs them decides it.
 
 ---
 

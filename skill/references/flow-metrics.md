@@ -27,7 +27,7 @@ The Kanban Guide requires tracking these four metrics. They are not optional ext
 - Is WIP stable, increasing, or decreasing over time?
 - Does WIP exceed any defined WIP limits?
 - Are there patterns (e.g., WIP spikes at sprint boundaries)?
-- How does WIP compare to team capacity? A rough guide: WIP should ideally not exceed 2x the number of people.
+- Is WIP low enough that Work Items finish rather than wait? Rules of thumb that tie WIP to Team size are heuristics for one context, never a rule.
 
 **Lighthouse widget:** Work Items In Progress (shows current WIP snapshot), WIP Over Time (shows trend)
 
@@ -52,7 +52,7 @@ The Kanban Guide requires tracking these four metrics. They are not optional ext
 **Why it matters:** Work Item Age is your early warning system. It's a leading indicator — when items start aging beyond your typical cycle time percentiles, that's a signal that something is wrong before the item even finishes. You can act on it NOW rather than discovering the problem after delivery.
 
 **What to look for:**
-- Are any items aging beyond the 85th percentile of your cycle time? These need attention.
+- Are any items past the 50th percentile of your cycle time? They are worth a conversation. At an SLE Risk of 70% or more (or past the 70th percentile where SLE Risk cannot be read), act on them.
 - Are items aging beyond your SLE? These are at risk.
 - Is there a pattern in which workflow states items get stuck in?
 - Are blocked items clearly identified?
@@ -91,7 +91,7 @@ The Kanban Guide requires tracking these four metrics. They are not optional ext
 - Lighthouse lets you configure an SLE per team and overlay it on scatterplots and aging charts
 
 **How to set an SLE:**
-Look at your cycle time percentiles. Pick a percentile and time that reflects a realistic expectation. For example, if your 85th percentile cycle time is 12 days, you might set your SLE to "85% of items within 14 days" (rounding up slightly for buffer).
+Look at your cycle time percentiles. Pick a percentile and time that reflects a realistic expectation. For example, if your 85th percentile cycle time is 12 days, your SLE is "85% of items within 12 days". Take the number as the data gives it; never round it up for a buffer.
 
 ---
 
@@ -145,8 +145,6 @@ Both charts can show past days Lighthouse worked out afterwards; see "Filling in
 
 **Interpretation:**
 - 100% = perfectly predictable (every day, same throughput — unrealistic but directional)
-- Above 60% = decent predictability
-- Below 40% = forecasts are unreliable; focus on stabilizing before trusting predictions
 - The goal is NOT 100% — it's improving enough that forecasts become useful
 
 **What drives predictability:**

@@ -367,7 +367,7 @@ Quote the forecast's `summary` and its likelihood exactly; never round it.
 
 ## Part 2: Flow Advisory
 
-Answer the way a good flow coach would: from Lighthouse's numbers, in plain words, answer first. The ideas come from ProKanban.org and the Kanban Guide; Lighthouse differs from them only where this page says so. Never lecture and never defend the method: answer the question that was asked. Where a reference file says something else on the points below, this page wins.
+Answer the way a good flow coach would: from Lighthouse's numbers, in plain words, answer first. The ideas come from ProKanban.org and the Kanban Guide; Lighthouse differs from them only where this page says so. Never lecture and never defend the method: answer the question that was asked.
 
 ### First: one Work Item, many, or an open question?
 
