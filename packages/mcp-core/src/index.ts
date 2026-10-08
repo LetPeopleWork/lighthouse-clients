@@ -5,8 +5,10 @@ import {
   describeBacktestActual,
   describeBacktestPeriod,
   describeBacktestSummary,
+  describeBlackoutRuleCount,
   describeBlackoutRuleWriteConfirmation,
   describeBlockedDays,
+  describeConnectionSummary,
   describeCycleTimeDays,
   describeDeliveryCount,
   describeDeliveryMetricsHeading,
@@ -27,15 +29,19 @@ import {
   describeTimeInStateContributorDays,
   describeTimeInStateDays,
   describeTotalWorkItemAgeDays,
+  describeVersion,
   describeWorkItemAgeDays,
   describeWorkItemAgePercentiles,
+  describeWorkTrackingSystemCount,
   getDefaultMetricsDateRange,
+  LIGHTHOUSE_IS_REACHABLE,
   type MetricDayView,
   type MetricsDateRange,
   type MetricsScope,
   type OwnerKind,
   readAnswerWording,
   readBacktest,
+  readBlackoutRules,
   readBlocked,
   readCycleTimeDefinitionName,
   readCycleTimePercentiles,
@@ -56,6 +62,7 @@ import {
   readTotalWorkItemAge,
   readWorkItemAge,
   readWorkItemAgePercentiles,
+  readWorkTrackingConnections,
   readWrittenBlackoutRule,
   summariseDeliveryMetricsHistory,
   type WriteVerb,
@@ -796,24 +803,25 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_health_check",
     description:
-      "Check connectivity to Lighthouse and return whether the configured endpoint is reachable.",
+      "Check connectivity to Lighthouse and return whether the configured endpoint is reachable. A second text block, `summary`, says that Lighthouse is reachable; the first block is the facts, unchanged.",
     inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse_version_get",
     description:
-      "Retrieve the Lighthouse server version from the version endpoint.",
+      "Retrieve the Lighthouse server version from the version endpoint. A second text block, `summary`, names it as the web's footer does; the first block is the facts, unchanged.",
     inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse_worktracking_list",
     description:
-      "List configured work-tracking system connections in Lighthouse.",
+      "List configured work-tracking system connections in Lighthouse. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: emptyInputSchema,
   },
   {
     name: "lighthouse_worktracking_get",
-    description: "Get a single work-tracking system connection by ID.",
+    description:
+      "Get a single work-tracking system connection by ID. `summary` names the connection and its type as the Overview does, and never carries an option's value.",
     inputSchema: idInputSchema,
   },
   {
@@ -1138,7 +1146,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_blackout_list",
     description:
-      "List the recurring blackout rules (recurring non-working days excluded from forecasts). Requires Lighthouse newer than v26.5.29.5.",
+      "List the recurring blackout rules (recurring non-working days excluded from forecasts). Requires Lighthouse newer than v26.5.29.5. A second text block, `summary`, counts them as the settings page does; the first block is the facts, unchanged, each rule's own `summary` field included.",
     inputSchema: emptyInputSchema,
   },
   {
@@ -2106,7 +2114,10 @@ export const createMcpCoreRuntime = (
     if (name === "lighthouse_health_check") {
       const health = await client.checkConnectivity();
       if (health.category === "success") {
-        return getSuccessToolResult("connectivity: success");
+        return withConfirmation(
+          "connectivity: success",
+          () => LIGHTHOUSE_IS_REACHABLE,
+        );
       }
 
       const healthReasonSuffix =
@@ -2120,7 +2131,9 @@ export const createMcpCoreRuntime = (
     if (name === "lighthouse_version_get") {
       const version = await client.getVersion();
       if (version.ok) {
-        return getSuccessToolResult(`version: ${version.value}`);
+        return withConfirmation(`version: ${version.value}`, () =>
+          describeVersion(version.value),
+        );
       }
 
       return getErrorToolResult(
@@ -2129,10 +2142,20 @@ export const createMcpCoreRuntime = (
     }
 
     if (name === "lighthouse_worktracking_list") {
-      const connections = await client.listWorkTrackingConnections();
+      const [connections, terms] = await Promise.all([
+        client.listWorkTrackingConnections(),
+        readTerms(client),
+      ]);
       if (connections.ok) {
-        return getSuccessToolResult(
-          `worktracking: ${encodePayload(connections.value)}`,
+        return withSummary(
+          "worktracking",
+          connections.value,
+          summaryOrNull(() => {
+            const listed = readWorkTrackingConnections(connections.value);
+            return listed === null
+              ? null
+              : describeWorkTrackingSystemCount(listed.length, terms);
+          }),
         );
       }
 
@@ -2149,8 +2172,10 @@ export const createMcpCoreRuntime = (
 
       const connection = await client.getWorkTrackingConnection(id);
       if (connection.ok) {
-        return getSuccessToolResult(
-          `worktracking: ${encodePayload(connection.value)}`,
+        return withSummary(
+          "worktracking",
+          connection.value,
+          summaryOrNull(() => describeConnectionSummary(connection.value)),
         );
       }
 
@@ -2759,8 +2784,15 @@ export const createMcpCoreRuntime = (
     if (name === "lighthouse_blackout_list") {
       const result = await client.getRecurringBlackoutRules();
       if (result.ok) {
-        return getSuccessToolResult(
-          `recurringBlackoutRules: ${encodePayload(result.value)}`,
+        return withSummary(
+          "recurringBlackoutRules",
+          result.value,
+          summaryOrNull(() => {
+            const rules = readBlackoutRules(result.value);
+            return rules === null
+              ? null
+              : describeBlackoutRuleCount(rules.length);
+          }),
         );
       }
       return getErrorToolResult(

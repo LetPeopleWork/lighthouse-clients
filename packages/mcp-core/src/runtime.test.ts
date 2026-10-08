@@ -1804,6 +1804,10 @@ describe("registerMcpTools", () => {
           type: "text",
           text: "connectivity: success",
         },
+        {
+          type: "text",
+          text: "summary: Lighthouse is reachable.",
+        },
       ],
     });
   });

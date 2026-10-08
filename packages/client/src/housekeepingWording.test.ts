@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   describeBlackoutRuleCount,
   describeBlackoutRuleSchedule,
+  describeConnectionSummary,
   describeNoBlackoutRules,
   describeOptionValue,
   describeReachable,
   describeVersion,
+  describeWorkTrackingSystemCount,
   readBlackoutRules,
   readWorkTrackingConnection,
   readWorkTrackingConnections,
 } from "./housekeepingWording";
+import { resolveTerms, SEEDED_TERMS } from "./terminology";
 
 const focusFriday = {
   id: 5,
@@ -185,6 +188,49 @@ describe("readWorkTrackingConnections", () => {
     "reads %j as unrecognised",
     (value) => {
       expect(readWorkTrackingConnections(value)).toBeNull();
+    },
+  );
+});
+
+describe("describeWorkTrackingSystemCount", () => {
+  const renamed = resolveTerms([
+    { key: "workTrackingSystem", value: "Tracker" },
+    { key: "workTrackingSystems", value: "Trackers" },
+  ]);
+
+  it.each([
+    { count: 0, terms: SEEDED_TERMS, says: "No Work Tracking Systems" },
+    { count: 1, terms: SEEDED_TERMS, says: "1 Work Tracking System" },
+    { count: 3, terms: SEEDED_TERMS, says: "3 Work Tracking Systems" },
+    { count: 0, terms: renamed, says: "No Trackers" },
+    { count: 1, terms: renamed, says: "1 Tracker" },
+  ])("counts $count connections as '$says'", ({ count, terms, says }) => {
+    expect(describeWorkTrackingSystemCount(count, terms)).toBe(says);
+  });
+});
+
+describe("describeConnectionSummary", () => {
+  it("names the connection and its type, and carries no option's value", () => {
+    const summary = describeConnectionSummary(
+      jiraConnection([
+        {
+          key: "Jira Url",
+          value: "https://letpeoplework.atlassian.net",
+          isSecret: false,
+        },
+        { key: "Api Token", value: "ATATT-leaked", isSecret: false },
+      ]),
+    );
+
+    expect(summary).toBe("Letpeoplework Jira [id: 1]\nType: Jira");
+    expect(summary).not.toContain("atlassian");
+    expect(summary).not.toContain("ATATT");
+  });
+
+  it.each([null, [], { id: 1, name: "Jira" }])(
+    "has nothing to say about %j",
+    (value) => {
+      expect(describeConnectionSummary(value)).toBeNull();
     },
   );
 });

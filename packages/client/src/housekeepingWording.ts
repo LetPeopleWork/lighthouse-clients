@@ -1,4 +1,5 @@
 import type { CliConnection, DayOfWeek, RecurringBlackoutRule } from "./index";
+import type { Terms } from "./terminology";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -79,6 +80,9 @@ export const describeReachable = (connection: CliConnection): string =>
   connection.mode === "server"
     ? `Lighthouse at ${connection.endpointUrl} is reachable.`
     : "The standalone Lighthouse is reachable.";
+
+/** What a successful health check says when it does not know which endpoint it reached. */
+export const LIGHTHOUSE_IS_REACHABLE = "Lighthouse is reachable.";
 
 /** One Work Tracking System connection as the Overview lists it. */
 export type WorkTrackingConnectionListItem = {
@@ -220,3 +224,25 @@ export const describeConnectionType = ({
 export const describeOptionValue = (
   option: WorkTrackingConnectionOption,
 ): string => (option.isSecret ? SECRET_NOT_SHOWN : option.value);
+
+/** How many connections there are, in the instance's words: "No Work Tracking Systems", "1 Work Tracking System". */
+export const describeWorkTrackingSystemCount = (
+  count: number,
+  terms: Terms,
+): string => {
+  if (count === 0) {
+    return `No ${terms.workTrackingSystems}`;
+  }
+  return `${count} ${count === 1 ? terms.workTrackingSystem : terms.workTrackingSystems}`;
+};
+
+/**
+ * A connection named with its type, or null when it lacks either. It is built from the name and type alone,
+ * so no option's value can ever reach it.
+ */
+export const describeConnectionSummary = (value: unknown): string | null => {
+  const connection = readConnectionListItem(value);
+  return connection === null
+    ? null
+    : `${describeConnectionName(connection)}\n${describeConnectionType(connection)}`;
+};

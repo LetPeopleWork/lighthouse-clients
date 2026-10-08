@@ -18,7 +18,7 @@ import {
 
 // Story 6218, slice 09: the housekeeping tools. Health, version and the two lists keep their facts block byte
 // for byte and gain a second block; a single connection gains a `summary` field that names it and its type
-// and never carries an option's value. Pending until DELIVER slice 09.
+// and never carries an option's value.
 
 const twoRules = () => [
   aBlackoutRule(),
@@ -47,8 +47,8 @@ const sofiasAssistant = (reads = {}, options = {}) =>
   );
 
 describe("the housekeeping tools' summary", () => {
-  // @driving_port @US-09 @contract-shape:bounded-change — M5
-  it.skip("keeps the health answer as it is and adds that Lighthouse is reachable", async () => {
+  // @driving_port @US-09 @contract-shape:bounded-change
+  it("keeps the health answer as it is and adds that Lighthouse is reachable", async () => {
     const result = await sofiasAssistant().call("lighthouse_health_check", {});
 
     expect(result.isError).toBe(false);
@@ -57,15 +57,15 @@ describe("the housekeeping tools' summary", () => {
   });
 
   // @driving_port @US-09 @contract-shape:bounded-change
-  it.skip("keeps the version as it is and adds the footer's words", async () => {
+  it("keeps the version as it is and adds the footer's words", async () => {
     const result = await sofiasAssistant().call("lighthouse_version_get", {});
 
     expect(factsBlockOf(result)).toBe("version: v26.10.3.6");
     expect(summaryBlockOf(result)).toBe("summary: Lighthouse v26.10.3.6");
   });
 
-  // @driving_port @US-09 @contract-shape:bounded-change — M3
-  it.skip.each([
+  // @driving_port @US-09 @contract-shape:bounded-change
+  it.each([
     {
       tool: "lighthouse_worktracking_list",
       facts: () => `worktracking: ${encode(threeConnections() as never)}`,
@@ -87,8 +87,8 @@ describe("the housekeeping tools' summary", () => {
     },
   );
 
-  // @boundary @US-09 — M3 with one of each
-  it.skip.each([
+  // @boundary @US-09 — one of each
+  it.each([
     {
       tool: "lighthouse_worktracking_list",
       reads: { listWorkTrackingConnections: ok([aConnection()]) },
@@ -108,8 +108,8 @@ describe("the housekeeping tools' summary", () => {
     },
   );
 
-  // @US-09 @kpi — KPI-5
-  it.skip("counts the Work Tracking Systems in the words an instance has renamed them to", async () => {
+  // @US-09 @kpi
+  it("counts the Work Tracking Systems in the words an instance has renamed them to", async () => {
     const assistant = sofiasAssistant({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -119,8 +119,8 @@ describe("the housekeeping tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: 3 Trackers");
   });
 
-  // @driving_port @US-09 @contract-shape:bounded-change — AC-09.2: the summary names, never reveals
-  it.skip("names a connection and its type, and leaves every option value out of the summary", async () => {
+  // @driving_port @US-09 @contract-shape:bounded-change — the summary names, never reveals
+  it("names a connection and its type, and leaves every option value out of the summary", async () => {
     const leaky = aConnection({
       options: aConnection().options.map((option) =>
         option.isSecret ? { ...option, value: "ATATT-leaked-token" } : option,
