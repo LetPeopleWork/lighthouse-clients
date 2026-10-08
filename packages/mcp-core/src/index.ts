@@ -1830,20 +1830,22 @@ const summariseCurrentWip =
     );
   };
 
-// One Team read serves both the heading's name and the System WIP Limit.
-const readCurrentWipContext = async (
-  client: McpRuntimeClient,
-  teamId: number,
-) => {
+// One Team read serves both the heading's name and the Team's own settings the summary states.
+const readTeamForSummary = async (client: McpRuntimeClient, teamId: number) => {
   const team = client.getTeam(teamId);
   const [wording, teamRead] = await Promise.all([
     readAnswerWording(client, { term: "team", id: teamId, read: () => team }),
     readForSummary(() => team),
   ]);
-  return {
-    wording,
-    systemWipLimit: readSystemWipLimit(answeredValue(teamRead)),
-  };
+  return { wording, team: answeredValue(teamRead) };
+};
+
+const readCurrentWipContext = async (
+  client: McpRuntimeClient,
+  teamId: number,
+) => {
+  const { wording, team } = await readTeamForSummary(client, teamId);
+  return { wording, systemWipLimit: readSystemWipLimit(team) };
 };
 
 // lh's words and order, one Work Item per line; lining the cells up in columns is left to the terminal view.
@@ -1880,24 +1882,19 @@ const summariseSleRisk =
         );
   };
 
-// SLE Risk names only a reference: today's Work Items in progress give each its name and age, and one Team
-// read serves both the heading's name and the SLE.
+// SLE Risk names only a reference: today's Work Items in progress give each its name and age.
 const readSleRiskContext = async (
   client: McpRuntimeClient,
   teamId: number,
   today: string,
 ) => {
-  const team = client.getTeam(teamId);
-  const [wording, teamRead, wipRead] = await Promise.all([
-    readAnswerWording(client, { term: "team", id: teamId, read: () => team }),
-    readForSummary(() => team),
+  const [{ wording, team }, wipRead] = await Promise.all([
+    readTeamForSummary(client, teamId),
     readForSummary(() => client.getTeamWip(teamId, today)),
   ]);
   return {
     wording,
-    serviceLevelExpectation: readServiceLevelExpectation(
-      answeredValue(teamRead),
-    ),
+    serviceLevelExpectation: readServiceLevelExpectation(team),
     inProgress: readInProgressItems(answeredValue(wipRead), today)?.items,
   };
 };
