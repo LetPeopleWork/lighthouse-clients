@@ -297,3 +297,70 @@ describe("describeConnectionSummary", () => {
     },
   );
 });
+
+describe("what housekeeping answers must look like to be stated", () => {
+  it("reads a rule on any day of the week, and none naming a day the week does not have", () => {
+    const everyDay = {
+      ...focusFriday,
+      weekdays: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+    };
+
+    expect(readBlackoutRules([everyDay])).toEqual([everyDay]);
+    expect(
+      readBlackoutRules([{ ...focusFriday, weekdays: ["Friday", "Funday"] }]),
+    ).toBeNull();
+  });
+
+  it("reads no connection list when a connection comes without its id", () => {
+    expect(
+      readWorkTrackingConnections([
+        { id: "1", name: "Letpeoplework Jira", workTrackingSystem: "Jira" },
+      ]),
+    ).toBeNull();
+  });
+
+  it("labels an option by the connection's own method, whatever else the list holds", () => {
+    const connection = readWorkTrackingConnection({
+      ...jiraConnection([
+        { key: "Jira Url", value: "https://x", isSecret: false },
+      ]),
+      availableAuthenticationMethods: [
+        null,
+        {
+          key: "jira.server",
+          options: [{ key: "Jira Url", displayName: "Server URL" }],
+        },
+        ...jiraConnection([]).availableAuthenticationMethods,
+      ],
+    });
+
+    expect(connection?.options).toEqual([
+      { label: "Jira URL", isSecret: false, value: "https://x" },
+    ]);
+  });
+});
+
+it("labels an option even when its method declares an option that is not one", () => {
+  const connection = readWorkTrackingConnection({
+    ...jiraConnection([{ key: "Api Token", value: "x", isSecret: false }]),
+    availableAuthenticationMethods: [
+      {
+        key: "jira.cloud",
+        options: [
+          null,
+          { key: "Api Token", displayName: "API Token", isSecret: true },
+        ],
+      },
+    ],
+  });
+
+  expect(connection?.options).toEqual([{ label: "API Token", isSecret: true }]);
+});

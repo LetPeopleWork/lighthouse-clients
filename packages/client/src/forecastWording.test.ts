@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeHowManyTitle,
   describeManualForecastSummary,
   type ManualForecastView,
   placeActualAmongPercentiles,
@@ -238,4 +239,31 @@ describe("placeActualAmongPercentiles", () => {
       expect(placed(actual)).toEqual([above, below]);
     },
   );
+});
+
+describe("what a forecast must look like to be stated", () => {
+  const wording = { terms: SEEDED_TERMS, name: "Gravity" };
+
+  it.each([
+    ["a chance by day that is not one", { whenForecasts: [null] }],
+    ["a chance of a count that is not one", { howManyForecasts: [null] }],
+  ])("does not recognise an answer with %s", (_case, broken) => {
+    expect(readManualForecast({ ...manualForecast(), ...broken })).toBeNull();
+  });
+
+  it("recognises no forecast and no backtest in an answer that is not an object", () => {
+    expect(readManualForecast(null)).toBeNull();
+    expect(readBacktest(null)).toBeNull();
+  });
+
+  it("titles no How Many table without both its rows and a target date", () => {
+    const forecast = readManualForecast(manualForecast()) as ManualForecastView;
+
+    expect(
+      describeHowManyTitle({ ...forecast, howManyForecasts: [] }, wording),
+    ).toBeNull();
+    expect(
+      describeHowManyTitle({ ...forecast, targetDate: null }, wording),
+    ).toBeNull();
+  });
 });

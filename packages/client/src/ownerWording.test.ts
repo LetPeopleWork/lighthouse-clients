@@ -376,3 +376,40 @@ describe("describePortfolioSummary", () => {
     expect(readPortfolio(value)).toBeNull();
   });
 });
+
+describe("what a Team's settings must look like to be stated", () => {
+  const gravityTeam = {
+    id: 3,
+    name: "Gravity",
+    systemWIPLimit: 10,
+    useFixedDatesForThroughput: true,
+    throughputStartDate: "2026-09-07T00:00:00Z",
+    throughputEndDate: "2026-10-06T00:00:00Z",
+  };
+
+  it("leaves a limit unset when it is not a positive number", () => {
+    expect(
+      readTeam({ ...gravityTeam, systemWIPLimit: 0 })?.systemWipLimit,
+    ).toBeUndefined();
+    expect(
+      readTeam({ ...gravityTeam, systemWIPLimit: "10" })?.systemWipLimit,
+    ).toBeUndefined();
+  });
+
+  it("reads no Throughput dates when either end is missing", () => {
+    expect(
+      readTeam({ ...gravityTeam, throughputEndDate: undefined })?.throughput,
+    ).toBeUndefined();
+  });
+
+  it("leaves rolling or fixed unsaid when Lighthouse does not say it as a yes or no", () => {
+    expect(
+      readTeam({ ...gravityTeam, useFixedDatesForThroughput: "yes" })
+        ?.throughput,
+    ).toEqual({
+      start: "2026-09-07T00:00:00Z",
+      end: "2026-10-06T00:00:00Z",
+      fixed: undefined,
+    });
+  });
+});

@@ -231,3 +231,120 @@ describe("a Delivery's recorded days", () => {
     ).toEqual(["LP-3 Lander telemetry", "50%", ">95%", "—"]);
   });
 });
+
+describe("what a Delivery's facts must look like to be stated", () => {
+  const aFeature = {
+    referenceId: "LP-3",
+    name: "Lander telemetry",
+    completion: 50,
+    likelihood: 64,
+  };
+  const aChance = { probability: 85, expectedDate: "2027-01-19T00:00:00Z" };
+  const aDay = {
+    date: "2026-11-20T00:00:00Z",
+    targetDateAtSnapshot: null,
+    estimatedItemCount: null,
+    forecastHowMany: null,
+    totalWork: 40,
+    doneWork: 22,
+    remainingWork: 18,
+    likelihoodPercentage: 64.4,
+    whenDistribution: [aChance],
+    featureBreakdown: [aFeature],
+  };
+  const historyWith = (day: unknown) => ({
+    deliveryDate: "2027-01-12T00:00:00Z",
+    firstSnapshotDate: "2026-11-02T00:00:00Z",
+    points: [aDay, day],
+  });
+
+  it("reads a history whose days carry every fact", () => {
+    const history = historyWith(aDay);
+    expect(readDeliveryMetricsHistory(history)).toBe(history);
+    expect(
+      readDeliveryMetricsHistory({ ...history, firstSnapshotDate: null }),
+    ).not.toBeNull();
+  });
+
+  it.each([
+    ["a recorded day that is not one", null],
+    ["a day without its total", { ...aDay, totalWork: "40" }],
+    ["a day without its done work", { ...aDay, doneWork: undefined }],
+    ["a day without its remaining work", { ...aDay, remainingWork: null }],
+    [
+      "a likelihood that is not a number",
+      { ...aDay, likelihoodPercentage: "64" },
+    ],
+    ["a Feature that is not one", { ...aDay, featureBreakdown: [null] }],
+    [
+      "a Feature without its reference",
+      { ...aDay, featureBreakdown: [{ ...aFeature, referenceId: 3 }] },
+    ],
+    [
+      "a Feature without its name",
+      { ...aDay, featureBreakdown: [{ ...aFeature, name: undefined }] },
+    ],
+    [
+      "a Feature without its completion",
+      { ...aDay, featureBreakdown: [{ ...aFeature, completion: "50" }] },
+    ],
+    [
+      "a Feature whose likelihood is not a number",
+      { ...aDay, featureBreakdown: [{ ...aFeature, likelihood: "64" }] },
+    ],
+    ["a chance list that is not a list", { ...aDay, whenDistribution: "85" }],
+    ["a chance that is not one", { ...aDay, whenDistribution: [null] }],
+    [
+      "a chance without its probability",
+      { ...aDay, whenDistribution: [{ ...aChance, probability: "85" }] },
+    ],
+    [
+      "one bad chance among good ones",
+      { ...aDay, whenDistribution: [aChance, { probability: 95 }] },
+    ],
+  ])("reads no history with %s", (_case, day) => {
+    expect(readDeliveryMetricsHistory(historyWith(day))).toBeNull();
+  });
+
+  it("reads no history whose first recorded day is not a date", () => {
+    expect(
+      readDeliveryMetricsHistory({
+        ...historyWith(aDay),
+        firstSnapshotDate: 5,
+      }),
+    ).toBeNull();
+  });
+
+  it("states no likelihood for a Delivery whose likelihood is not a number", () => {
+    const [delivery] =
+      readDeliveryList([{ ...lunarProbe, likelihoodPercentage: "64.4" }]) ?? [];
+
+    expect(delivery.likelihood).toBeNull();
+  });
+
+  it("marks the Feature count as not sent when an older Lighthouse leaves the Features out", () => {
+    const { features: _notSent, ...older } = lunarProbe;
+    const [delivery] = readDeliveryList([older]) ?? [];
+
+    expect(describeDeliveryRow(delivery, SEEDED_TERMS)[2]).toBe("—");
+  });
+
+  it("states a finished day's or Feature's likelihood without the cap an open one gets", () => {
+    expect(
+      describeRecordedDayRow({
+        ...aDay,
+        doneWork: 40,
+        remainingWork: 0,
+        likelihoodPercentage: 98.6,
+        featureBreakdown: [],
+      })[5],
+    ).toBe("99%");
+    expect(
+      describeDeliveryFeatureRow({
+        ...aFeature,
+        completion: 100,
+        likelihood: 98.6,
+      })[2],
+    ).toBe("99%");
+  });
+});

@@ -280,3 +280,16 @@ describe("readFeatureWorkItems", () => {
     expect(readFeatureWorkItems(workItem())).toBeNull();
   });
 });
+
+describe("what a Feature must look like to be stated", () => {
+  it("reads no list when a Team's share of the work is not a number", () => {
+    expect(
+      readFeatureList([cameraStream({ totalWork: { "3": 8, "6": "5" } })]),
+    ).toBeNull();
+  });
+
+  it("reads no list and no Work Items when an entry is not an object", () => {
+    expect(readFeatureList([null])).toBeNull();
+    expect(readFeatureWorkItems([null])).toBeNull();
+  });
+});

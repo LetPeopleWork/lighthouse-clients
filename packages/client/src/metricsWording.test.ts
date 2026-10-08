@@ -26,6 +26,7 @@ import {
   describeWipDays,
   describeWorkItemAgeDays,
   describeWorkItemAgePercentiles,
+  metricsHeadlineLabel,
   NO_DATA_YET,
   OVER_TIME_EMPTY_SENTENCE,
   ordinalOf,
@@ -1162,5 +1163,449 @@ describe("Time in State", () => {
 
     expect(readTimeInStateBar(states())).toEqual(states());
     expect(readTimeInStateBar({ states: [unordered] })).toBeNull();
+  });
+});
+
+// Sets one fact deep inside a sample, so each case below breaks exactly one thing a reader checks.
+const withAt = (
+  value: Record<string, unknown>,
+  path: readonly (string | number)[],
+  replacement: unknown,
+): unknown => {
+  const copy = structuredClone(value);
+  const parent = path
+    .slice(0, -1)
+    .reduce<Record<string | number, unknown>>(
+      (node, key) => node[key] as Record<string | number, unknown>,
+      copy,
+    );
+  parent[path[path.length - 1]] = replacement;
+  return copy;
+};
+
+const sampleOf = (name: string): Record<string, unknown> => {
+  const section = SECTIONS.find((candidate) => candidate.name === name);
+  if (section === undefined) {
+    throw new Error(`no sample for ${name}`);
+  }
+  return section.sample();
+};
+
+const contributors = () => ({
+  state: "Review",
+  items: [
+    {
+      workItemId: 40,
+      referenceId: "GR-040",
+      title: "Work Item 1",
+      type: "User Story",
+      state: "Review",
+      stateCategory: "Doing",
+      url: null,
+      daysContributed: 4,
+    },
+  ],
+});
+
+describe("what each metrics section must look like to be read", () => {
+  it.each(SECTIONS)(
+    "$name is unreadable when it is nothing at all",
+    ({ read }) => {
+      expect(read(null)).toBeNull();
+    },
+  );
+
+  it.each<[string, string, readonly (string | number)[], unknown]>([
+    ["throughput", "a day that is not one", ["daily", 0], null],
+    ["throughput", "no first day", ["startDate"], undefined],
+    ["throughput", "no last day", ["endDate"], "someday"],
+    ["wip", "no answer for today", ["current"], null],
+    ["wip", "today without its day", ["current", "asOfDate"], undefined],
+    ["wip", "today's Work Items not a list", ["current", "items"], "items"],
+    [
+      "wip",
+      "a blocked flag that is not a yes or no",
+      ["current", "items", 0, "isBlocked"],
+      "yes",
+    ],
+    ["wip", "no readable days", ["overTime"], "days"],
+    [
+      "wip",
+      "days without their first day",
+      ["overTime", "startDate"],
+      undefined,
+    ],
+    [
+      "cycleTime",
+      "a closed Work Item that is not one",
+      ["closedItems", "items", 0],
+      null,
+    ],
+    [
+      "cycleTime",
+      "a closed Work Item without a numeric id",
+      ["closedItems", "items", 0, "id"],
+      "52",
+    ],
+    [
+      "cycleTime",
+      "a closed Work Item without its name",
+      ["closedItems", "items", 0, "name"],
+      5,
+    ],
+    [
+      "cycleTime",
+      "closed Work Items in no known shape",
+      ["closedItems"],
+      "items",
+    ],
+    ["workItemAge", "a day that is not one", ["daily", 0], null],
+    ["workItemAge", "a day without its date", ["daily", 0, "date"], undefined],
+    [
+      "workItemAge",
+      "a Work Item that is not one",
+      ["daily", 0, "items", 0],
+      null,
+    ],
+    [
+      "workItemAge",
+      "a Work Item without a numeric id",
+      ["daily", 0, "items", 0, "id"],
+      "61",
+    ],
+    [
+      "workItemAge",
+      "a Work Item without its name",
+      ["daily", 0, "items", 0, "name"],
+      5,
+    ],
+    [
+      "workItemAge",
+      "a Work Item without its reference",
+      ["daily", 0, "items", 0, "referenceId"],
+      5,
+    ],
+    ["workItemAge", "no first day", ["startDate"], undefined],
+    ["workItemAge", "no last day", ["endDate"], undefined],
+    ["totalWorkItemAge", "a day that is not one", ["daily", 0], null],
+    [
+      "totalWorkItemAge",
+      "a day without its date",
+      ["daily", 0, "date"],
+      undefined,
+    ],
+    [
+      "totalWorkItemAge",
+      "a day without its total age",
+      ["daily", 0, "totalAge"],
+      "84",
+    ],
+    [
+      "totalWorkItemAge",
+      "a day without its Work Item count",
+      ["daily", 0, "itemCount"],
+      undefined,
+    ],
+    ["blocked", "a recorded day that is not one", ["history", 0], null],
+    [
+      "blocked",
+      "a recorded day without its date",
+      ["history", 0, "recordedAt"],
+      "today",
+    ],
+    ["blocked", "no first day", ["startDate"], undefined],
+    ["blocked", "no last day", ["endDate"], undefined],
+    [
+      "percentilesOverTime",
+      "a recorded day that is not one",
+      ["history", 0],
+      null,
+    ],
+    [
+      "percentilesOverTime",
+      "a recorded day without its date",
+      ["history", 0, "recordedAt"],
+      undefined,
+    ],
+    [
+      "percentilesOverTime",
+      "a family Lighthouse does not record",
+      ["history", 0, "metricType"],
+      "Throughput",
+    ],
+    [
+      "percentilesOverTime",
+      "no 50th percentile",
+      ["history", 0, "p50"],
+      undefined,
+    ],
+    ["percentilesOverTime", "no 70th percentile", ["history", 0, "p70"], "9"],
+    ["percentilesOverTime", "no 95th percentile", ["history", 0, "p95"], null],
+    [
+      "processBehaviorOverTime",
+      "a recorded day that is not one",
+      ["history", 0],
+      null,
+    ],
+    [
+      "processBehaviorOverTime",
+      "a recorded day without its date",
+      ["history", 0, "recordedAt"],
+      undefined,
+    ],
+    [
+      "cumulativeStateTime",
+      "a state that is not one",
+      ["bar", "states", 0],
+      null,
+    ],
+    [
+      "cumulativeStateTime",
+      "a state without its name",
+      ["bar", "states", 0, "state"],
+      3,
+    ],
+    [
+      "cumulativeStateTime",
+      "a median that is not a number",
+      ["bar", "states", 0, "medianDays"],
+      "2",
+    ],
+    [
+      "cumulativeStateTime",
+      "candidates in no known shape",
+      ["candidates"],
+      "items",
+    ],
+    [
+      "cumulativeStateTime",
+      "a candidate that is not one",
+      ["candidates", "items", 0],
+      null,
+    ],
+    [
+      "cumulativeStateTime",
+      "a candidate without a numeric id",
+      ["candidates", "items", 0, "workItemId"],
+      "40",
+    ],
+    [
+      "cumulativeStateTime",
+      "a candidate without its reference",
+      ["candidates", "items", 0, "referenceId"],
+      undefined,
+    ],
+    [
+      "cumulativeStateTime",
+      "a candidate without its title",
+      ["candidates", "items", 0, "title"],
+      undefined,
+    ],
+    [
+      "cumulativeStateTime",
+      "a candidate without its type",
+      ["candidates", "items", 0, "workItemType"],
+      undefined,
+    ],
+  ])("%s is unreadable with %s", (name, _case, path, replacement) => {
+    const section = SECTIONS.find((candidate) => candidate.name === name);
+
+    expect(section?.read(withAt(sampleOf(name), path, replacement))).toBeNull();
+  });
+
+  it("reads a Work Item Age percentile history as well as a Cycle Time one", () => {
+    expect(
+      readPercentilesOverTime(
+        withAt(
+          sampleOf("percentilesOverTime"),
+          ["history", 0, "metricType"],
+          "WorkItemAge",
+        ),
+      ),
+    ).not.toBeNull();
+  });
+
+  it("reads the Work Items the bar can be narrowed to as they came", () => {
+    const sample = sampleOf("cumulativeStateTime");
+
+    expect(readCumulativeStateTime(sample)?.candidates).toEqual(
+      sample.candidates,
+    );
+  });
+
+  it("reads one state's contributors, and none with any fact of a contributor missing or mistyped", () => {
+    expect(readTimeInStateContributors(contributors())).toEqual(contributors());
+    expect(
+      readTimeInStateContributors(
+        withAt(contributors(), ["items", 0, "url"], "https://x"),
+      ),
+    ).not.toBeNull();
+    expect(readTimeInStateContributors(null)).toBeNull();
+    expect(
+      readTimeInStateContributors(withAt(contributors(), ["state"], undefined)),
+    ).toBeNull();
+    expect(
+      readTimeInStateContributors(withAt(contributors(), ["items"], "items")),
+    ).toBeNull();
+    for (const [field, replacement] of [
+      [0, null],
+      ["workItemId", "40"],
+      ["referenceId", undefined],
+      ["title", undefined],
+      ["type", undefined],
+      ["state", undefined],
+      ["stateCategory", undefined],
+      ["url", 5],
+      ["daysContributed", "4"],
+    ] as const) {
+      const path = field === 0 ? ["items", 0] : ["items", 0, field];
+      expect(
+        readTimeInStateContributors(withAt(contributors(), path, replacement)),
+      ).toBeNull();
+    }
+  });
+
+  it("reads no Time in State when the drill-down asked for is unreadable", () => {
+    expect(
+      readCumulativeStateTime({
+        ...sampleOf("cumulativeStateTime"),
+        items: "items",
+      }),
+    ).toBeNull();
+  });
+
+  it("reads a run chart only when every day is keyed by a whole offset", () => {
+    expect(
+      readRunChart({ workItemsPerUnitOfTime: { x1: [] } }, RANGE),
+    ).toBeNull();
+    expect(
+      readRunChart({ workItemsPerUnitOfTime: { "1x": [] } }, RANGE),
+    ).toBeNull();
+  });
+
+  it("takes no refusal from a part that is not one", () => {
+    const notRead = () => null;
+
+    expect(readMetricAnswer(null, notRead)).toBeNull();
+    expect(readMetricAnswer({ status: "error" }, notRead)).toBeNull();
+    expect(readMetricAnswer({ reason: "Not here" }, notRead)).toBeNull();
+  });
+
+  it("knows a System WIP Limit of one", () => {
+    expect(readSystemWipLimit({ systemWIPLimit: 1 })).toBe(1);
+  });
+
+  it("names no definition whose name is not text", () => {
+    expect(
+      readCycleTimeDefinitionName(
+        { cycleTimeDefinitions: [{ id: 4, name: 5 }] },
+        4,
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("the metrics wording at its edges", () => {
+  it("labels the percentile and Work Item Age parts in the instance's words", () => {
+    const terms = {
+      ...SEEDED_TERMS,
+      cycleTime: "Lead Time",
+      workItemAge: "Ticket Age",
+    };
+
+    expect(metricsHeadlineLabel("cycleTimePercentiles", "team", terms)).toBe(
+      "Lead Time percentiles",
+    );
+    expect(metricsHeadlineLabel("workItemAgePercentiles", "team", terms)).toBe(
+      "Ticket Age percentiles",
+    );
+    expect(metricsHeadlineLabel("workItemAge", "team", terms)).toBe(
+      "Ticket Age over time",
+    );
+  });
+
+  it("counts the days of a range given as midnight timestamps", () => {
+    expect(daysInRange("2026-09-07T00:00:00Z", "2026-10-06T00:00:00Z")).toBe(
+      30,
+    );
+  });
+
+  it("counts the blocked Work Items when only some say whether they are", () => {
+    expect(
+      describeBlockedNow(
+        {
+          asOfDate: "2026-10-06",
+          count: 2,
+          items: [{ isBlocked: true }, { isBlocked: undefined }],
+        },
+        "team",
+        SEEDED_TERMS,
+      ),
+    ).toEqual({ label: "Blocked Work Items", value: "1", detail: "" });
+  });
+
+  it("leaves nothing beside a Total Work Item Age that has no recorded day", () => {
+    expect(
+      describeTotalWorkItemAge({ ...RANGE, daily: [] }, "team", SEEDED_TERMS),
+    ).toEqual({ label: "Total Work Item Age", value: "—", detail: "" });
+  });
+
+  it("lists the Work Items in progress oldest first, the ones without an age last", () => {
+    const item = (referenceId: string, workItemAge?: number) => ({
+      isBlocked: false,
+      referenceId,
+      name: referenceId,
+      state: "Doing",
+      workItemAge,
+    });
+    const view = describeWipDays(
+      {
+        asOfDate: "2026-10-06",
+        count: 4,
+        items: [
+          item("GR-1"),
+          item("GR-2", 0),
+          item("GR-3", 5),
+          item("GR-4", 1),
+        ],
+      },
+      { ...RANGE, daily: [] },
+      "team",
+      SEEDED_TERMS,
+      undefined,
+    );
+
+    const [list] = "tables" in view ? view.tables : [];
+    expect(
+      list !== undefined && "rows" in list
+        ? list.rows.slice(1).map((row) => row[0])
+        : [],
+    ).toEqual(["GR-3", "GR-4", "GR-2", "GR-1"]);
+  });
+
+  it("names a day's oldest Work Item wherever it is listed", () => {
+    const view = describeWorkItemAgeDays(
+      [{ percentile: 50, value: 3 }],
+      {
+        ...RANGE,
+        daily: [
+          {
+            date: "2026-09-07",
+            items: [
+              { id: 61, name: "Export", referenceId: "GR-061", age: 6 },
+              { id: 64, name: "Retry", referenceId: "GR-064", age: 2 },
+            ],
+          },
+        ],
+      },
+      "team",
+      SEEDED_TERMS,
+    );
+
+    expect("rows" in view ? view.rows[1] : []).toEqual([
+      "Mon 7 Sep 2026",
+      "GR-061 6 days",
+      "2",
+    ]);
   });
 });
