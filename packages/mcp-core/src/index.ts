@@ -25,6 +25,7 @@ import {
   describePortfolioSummary,
   describeProcessBehaviorOverTimeDays,
   describeRefreshConfirmation,
+  describeSleRiskNow,
   describeTeamSummary,
   describeThroughputDays,
   describeTimeInStateContributorDays,
@@ -36,6 +37,7 @@ import {
   describeWorkItemAgePercentiles,
   describeWorkTrackingSystemCount,
   getDefaultMetricsDateRange,
+  type InProgressItem,
   LIGHTHOUSE_IS_REACHABLE,
   type MetricDayView,
   type MetricLine,
@@ -60,6 +62,8 @@ import {
   readPortfolio,
   readProcessBehaviorOverTime,
   readRunChart,
+  readServiceLevelExpectation,
+  readSleRisk,
   readSystemWipLimit,
   readTeam,
   readTerms,
@@ -70,6 +74,8 @@ import {
   readWorkItemAgePercentiles,
   readWorkTrackingConnections,
   readWrittenBlackoutRule,
+  type ServiceLevelExpectation,
+  type SleRiskWording,
   summariseDeliveryMetricsHistory,
   type WriteVerb,
 } from "@letpeoplework/lighthouse-client";
@@ -145,6 +151,7 @@ export type McpToolDefinition = {
     | "lighthouse_team_metrics_blockedCountHistory"
     | "lighthouse_portfolio_metrics_blockedCountHistory"
     | "lighthouse_team_metrics_wip"
+    | "lighthouse_team_metrics_sleRisk"
     | "lighthouse_team_metrics_percentilesOverTime"
     | "lighthouse_portfolio_metrics_percentilesOverTime"
     | "lighthouse_team_metrics_processBehaviorOverTime"
@@ -512,6 +519,13 @@ type McpRuntimeClient = {
     id: number,
     asOfDate: string,
   ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamSleRisk: (id: number) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
     | {
         readonly ok: false;
@@ -1372,6 +1386,12 @@ const toolDefinitions: readonly McpToolDefinition[] = [
       "Get what a team has in progress right now by ID: each work item in progress today with its age (workItemAge), state, whether it is blocked (isBlocked) and since when (blockedSince), and its link (url). Use it for what is blocked or aging today; for how many were blocked on past days use lighthouse_team_metrics_blockedCountHistory. A second text block, `summary: …`, states the answer as lh does, in the instance's terminology: the heading, how many are in progress against the System WIP Limit, and how many are blocked; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
+  {
+    name: "lighthouse_team_metrics_sleRisk",
+    description:
+      'Get how likely each work item a team has in progress is to miss the team\'s SLE, by team ID: Lighthouse\'s own risk per work item (referenceId, risk in percent), with the finished work items that reached the same age (finishedItemsStillOpenAtThisAge) and how many of those went on to miss (finishedItemsThatWentOnToMiss, null when the work item is already past the SLE). A work item counts as at risk from 70%. Use it for "which work items will miss our SLE" and "what should we swarm on"; never compute a risk yourself. Needs a Lighthouse newer than v26.9.19.10. A second text block, `summary: …`, states the answer as lh does, in the instance\'s terminology: the heading, how many are at risk against the SLE, then every work item highest risk first with its name and age; the first block is the facts, unchanged.',
+    inputSchema: idInputSchema,
+  },
 ];
 
 const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
@@ -1746,6 +1766,62 @@ const readCurrentWipContext = async (
   };
 };
 
+// lh's words and order, one Work Item per line; lining the cells up in columns is left to the terminal view.
+const sleRiskLines = (view: SleRiskWording): string =>
+  [
+    view.title,
+    view.sentence,
+    ...view.rows.map((row) => row.filter((cell) => cell !== "").join(" · ")),
+  ].join("\n");
+
+const summariseSleRisk =
+  (today: string) =>
+  (
+    facts: unknown,
+    known: {
+      readonly wording: AnswerWording;
+      readonly serviceLevelExpectation: ServiceLevelExpectation | undefined;
+      readonly inProgress: readonly InProgressItem[] | undefined;
+    },
+  ): string | null => {
+    const entries = readSleRisk(facts);
+    return entries === null
+      ? null
+      : linesOf(
+          describeAsOfHeading({ endDate: today }, known.wording),
+          sleRiskLines(
+            describeSleRiskNow(
+              entries,
+              known.wording,
+              known.serviceLevelExpectation,
+              known.inProgress,
+            ),
+          ),
+        );
+  };
+
+// SLE Risk names only a reference: today's Work Items in progress give each its name and age, and one Team
+// read serves both the heading's name and the SLE.
+const readSleRiskContext = async (
+  client: McpRuntimeClient,
+  teamId: number,
+  today: string,
+) => {
+  const team = client.getTeam(teamId);
+  const [wording, teamRead, wipRead] = await Promise.all([
+    readAnswerWording(client, { term: "team", id: teamId, read: () => team }),
+    readForSummary(() => team),
+    readForSummary(() => client.getTeamWip(teamId, today)),
+  ]);
+  return {
+    wording,
+    serviceLevelExpectation: readServiceLevelExpectation(
+      answeredValue(teamRead),
+    ),
+    inProgress: readInProgressItems(answeredValue(wipRead), today)?.items,
+  };
+};
+
 // Only lh reads the Work Items Time in State can be narrowed to, so the bar is told without their count.
 const summariseTimeInState =
   (scope: MetricsScope, range: MetricsDateRange) =>
@@ -2036,6 +2112,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     endDate: isoDateStringSchema.optional(),
   }),
   lighthouse_team_metrics_wip: z.object({ id: z.number().int() }),
+  lighthouse_team_metrics_sleRisk: z.object({ id: z.number().int() }),
   lighthouse_team_metrics_percentilesOverTime: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
@@ -2450,6 +2527,20 @@ const answerToolCall =
         client.getTeamWip(id, today),
         readCurrentWipContext(client, id),
         summariseCurrentWip(today),
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_sleRisk") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const today = getDefaultMetricsDateRange().endDate;
+      return answerMetric(
+        metricLabels("team", "sleRisk"),
+        client.getTeamSleRisk(id),
+        readSleRiskContext(client, id, today),
+        summariseSleRisk(today),
       );
     }
 

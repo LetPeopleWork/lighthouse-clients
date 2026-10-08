@@ -43,8 +43,7 @@ const gravitysDaily = (reads = {}) =>
 
 describe("an assistant reads which Work Items are at risk of missing the SLE", () => {
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients read SLE Risk.
-  it.skip("receives Lighthouse's own risk for each Work Item and the summary lh prints", async () => {
+  it("receives Lighthouse's own risk for each Work Item and the summary lh prints", async () => {
     const result = await gravitysDaily().call(TOOL, { id: 3 });
 
     expect(result.isError).toBe(false);
@@ -55,8 +54,7 @@ describe("an assistant reads which Work Items are at risk of missing the SLE", (
   });
 
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients read SLE Risk.
-  it.skip("lists every Work Item highest risk first, with the finished Work Items behind each number", async () => {
+  it("lists every Work Item highest risk first, with the finished Work Items behind each number", async () => {
     const summary = summaryOf(await gravitysDaily().call(TOOL, { id: 3 }));
     const order = ["GR-058", "GR-061", "GR-063", "GR-064"].map((id) =>
       summary.indexOf(`\n${id}`),
@@ -74,8 +72,7 @@ describe("an assistant reads which Work Items are at risk of missing the SLE", (
 
   // @error @contract-shape:pure-function
   // At risk starts at 70%, the line Lighthouse's own widget draws.
-  // Pending until the clients read SLE Risk.
-  it.skip("counts a Work Item at 70% as at risk and one at 69% as not", async () => {
+  it("counts a Work Item at 70% as at risk and one at 69% as not", async () => {
     const result = await gravitysDaily({
       getTeamSleRisk: ok(sleRiskAroundTheLine()),
     }).call(TOOL, { id: 3 });
@@ -88,8 +85,7 @@ describe("an assistant reads which Work Items are at risk of missing the SLE", (
 
 describe("when there is no risk to read", () => {
   // @error @contract-shape:bounded-change
-  // Pending until the clients read SLE Risk.
-  it.skip("tells a Team without an SLE that it has no SLE Risk", async () => {
+  it("tells a Team without an SLE that it has no SLE Risk", async () => {
     const result = await anAssistantOn({
       getTeam: ok(voyager()),
       getTeamSleRisk: ok([]),
@@ -104,8 +100,7 @@ describe("when there is no risk to read", () => {
   });
 
   // @error @contract-shape:bounded-change
-  // Pending until the clients read SLE Risk.
-  it.skip("says nothing is in progress when a Team with an SLE has nothing in progress", async () => {
+  it("says nothing is in progress when a Team with an SLE has nothing in progress", async () => {
     const result = await gravitysDaily({
       getTeamSleRisk: ok([]),
       getTeamWip: ok([]),
@@ -115,8 +110,7 @@ describe("when there is no risk to read", () => {
   });
 
   // @error @contract-shape:bounded-change
-  // Pending until the clients read SLE Risk.
-  it.skip("passes on an older Lighthouse's refusal as the upgrade it asks for", async () => {
+  it("passes on an older Lighthouse's refusal as the upgrade it asks for", async () => {
     const result = await gravitysDaily({
       getTeamSleRisk: refused(
         "misconfigured",
@@ -130,8 +124,7 @@ describe("when there is no risk to read", () => {
 
   // @error @contract-shape:bounded-change
   // The names and ages come from a second read that only words the summary; without it the numbers stand.
-  // Pending until the clients read SLE Risk.
-  it.skip("keeps every risk when the Work Items' names cannot be read", async () => {
+  it("keeps every risk when the Work Items' names cannot be read", async () => {
     const result = await gravitysDaily({
       getTeamWip: refused("dependency-failure", "WIP timed out"),
     }).call(TOOL, { id: 3 });

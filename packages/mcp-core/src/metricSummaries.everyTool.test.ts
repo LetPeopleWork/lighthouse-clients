@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { gravitysSleRisk } from "../../../test-support/dailyFlowAnswers";
 import {
   gravity,
   oceanExplorer,
@@ -186,6 +187,37 @@ describe("every per-metric tool, under its own label and its owner's heading", (
       expect(factsBlockOf(result).startsWith("team wip: ")).toBe(true);
       expect(summaryOf(result, "team wip: ")).toBe(
         "Gravity · as of Tue 6 Oct 2026\nWork Items in Progress: 9 (System WIP Limit: 10 Work Items)\nBlocked Work Items: 2",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Lighthouse answers SLE Risk only for today, so the day is fixed rather than taken from a range.
+  it("lighthouse_team_metrics_sleRisk", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-06T09:00:00Z"));
+    try {
+      const result = await anAssistant({
+        getTeamSleRisk: ok(gravitysSleRisk()),
+      }).call("lighthouse_team_metrics_sleRisk", { id: 3 });
+
+      expect(result.isError).toBe(false);
+      expect(factsBlockOf(result).startsWith("team sleRisk: ")).toBe(true);
+      expect(summaryOf(result, "team sleRisk: ")).toBe(
+        [
+          "Gravity · as of Tue 6 Oct 2026",
+          "SLE Risk",
+          "2 of 8 Work Items in progress are at risk of missing the SLE (85% within 12 days).",
+          "GR-058 · — · — · past the SLE",
+          "GR-061 · Export flow report as PDF · 14 days · 78% · 7 of 9 finished Work Items that reached this age went past 12 days",
+          "GR-063 · — · — · 55% · 6 of 11 finished Work Items that reached this age went past 12 days",
+          "GR-064 · Retry failed Jira sync · 9 days · 30% · 6 of 20 finished Work Items that reached this age went past 12 days",
+          "GR-065 · — · — · 12% · 3 of 25 finished Work Items that reached this age went past 12 days",
+          "GR-066 · Show SLE on the refinement tab · 6 days · 8% · 2 of 25 finished Work Items that reached this age went past 12 days",
+          "GR-067 · — · — · 8% · 2 of 25 finished Work Items that reached this age went past 12 days",
+          "GR-068 · — · — · 3% · 1 of 40 finished Work Items that reached this age went past 12 days",
+        ].join("\n"),
       );
     } finally {
       vi.useRealTimers();

@@ -21,3 +21,7 @@ same 70% the web's SLE Risk widget counts from, then lists every Work Item highe
 age, risk and the finished Work Items behind it ("6 of 11 finished Work Items that reached this age went past
 7 days"), or that it is already past the SLE. A Team without an SLE is told it has no SLE Risk, and when the
 names cannot be read every risk is still listed by its reference.
+
+An assistant can read the same SLE Risk with `lighthouse_team_metrics_sleRisk`: Lighthouse's numbers for each
+Work Item unchanged, beside a summary in the words `lh --pretty` uses, every Work Item flush at the start of its
+line. An older Lighthouse's refusal comes back as the upgrade it asks for.

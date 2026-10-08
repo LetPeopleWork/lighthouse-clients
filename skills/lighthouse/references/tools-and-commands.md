@@ -61,6 +61,7 @@ from. Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both i
 | `lighthouse_team_metrics_workItemAgePercentiles` | Work Item Age percentiles. Ages are as of the range's last day, not today, unless the range ends today. |
 | `lighthouse_team_metrics_totalWorkItemAge` | The summed age of all WIP per day: the total WIP burden. |
 | `lighthouse_team_metrics_wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked and since when (`isBlocked`, `blockedSince`), and its link. Use it for "what is Blocked", "what is aging" and "are we over our WIP Limit" today. |
+| `lighthouse_team_metrics_sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: Lighthouse's own risk per Work Item, with the finished Work Items behind it. At risk starts at 70%. Use it for "what will miss our SLE" and "what should we swarm on"; never work a risk out yourself. Needs a Lighthouse newer than v26.9.19.10. |
 | `lighthouse_team_metrics_blockedCountHistory` | How many Work Items were Blocked on each day. For what is Blocked right now, use `lighthouse_team_metrics_wip`. |
 | `lighthouse_team_metrics_percentilesOverTime` | How the percentiles moved, day by day. `metricType`: `CycleTime` or `WorkItemAge`. With `CycleTime` always pass `horizon` (30, 60 or 90): the rows do not say which horizon they are, so leaving it out mixes all three. |
 | `lighthouse_team_metrics_processBehaviorOverTime` | How the process limits (UNPL, Average, LNPL) moved, day by day. `metricType`: `Throughput`, `WorkItemAge`, `Wip`, `CycleTime` or `Arrivals`. |
@@ -180,7 +181,7 @@ when named.
 | `--metrics blocked` | How many Work Items were Blocked on each day. | `lighthouse_team_metrics_blockedCountHistory` |
 | `--metrics percentilesOverTime` | Percentiles per recorded day; `lh` reads Cycle Time at the 30-day horizon. | `lighthouse_team_metrics_percentilesOverTime` |
 | `--metrics processBehaviorOverTime` | Process limits per recorded day. | `lighthouse_team_metrics_processBehaviorOverTime` |
-| `--metrics sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: each one's risk in percent, how many finished Work Items were still open at its age, and how many of those went on to miss. Teams only; reads today whatever the dates. | none |
+| `--metrics sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: each one's risk in percent, how many finished Work Items were still open at its age, and how many of those went on to miss. Teams only; reads today whatever the dates. | `lighthouse_team_metrics_sleRisk` (Teams only) |
 
 `lh` also takes lower-case spellings (`--metrics cycletime`) and `pbcovertime` for `processBehaviorOverTime`.
 
@@ -195,7 +196,6 @@ from other reads, and do not call a tool that is not in your tool list.
 - Arrivals (`--metrics arrivals`)
 - A Portfolio's current WIP and what is Blocked right now (`lh metrics portfolio --id <id> --metrics wip`)
 - The Predictability Score (`--metrics predictabilityScore`)
-- A Team's SLE Risk (`lh metrics team --id <id> --metrics sleRisk`)
 - A Portfolio's Cycle Time percentiles (`lh metrics portfolio --id <id> --metrics cycleTime`)
 - Creating, changing and deleting Teams and Portfolios (`lh team create`, `lh portfolio update`, …)
 - The connection, output format, voter name and usage-data answer (`lh connection status`, `lh config output`, …)
