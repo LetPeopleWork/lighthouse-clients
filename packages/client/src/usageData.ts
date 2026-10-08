@@ -107,6 +107,26 @@ export const isDoNotTrackSet = (
   );
 };
 
+/** Which of a command line's three streams are terminals. */
+export type TerminalStreams = {
+  readonly stdinIsTTY: boolean;
+  readonly stdoutIsTTY: boolean;
+  readonly stderrIsTTY: boolean;
+};
+
+/**
+ * A question needs a person: one who can type (stdin), sees the answer (stdout) and the question (stderr),
+ * and is not a build agent behind a pseudo-terminal (`CI` set to anything).
+ */
+export const isAPersonAtTheTerminal = (
+  streams: TerminalStreams,
+  env: Readonly<Record<string, string | undefined>>,
+): boolean =>
+  streams.stdinIsTTY &&
+  streams.stdoutIsTTY &&
+  streams.stderrIsTTY &&
+  (env.CI === undefined || env.CI === "");
+
 // Lighthouse forgets a grant it has not seen for a month. Checking it at most once a day keeps it alive
 // without a read on every command.
 const RECONFIRM_AFTER_MS = 24 * 60 * 60 * 1000;

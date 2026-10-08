@@ -206,7 +206,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
   // @US-02 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
   // KPI-5: no question without a full terminal. A script with no stored yes pays nothing: not one usage
   // data request.
-  it.skip.each<[string, TerminalShape, Readonly<Record<string, string>>]>([
+  it.each<[string, TerminalShape, Readonly<Record<string, string>>]>([
     ["no terminal at all", NO_TERMINAL, {}],
     [
       "stdin a terminal and nothing else (docker run -i)",
@@ -242,7 +242,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
 
   // @US-02 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
   // DO_NOT_TRACK is honoured when set to anything but 0 or false, and is read before anything else.
-  it.skip.each(["1", "true", "TRUE", "yes"])(
+  it.each(["1", "true", "TRUE", "yes"])(
     "asks nothing and makes no usage data request under DO_NOT_TRACK=%s",
     async (doNotTrack) => {
       const lighthouse = await aFakeLighthouse();
@@ -258,7 +258,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
   );
 
   // @US-02 @driving_port @real-io @boundary @contract-shape:pure-function
-  it.skip.each(["0", "false", "FALSE", ""])(
+  it.each(["0", "false", "FALSE", ""])(
     "asks as usual when DO_NOT_TRACK=%j, which is not a request to stop",
     async (doNotTrack) => {
       const lighthouse = await aFakeLighthouse();

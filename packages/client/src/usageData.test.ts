@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  isAPersonAtTheTerminal,
   isDoNotTrackSet,
   planUsageDataStep,
   readUsageDataState,
+  type TerminalStreams,
   type UsageDataPlan,
   type UsageDataState,
   type UsageDataStepFacts,
@@ -59,6 +61,63 @@ describe("reading DO_NOT_TRACK", () => {
       expect(isDoNotTrackSet({ DO_NOT_TRACK: value })).toBe(false);
     },
   );
+});
+
+describe("deciding, before any request, whether a person may be asked", () => {
+  const A_FULL_TERMINAL: TerminalStreams = {
+    stdinIsTTY: true,
+    stdoutIsTTY: true,
+    stderrIsTTY: true,
+  };
+
+  const firstPlanFor = (
+    streams: TerminalStreams,
+    env: Readonly<Record<string, string | undefined>>,
+  ): UsageDataPlan =>
+    planUsageDataStep(
+      facts({
+        doNotTrack: isDoNotTrackSet(env),
+        mayPrompt: isAPersonAtTheTerminal(streams, env),
+      }),
+    );
+
+  it.each<[string, TerminalStreams, Record<string, string>]>([
+    [
+      "no terminal at all",
+      { stdinIsTTY: false, stdoutIsTTY: false, stderrIsTTY: false },
+      {},
+    ],
+    [
+      "stdin a terminal and nothing else",
+      { stdinIsTTY: true, stdoutIsTTY: false, stderrIsTTY: false },
+      {},
+    ],
+    ["stdout piped", { ...A_FULL_TERMINAL, stdoutIsTTY: false }, {}],
+    ["stderr redirected", { ...A_FULL_TERMINAL, stderrIsTTY: false }, {}],
+    ["stdin piped", { ...A_FULL_TERMINAL, stdinIsTTY: false }, {}],
+    ["a full terminal under CI=true", A_FULL_TERMINAL, { CI: "true" }],
+    ["a full terminal under CI=1", A_FULL_TERMINAL, { CI: "1" }],
+    ["DO_NOT_TRACK=1", A_FULL_TERMINAL, { DO_NOT_TRACK: "1" }],
+    ["DO_NOT_TRACK=true", A_FULL_TERMINAL, { DO_NOT_TRACK: "true" }],
+    ["DO_NOT_TRACK=TRUE", A_FULL_TERMINAL, { DO_NOT_TRACK: "TRUE" }],
+    ["DO_NOT_TRACK=yes", A_FULL_TERMINAL, { DO_NOT_TRACK: "yes" }],
+  ])("stays silent, reading nothing, with %s", (_why, streams, env) => {
+    expect(firstPlanFor(streams, env)).toEqual(NOTHING);
+  });
+
+  it.each<[string, Record<string, string>]>([
+    ["nothing set", {}],
+    ["CI empty", { CI: "" }],
+    ["DO_NOT_TRACK=0", { DO_NOT_TRACK: "0" }],
+    ["DO_NOT_TRACK=false", { DO_NOT_TRACK: "false" }],
+    ["DO_NOT_TRACK=FALSE", { DO_NOT_TRACK: "FALSE" }],
+    ["DO_NOT_TRACK empty", { DO_NOT_TRACK: "" }],
+  ])("goes on to ask in a full terminal with %s", (_why, env) => {
+    expect(firstPlanFor(A_FULL_TERMINAL, env)).toEqual({
+      kind: "read-state",
+      token: undefined,
+    });
+  });
 });
 
 describe("reading Lighthouse's usage data state", () => {

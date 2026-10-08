@@ -11,10 +11,12 @@ import {
   createLighthouseClient,
   getUsageDataStorePath,
   getVoterKeyStorePath,
+  isAPersonAtTheTerminal,
   type LighthouseClient,
   loadStandaloneDiscoveryContract,
   STANDALONE_VOTER_KEY_SCOPE,
   settleUsageDataStep,
+  type TerminalStreams,
   usageDataStoreFor,
   validateLighthouseConnectivity,
 } from "@letpeoplework/lighthouse-client";
@@ -30,10 +32,7 @@ import {
 } from "./usageDataQuestion";
 
 /** The terminal `lh` runs in: which of its three streams are terminals, and how a question is put. */
-export type CliTerminal = {
-  readonly stdinIsTTY: boolean;
-  readonly stdoutIsTTY: boolean;
-  readonly stderrIsTTY: boolean;
+export type CliTerminal = TerminalStreams & {
   /** Puts the question on stderr; the line the person typed, or null on Ctrl-C or end of input. */
   readonly ask: (question: string) => Promise<string | null>;
 };
@@ -271,17 +270,6 @@ const lighthouseOf = (connection: CliConnection): string =>
     ? connection.endpointUrl
     : STANDALONE_VOTER_KEY_SCOPE;
 
-const isCiSet = (env: SessionEnv): boolean =>
-  env.CI !== undefined && env.CI !== "";
-
-// A question needs a person: one who can type (stdin), sees the answer (stdout) and the question (stderr),
-// and is not a build agent behind a pseudo-terminal.
-const canAsk = (dependencies: CliSessionDependencies): boolean =>
-  dependencies.terminal.stdinIsTTY &&
-  dependencies.terminal.stdoutIsTTY &&
-  dependencies.terminal.stderrIsTTY &&
-  !isCiSet(dependencies.env);
-
 const settleUsageData = async (
   usage: CliCommandUsage,
   io: CliSessionIo,
@@ -307,7 +295,7 @@ const settleUsageData = async (
     },
     {
       ...usage,
-      ask: canAsk(dependencies)
+      ask: isAPersonAtTheTerminal(terminal, env)
         ? async () =>
             readUsageDataAnswer(await terminal.ask(USAGE_DATA_QUESTION))
         : undefined,
