@@ -237,14 +237,14 @@ describe("switched on, the shared server reports for its callers without asking 
   });
 
   // @US-06 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.each<[string, Record<string, unknown>, string]>([
+  it.each<[string, string, Record<string, unknown>]>([
     [
       "lighthouse_forecast_manual",
-      { id: 3, remainingItems: 25 },
       "TeamManualForecastRun",
+      { id: 3, remainingItems: 25 },
     ],
-    ["lighthouse_portfolio_refresh", { id: 2 }, "PortfolioRefreshTriggered"],
-  ])("reports %s as %s", async (tool, args, name) => {
+    ["lighthouse_portfolio_refresh", "PortfolioRefreshTriggered", { id: 2 }],
+  ])("reports %s as %s", async (tool, name, args) => {
     const lighthouse = await aFakeLighthouse();
     const shared = await tomasStarts(lighthouse, {
       LIGHTHOUSE_USAGE_DATA: "on",

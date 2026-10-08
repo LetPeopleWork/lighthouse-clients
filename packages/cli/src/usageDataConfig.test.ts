@@ -100,10 +100,10 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @real-io @contract-shape:pure-function
-  it.each<[string, (machine: Machine, url: string) => Promise<void>, string]>([
-    ["never asked", async () => undefined, "not asked yet (off)"],
-    ["said No", (machine, url) => anEarlierAnswer(machine, url, aNo()), "off"],
-  ])("shows an answer that was %s as %j", async (_how, given, shown) => {
+  it.each<[string, string, (machine: Machine, url: string) => Promise<void>]>([
+    ["never asked", "not asked yet (off)", async () => undefined],
+    ["said No", "off", (machine, url) => anEarlierAnswer(machine, url, aNo())],
+  ])("shows an answer that was %s as %j", async (_how, shown, given) => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
     await given(lena, lighthouse.url);

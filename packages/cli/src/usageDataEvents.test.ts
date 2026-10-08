@@ -65,35 +65,35 @@ describe("each mapped command reports its web event once, after it succeeded", (
   // @US-04 @driving_port @real-io @kpi @contract-shape:bounded-change
   // Each is the web's own event, so lh's share of it can be counted beside the browser's. The eighth
   // mapped command, the forecast, is covered in usageDataQuestion.test.ts, where it is first reported.
-  it.each<[string, readonly string[], string]>([
+  it.each<[string, string, readonly string[]]>([
     [
       "team create",
-      ["team", "create", "--payload-file", "@team"],
       "TeamCreated",
+      ["team", "create", "--payload-file", "@team"],
     ],
-    ["team delete", ["team", "delete", "--id", "9"], "TeamDeleted"],
-    ["team refresh", ["team", "refresh", "--id", "3"], "TeamRefreshTriggered"],
+    ["team delete", "TeamDeleted", ["team", "delete", "--id", "9"]],
+    ["team refresh", "TeamRefreshTriggered", ["team", "refresh", "--id", "3"]],
     [
       "portfolio create",
-      ["portfolio", "create", "--payload-file", "@portfolio"],
       "PortfolioCreated",
+      ["portfolio", "create", "--payload-file", "@portfolio"],
     ],
     [
       "portfolio delete",
-      ["portfolio", "delete", "--id", "6"],
       "PortfolioDeleted",
+      ["portfolio", "delete", "--id", "6"],
     ],
     [
       "portfolio refresh",
-      ["portfolio", "refresh", "--id", "2"],
       "PortfolioRefreshTriggered",
+      ["portfolio", "refresh", "--id", "2"],
     ],
     [
       "forecast manual",
-      ["forecast", "manual", "--team-id", "3", "--remaining", "25"],
       "TeamManualForecastRun",
+      ["forecast", "manual", "--team-id", "3", "--remaining", "25"],
     ],
-  ])("lh %s reports %s from the command line", async (_command, args, name) => {
+  ])("lh %s reports %s from the command line", async (_command, name, args) => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaWhoSaidYes(lighthouse);
     const withFiles = await withPayloadFiles(lena, args);
@@ -125,22 +125,22 @@ describe("each mapped command reports its web event once, after it succeeded", (
   // @US-04 @driving_port @real-io @property @contract-shape:pure-function
   // The web's rule, restated from Lighthouse's answer: no next Refinement date is no cadence; a Refinement day
   // is that; any other day is another day. One vote, so only TeamSizingVoteCast.
-  it.each<[string, RefinementFacts, string]>([
+  it.each<[string, string, RefinementFacts]>([
     [
       "a Team with no Refinement cadence",
-      { nextRefinementDate: null },
       "NoCadence",
+      { nextRefinementDate: null },
     ],
-    ["the Team's Refinement day", { isRefinementDay: true }, "OnRefinementDay"],
-    ["any other day", { isRefinementDay: false }, "OnOtherDay"],
+    ["the Team's Refinement day", "OnRefinementDay", { isRefinementDay: true }],
+    ["any other day", "OnOtherDay", { isRefinementDay: false }],
     [
       "no cadence, whatever the day says",
-      { nextRefinementDate: null, isRefinementDay: true },
       "NoCadence",
+      { nextRefinementDate: null, isRefinementDay: true },
     ],
   ])(
     "reports a vote cast on %s as cast %s",
-    async (_day, refinement, sizingMoment) => {
+    async (_day, sizingMoment, refinement) => {
       const lighthouse = await aFakeLighthouse({ refinement });
       const priya = await lenaWhoSaidYes(lighthouse);
 
@@ -352,12 +352,12 @@ describe("usage data changes nothing lh prints, and costs nothing when it is off
   it.each(
     MAPPED.flatMap((args) =>
       EVERY_FORMAT.map(
-        (format) => [args.slice(0, 2).join(" "), args, format] as const,
+        (format) => [args.slice(0, 2).join(" "), format, args] as const,
       ),
     ),
   )(
     "lh %s %s prints the same and exits the same with usage data on as off",
-    async (_command, args, format) => {
+    async (_command, format, args) => {
       const lighthouse = await aFakeLighthouse({
         refinement: { isRefinementDay: true },
       });

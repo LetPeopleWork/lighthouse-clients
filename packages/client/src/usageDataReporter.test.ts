@@ -448,7 +448,7 @@ describe("switching usage data on without a question", () => {
       false,
     ],
   ])(
-    "ends %s, keeping a yes only when one was granted",
+    "settles switching on when %s, keeping a yes only when one was granted",
     async (_, env, behaviour, outcome, routes, keptYes) => {
       const lighthouse = aLighthouse(behaviour);
       const { store, kept } = aStore(A_NO);
