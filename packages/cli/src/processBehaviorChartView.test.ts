@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aChart,
   chartNotReady,
+  chartWithCausesAsNumbers,
   chartWithoutABaseline,
   gravityBeforeTheDaily,
   PORTFOLIO_CHART_ROUTES,
@@ -277,5 +278,34 @@ describe("a chart whose limits mean little claims no signal", () => {
     expect(
       chartLine(run.stdout, "Cycle Time Process Behaviour Chart"),
     ).not.toContain("No signals");
+  });
+
+  // @error @real-io @contract-shape:bounded-change
+  it("says why Lighthouse refused a chart, beside its title", async () => {
+    const lighthouse = await gravitysLighthouse(
+      {},
+      {
+        "GET /teams/3/metrics/cycleTime/pbc": { status: 404 },
+      },
+    );
+
+    const run = await priyaRuns(lighthouse, chartsOfGravity());
+
+    expect(chartLine(run.stdout, "Cycle Time Process Behaviour Chart")).toBe(
+      "Cycle Time Process Behaviour Chart misconfigured: Request failed with status 404.",
+    );
+  });
+
+  // @error @real-io @contract-shape:bounded-change
+  it("says a chart in a shape lh cannot read is shown only with --json", async () => {
+    const lighthouse = await gravitysLighthouse({
+      "cycleTime/pbc": chartWithCausesAsNumbers(),
+    });
+
+    const run = await priyaRuns(lighthouse, chartsOfGravity());
+
+    expect(chartLine(run.stdout, "Cycle Time Process Behaviour Chart")).toBe(
+      "Cycle Time Process Behaviour Chart shown only with --json (unknown shape)",
+    );
   });
 });

@@ -307,6 +307,62 @@ describe("when there is no SLE Risk to show", () => {
     expect(justUnderTheLine).toContain("55%");
     expect(justUnderTheLine).not.toContain("Alert digest email");
   });
+
+  // @error @real-io @contract-shape:bounded-change
+  it("shows only the title when the Team cannot be read and nothing is at risk", async () => {
+    const lighthouse = await gravitysLighthouse({
+      "GET /teams/3": { status: 500 },
+      "GET /teams/3/metrics/sleRisk": { status: 200, body: [] },
+    });
+
+    const run = await priyaRuns(lighthouse, sleRiskOfGravity());
+
+    expect(lines(run.stdout)).toEqual([
+      "Team [id: 3] · as of Thu 8 Oct 2026",
+      "SLE Risk",
+    ]);
+  });
+});
+
+describe("the Work Items in progress are read only to name the Work Items at risk", () => {
+  // @real-io @contract-shape:bounded-change
+  it("does not read them for a Team's other metrics", async () => {
+    const lighthouse = await gravitysLighthouse();
+
+    await priyaRuns(lighthouse, [
+      "metrics",
+      "team",
+      "--id",
+      "3",
+      ...THE_DAY,
+      "--metrics",
+      "throughput",
+      "--pretty",
+    ]);
+
+    expect(lighthouse.operations()).not.toContain("GET /teams/3/metrics/wip");
+  });
+
+  // @real-io @contract-shape:bounded-change
+  it("does not read a Team's for a Portfolio asked for its SLE Risk", async () => {
+    const lighthouse = await aFakeLighthouse();
+
+    await priyaRuns(lighthouse, [
+      "metrics",
+      "portfolio",
+      "--id",
+      "2",
+      "--metrics",
+      "sleRisk",
+      "--pretty",
+    ]);
+
+    expect(
+      lighthouse
+        .operations()
+        .filter((operation) => operation.startsWith("GET /teams/")),
+    ).toEqual([]);
+  });
 });
 
 describe("the client's SLE Risk read", () => {
