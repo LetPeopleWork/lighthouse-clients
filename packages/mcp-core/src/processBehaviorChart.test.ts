@@ -220,3 +220,20 @@ describe("a question the chart tools cannot take", () => {
     expect(reads).toEqual([]);
   });
 });
+
+describe("what the chart tools tell an assistant a point is", () => {
+  // @contract-shape:pure-function
+  // Cycle Time and Feature Size plot one point per finished Work Item or Feature, not one per day.
+  it.each([TEAM_TOOL, PORTFOLIO_TOOL])(
+    "%s says a Cycle Time point is a finished work item, not a day",
+    (tool) => {
+      const description =
+        anAssistantOn({})
+          .runtime.listTools()
+          .find((candidate) => candidate.name === tool)?.description ?? "";
+
+      expect(description).not.toContain("every day (xValue, yValue)");
+      expect(description).toContain("one point per finished work item");
+    },
+  );
+});
