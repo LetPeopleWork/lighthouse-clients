@@ -1,3 +1,8 @@
+import {
+  createLighthouseClient,
+  FEATURE_REQUIRES_SERVER_NEWER_THAN,
+  isServerVersionNewerThan,
+} from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
 import {
   gravityBeforeTheDaily,
@@ -116,8 +121,7 @@ describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () 
   });
 
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("hands over Lighthouse's numbers unchanged with --json", async () => {
+  it("hands over Lighthouse's numbers unchanged with --json", async () => {
     const lighthouse = await gravitysLighthouse();
 
     const run = await priyaRuns(lighthouse, sleRiskOfGravity("--json"));
@@ -197,8 +201,7 @@ describe("when there is no SLE Risk to show", () => {
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("says SLE Risk is for Teams when asked for a Portfolio, without asking Lighthouse for it", async () => {
+  it("says SLE Risk is for Teams when asked for a Portfolio, without asking Lighthouse for it", async () => {
     const lighthouse = await aFakeLighthouse();
 
     const run = await priyaRuns(lighthouse, [
@@ -220,8 +223,7 @@ describe("when there is no SLE Risk to show", () => {
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("tells Priya to upgrade a Lighthouse that has no SLE Risk yet, and does not ask it", async () => {
+  it("tells Priya to upgrade a Lighthouse that has no SLE Risk yet, and does not ask it", async () => {
     const lighthouse = await gravitysLighthouse({}, "v26.9.9.9");
 
     const run = await priyaRuns(lighthouse, sleRiskOfGravity());
@@ -245,5 +247,70 @@ describe("when there is no SLE Risk to show", () => {
     const justUnderTheLine = lineFor(run.stdout, "GR-063");
     expect(justUnderTheLine).toContain("55%");
     expect(justUnderTheLine).not.toContain("Alert digest email");
+  });
+});
+
+describe("the client's SLE Risk read", () => {
+  // The newest release that still answered on the route with the older, date-driven shape.
+  const LAST_SERVER_WITHOUT_SLE_RISK = "v26.9.19.10";
+
+  const aClientOn = (version: string, sleRisk: unknown) => {
+    const asked: string[] = [];
+    const fetch = async (url: string) => {
+      asked.push(url);
+      const body = url.endsWith("/v1/version/current") ? version : sleRisk;
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          typeof body === "string" ? body : JSON.stringify(body),
+        json: async () => body,
+      };
+    };
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch },
+    );
+    return { client, asked };
+  };
+
+  it("needs a Lighthouse newer than the last release without it", () => {
+    expect(FEATURE_REQUIRES_SERVER_NEWER_THAN.sleRisk).toBe(
+      LAST_SERVER_WITHOUT_SLE_RISK,
+    );
+    expect(
+      isServerVersionNewerThan("v26.9.24.6", LAST_SERVER_WITHOUT_SLE_RISK),
+    ).toBe(true);
+  });
+
+  it("keeps an entry past the SLE, whose miss count is null, as Lighthouse sent it", async () => {
+    const pastTheSle = {
+      referenceId: "GR-058",
+      risk: 100,
+      finishedItemsStillOpenAtThisAge: 11,
+      finishedItemsThatWentOnToMiss: null,
+    };
+    const { client, asked } = aClientOn("v26.9.24.6", [pastTheSle]);
+
+    const result = await client.getTeamSleRisk(3);
+
+    expect(result).toEqual({ ok: true, value: [pastTheSle] });
+    expect(asked).toContain(
+      "http://localhost:5000/api/v1/teams/3/metrics/sleRisk",
+    );
+  });
+
+  it("does not ask the last release without it", async () => {
+    const { client, asked } = aClientOn(LAST_SERVER_WITHOUT_SLE_RISK, []);
+
+    const result = await client.getTeamSleRisk(3);
+
+    expect(result.ok).toBe(false);
+    expect(asked.filter((url) => url.includes("sleRisk"))).toEqual([]);
   });
 });

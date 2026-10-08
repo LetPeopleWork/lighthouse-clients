@@ -164,7 +164,8 @@ Add `--json` to every command whose output you read.
 
 ## `--metrics` keys
 
-`lh metrics team` and `lh metrics portfolio` take a comma-separated list; without `--metrics` they return all.
+`lh metrics team` and `lh metrics portfolio` take a comma-separated list; without `--metrics` they return all but `sleRisk`, which is read only
+when named.
 
 | Key | Use it when | Over MCP |
 |---|---|---|
@@ -179,8 +180,9 @@ Add `--json` to every command whose output you read.
 | `--metrics blocked` | How many Work Items were Blocked on each day. | `lighthouse_team_metrics_blockedCountHistory` |
 | `--metrics percentilesOverTime` | Percentiles per recorded day; `lh` reads Cycle Time at the 30-day horizon. | `lighthouse_team_metrics_percentilesOverTime` |
 | `--metrics processBehaviorOverTime` | Process limits per recorded day. | `lighthouse_team_metrics_processBehaviorOverTime` |
+| `--metrics sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: each one's risk in percent, how many finished Work Items were still open at its age, and how many of those went on to miss. Teams only; reads today whatever the dates. | none |
 
-`lh` also takes lower-case spellings (`--metrics cycletime`) and `pbcovertime` for the last key.
+`lh` also takes lower-case spellings (`--metrics cycletime`) and `pbcovertime` for `processBehaviorOverTime`.
 
 ---
 
@@ -193,6 +195,7 @@ from other reads, and do not call a tool that is not in your tool list.
 - Arrivals (`--metrics arrivals`)
 - A Portfolio's current WIP and what is Blocked right now (`lh metrics portfolio --id <id> --metrics wip`)
 - The Predictability Score (`--metrics predictabilityScore`)
+- A Team's SLE Risk (`lh metrics team --id <id> --metrics sleRisk`)
 - A Portfolio's Cycle Time percentiles (`lh metrics portfolio --id <id> --metrics cycleTime`)
 - Creating, changing and deleting Teams and Portfolios (`lh team create`, `lh portfolio update`, …)
 - The connection, output format, voter name and usage-data answer (`lh connection status`, `lh config output`, …)

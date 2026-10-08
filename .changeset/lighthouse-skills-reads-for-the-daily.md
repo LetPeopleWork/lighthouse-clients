@@ -11,3 +11,7 @@ many are in progress against the System WIP Limit and how many are Blocked.
 When there is less to say, the summary and `lh metrics team --metrics wip --pretty` say so in the same
 words: that no System WIP Limit is set, that Lighthouse does not say which Work Items are Blocked (an older
 server, never read as none Blocked), or that no Work Items are in progress.
+
+`lh metrics team --metrics sleRisk` reads which Work Items in progress are likely to miss the Team's SLE, with
+Lighthouse's own numbers handed over unchanged for `--json` and `--toon`. It is read only when named, needs a
+Lighthouse newer than v26.9.19.10, and a Portfolio is told SLE Risk is for Teams.

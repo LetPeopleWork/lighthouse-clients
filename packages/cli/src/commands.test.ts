@@ -164,6 +164,7 @@ const getDefaultMockClient = (): MockClient => ({
   getPortfolioPercentilesOverTime: async () => ({ ok: true, value: [] }),
   getTeamProcessBehaviorOverTime: async () => ({ ok: true, value: [] }),
   getPortfolioProcessBehaviorOverTime: async () => ({ ok: true, value: [] }),
+  getTeamSleRisk: async () => ({ ok: true, value: [] }),
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),

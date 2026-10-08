@@ -1083,6 +1083,17 @@ export type ProcessBehaviorSnapshot = {
   readonly lnpl: number;
 };
 
+/**
+ * One Work Item in progress and the chance it misses its Team's SLE, in percent. The miss count is
+ * null when the Work Item is already past the SLE: that settles it without looking at any history.
+ */
+export type SleRiskEntry = {
+  readonly referenceId: string;
+  readonly risk: number;
+  readonly finishedItemsStillOpenAtThisAge: number;
+  readonly finishedItemsThatWentOnToMiss: number | null;
+};
+
 export type CumulativeStateTimeStateRow = {
   readonly state: string;
   readonly workflowOrder: number;
@@ -1502,6 +1513,9 @@ export type LighthouseClient = {
     range?: MetricsDateRange,
     metricType?: ProcessBehaviorMetricType,
   ) => Promise<LighthouseApiResult<readonly ProcessBehaviorSnapshot[]>>;
+  readonly getTeamSleRisk: (
+    teamId: number,
+  ) => Promise<LighthouseApiResult<readonly SleRiskEntry[]>>;
   readonly getTeamCumulativeStateTime: (
     teamId: number,
     range?: MetricsDateRange,
@@ -2104,6 +2118,9 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   // The endpoint landed in v26.6.7.1. The per-epic size fields came much later and are optional on
   // the wire, so a server between the two answers fine — it just reports no sizes.
   deliveryMetricsHistory: "v26.5.29.5",
+  // That release already answers on the same route, but wants a date range and leaves out how many
+  // of the finished Work Items went on to miss.
+  sleRisk: "v26.9.19.10",
   teamRefinement: "v26.10.3.6",
   refinementVotes: "v26.10.3.6",
 } as const;
@@ -2872,6 +2889,18 @@ export const createLighthouseClient = (
         configuration,
         dependencies,
         `/v1/portfolios/${portfolioId}/metrics/process-behavior-over-time?${getMetricsDateRangeQuery(r)}${getProcessBehaviorTypeQuerySuffix(metricType)}`,
+        { method: "GET" },
+      );
+    },
+    getTeamSleRisk: async (teamId: number) => {
+      const unsupported = await ensureServerSupports("sleRisk");
+      if (unsupported) {
+        return unsupported;
+      }
+      return requestJson<readonly SleRiskEntry[]>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/sleRisk`,
         { method: "GET" },
       );
     },

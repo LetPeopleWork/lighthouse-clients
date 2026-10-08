@@ -136,6 +136,7 @@ type CliDomainClientLike = Pick<
   | "getPortfolioPercentilesOverTime"
   | "getTeamProcessBehaviorOverTime"
   | "getPortfolioProcessBehaviorOverTime"
+  | "getTeamSleRisk"
   | "getTeamCumulativeStateTime"
   | "getTeamCumulativeStateTimeItems"
   | "getTeamCumulativeStateTimeCandidates"
@@ -397,6 +398,7 @@ const METRIC_KEYS = [
   "blocked",
   "percentilesOverTime",
   "processBehaviorOverTime",
+  "sleRisk",
 ] as const;
 
 type MetricKey = (typeof METRIC_KEYS)[number];
@@ -424,6 +426,8 @@ const METRIC_ALIASES: Record<string, MetricKey> = {
   processbehaviorovertime: "processBehaviorOverTime",
   processBehaviorOverTime: "processBehaviorOverTime",
   pbcovertime: "processBehaviorOverTime",
+  slerisk: "sleRisk",
+  sleRisk: "sleRisk",
 };
 
 const ALLOWED_METRIC_DISPLAY = METRIC_KEYS.join(", ");
@@ -1296,6 +1300,8 @@ const buildMetricsPayload = async (
 
   const all = filter === null;
   const needs = (key: MetricKey): boolean => all || filter.has(key);
+  // Read only when named, so the view without --metrics makes the same reads it always made.
+  const named = (key: MetricKey): boolean => filter?.has(key) === true;
   // wip.current is shared between the "wip" sections only (workItemAge now uses WIP-over-time)
   const needsCurrentWip = needs("wip");
   const isTeam = scope === "team";
@@ -1327,6 +1333,7 @@ const buildMetricsPayload = async (
     blockedCountHistoryResult,
     percentilesOverTimeResult,
     processBehaviorOverTimeResult,
+    sleRiskResult,
   ] = await Promise.all([
     maybeFetch(needs("throughput"), () =>
       isTeam
@@ -1454,6 +1461,9 @@ const buildMetricsPayload = async (
             "Throughput",
           ),
     ),
+    maybeFetch(isTeam && named("sleRisk"), () =>
+      client.getTeamSleRisk(entityId),
+    ),
   ]);
 
   const throughputValue = resolveOrSkip(throughputResult);
@@ -1478,6 +1488,7 @@ const buildMetricsPayload = async (
   const processBehaviorOverTimeValue = resolveOrSkip(
     processBehaviorOverTimeResult,
   );
+  const sleRiskValue = resolveOrSkip(sleRiskResult);
 
   const currentItems =
     currentWipValue === null
@@ -1549,6 +1560,14 @@ const buildMetricsPayload = async (
             metricType: "Throughput",
             history: processBehaviorOverTimeValue,
           };
+  }
+
+  if (named("sleRisk")) {
+    const terms = isTeam ? null : await readTerms(client);
+    payload.sleRisk =
+      terms === null
+        ? (sleRiskValue ?? getMetricUnavailableValue(unavailableReason))
+        : getMetricUnavailableValue(`${terms.sle} Risk is for ${terms.teams}.`);
   }
 
   if (needs("wip")) {

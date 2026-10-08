@@ -98,8 +98,7 @@ describe("the two new selections are named in the help and taken by their names"
   });
 
   // @driving_port @contract-shape:bounded-change
-  // Pending until lh offers the two selections.
-  it.skip.each(["sleRisk", "slerisk"])(
+  it.each(["sleRisk", "slerisk"])(
     "reads SLE Risk, and nothing it was not asked for, for --metrics %s",
     async (selection) => {
       const lh = aLighthouse({
