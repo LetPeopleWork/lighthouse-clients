@@ -179,6 +179,9 @@ lh config output set --format <pretty|toon|json>
 											  Persist the default payload output format
 lh config voter                               Show the name your refinement votes carry
 lh config voter set --name <name>            Store that name (used without sign-in)
+lh config usage-data                          Show your usage data answer for this Lighthouse
+lh config usage-data on                       Send usage data to this Lighthouse (no question asked)
+lh config usage-data off                      Stop sending usage data to this Lighthouse
 lh health check                               Check server connectivity
 lh version get                                Get server version
 lh worktracking list                          List work tracking connections
@@ -238,6 +241,8 @@ lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> -
 Global payload output override flags: `--pretty`, `--json`, `--toon`
 
 **Refinement votes.** On a Lighthouse with sign-in, a vote or comment is your account's and needs no name. Without sign-in it carries the name you give with `--as`, or the one stored with `lh config voter set --name`; `lh` never guesses it. The first vote also mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the config file (mode `0600`), so the vote can be taken back from this machine later. The local MCP server keeps its key in the same file, so you are one voter whether you vote from `lh` or through your assistant. In the Votes column a `*` marks a Work Item you have voted on.
+
+**Usage data.** After a command that reached your Lighthouse, `lh` may ask once, on stderr, whether to send anonymous usage data to that Lighthouse; nothing is sent until you say yes. Only `y` or `yes` counts as a yes; Enter or anything else is a No that is kept for that Lighthouse and never sent. It asks only when stdin, stdout and stderr are all a terminal (never in scripts, pipes or CI), and only a Lighthouse that takes usage data from `lh`. Answers are kept in `usage-data.json` beside `voter-keys.json` (mode `0600`). `lh config usage-data` shows your answer and what your Lighthouse allows, `lh config usage-data on` says yes without a question (also on a build agent), and `lh config usage-data off` withdraws a yes at your Lighthouse and keeps a No. `DO_NOT_TRACK` set to anything but `0`, `false` or empty always wins: `lh` neither asks nor sends. Usage data never changes what `lh` prints or its exit code. What is sent: <https://docs.lighthouse.letpeople.work/settings/usagedata.html>.
 
 Run `lh <group>` to see the available subcommands for that group.
 

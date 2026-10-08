@@ -333,6 +333,10 @@ Users ask naturally ("tell me about the Mars Colonization feature"). Claude hand
 
 A vote or comment is the **user's own** judgement, recorded under their name. Never vote or comment on your own initiative or on someone else's behalf. Show the user the Work Item, the answer (`Yes`, `YesBut` for "Yes, if…", or `No`) and any comment you intend to send, and call only after they explicitly confirm. A `YesBut` needs its condition in `comment`. Without sign-in Lighthouse needs the user's name: **ask the user for it** and pass it as `voterName`; never infer it from the system, an account or earlier messages. Quote the tool's `summary`. Without sign-in a take-back only removes a vote cast from the same machine; when there is none it says so.
 
+### Usage data — the user's choice, never yours
+
+**Never run `lh config usage-data on` or `lh config usage-data off` unless the user asked for exactly that.** Whether usage data is sent is the user's own decision. `lh config usage-data` on its own only shows the answer and is safe to run. Never set or unset `DO_NOT_TRACK` on the user's behalf either.
+
 ### `lighthouse_feature_get` — correct usage
 
 This tool **requires** either `ids` (array of numbers) or `refs` (array of strings). Calling it with no arguments returns a validation error — **this is not a server fault, it is a missing-argument error**.
