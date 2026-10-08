@@ -344,6 +344,37 @@ jobs:
             || (echo "FAIL: Project Orion not found in portfolio list"; exit 1)
           echo "Portfolio assertion: PASS"
 
+      # Reads the DO_NOT_TRACK refusal under the job's DO_NOT_TRACK, then lifts DO_NOT_TRACK for one lh call
+      # at a time. The container's collector is a dead address, and no command that reports an event runs
+      # while the answer is on. "allows usage data" holds only on a Lighthouse image that lists the sources it
+      # labels, so that Lighthouse release must be out before the clients release that carries this step.
+      - name: Verify usage-data status (never sends)
+        shell: bash
+        run: |
+          all=""
+          expect_line() {   # expect_line <fixed text> <command…>; prints, checks the exit code and the text
+            local expected="$1"; shift
+            local out status=0
+            out=$("$@" 2>&1) || status=$?
+            printf '%s\n' "$out"; all+="$out"$'\n'
+            [ "$status" -eq 0 ] || { echo "FAIL: exit $status from: $*"; exit 1; }
+            grep -qF -- "$expected" <<<"$out" || { echo "FAIL: '$expected' not in: $*"; exit 1; }
+          }
+          answer="Usage data from lh to https://127.0.0.1:8443:"
+          dnt="DO_NOT_TRACK is set, so lh sends no usage data whatever is stored."
+          expect_line "$dnt" lh config usage-data
+          expect_line "$dnt" lh config usage-data on
+          expect_line "$answer not asked yet (off)" env -u DO_NOT_TRACK lh config usage-data
+          expect_line "This Lighthouse allows usage data." env -u DO_NOT_TRACK lh config usage-data
+          expect_line "$answer on." env -u DO_NOT_TRACK lh config usage-data on
+          token=$(jq -r '.answers[] | .token // empty' ~/.config/lighthouse-clients/usage-data.json) \
+            || { echo "FAIL: the usage data file is missing or not JSON"; exit 1; }
+          [ -n "$token" ] || { echo "FAIL: on stored no token"; exit 1; }
+          expect_line "$answer off. Nothing more is sent." env -u DO_NOT_TRACK lh config usage-data off
+          expect_line "$answer off" env -u DO_NOT_TRACK lh config usage-data
+          ! grep -qF -- "$token" <<<"$all" || { echo "FAIL: the consent token was printed"; exit 1; }
+          echo "Usage-data status: PASS"
+
       # Each line checks that --pretty prints words only the readable view prints (the generic view prints
       # wire names), and that --json is still the facts, without those words.
       - name: Verify --pretty views
