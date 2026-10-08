@@ -2,6 +2,11 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getNormalizedLighthouseUrl } from "./lighthouseUrl";
+import {
+  readUsageDataState,
+  type UsageDataBatch,
+  type UsageDataState,
+} from "./usageData";
 
 export type ClientCapability =
   | "versioned-api-contracts"
@@ -1579,6 +1584,27 @@ export type LighthouseClient = {
     teamId: number,
     payload: BacktestInput,
   ) => Promise<LighthouseApiResult<unknown>>;
+
+  // Usage data: anonymous calls, never carrying the API key or a bearer token
+  readonly getUsageDataState: (
+    options?: UsageDataCallOptions,
+  ) => Promise<LighthouseApiResult<UsageDataState>>;
+  /** Records a yes; the value is the consent token Lighthouse minted for it. */
+  readonly grantUsageData: (
+    options?: UsageDataCallOptions,
+  ) => Promise<LighthouseApiResult<string>>;
+  readonly revokeUsageData: (
+    options: UsageDataCallOptions & { readonly token: string },
+  ) => Promise<LighthouseApiResult<undefined>>;
+  readonly handInUsageData: (
+    batch: UsageDataBatch,
+    options: UsageDataCallOptions & { readonly token: string },
+  ) => Promise<LighthouseApiResult<undefined>>;
+};
+
+export type UsageDataCallOptions = {
+  readonly token?: string;
+  readonly signal?: AbortSignal;
 };
 
 export type LighthouseClientDependencies = {
@@ -1610,6 +1636,7 @@ type RequestOptions = {
   readonly method?: "GET" | "POST" | "PUT" | "DELETE";
   readonly body?: unknown;
   readonly headers?: Readonly<Record<string, string>>;
+  readonly signal?: AbortSignal;
 };
 
 const getRequestInit = (
@@ -1632,6 +1659,7 @@ const getRequestInit = (
     method: requestOptions?.method,
     headers,
     body: hasBody ? JSON.stringify(requestOptions.body) : undefined,
+    signal: requestOptions?.signal,
   };
 };
 
@@ -1819,6 +1847,7 @@ const requestJson = async <TValue>(
     },
     getRequestInit(configuration.auth, {
       method: "GET",
+      signal: requestOptions?.signal,
     }),
   );
 
@@ -1863,7 +1892,7 @@ const requestNoContent = async (
   configuration: LighthouseClientConfiguration,
   dependencies: LighthouseClientDependencies,
   route: string,
-  requestOptions: {
+  requestOptions: RequestOptions & {
     readonly method: "POST" | "DELETE";
   },
 ): Promise<LighthouseApiResult<undefined>> => {
@@ -1875,6 +1904,7 @@ const requestNoContent = async (
     },
     getRequestInit(configuration.auth, {
       method: "GET",
+      signal: requestOptions.signal,
     }),
   );
 
@@ -3062,6 +3092,87 @@ export const createLighthouseClient = (
         `/v1/forecast/backtest/${teamId}`,
         { method: "POST", body: payload },
       ),
+    ...usageDataCalls(configuration, dependencies),
+  };
+};
+
+const USAGE_DATA_TOKEN_HEADER = "X-Lighthouse-UsageData-Token";
+
+const usageDataRequest = (
+  options: UsageDataCallOptions | undefined,
+  request: Omit<RequestOptions, "headers" | "signal">,
+): RequestOptions => ({
+  ...request,
+  signal: options?.signal,
+  headers:
+    options?.token === undefined
+      ? {}
+      : { [USAGE_DATA_TOKEN_HEADER]: options.token },
+});
+
+const usageDataCalls = (
+  configuration: LighthouseClientConfiguration,
+  dependencies: LighthouseClientDependencies,
+): Pick<
+  LighthouseClient,
+  "getUsageDataState" | "grantUsageData" | "revokeUsageData" | "handInUsageData"
+> => {
+  // Usage data is never bound to an account, so no credential travels with it.
+  const anonymous: LighthouseClientConfiguration = {
+    connection: configuration.connection,
+  };
+  return {
+    getUsageDataState: async (options) => {
+      const result = await requestJson<unknown>(
+        anonymous,
+        dependencies,
+        "/v1/usagedata/state",
+        usageDataRequest(options, { method: "GET" }),
+      );
+      if (!result.ok) {
+        return result;
+      }
+      const state = readUsageDataState(result.value);
+      return state === null
+        ? getErrorResult({
+            category: "unexpected",
+            reason: "Lighthouse's usage data state is not readable.",
+          })
+        : { ok: true, value: state };
+    },
+    grantUsageData: async (options) => {
+      const result = await requestJson<unknown>(
+        anonymous,
+        dependencies,
+        "/v1/usagedata/consent",
+        usageDataRequest(options, {
+          method: "POST",
+          body: { decision: "granted" },
+        }),
+      );
+      if (!result.ok) {
+        return result;
+      }
+      const token = isObjectRecord(result.value)
+        ? result.value.token
+        : undefined;
+      return typeof token === "string" && token.length > 0
+        ? { ok: true, value: token }
+        : getErrorResult({
+            category: "unexpected",
+            reason: "Lighthouse answered a grant without a token.",
+          });
+    },
+    revokeUsageData: async (options) =>
+      requestNoContent(anonymous, dependencies, "/v1/usagedata/consent", {
+        ...usageDataRequest(options, {}),
+        method: "DELETE",
+      }),
+    handInUsageData: async (batch, options) =>
+      requestNoContent(anonymous, dependencies, "/v1/usagedata/events", {
+        ...usageDataRequest(options, { body: batch }),
+        method: "POST",
+      }),
   };
 };
 
@@ -3078,5 +3189,8 @@ export * from "./refinementVoteWording";
 export * from "./refinementVoting";
 export * from "./refinementWording";
 export * from "./terminology";
+export * from "./usageData";
+export * from "./usageDataReporter";
+export * from "./usageDataStore";
 export * from "./voterKeyStore";
 export * from "./writeWording";

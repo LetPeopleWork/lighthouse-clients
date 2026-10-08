@@ -75,7 +75,7 @@ const batchesHandedIn = (lighthouse: FakeLighthouse) =>
 describe("lh asks once, after the answer, in the approved words", () => {
   // @US-02 @driving_port @real-io @kpi @contract-shape:bounded-change
   // The thinnest end-to-end client path: question, grant, kept answer. KPI-5: at most one question.
-  it.skip("asks Lena once, after her forecast, and keeps her yes for that Lighthouse", async () => {
+  it("asks Lena once, after her forecast, and keeps her yes for that Lighthouse", async () => {
     const lighthouse = await aFakeLighthouse();
 
     const { lena, run } = await lenaAnswers(lighthouse, "y");
@@ -104,7 +104,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
   });
 
   // @US-02 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.skip("reports Lena's next forecast as TeamManualForecastRun from the command line, and never asks her again there", async () => {
+  it("reports Lena's next forecast as TeamManualForecastRun from the command line, and never asks her again there", async () => {
     const lighthouse = await aFakeLighthouse();
     const { lena } = await lenaAnswers(lighthouse, "y");
 
@@ -158,7 +158,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
 
   // @US-02 @driving_port @real-io @error @contract-shape:unbounded-preservation
   // Ctrl-C or end of input is no answer: nothing recorded, nothing sent, the exit code is the command's own.
-  it.skip("leaves a question Tomás closed with Ctrl-C unanswered, and asks again on his next command", async () => {
+  it("leaves a question Tomás closed with Ctrl-C unanswered, and asks again on his next command", async () => {
     const lighthouse = await aFakeLighthouse();
 
     const { lena: tomas, run } = await lenaAnswers(lighthouse, null);
@@ -173,7 +173,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
   // @US-02 @driving_port @real-io @contract-shape:unbounded-preservation
   // stdout is the command's answer and nothing else, so a terminal recording or a pipe after the fact holds
   // exactly what a script would get.
-  it.skip("prints on stdout exactly what the same forecast prints when nobody is asked", async () => {
+  it("prints on stdout exactly what the same forecast prints when nobody is asked", async () => {
     const lighthouse = await aFakeLighthouse();
     const scripted = await lhOn(await lenaAt(lighthouse), {
       terminal: NO_TERMINAL,
@@ -187,7 +187,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
   });
 
   // @US-02 @driving_port @real-io @security @contract-shape:unbounded-preservation
-  it.skip("never shows the consent token, in the run that granted it or in the next", async () => {
+  it("never shows the consent token, in the run that granted it or in the next", async () => {
     const lighthouse = await aFakeLighthouse();
     const { lena, run } = await lenaAnswers(lighthouse, "yes");
 

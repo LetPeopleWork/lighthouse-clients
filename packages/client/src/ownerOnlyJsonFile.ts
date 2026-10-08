@@ -32,6 +32,13 @@ export type OwnerOnlyJsonFile<Content> = {
   readonly read: () => Promise<Content | null>;
   /** Writes what `change` makes of the content kept at that moment, one writer at a time. */
   readonly update: (change: (kept: Content) => Content) => Promise<void>;
+  /**
+   * As `update`, but a change that hands back the kept content itself writes nothing, so a writer can keep
+   * what is there; true when something was written.
+   */
+  readonly updateIfChanged: (
+    change: (kept: Content) => Content,
+  ) => Promise<boolean>;
 };
 
 const errorCodeOf = (error: unknown): string | undefined =>
@@ -147,7 +154,8 @@ const updateContent = async <Content>(
   filePath: string,
   format: OwnerOnlyJsonFileFormat<Content>,
   change: (kept: Content) => Content,
-): Promise<void> => {
+): Promise<boolean> => {
+  let written = false;
   await mkdir(dirname(filePath), {
     recursive: true,
     mode: OWNER_ONLY_DIRECTORY,
@@ -159,8 +167,14 @@ const updateContent = async <Content>(
         `The ${format.name} ${filePath} cannot be read; fix or remove it.`,
       );
     }
-    await writeAtomically(filePath, format.serialize(change(kept)));
+    const changed = change(kept);
+    if (changed === kept) {
+      return;
+    }
+    await writeAtomically(filePath, format.serialize(changed));
+    written = true;
   });
+  return written;
 };
 
 export const ownerOnlyJsonFile = <Content>(
@@ -168,5 +182,8 @@ export const ownerOnlyJsonFile = <Content>(
   format: OwnerOnlyJsonFileFormat<Content>,
 ): OwnerOnlyJsonFile<Content> => ({
   read: () => readContent(filePath, format),
-  update: (change) => updateContent(filePath, format, change),
+  update: async (change) => {
+    await updateContent(filePath, format, change);
+  },
+  updateIfChanged: (change) => updateContent(filePath, format, change),
 });

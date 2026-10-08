@@ -3,6 +3,7 @@ import {
   readTerms,
   type Terms,
   type TermsSource,
+  type UsageDataOccurrence,
 } from "@letpeoplework/lighthouse-client";
 import {
   formatPayload,
@@ -10,11 +11,29 @@ import {
   type PrettyRenderer,
 } from "./output";
 
+/** What a command did that usage data may count. Never printed. */
+export type CliCommandUsage = {
+  /** The command reached Lighthouse and Lighthouse answered it successfully. */
+  readonly reached: boolean;
+  readonly occurrences: readonly UsageDataOccurrence[];
+};
+
 export type CliCommandResult = {
   readonly exitCode: number;
   readonly stdout: string;
   readonly stderr: string;
+  readonly usage?: CliCommandUsage;
 };
+
+/** The result as it is, counting `occurrences` when Lighthouse answered the command successfully. */
+export const withUsage = (
+  result: CliCommandResult,
+  answered: LighthouseApiResult<unknown>,
+  occurrences: readonly UsageDataOccurrence[],
+): CliCommandResult =>
+  answered.ok && result.exitCode === 0
+    ? { ...result, usage: { reached: true, occurrences } }
+    : result;
 
 export const getOptionValue = (
   args: readonly string[],

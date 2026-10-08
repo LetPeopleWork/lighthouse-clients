@@ -28,6 +28,7 @@ import {
   isCliCommandResult,
   mapApiResultInTerms,
   mapApiResultToCliResult,
+  withUsage,
 } from "./commandResult";
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
 import { renderFeatureList, renderFeatureWorkItems } from "./featureOutput";
@@ -1929,6 +1930,8 @@ const readTeamWording = (client: CliClientOperations, teamId: number) =>
     read: () => client.getTeam(teamId),
   });
 
+const A_MANUAL_FORECAST = [{ name: "TeamManualForecastRun" }] as const;
+
 const runManualForecastCommand = async (
   args: readonly string[],
   outputFormat: OutputFormat,
@@ -1965,9 +1968,11 @@ const runManualForecastCommand = async (
     applyFilterOverride: filterOrError.applyFilterOverride,
   };
   if (outputFormat !== "pretty") {
-    return mapApiResultToCliResult(
-      await client.runManualForecast(teamId, input),
-      outputFormat,
+    const forecast = await client.runManualForecast(teamId, input);
+    return withUsage(
+      mapApiResultToCliResult(forecast, outputFormat),
+      forecast,
+      A_MANUAL_FORECAST,
     );
   }
 
@@ -1975,8 +1980,12 @@ const runManualForecastCommand = async (
     client.runManualForecast(teamId, input),
     readTeamWording(client, teamId),
   ]);
-  return mapApiResultToCliResult(forecast, outputFormat, (facts) =>
-    renderManualForecast(facts, wording),
+  return withUsage(
+    mapApiResultToCliResult(forecast, outputFormat, (facts) =>
+      renderManualForecast(facts, wording),
+    ),
+    forecast,
+    A_MANUAL_FORECAST,
   );
 };
 
