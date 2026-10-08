@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createLighthouseClient,
   type ProcessBehaviorMetricType,
+  type TeamProcessBehaviorMetricType,
 } from "./index";
 import {
   daysInRange,
@@ -1898,15 +1899,8 @@ describe("a Process Behaviour Chart, read and said", () => {
     status: "Ready",
     dataPoints,
   });
-
-  it.each([
-    ["Throughput", "throughput/pbc"],
-    ["Arrivals", "arrivals/pbc"],
-    ["Wip", "wipOverTime/pbc"],
-    ["WorkItemAge", "totalWorkItemAge/pbc"],
-    ["CycleTime", "cycleTime/pbc"],
-    ["FeatureSize", "featureSize/pbc"],
-  ] as const)("reads the %s chart from %s, once", async (metricType, route) => {
+  const CHART_RANGE = { startDate: "2026-10-02", endDate: "2026-10-08" };
+  const aChartReader = () => {
     const asked: string[] = [];
     const client = createLighthouseClient(
       {
@@ -1925,20 +1919,57 @@ describe("a Process Behaviour Chart, read and said", () => {
         },
       },
     );
-    const range = { startDate: "2026-10-02", endDate: "2026-10-08" };
+    return {
+      client,
+      charts: () => asked.filter((url) => url.includes("/metrics/")),
+    };
+  };
+
+  it.each([
+    ["Throughput", "throughput/pbc"],
+    ["Arrivals", "arrivals/pbc"],
+    ["Wip", "wipOverTime/pbc"],
+    ["WorkItemAge", "totalWorkItemAge/pbc"],
+    ["CycleTime", "cycleTime/pbc"],
+    ["FeatureSize", "featureSize/pbc"],
+  ] as const)("reads the %s chart from %s, once", async (metricType, route) => {
+    const { client, charts } = aChartReader();
 
     await client.getPortfolioProcessBehaviorChart(
       2,
-      range,
+      CHART_RANGE,
       metricType satisfies ProcessBehaviorMetricType,
     );
 
-    const charts = asked.filter((url) => url.includes("/metrics/"));
-    expect(charts).toHaveLength(1);
-    expect(charts[0]).toContain(
+    expect(charts()).toHaveLength(1);
+    expect(charts()[0]).toContain(
       `/portfolios/2/metrics/${route}?startDate=2026-10-02&endDate=2026-10-08`,
     );
   });
+
+  it.each([
+    ["Throughput", "throughput/pbc"],
+    ["Arrivals", "arrivals/pbc"],
+    ["Wip", "wipOverTime/pbc"],
+    ["WorkItemAge", "totalWorkItemAge/pbc"],
+    ["CycleTime", "cycleTime/pbc"],
+  ] as const)(
+    "reads a Team's %s chart from %s on the Team's own route, once",
+    async (metricType, route) => {
+      const { client, charts } = aChartReader();
+
+      await client.getTeamProcessBehaviorChart(
+        3,
+        CHART_RANGE,
+        metricType satisfies TeamProcessBehaviorMetricType,
+      );
+
+      expect(charts()).toHaveLength(1);
+      expect(charts()[0]).toContain(
+        `/teams/3/metrics/${route}?startDate=2026-10-02&endDate=2026-10-08`,
+      );
+    },
+  );
 
   it("reads each day's signals by name and leaves out None", () => {
     expect(
