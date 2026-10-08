@@ -1399,3 +1399,157 @@ export const describeMetricSummary = (
   heading: string,
   view: MetricDayView,
 ): string => [heading, view.sentence, ...notesOf(view)].join("\n");
+
+// ── SLE Risk ─────────────────────────────────────────────────────────────────
+
+/**
+ * Where "at risk" starts, the line Lighthouse's own SLE Risk widget draws. Seventy sits on the at-risk
+ * side; nothing else in the clients decides what counts as at risk.
+ */
+export const SLE_RISK_AT_RISK_FROM = 70;
+
+export const isAtRiskOfMissingTheSle = (risk: number): boolean =>
+  risk >= SLE_RISK_AT_RISK_FROM;
+
+/** One Work Item's SLE Risk; the miss count is null for a Work Item already past the SLE. */
+export type SleRiskView = {
+  readonly referenceId: string;
+  readonly risk: number;
+  readonly finishedItemsStillOpenAtThisAge: number;
+  readonly finishedItemsThatWentOnToMiss: number | null;
+};
+
+const readSleRiskEntry = (value: unknown): SleRiskView | null =>
+  isRecord(value) &&
+  isText(value.referenceId) &&
+  isNumber(value.risk) &&
+  isNumber(value.finishedItemsStillOpenAtThisAge) &&
+  (value.finishedItemsThatWentOnToMiss === null ||
+    isNumber(value.finishedItemsThatWentOnToMiss))
+    ? {
+        referenceId: value.referenceId,
+        risk: value.risk,
+        finishedItemsStillOpenAtThisAge: value.finishedItemsStillOpenAtThisAge,
+        finishedItemsThatWentOnToMiss: value.finishedItemsThatWentOnToMiss,
+      }
+    : null;
+
+/** Every Work Item's SLE Risk as Lighthouse lists them, or null when the answer is in a shape it does not know. */
+export const readSleRisk = (value: unknown): readonly SleRiskView[] | null =>
+  readEvery(value, readSleRiskEntry);
+
+export type ServiceLevelExpectation = {
+  readonly probability: number;
+  readonly days: number;
+};
+
+/** The Team's SLE; absent when none is set, which Lighthouse stores as zeros. */
+export const readServiceLevelExpectation = (
+  value: unknown,
+): ServiceLevelExpectation | undefined =>
+  isRecord(value) &&
+  isNumber(value.serviceLevelExpectationProbability) &&
+  value.serviceLevelExpectationProbability >= 1 &&
+  isNumber(value.serviceLevelExpectationRange) &&
+  value.serviceLevelExpectationRange >= 1
+    ? {
+        probability: value.serviceLevelExpectationProbability,
+        days: value.serviceLevelExpectationRange,
+      }
+    : undefined;
+
+/** The SLE Risk's title, the sentence that counts what is at risk, and one row per Work Item, highest risk first. */
+export type SleRiskWording = {
+  readonly title: string;
+  readonly sentence: string;
+  readonly rows: readonly (readonly string[])[];
+};
+
+// The web reads a Work Item past the SLE by the promise it broke, not by a history it never consulted,
+// which Lighthouse says by leaving the miss count out.
+const sleRiskEvidence = (
+  entry: SleRiskView,
+  sle: ServiceLevelExpectation | undefined,
+  terms: Terms,
+): string => {
+  const missed = entry.finishedItemsThatWentOnToMiss;
+  if (missed === null) {
+    return `past the ${terms.sle}`;
+  }
+  const finished = entry.finishedItemsStillOpenAtThisAge;
+  if (finished === 0) {
+    return `no finished ${terms.workItem} reached this age`;
+  }
+  const target =
+    sle === undefined ? `the ${terms.sle}` : describeDays(sle.days);
+  const counted = finished === 1 ? terms.workItem : terms.workItems;
+  return `${missed} of ${finished} finished ${counted} that reached this age went past ${target}`;
+};
+
+const sleRiskRow = (
+  entry: SleRiskView,
+  sle: ServiceLevelExpectation | undefined,
+  terms: Terms,
+  inProgress: readonly InProgressItem[] | undefined,
+): readonly string[] => {
+  const risk =
+    entry.finishedItemsThatWentOnToMiss === null
+      ? ""
+      : `${Math.round(entry.risk)}%`;
+  const evidence = sleRiskEvidence(entry, sle, terms);
+  if (inProgress === undefined) {
+    return [entry.referenceId, risk, evidence];
+  }
+  const item = inProgress.find(
+    (candidate) => candidate.referenceId === entry.referenceId,
+  );
+  return [
+    entry.referenceId,
+    item?.name ?? ABSENT,
+    daysOrAbsent(item?.workItemAge),
+    risk,
+    evidence,
+  ];
+};
+
+const sleRiskSentence = (
+  entries: readonly SleRiskView[],
+  wording: AnswerWording,
+  sle: ServiceLevelExpectation | undefined,
+): string => {
+  const { terms } = wording;
+  const counted = countedOf("team", terms);
+  if (entries.length === 0) {
+    return sle === undefined
+      ? `${wording.name} has no ${terms.sle}, so there is no ${terms.sle} Risk.`
+      : `No ${counted.many} are in progress.`;
+  }
+  const atRisk = entries.filter((entry) =>
+    isAtRiskOfMissingTheSle(entry.risk),
+  ).length;
+  const noun = entries.length === 1 ? counted.one : counted.many;
+  const verb = atRisk === 1 || entries.length === 1 ? "is" : "are";
+  const target =
+    sle === undefined
+      ? ""
+      : ` (${Math.round(sle.probability)}% within ${describeDays(sle.days)})`;
+  return `${atRisk} of ${entries.length} ${noun} in progress ${verb} at risk of missing the ${terms.sle}${target}.`;
+};
+
+/**
+ * "2 of 8 Work Items in progress are at risk of missing the SLE (85% within 7 days).", then every Work Item
+ * highest risk first with its risk and the finished Work Items behind it. The names and ages come from
+ * today's Work Items in progress; without them each Work Item is still listed by its reference.
+ */
+export const describeSleRiskNow = (
+  entries: readonly SleRiskView[],
+  wording: AnswerWording,
+  sle: ServiceLevelExpectation | undefined,
+  inProgress: readonly InProgressItem[] | undefined,
+): SleRiskWording => ({
+  title: `${wording.terms.sle} Risk`,
+  sentence: sleRiskSentence(entries, wording, sle),
+  rows: [...entries]
+    .sort((left, right) => right.risk - left.risk)
+    .map((entry) => sleRiskRow(entry, sle, wording.terms, inProgress)),
+});

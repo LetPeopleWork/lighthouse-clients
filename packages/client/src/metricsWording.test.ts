@@ -16,6 +16,7 @@ import {
   describePredictabilityScoreDays,
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
+  describeSleRiskNow,
   describeThroughputDays,
   describeTimeInState,
   describeTimeInStateContributorDays,
@@ -44,6 +45,8 @@ import {
   readPredictabilityScore,
   readProcessBehaviorOverTime,
   readRunChart,
+  readServiceLevelExpectation,
+  readSleRisk,
   readSystemWipLimit,
   readThroughput,
   readTimeInStateBar,
@@ -1709,5 +1712,171 @@ describe("what a WIP answer says when there is less to say", () => {
     expect(
       readInProgressItems([{ isBlocked: "yes" }], "2026-10-06"),
     ).toBeNull();
+  });
+});
+
+describe("SLE Risk, read and said", () => {
+  const GRAVITY = { terms: SEEDED_TERMS, name: "Gravity" };
+  const SLE = { probability: 85, days: 7 };
+  const risk = (
+    referenceId: string,
+    percent: number,
+    finished: number,
+    missed: number | null,
+  ) => ({
+    referenceId,
+    risk: percent,
+    finishedItemsStillOpenAtThisAge: finished,
+    finishedItemsThatWentOnToMiss: missed,
+  });
+
+  it("reads every entry as Lighthouse sent it, a past-SLE miss count of null included", () => {
+    const entries = [risk("GR-1", 55, 11, 6), risk("GR-2", 100, 0, null)];
+
+    expect(readSleRisk(entries)).toEqual(entries);
+    expect(readSleRisk([])).toEqual([]);
+    expect(readSleRisk({ entries })).toBeNull();
+    expect(
+      readSleRisk([{ ...risk("GR-1", 55, 11, 6), risk: "55" }]),
+    ).toBeNull();
+    expect(
+      readSleRisk([{ ...risk("GR-1", 55, 11, 6), referenceId: undefined }]),
+    ).toBeNull();
+  });
+
+  it("reads the Team's SLE only when both its numbers are set", () => {
+    const team = (range: unknown, probability: unknown) => ({
+      serviceLevelExpectationRange: range,
+      serviceLevelExpectationProbability: probability,
+    });
+
+    expect(readServiceLevelExpectation(team(7, 85))).toEqual(SLE);
+    expect(readServiceLevelExpectation(team(0, 0))).toBeUndefined();
+    expect(readServiceLevelExpectation(team(7, 0))).toBeUndefined();
+    expect(readServiceLevelExpectation(team(0, 85))).toBeUndefined();
+    expect(readServiceLevelExpectation(team("7", 85))).toBeUndefined();
+    expect(readServiceLevelExpectation(null)).toBeUndefined();
+  });
+
+  it("lists every Work Item highest risk first, with its name, age, risk and the finished Work Items behind it", () => {
+    const view = describeSleRiskNow(
+      [
+        risk("GR-63", 55, 11, 6),
+        risk("GR-58", 100, 11, null),
+        risk("GR-64", 30, 1, 1),
+      ],
+      GRAVITY,
+      SLE,
+      [
+        {
+          isBlocked: false,
+          referenceId: "GR-58",
+          name: "Fleet map tiles",
+          workItemAge: 9,
+        },
+        {
+          isBlocked: false,
+          referenceId: "GR-63",
+          name: "Alert digest email",
+          workItemAge: 1,
+        },
+      ],
+    );
+
+    expect(view).toEqual({
+      title: "SLE Risk",
+      sentence:
+        "1 of 3 Work Items in progress is at risk of missing the SLE (85% within 7 days).",
+      rows: [
+        ["GR-58", "Fleet map tiles", "9 days", "", "past the SLE"],
+        [
+          "GR-63",
+          "Alert digest email",
+          "1 day",
+          "55%",
+          "6 of 11 finished Work Items that reached this age went past 7 days",
+        ],
+        [
+          "GR-64",
+          "—",
+          "—",
+          "30%",
+          "1 of 1 finished Work Item that reached this age went past 7 days",
+        ],
+      ],
+    });
+  });
+
+  it("keeps every risk by its reference when the Work Items in progress could not be read", () => {
+    const view = describeSleRiskNow(
+      [risk("GR-63", 55, 11, 6), risk("GR-65", 12, 0, 0)],
+      GRAVITY,
+      SLE,
+      undefined,
+    );
+
+    expect(view.rows).toEqual([
+      [
+        "GR-63",
+        "55%",
+        "6 of 11 finished Work Items that reached this age went past 7 days",
+      ],
+      ["GR-65", "12%", "no finished Work Item reached this age"],
+    ]);
+  });
+
+  it("counts from seventy, and says a single Work Item in the singular", () => {
+    const sentenceOf = (percents: readonly number[]) =>
+      describeSleRiskNow(
+        percents.map((percent, index) => risk(`GR-${index}`, percent, 10, 5)),
+        GRAVITY,
+        SLE,
+        undefined,
+      ).sentence;
+
+    expect(sentenceOf([70, 70, 69])).toBe(
+      "2 of 3 Work Items in progress are at risk of missing the SLE (85% within 7 days).",
+    );
+    expect(sentenceOf([69])).toBe(
+      "0 of 1 Work Item in progress is at risk of missing the SLE (85% within 7 days).",
+    );
+  });
+
+  it("says why there is nothing to list, in the instance's own words", () => {
+    const renamed = {
+      name: "Voyager",
+      terms: {
+        ...SEEDED_TERMS,
+        sle: "PRM",
+        workItems: "Tickets",
+        workItem: "Ticket",
+      },
+    };
+
+    expect(describeSleRiskNow([], renamed, undefined, []).sentence).toBe(
+      "Voyager has no PRM, so there is no PRM Risk.",
+    );
+    expect(describeSleRiskNow([], renamed, SLE, []).sentence).toBe(
+      "No Tickets are in progress.",
+    );
+    expect(describeSleRiskNow([], renamed, SLE, []).title).toBe("PRM Risk");
+    expect(
+      describeSleRiskNow(
+        [risk("GR-1", 80, 4, 3)],
+        renamed,
+        undefined,
+        undefined,
+      ),
+    ).toEqual({
+      title: "PRM Risk",
+      sentence: "1 of 1 Ticket in progress is at risk of missing the PRM.",
+      rows: [
+        [
+          "GR-1",
+          "80%",
+          "3 of 4 finished Tickets that reached this age went past the PRM",
+        ],
+      ],
+    });
   });
 });

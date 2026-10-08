@@ -80,8 +80,7 @@ const sleRiskOfGravity = (format = "--pretty") => [
 
 describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () => {
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("names how many are at risk, then every Work Item highest risk first", async () => {
+  it("names how many are at risk, then every Work Item highest risk first", async () => {
     const lighthouse = await gravitysLighthouse();
 
     const run = await priyaRuns(lighthouse, sleRiskOfGravity());
@@ -101,8 +100,7 @@ describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () 
   });
 
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("shows each Work Item's age and risk with the finished Work Items behind it, or that it is past the SLE", async () => {
+  it("shows each Work Item's age and risk with the finished Work Items behind it, or that it is past the SLE", async () => {
     const lighthouse = await gravitysLighthouse();
 
     const run = await priyaRuns(lighthouse, sleRiskOfGravity());
@@ -132,8 +130,7 @@ describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () 
 
   // @error @real-io @contract-shape:pure-function
   // At risk starts at 70%, the line Lighthouse's own widget draws.
-  // Pending until lh reads SLE Risk.
-  it.skip("counts a Work Item at 70% as at risk and one at 69% as not", async () => {
+  it("counts a Work Item at 70% as at risk and one at 69% as not", async () => {
     const lighthouse = await gravitysLighthouse({
       "GET /teams/3/metrics/sleRisk": {
         status: 200,
@@ -149,8 +146,7 @@ describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () 
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("says it in the instance's own words", async () => {
+  it("says it in the instance's own words", async () => {
     const lighthouse = await gravitysLighthouse({
       "GET /terminology/all": {
         status: 200,
@@ -169,8 +165,7 @@ describe("Priya sees which Work Items are at risk of missing Gravity's SLE", () 
 
 describe("when there is no SLE Risk to show", () => {
   // @error @real-io @contract-shape:bounded-change
-  // Pending until lh reads SLE Risk.
-  it.skip("tells a Team without an SLE that it has no SLE Risk", async () => {
+  it("tells a Team without an SLE that it has no SLE Risk", async () => {
     const lighthouse = await aFakeLighthouse({
       replies: {
         "GET /teams/6": { status: 200, body: voyager() },
@@ -236,8 +231,7 @@ describe("when there is no SLE Risk to show", () => {
 
   // @error @real-io @contract-shape:bounded-change
   // The names and ages come from a second read that only words the view; without it the numbers stand.
-  // Pending until lh reads SLE Risk.
-  it.skip("keeps every risk when the Work Items' names cannot be read", async () => {
+  it("keeps every risk when the Work Items' names cannot be read", async () => {
     const lighthouse = await gravitysLighthouse({
       "GET /teams/3/metrics/wip": { status: 500 },
     });

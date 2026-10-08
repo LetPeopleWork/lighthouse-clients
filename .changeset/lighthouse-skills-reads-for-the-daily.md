@@ -15,3 +15,9 @@ server, never read as none Blocked), or that no Work Items are in progress.
 `lh metrics team --metrics sleRisk` reads which Work Items in progress are likely to miss the Team's SLE, with
 Lighthouse's own numbers handed over unchanged for `--json` and `--toon`. It is read only when named, needs a
 Lighthouse newer than v26.9.19.10, and a Portfolio is told SLE Risk is for Teams.
+
+With `--pretty` it says how many Work Items in progress are at risk of missing the SLE, counting from the
+same 70% the web's SLE Risk widget counts from, then lists every Work Item highest risk first with its name,
+age, risk and the finished Work Items behind it ("6 of 11 finished Work Items that reached this age went past
+7 days"), or that it is already past the SLE. A Team without an SLE is told it has no SLE Risk, and when the
+names cannot be read every risk is still listed by its reference.

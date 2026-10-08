@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { gravitysSleRisk } from "../../../test-support/dailyFlowAnswers";
 import {
   aBlackoutRule,
   aConnection,
@@ -198,6 +199,7 @@ const everyRead = () => ({
   runManualForecast: ok(gravitysForecast()),
   runBacktest: ok(gravitysBacktest()),
   ...gravitysMetrics(),
+  getTeamSleRisk: ok(gravitysSleRisk()),
   ...oceanExplorersMetrics(),
   listTeams: ok(sevenTeams()),
   listPortfolios: ok(fivePortfolios()),
@@ -293,6 +295,7 @@ const DELIVERED_SLICES: ReadonlySet<string> = new Set([
   "07",
   "08",
   "09",
+  "sle-risk",
 ]);
 const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
   DELIVERED_SLICES.has(form.slice),

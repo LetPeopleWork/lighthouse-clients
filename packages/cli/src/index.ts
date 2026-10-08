@@ -15,7 +15,9 @@ import {
   readAnswerWording,
   readCycleTimeDefinitionName,
   readFeatureWording,
+  readInProgressItems,
   readPortfolio,
+  readServiceLevelExpectation,
   readSystemWipLimit,
   readTerms,
   summariseDeliveryMetricsHistory,
@@ -2236,7 +2238,20 @@ const runMetricsGroup = async (
   ).catch(() => ({ ok: false as const, error: null }));
   const asked =
     metricsFilterOrError === null ? null : [...metricsFilterOrError];
-  const [payload, wording, ownerRead, cycleTimeDefinitionName] =
+  // SLE Risk names only a reference; today's Work Items in progress give each its name and age, and
+  // without them every risk is still shown.
+  const inProgress =
+    action === "team" && asked?.includes("sleRisk") === true
+      ? client
+          .getTeamWip(entityId, range.endDate)
+          .then((read) =>
+            read.ok
+              ? readInProgressItems(read.value, range.endDate)?.items
+              : undefined,
+          )
+          .catch(() => undefined)
+      : Promise.resolve(undefined);
+  const [payload, wording, ownerRead, cycleTimeDefinitionName, inProgressNow] =
     await Promise.all([
       buildPayload(),
       readAnswerWording(client, {
@@ -2252,10 +2267,10 @@ const runMetricsGroup = async (
         asked,
         definitionIdOrError.definitionId,
       ),
+      inProgress,
     ]);
-  const systemWipLimit = readSystemWipLimit(
-    ownerRead.ok ? ownerRead.value : null,
-  );
+  const ownerValue = ownerRead.ok ? ownerRead.value : null;
+  const systemWipLimit = readSystemWipLimit(ownerValue);
   return mapApiResultToCliResult(
     { ok: true, value: payload },
     outputFormat,
@@ -2271,6 +2286,8 @@ const runMetricsGroup = async (
             systemWipLimit,
             cycleTimeDefinitionName,
             pickedItemCount: itemIdsOrError?.length,
+            serviceLevelExpectation: readServiceLevelExpectation(ownerValue),
+            inProgress: inProgressNow,
           }),
   );
 };

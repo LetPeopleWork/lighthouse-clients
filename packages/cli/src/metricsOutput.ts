@@ -17,6 +17,7 @@ import {
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
   describeRefusedMetric,
+  describeSleRiskNow,
   describeThroughputDays,
   describeTimeInState,
   describeTimeInStateDays,
@@ -28,6 +29,7 @@ import {
   describeWhatWipLeavesUnsaid,
   describeWipDays,
   describeWorkItemAgeDays,
+  type InProgressItem,
   isMetricRefusal,
   type MetricAnswer,
   type MetricDays,
@@ -46,11 +48,13 @@ import {
   readPercentilesOverTime,
   readPredictabilityScore,
   readProcessBehaviorOverTime,
+  readSleRisk,
   readThroughput,
   readTotalWorkItemAge,
   readWip,
   readWorkItemAge,
   readWorkItemAgePercentiles,
+  type ServiceLevelExpectation,
   timeInStateItemCount,
 } from "@letpeoplework/lighthouse-client";
 import { toTableLines } from "./table";
@@ -268,6 +272,8 @@ type DayFacts = {
   readonly systemWipLimit: number | undefined;
   readonly cycleTimeDefinitionName: string | undefined;
   readonly pickedItemCount: number | undefined;
+  readonly serviceLevelExpectation: ServiceLevelExpectation | undefined;
+  readonly inProgress: readonly InProgressItem[] | undefined;
 };
 
 // A metric's day view, or null when a section it needs is refused or in a shape this version cannot read.
@@ -392,6 +398,31 @@ const timeInStateDays = overTheRange(
   },
 );
 
+// The title, then the sentence and one line per Work Item beneath it, as the SLE Risk widget lists them.
+const sleRiskDays: DayView = {
+  asOf: true,
+  render: ({ subject, wording, serviceLevelExpectation, inProgress }) => {
+    const entries = sectionOf(subject, "sleRisk", readSleRisk);
+    if (entries === null) {
+      return null;
+    }
+    const view = describeSleRiskNow(
+      entries,
+      wording,
+      serviceLevelExpectation,
+      inProgress,
+    );
+    const body = [
+      view.sentence,
+      ...(view.rows.length === 0 ? [] : toTableLines(view.rows)),
+    ];
+    return {
+      sentence: [view.title, ...body.map((line) => `  ${line}`)].join("\n"),
+      tables: [],
+    };
+  },
+};
+
 // One entry per metric name `--metrics` accepts; a name without one prints the generic view.
 const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
   throughput: dayViewOf(
@@ -434,6 +465,7 @@ const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
     (view, _subject, wording) =>
       describeProcessBehaviorOverTimeDays(view, wording.terms),
   ),
+  sleRisk: sleRiskDays,
 };
 
 const tableLines = (days: MetricDays): string[] => [
@@ -463,6 +495,8 @@ export const renderMetricDays = (
     readonly systemWipLimit?: number;
     readonly cycleTimeDefinitionName?: string;
     readonly pickedItemCount?: number;
+    readonly serviceLevelExpectation?: ServiceLevelExpectation;
+    readonly inProgress?: readonly InProgressItem[];
   } = {},
 ): string | null => {
   const subject = readMetricsSubject(value);
@@ -475,6 +509,8 @@ export const renderMetricDays = (
     systemWipLimit: owner.systemWipLimit,
     cycleTimeDefinitionName: owner.cycleTimeDefinitionName,
     pickedItemCount: owner.pickedItemCount,
+    serviceLevelExpectation: owner.serviceLevelExpectation,
+    inProgress: owner.inProgress,
   };
   const views: MetricDayView[] = [];
   let asOf = true;
