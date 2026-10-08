@@ -245,6 +245,18 @@ const usageDataStoreOf = (connection: CliConnection, env: SessionEnv) =>
     lighthouseOf(connection),
   );
 
+const usageDataFor = (
+  connection: CliConnection,
+  env: SessionEnv,
+  now: () => Date,
+) => ({
+  lighthouse: createSessionClient(connection, env),
+  store: usageDataStoreOf(connection, env),
+  source: "Cli" as const,
+  env,
+  now,
+});
+
 const unreadableUsageDataFile = (env: SessionEnv): UnreadableUsageDataFile => ({
   unreadableFile: getUsageDataStorePath(env),
 });
@@ -272,11 +284,9 @@ const turnUsageDataOff = async (
   env: SessionEnv,
   now: () => Date,
 ): Promise<UsageDataTurnedOff | UnreadableUsageDataFile> => {
-  const withdrawal = await withdrawUsageData({
-    lighthouse: createSessionClient(connection, env),
-    store: usageDataStoreOf(connection, env),
-    now,
-  });
+  const withdrawal = await withdrawUsageData(
+    usageDataFor(connection, env, now),
+  );
   if (withdrawal === "unreadable") {
     return unreadableUsageDataFile(env);
   }
@@ -291,13 +301,7 @@ const turnUsageDataOn = async (
   env: SessionEnv,
   now: () => Date,
 ): Promise<UsageDataTurnedOn | UnreadableUsageDataFile> => {
-  const outcome = await switchUsageDataOn({
-    lighthouse: createSessionClient(connection, env),
-    store: usageDataStoreOf(connection, env),
-    source: "Cli",
-    env,
-    now,
-  });
+  const outcome = await switchUsageDataOn(usageDataFor(connection, env, now));
   return outcome === "unreadable"
     ? unreadableUsageDataFile(env)
     : { lighthouse: lighthouseNamedOf(connection), outcome };
@@ -363,13 +367,7 @@ const settleUsageData = async (
   }
   const { terminal, env, now } = dependencies;
   const outcome = await settleUsageDataStep(
-    {
-      lighthouse: createSessionClient(connection, env),
-      store: usageDataStoreOf(connection, env),
-      source: "Cli",
-      env,
-      now,
-    },
+    usageDataFor(connection, env, now),
     {
       ...usage,
       ask: isAPersonAtTheTerminal(terminal, env)
