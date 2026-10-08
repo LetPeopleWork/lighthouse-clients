@@ -1811,7 +1811,7 @@ const summariseCurrentWip =
     facts: unknown,
     known: {
       readonly wording: AnswerWording;
-      readonly systemWipLimit: number | undefined;
+      readonly systemWipLimit: number | undefined | null;
     },
   ): string | null => {
     const now = readInProgressItems(facts, today);
@@ -1823,7 +1823,12 @@ const summariseCurrentWip =
     return linesOf(
       describeAsOfHeading({ endDate: today }, known.wording),
       sentenceOf(
-        describeInProgressNow(now, "team", terms, known.systemWipLimit),
+        describeInProgressNow(
+          now,
+          "team",
+          terms,
+          known.systemWipLimit ?? undefined,
+        ),
       ),
       blocked === null ? null : sentenceOf(blocked),
       ...describeWhatWipLeavesUnsaid(now, "team", terms, known.systemWipLimit),
@@ -1837,22 +1842,28 @@ const readTeamForSummary = async (client: McpRuntimeClient, teamId: number) => {
     readAnswerWording(client, { term: "team", id: teamId, read: () => team }),
     readForSummary(() => team),
   ]);
-  return { wording, team: answeredValue(teamRead) };
+  return { wording, team: teamRead?.ok === true ? teamRead : null };
 };
+
+// A Team that could not be read may well have the setting, so the summary leaves it unsaid rather than missing.
+const teamSettingOf = <T>(
+  team: { readonly value: unknown } | null,
+  read: (value: unknown) => T | undefined,
+): T | undefined | null => (team === null ? null : read(team.value));
 
 const readCurrentWipContext = async (
   client: McpRuntimeClient,
   teamId: number,
 ) => {
   const { wording, team } = await readTeamForSummary(client, teamId);
-  return { wording, systemWipLimit: readSystemWipLimit(team) };
+  return { wording, systemWipLimit: teamSettingOf(team, readSystemWipLimit) };
 };
 
 // lh's words and order, one Work Item per line; lining the cells up in columns is left to the terminal view.
 const sleRiskLines = (view: SleRiskWording): string =>
   [
     view.title,
-    view.sentence,
+    ...(view.sentence === null ? [] : [view.sentence]),
     ...view.rows.map((row) => row.filter((cell) => cell !== "").join(" · ")),
   ].join("\n");
 
@@ -1862,7 +1873,10 @@ const summariseSleRisk =
     facts: unknown,
     known: {
       readonly wording: AnswerWording;
-      readonly serviceLevelExpectation: ServiceLevelExpectation | undefined;
+      readonly serviceLevelExpectation:
+        | ServiceLevelExpectation
+        | undefined
+        | null;
       readonly inProgress: readonly InProgressItem[] | undefined;
     },
   ): string | null => {
@@ -1894,7 +1908,7 @@ const readSleRiskContext = async (
   ]);
   return {
     wording,
-    serviceLevelExpectation: readServiceLevelExpectation(team),
+    serviceLevelExpectation: teamSettingOf(team, readServiceLevelExpectation),
     inProgress: readInProgressItems(answeredValue(wipRead), today)?.items,
   };
 };

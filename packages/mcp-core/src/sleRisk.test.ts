@@ -100,6 +100,19 @@ describe("when there is no risk to read", () => {
   });
 
   // @error @contract-shape:bounded-change
+  // A Team that could not be read may well have an SLE, so its absence is not claimed.
+  it("says nothing about the SLE when the Team cannot be read", async () => {
+    const result = await gravitysDaily({
+      getTeam: refused("dependency-failure", "Team timed out"),
+      getTeamSleRisk: ok([]),
+    }).call(TOOL, { id: 3 });
+
+    expect(result.isError).toBe(false);
+    expect(summaryOf(result)).toContain("SLE Risk");
+    expect(summaryOf(result)).not.toContain("has no SLE");
+  });
+
+  // @error @contract-shape:bounded-change
   it("says nothing is in progress when a Team with an SLE has nothing in progress", async () => {
     const result = await gravitysDaily({
       getTeamSleRisk: ok([]),

@@ -168,6 +168,18 @@ describe("when Lighthouse cannot answer", () => {
     expect(result.isError).toBe(false);
     expect(factsOf(result)).toEqual(twoBlocked());
   });
+
+  // @error @contract-shape:bounded-change
+  // A Team that could not be read may well have a limit, so its absence is not claimed.
+  it("says nothing about the System WIP Limit when the Team cannot be read", async () => {
+    const result = await anAssistantOn({
+      getTeam: refused("dependency-failure", "Team timed out"),
+      getTeamWip: ok(twoBlocked()),
+    }).call(TOOL, { id: 3 });
+
+    expect(summaryOf(result)).toContain("Work Items in Progress: 8");
+    expect(summaryOf(result)).not.toContain(NO_WIP_LIMIT);
+  });
 });
 
 describe("the tools that count Blocked Work Items per day point to this read", () => {
