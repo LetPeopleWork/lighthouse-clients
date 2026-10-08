@@ -11,8 +11,9 @@ with one warning naming `on` and `off` as the values it takes. At start-up the s
 
 Switched on, the server reports what its callers do, as the web counts it: refreshing a Team, refreshing a
 Portfolio and running a manual forecast, each labelled as coming from MCP. Nobody is asked, and no
-caller gets a different answer for it. The server requests one grant for the whole process, on the
-first thing worth counting, and keeps it in memory only, never on disk: a restart requests a fresh one.
+caller waits for it or gets a different answer for it. The server requests one grant for the whole
+process, on the first thing worth counting, and keeps it in memory only, never on disk: a restart
+requests a fresh one.
 `DO_NOT_TRACK` overrides `on`: the server says `Usage data: off` and sends nothing.
 
 It never sends a credential with usage data: neither `LIGHTHOUSE_API_KEY` nor a caller's own API key

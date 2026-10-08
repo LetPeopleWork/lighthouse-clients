@@ -384,6 +384,11 @@ describe("what the shared server never does", () => {
       LIGHTHOUSE_USAGE_DATA: "on",
     });
     await shared.call(REFRESH_GRAVITY.tool, REFRESH_GRAVITY.args);
+    // The call returns before the server looks at Lighthouse, so the veto is lifted only once it has looked.
+    await vi.waitFor(
+      () => expect(lighthouse.stateReads().length).toBeGreaterThan(0),
+      { timeout: 3000 },
+    );
     const readsAfterTheFirstCall = lighthouse.stateReads().length;
 
     lighthouse.changeUsageData({ administratorDisabled: false });

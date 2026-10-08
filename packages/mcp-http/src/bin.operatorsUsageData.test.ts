@@ -103,6 +103,8 @@ describe("operatorsUsageDataPort", () => {
       } as const;
 
       await port(aRefresh);
+      // The port returns before its attempt settles; the next call must find the refusal already settled.
+      await aMoment(20);
       clock = new Date(clock.getTime() + minutesLater * 60_000);
       await port(aRefresh);
       await aMoment(20);
