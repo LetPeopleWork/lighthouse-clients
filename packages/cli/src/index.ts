@@ -9,6 +9,7 @@ import {
   describeReachable,
   describeRefreshConfirmation,
   describeVersion,
+  type InProgressItem,
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
@@ -2220,6 +2221,24 @@ const readCycleTimeDefinitionNameOf = async (
     : undefined;
 };
 
+// SLE Risk names only a reference; the Team's Work Items in progress on the day give each its name and age,
+// and without them every risk is still shown.
+const readInProgressForSleRiskOf = async (
+  client: CliClientOperations,
+  action: "team" | "portfolio",
+  teamId: number,
+  asked: readonly string[] | null,
+  day: string,
+): Promise<readonly InProgressItem[] | undefined> => {
+  if (action !== "team" || !asked?.includes("sleRisk")) {
+    return undefined;
+  }
+  const read = await client
+    .getTeamWip(teamId, day)
+    .catch(() => ({ ok: false as const, error: null }));
+  return read.ok ? readInProgressItems(read.value, day)?.items : undefined;
+};
+
 const runMetricsGroup = async (
   action: string | undefined,
   args: readonly string[],
@@ -2297,26 +2316,13 @@ const runMetricsGroup = async (
     );
   }
 
-  // One read of the Team or Portfolio gives both the heading's name and the System WIP Limit.
+  // One read of the Team or Portfolio gives the heading's name, the System WIP Limit and the SLE.
   const owner = (
     action === "team" ? client.getTeam(entityId) : client.getPortfolio(entityId)
   ).catch(() => ({ ok: false as const, error: null }));
   const asked =
     metricsFilterOrError === null ? null : [...metricsFilterOrError];
-  // SLE Risk names only a reference; today's Work Items in progress give each its name and age, and
-  // without them every risk is still shown.
-  const inProgress =
-    action === "team" && asked?.includes("sleRisk") === true
-      ? client
-          .getTeamWip(entityId, range.endDate)
-          .then((read) =>
-            read.ok
-              ? readInProgressItems(read.value, range.endDate)?.items
-              : undefined,
-          )
-          .catch(() => undefined)
-      : Promise.resolve(undefined);
-  const [payload, wording, ownerRead, cycleTimeDefinitionName, inProgressNow] =
+  const [payload, wording, ownerRead, cycleTimeDefinitionName, inProgress] =
     await Promise.all([
       buildPayload(),
       readAnswerWording(client, {
@@ -2332,7 +2338,13 @@ const runMetricsGroup = async (
         asked,
         definitionIdOrError.definitionId,
       ),
-      inProgress,
+      readInProgressForSleRiskOf(
+        client,
+        action,
+        entityId,
+        asked,
+        range.endDate,
+      ),
     ]);
   const ownerValue = ownerRead.ok ? ownerRead.value : null;
   const systemWipLimit = readSystemWipLimit(ownerValue);
@@ -2352,7 +2364,7 @@ const runMetricsGroup = async (
             cycleTimeDefinitionName,
             pickedItemCount: itemIdsOrError?.length,
             serviceLevelExpectation: readServiceLevelExpectation(ownerValue),
-            inProgress: inProgressNow,
+            inProgress,
           }),
   );
 };
