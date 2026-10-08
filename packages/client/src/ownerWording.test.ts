@@ -15,7 +15,7 @@ import {
   readPortfolio,
   readTeam,
 } from "./ownerWording";
-import { resolveTerms, SEEDED_TERMS } from "./terminology";
+import { SEEDED_TERMS, type Terms } from "./terminology";
 
 const gravity = {
   id: 3,
@@ -69,12 +69,13 @@ describe("readOwnerList", () => {
 });
 
 describe("the list's words", () => {
-  const renamed = resolveTerms([
-    { key: "teams", value: "Squads" },
-    { key: "portfolios", value: "Programmes" },
-    { key: "feature", value: "Outcome" },
-    { key: "features", value: "Outcomes" },
-  ] as never);
+  const renamed: Terms = {
+    ...SEEDED_TERMS,
+    teams: "Squads",
+    portfolios: "Programmes",
+    feature: "Outcome",
+    features: "Outcomes",
+  };
 
   it("titles the list with the instance's word for Teams or Portfolios", () => {
     expect(describeOwnerListTitle("team", SEEDED_TERMS)).toBe(
@@ -349,13 +350,14 @@ describe("describePortfolioSummary", () => {
   });
 
   it("speaks the instance's words", () => {
-    const terms = resolveTerms([
-      { key: "feature", value: "Epic" },
-      { key: "features", value: "Epics" },
-      { key: "team", value: "Squad" },
-      { key: "teams", value: "Squads" },
-      { key: "wip", value: "Load" },
-    ]);
+    const terms: Terms = {
+      ...SEEDED_TERMS,
+      feature: "Epic",
+      features: "Epics",
+      team: "Squad",
+      teams: "Squads",
+      wip: "Load",
+    };
     expect(linesFor({}, terms)).toEqual(
       expect.arrayContaining([
         "System Load Limit: 5 Epics",

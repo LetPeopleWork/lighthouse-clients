@@ -14,7 +14,7 @@ import {
   readDeliveryList,
   readDeliveryMetricsHistory,
 } from "./deliveryWording";
-import { resolveTerms, SEEDED_TERMS } from "./terminology";
+import { SEEDED_TERMS, type Terms } from "./terminology";
 
 const lunarProbe = {
   id: 31,
@@ -85,14 +85,15 @@ describe("readDeliveryList", () => {
 });
 
 describe("the Deliveries list's words", () => {
-  const renamed = resolveTerms([
-    { key: "delivery", defaultValue: "Delivery", value: "Release" },
-    { key: "deliveries", defaultValue: "Deliveries", value: "Releases" },
-    { key: "portfolio", defaultValue: "Portfolio", value: "Program" },
-    { key: "features", defaultValue: "Features", value: "Outcomes" },
-    { key: "workItem", defaultValue: "Work Item", value: "Ticket" },
-    { key: "workItems", defaultValue: "Work Items", value: "Tickets" },
-  ] as never);
+  const renamed: Terms = {
+    ...SEEDED_TERMS,
+    delivery: "Release",
+    deliveries: "Releases",
+    portfolio: "Program",
+    features: "Outcomes",
+    workItem: "Ticket",
+    workItems: "Tickets",
+  };
 
   it("heads the list with the Portfolio's name, or its id when the name could not be read", () => {
     expect(
@@ -152,10 +153,11 @@ describe("the Deliveries list's words", () => {
 });
 
 describe("a Delivery's recorded days", () => {
-  const renamed = resolveTerms([
-    { key: "delivery", defaultValue: "Delivery", value: "Release" },
-    { key: "feature", defaultValue: "Feature", value: "Outcome" },
-  ] as never);
+  const renamed: Terms = {
+    ...SEEDED_TERMS,
+    delivery: "Release",
+    feature: "Outcome",
+  };
   const aDay = (date: string, doneWork: number) => ({
     date,
     targetDateAtSnapshot: null,

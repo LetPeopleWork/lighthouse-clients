@@ -12,7 +12,7 @@ import {
   readWorkTrackingConnection,
   readWorkTrackingConnections,
 } from "./housekeepingWording";
-import { resolveTerms, SEEDED_TERMS } from "./terminology";
+import { SEEDED_TERMS, type Terms } from "./terminology";
 
 const focusFriday = {
   id: 5,
@@ -193,10 +193,11 @@ describe("readWorkTrackingConnections", () => {
 });
 
 describe("describeWorkTrackingSystemCount", () => {
-  const renamed = resolveTerms([
-    { key: "workTrackingSystem", value: "Tracker" },
-    { key: "workTrackingSystems", value: "Trackers" },
-  ]);
+  const renamed: Terms = {
+    ...SEEDED_TERMS,
+    workTrackingSystem: "Tracker",
+    workTrackingSystems: "Trackers",
+  };
 
   it.each([
     { count: 0, terms: SEEDED_TERMS, says: "No Work Tracking Systems" },

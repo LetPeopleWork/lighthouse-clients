@@ -356,7 +356,7 @@ describe("the metrics headline wording", () => {
   });
 
   it("leaves out a System WIP Limit that is not set, and counts Features for a Portfolio", () => {
-    const now = { count: 4, items: [] };
+    const now = { asOfDate: "2026-10-06", count: 4, items: [] };
 
     expect(describeInProgressNow(now, "team", SEEDED_TERMS, undefined)).toEqual(
       { label: "Work Items in Progress", value: "4", detail: "" },

@@ -11,7 +11,7 @@ import {
   readFeatureList,
   readFeatureWorkItems,
 } from "./featureWording";
-import { resolveTerms, SEEDED_TERMS } from "./terminology";
+import { SEEDED_TERMS, type Terms } from "./terminology";
 
 const chances = (days: readonly string[]) =>
   [50, 70, 85, 95].map((probability, index) => ({
@@ -76,10 +76,11 @@ describe("readFeatureList", () => {
 });
 
 describe("describeFeatureListCount", () => {
-  const renamed = resolveTerms([
-    { key: "feature", value: "Outcome" },
-    { key: "features", value: "Outcomes" },
-  ]);
+  const renamed: Terms = {
+    ...SEEDED_TERMS,
+    feature: "Outcome",
+    features: "Outcomes",
+  };
 
   it.each([
     { count: 0, terms: SEEDED_TERMS, says: "No Features" },
@@ -192,9 +193,7 @@ describe("describeFeatureCompletion", () => {
 describe("the Feature list's row", () => {
   it("names its columns in the instance's words", () => {
     expect(
-      describeFeatureListHeadings(
-        resolveTerms([{ key: "feature", value: "Outcome" }]),
-      ),
+      describeFeatureListHeadings({ ...SEEDED_TERMS, feature: "Outcome" }),
     ).toEqual([
       "Outcome",
       "Name",
