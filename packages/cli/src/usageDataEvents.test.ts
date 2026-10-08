@@ -19,12 +19,11 @@ import {
   NO_TERMINAL,
 } from "../test-support/lhSession";
 
-// Story 6193, slice 03 (US-04). With usage data on, lh reports the web's own event for each action the web
+// With usage data on, lh reports the web's own event for each action the web
 // reports, after Lighthouse answered it, from the answer it already holds, with source Cli; refused,
 // failed and unmapped commands report nothing, and nothing lh prints changes. A vote's moment and the
 // Refinement day's verdict follow the web's own rules, read from Lighthouse's answer, never from a clock.
-// Driving port: `runCliSession`, with a yes kept an hour ago and no terminal (so nobody is asked). Every
-// scenario is pending until DELIVER slice 03.
+// Driving port: `runCliSession`, with a yes kept an hour ago and no terminal (so nobody is asked).
 
 const LENAS_TOKEN = "lenas-usage-data-token-5c1d0e9a7b36";
 
@@ -347,8 +346,9 @@ describe("usage data changes nothing lh prints, and costs nothing when it is off
   const EVERY_FORMAT = ["--pretty", "--json", "--toon"];
 
   // @US-04 @driving_port @real-io @kpi @contract-shape:unbounded-preservation
-  // D10, per mapped command and format: the bytes and the exit code with usage data on are those with it off.
-  it.skip.each(
+  // Usage data must stay invisible: for every mapped command and format, what lh prints and its exit code
+  // with usage data on are exactly those with it off.
+  it.each(
     MAPPED.flatMap((args) =>
       EVERY_FORMAT.map(
         (format) => [args.slice(0, 2).join(" "), args, format] as const,
@@ -382,9 +382,7 @@ describe("usage data changes nothing lh prints, and costs nothing when it is off
   // @US-04 @driving_port @real-io @kpi @contract-shape:unbounded-preservation
   // With usage data off nothing extra is read and nothing is posted; with it on, the only extra requests are
   // usage data ones (the vote's moment and the verdict come from reads the command makes anyway).
-  it.skip.each(
-    MAPPED.map((args) => [args.slice(0, 2).join(" "), args] as const),
-  )(
+  it.each(MAPPED.map((args) => [args.slice(0, 2).join(" "), args] as const))(
     "lh %s reads from Lighthouse exactly what it reads with usage data off",
     async (_command, args) => {
       const offLighthouse = await aFakeLighthouse({

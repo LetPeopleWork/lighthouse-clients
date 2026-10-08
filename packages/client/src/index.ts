@@ -98,6 +98,11 @@ export type ConnectivityValidationResult =
       readonly endpoint?: ResolvedLighthouseEndpoint;
     };
 
+type ConnectivityFailure = Exclude<
+  ConnectivityValidationResult,
+  { readonly category: "success" }
+>;
+
 const SUPPORTED_DISCOVERY_CONTRACT_VERSION = 1;
 const STANDALONE_DISCOVERY_LOCKFILE_NAME = "standalone.lock.json";
 
@@ -288,9 +293,7 @@ const getResolvedEndpoint = (
   };
 };
 
-const getMisconfiguredResult = (
-  reason: string,
-): ConnectivityValidationResult => ({
+const getMisconfiguredResult = (reason: string): ConnectivityFailure => ({
   category: "misconfigured",
   reason,
 });
@@ -304,7 +307,7 @@ const resolveConnectionEndpoint = async (
     }
   | {
       readonly isValid: false;
-      readonly result: ConnectivityValidationResult;
+      readonly result: ConnectivityFailure;
     }
 > => {
   if (configuration.kind === "explicit") {
@@ -1684,15 +1687,45 @@ const getErrorResult = <TValue>(
 });
 
 const getErrorFromConnectivityResult = (
-  result: Exclude<
-    ConnectivityValidationResult,
-    { readonly category: "success" }
-  >,
+  result: ConnectivityFailure,
 ): LighthouseApiError => ({
   category: result.category,
   reason: result.reason,
   statusCode: result.statusCode,
 });
+
+type ApiBaseUrlLookup = (
+  configuration: LighthouseClientConfiguration,
+  fetchDependency: NonNullable<LighthouseClientDependencies["fetch"]>,
+  signal: AbortSignal | undefined,
+) => Promise<
+  | { readonly ok: true; readonly apiBaseUrl: string }
+  | { readonly ok: false; readonly error: LighthouseApiError }
+>;
+
+const apiBaseUrlAfterAProbe: ApiBaseUrlLookup = async (
+  configuration,
+  fetchDependency,
+  signal,
+) => {
+  const connectivityResult = await validateLighthouseConnectivity(
+    configuration.connection,
+    { fetch: fetchDependency },
+    getRequestInit(configuration.auth, { method: "GET", signal }),
+  );
+  return connectivityResult.category === "success"
+    ? { ok: true, apiBaseUrl: connectivityResult.endpoint.apiBaseUrl }
+    : { ok: false, error: getErrorFromConnectivityResult(connectivityResult) };
+};
+
+// Usage data must not cost Lighthouse a single request beyond its own: the call itself tells whether
+// Lighthouse is there, so the version probe every other call makes first is left out.
+const apiBaseUrlWithoutAProbe: ApiBaseUrlLookup = async (configuration) => {
+  const resolved = await resolveConnectionEndpoint(configuration.connection);
+  return resolved.isValid
+    ? { ok: true, apiBaseUrl: resolved.endpoint.apiBaseUrl }
+    : { ok: false, error: getErrorFromConnectivityResult(resolved.result) };
+};
 
 const toApiError = (
   statusCode: number,
@@ -1838,26 +1871,22 @@ const requestJson = async <TValue>(
   dependencies: LighthouseClientDependencies,
   route: string,
   requestOptions?: RequestOptions,
+  lookUpApiBaseUrl: ApiBaseUrlLookup = apiBaseUrlAfterAProbe,
 ): Promise<LighthouseApiResult<TValue>> => {
   const fetchDependency = getFetchDependency(dependencies);
-  const connectivityResult = await validateLighthouseConnectivity(
-    configuration.connection,
-    {
-      fetch: fetchDependency,
-    },
-    getRequestInit(configuration.auth, {
-      method: "GET",
-      signal: requestOptions?.signal,
-    }),
+  const apiBase = await lookUpApiBaseUrl(
+    configuration,
+    fetchDependency,
+    requestOptions?.signal,
   );
 
-  if (connectivityResult.category !== "success") {
-    return getErrorResult(getErrorFromConnectivityResult(connectivityResult));
+  if (!apiBase.ok) {
+    return getErrorResult(apiBase.error);
   }
 
   try {
     const response = await fetchDependency(
-      `${connectivityResult.endpoint.apiBaseUrl}${route}`,
+      `${apiBase.apiBaseUrl}${route}`,
       getRequestInit(configuration.auth, requestOptions),
     );
     if (!response.ok) {
@@ -1895,26 +1924,22 @@ const requestNoContent = async (
   requestOptions: RequestOptions & {
     readonly method: "POST" | "DELETE";
   },
+  lookUpApiBaseUrl: ApiBaseUrlLookup = apiBaseUrlAfterAProbe,
 ): Promise<LighthouseApiResult<undefined>> => {
   const fetchDependency = getFetchDependency(dependencies);
-  const connectivityResult = await validateLighthouseConnectivity(
-    configuration.connection,
-    {
-      fetch: fetchDependency,
-    },
-    getRequestInit(configuration.auth, {
-      method: "GET",
-      signal: requestOptions.signal,
-    }),
+  const apiBase = await lookUpApiBaseUrl(
+    configuration,
+    fetchDependency,
+    requestOptions.signal,
   );
 
-  if (connectivityResult.category !== "success") {
-    return getErrorResult(getErrorFromConnectivityResult(connectivityResult));
+  if (!apiBase.ok) {
+    return getErrorResult(apiBase.error);
   }
 
   try {
     const response = await fetchDependency(
-      `${connectivityResult.endpoint.apiBaseUrl}${route}`,
+      `${apiBase.apiBaseUrl}${route}`,
       getRequestInit(configuration.auth, requestOptions),
     );
     if (!response.ok) {
@@ -3128,6 +3153,7 @@ const usageDataCalls = (
         dependencies,
         "/v1/usagedata/state",
         usageDataRequest(options, { method: "GET" }),
+        apiBaseUrlWithoutAProbe,
       );
       if (!result.ok) {
         return result;
@@ -3149,6 +3175,7 @@ const usageDataCalls = (
           method: "POST",
           body: { decision: "granted" },
         }),
+        apiBaseUrlWithoutAProbe,
       );
       if (!result.ok) {
         return result;
@@ -3164,15 +3191,21 @@ const usageDataCalls = (
           });
     },
     revokeUsageData: async (options) =>
-      requestNoContent(anonymous, dependencies, "/v1/usagedata/consent", {
-        ...usageDataRequest(options, {}),
-        method: "DELETE",
-      }),
+      requestNoContent(
+        anonymous,
+        dependencies,
+        "/v1/usagedata/consent",
+        { ...usageDataRequest(options, {}), method: "DELETE" },
+        apiBaseUrlWithoutAProbe,
+      ),
     handInUsageData: async (batch, options) =>
-      requestNoContent(anonymous, dependencies, "/v1/usagedata/events", {
-        ...usageDataRequest(options, { body: batch }),
-        method: "POST",
-      }),
+      requestNoContent(
+        anonymous,
+        dependencies,
+        "/v1/usagedata/events",
+        { ...usageDataRequest(options, { body: batch }), method: "POST" },
+        apiBaseUrlWithoutAProbe,
+      ),
   };
 };
 
