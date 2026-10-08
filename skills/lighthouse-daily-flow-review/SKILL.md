@@ -30,7 +30,7 @@ Its companion is the general `lighthouse` skill. If no Lighthouse MCP tools are 
 
 With `lh`, steps 3 to 5 are one read: `lh metrics team --id <id> --metrics wip,sleRisk,processBehaviorChart --json`.
 
-Use the words each tool's `summary` uses for Work Items, Teams, WIP, Blocked and SLE. Every number in the answer comes from the reads; never work out a risk yourself. The only thing you count is how many days a Work Item has been Blocked, from `blockedSince` to today.
+Use the words each tool's `summary` uses for Work Items, Teams, WIP, Blocked and SLE. Every number in the answer comes from the reads; never work out a risk yourself. You count only three things: how many days a Work Item has been Blocked, from `blockedSince` to today; how many working days in a row a chart's signal has fired up to today (`references/signals.md`); and, only where Lighthouse's SLE Risk cannot be read, which Work Items are older than the 50th or 70th percentile of the Team's Cycle Time.
 
 ## The answer to give
 
