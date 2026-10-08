@@ -1,4 +1,9 @@
-import type { LighthouseApiResult } from "@letpeoplework/lighthouse-client";
+import {
+  type LighthouseApiResult,
+  readTerms,
+  type Terms,
+  type TermsSource,
+} from "@letpeoplework/lighthouse-client";
 import {
   formatPayload,
   type OutputFormat,
@@ -63,4 +68,23 @@ export const mapApiResultToCliResult = <TValue>(
     return getSuccessResult(formattedPayload.value);
   }
   return getErrorResult(`${result.error.category}: ${result.error.reason}`);
+};
+
+/**
+ * An answer whose pretty view speaks the instance's words. The words are read only for that view, so
+ * --json and --toon ask Lighthouse for the answer alone.
+ */
+export const mapApiResultInTerms = async <TValue>(
+  read: Promise<LighthouseApiResult<TValue>>,
+  outputFormat: OutputFormat,
+  termsSource: TermsSource,
+  renderPretty: (value: TValue, terms: Terms) => string | null,
+): Promise<CliCommandResult> => {
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(await read, outputFormat);
+  }
+  const [result, terms] = await Promise.all([read, readTerms(termsSource)]);
+  return mapApiResultToCliResult(result, outputFormat, (value) =>
+    renderPretty(value, terms),
+  );
 };

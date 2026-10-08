@@ -3,7 +3,6 @@ import {
   describeOwnerWriteConfirmation,
   type LighthouseApiResult,
   type OwnerKind,
-  readTerms,
   readWrittenBlackoutRule,
   readWrittenOwner,
   type Terms,
@@ -14,7 +13,7 @@ import {
   type CliCommandResult,
   getErrorResult,
   getSuccessResult,
-  mapApiResultToCliResult,
+  mapApiResultInTerms,
 } from "./commandResult";
 import type { OutputFormat, PrettyRenderer } from "./output";
 
@@ -49,17 +48,10 @@ export type OwnerWrite = {
 export const answerOwnerWrite = async (
   write: Promise<LighthouseApiResult<unknown>>,
   { verb, kind, outputFormat, termsSource }: OwnerWrite,
-): Promise<CliCommandResult> => {
-  if (outputFormat !== "pretty") {
-    return mapApiResultToCliResult(await write, outputFormat);
-  }
-  const [result, terms] = await Promise.all([write, readTerms(termsSource)]);
-  return mapApiResultToCliResult(
-    result,
-    outputFormat,
-    renderOwnerWritten(verb, kind, terms),
+): Promise<CliCommandResult> =>
+  mapApiResultInTerms(write, outputFormat, termsSource, (value, terms) =>
+    renderOwnerWritten(verb, kind, terms)(value),
   );
-};
 
 /**
  * A write Lighthouse answers with no record: scripts keep today's line under --json and --toon, which

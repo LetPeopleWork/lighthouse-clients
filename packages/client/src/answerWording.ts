@@ -1,3 +1,4 @@
+import { describeFeatureTitle } from "./featureWording";
 import {
   readTerms,
   type TerminologyKey,
@@ -64,3 +65,24 @@ export const readAnswerWording = async (
   ]);
   return { terms, name: nameOrFallback(named, subject, terms) };
 };
+
+/**
+ * The words for an answer about one Feature, named by its reference and name. The answer itself never
+ * carries the name, so it is read from the Feature.
+ */
+export const readFeatureWording = (
+  source: TermsSource & {
+    readonly getFeaturesByIds: (ids: readonly number[]) => Promise<Read>;
+  },
+  featureId: number,
+): Promise<AnswerWording> =>
+  readAnswerWording(source, {
+    term: "feature",
+    id: featureId,
+    read: async () => {
+      const features = await source.getFeaturesByIds([featureId]);
+      return features.ok
+        ? { ok: true, value: { name: describeFeatureTitle(features.value) } }
+        : features;
+    },
+  });

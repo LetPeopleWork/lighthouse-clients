@@ -5,7 +5,6 @@ import {
   type ConnectivityValidationResult,
   createLighthouseClient,
   describeBlackoutRuleWriteConfirmation,
-  describeFeatureTitle,
   describeOwnerWriteConfirmation,
   describeReachable,
   describeRefreshConfirmation,
@@ -15,6 +14,7 @@ import {
   type MetricsDateRange,
   readAnswerWording,
   readCycleTimeDefinitionName,
+  readFeatureWording,
   readPortfolio,
   readSystemWipLimit,
   readTerms,
@@ -26,6 +26,7 @@ import {
   getOptionValue,
   getSuccessResult,
   isCliCommandResult,
+  mapApiResultInTerms,
   mapApiResultToCliResult,
 } from "./commandResult";
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
@@ -1688,36 +1689,24 @@ const runTeamGroup = async (
   const client = dependencies.createClient(connectionOrError);
 
   const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
-    list: async () => {
-      if (outputFormat !== "pretty") {
-        return mapApiResultToCliResult(await client.listTeams(), outputFormat);
-      }
-      const [teams, terms] = await Promise.all([
+    list: () =>
+      mapApiResultInTerms(
         client.listTeams(),
-        readTerms(client),
-      ]);
-      return mapApiResultToCliResult(teams, outputFormat, (facts) =>
-        renderOwnerList(facts, "team", terms),
-      );
-    },
+        outputFormat,
+        client,
+        (facts, terms) => renderOwnerList(facts, "team", terms),
+      ),
     get: async () => {
       const teamId = getRequiredIdOption(args, "--id");
       if (teamId === null) {
         return getErrorResult("Missing required --id for team get.");
       }
 
-      if (outputFormat !== "pretty") {
-        return mapApiResultToCliResult(
-          await client.getTeam(teamId),
-          outputFormat,
-        );
-      }
-      const [team, terms] = await Promise.all([
+      return mapApiResultInTerms(
         client.getTeam(teamId),
-        readTerms(client),
-      ]);
-      return mapApiResultToCliResult(team, outputFormat, (facts) =>
-        renderTeam(facts, terms),
+        outputFormat,
+        client,
+        renderTeam,
       );
     },
     create: async () => {
@@ -1820,39 +1809,24 @@ const runPortfolioGroup = async (
   const client = dependencies.createClient(connectionOrError);
 
   const actionHandlers: Record<string, () => Promise<CliCommandResult>> = {
-    list: async () => {
-      if (outputFormat !== "pretty") {
-        return mapApiResultToCliResult(
-          await client.listPortfolios(),
-          outputFormat,
-        );
-      }
-      const [portfolios, terms] = await Promise.all([
+    list: () =>
+      mapApiResultInTerms(
         client.listPortfolios(),
-        readTerms(client),
-      ]);
-      return mapApiResultToCliResult(portfolios, outputFormat, (facts) =>
-        renderPortfolioList(facts, terms),
-      );
-    },
+        outputFormat,
+        client,
+        renderPortfolioList,
+      ),
     get: async () => {
       const portfolioId = getRequiredIdOption(args, "--id");
       if (portfolioId === null) {
         return getErrorResult("Missing required --id for portfolio get.");
       }
 
-      if (outputFormat !== "pretty") {
-        return mapApiResultToCliResult(
-          await client.getPortfolio(portfolioId),
-          outputFormat,
-        );
-      }
-      const [portfolio, terms] = await Promise.all([
+      return mapApiResultInTerms(
         client.getPortfolio(portfolioId),
-        readTerms(client),
-      ]);
-      return mapApiResultToCliResult(portfolio, outputFormat, (facts) =>
-        renderPortfolio(facts, terms),
+        outputFormat,
+        client,
+        renderPortfolio,
       );
     },
     create: async () => {
@@ -1948,6 +1922,13 @@ const runPortfolioGroup = async (
   return selectedHandler();
 };
 
+const readTeamWording = (client: CliClientOperations, teamId: number) =>
+  readAnswerWording(client, {
+    term: "team",
+    id: teamId,
+    read: () => client.getTeam(teamId),
+  });
+
 const runManualForecastCommand = async (
   args: readonly string[],
   outputFormat: OutputFormat,
@@ -1992,11 +1973,7 @@ const runManualForecastCommand = async (
 
   const [forecast, wording] = await Promise.all([
     client.runManualForecast(teamId, input),
-    readAnswerWording(client, {
-      term: "team",
-      id: teamId,
-      read: () => client.getTeam(teamId),
-    }),
+    readTeamWording(client, teamId),
   ]);
   return mapApiResultToCliResult(forecast, outputFormat, (facts) =>
     renderManualForecast(facts, wording),
@@ -2060,11 +2037,7 @@ const runBacktestForecastCommand = async (
 
   const [backtest, wording] = await Promise.all([
     client.runBacktest(teamId, input),
-    readAnswerWording(client, {
-      term: "team",
-      id: teamId,
-      read: () => client.getTeam(teamId),
-    }),
+    readTeamWording(client, teamId),
   ]);
   return mapApiResultToCliResult(backtest, outputFormat, (facts) =>
     renderBacktest(facts, wording),
@@ -2235,18 +2208,11 @@ const runWorktrackingGroup = async (
   const client = dependencies.createClient(connectionOrError);
 
   if (action === "list") {
-    if (outputFormat !== "pretty") {
-      return mapApiResultToCliResult(
-        await client.listWorkTrackingConnections(),
-        outputFormat,
-      );
-    }
-    const [connections, terms] = await Promise.all([
+    return mapApiResultInTerms(
       client.listWorkTrackingConnections(),
-      readTerms(client),
-    ]);
-    return mapApiResultToCliResult(connections, outputFormat, (facts) =>
-      renderWorkTrackingConnectionList(facts, terms),
+      outputFormat,
+      client,
+      renderWorkTrackingConnectionList,
     );
   }
 
@@ -2270,22 +2236,12 @@ const runWorktrackingGroup = async (
   );
 };
 
-// Terminology is read only for the pretty view, so --json and --toon ask for the Features alone.
-const showFeatures = async (
+const showFeatures = (
   features: Promise<LighthouseApiResult<unknown>>,
   client: CliClientOperations,
   outputFormat: OutputFormat,
-): Promise<CliCommandResult> => {
-  const [result, terms] = await Promise.all([
-    features,
-    outputFormat === "pretty" ? readTerms(client) : null,
-  ]);
-  return mapApiResultToCliResult(
-    result,
-    outputFormat,
-    terms === null ? undefined : (facts) => renderFeatureList(facts, terms),
-  );
-};
+): Promise<CliCommandResult> =>
+  mapApiResultInTerms(features, outputFormat, client, renderFeatureList);
 
 // The Work Items answer does not carry the Feature's name, so the pretty view reads it from the Feature;
 // --json and --toon ask for the Work Items alone.
@@ -2303,16 +2259,7 @@ const showFeatureWorkItems = async (
 
   const [workItems, wording] = await Promise.all([
     client.getFeatureWorkItems(featureId),
-    readAnswerWording(client, {
-      term: "feature",
-      id: featureId,
-      read: async () => {
-        const features = await client.getFeaturesByIds([featureId]);
-        return features.ok
-          ? { ok: true, value: { name: describeFeatureTitle(features.value) } }
-          : features;
-      },
-    }),
+    readFeatureWording(client, featureId),
   ]);
   return mapApiResultToCliResult(workItems, outputFormat, (facts) =>
     renderFeatureWorkItems(facts, wording),
