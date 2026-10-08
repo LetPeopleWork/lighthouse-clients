@@ -4,11 +4,21 @@ import { fileURLToPath } from "node:url";
 import {
   createLighthouseClient,
   FEATURE_REQUIRES_SERVER_NEWER_THAN,
+  isDoNotTrackSet,
   isServerVersionNewerThan,
   type LighthouseClientAuth,
+  type LighthouseUsageDataStore,
   queryServerAuthMode,
+  type StoredUsageDataAnswer,
+  settleUsageDataStep,
+  switchUsageDataOn,
+  type UsageDataReporterDependencies,
+  type UsageDataStep,
 } from "@letpeoplework/lighthouse-client";
-import { registerMcpTools } from "@letpeoplework/lighthouse-mcp-core";
+import {
+  type McpUsageDataPort,
+  registerMcpTools,
+} from "@letpeoplework/lighthouse-mcp-core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Agent, fetch as undiciFetch } from "undici";
@@ -29,6 +39,10 @@ export type McpHttpServerOptions = {
   readonly port: number;
   readonly apiKey?: string;
   readonly oauth?: McpOAuthConfig;
+  /** Present when the operator switched usage data on; the environment it reads `DO_NOT_TRACK` from. */
+  readonly usageData?: {
+    readonly env: Readonly<Record<string, string | undefined>>;
+  };
 };
 
 export const PROTECTED_RESOURCE_METADATA_PATH =
@@ -286,7 +300,7 @@ export const resolveUsageDataSwitch = (
   const value = env.LIGHTHOUSE_USAGE_DATA?.trim() ?? "";
   const normalised = value.toLowerCase();
   if (normalised === "on") {
-    return { on: true };
+    return { on: !isDoNotTrackSet(env) };
   }
   if (normalised === "" || normalised === "off") {
     return { on: false };
@@ -294,6 +308,74 @@ export const resolveUsageDataSwitch = (
   return {
     on: false,
     warning: `LIGHTHOUSE_USAGE_DATA takes on or off, not "${value}", so usage data is off.`,
+  };
+};
+
+/** A yes held in this process's memory only: a restart forgets it, and Lighthouse lets its grant lapse. */
+const inMemoryUsageDataStore = (): LighthouseUsageDataStore => {
+  let kept: StoredUsageDataAnswer | undefined;
+  return {
+    read: async () => kept,
+    answer: async (answer) => {
+      if (kept !== undefined) {
+        return false;
+      }
+      kept = answer;
+      return true;
+    },
+    replace: async (answer) => {
+      kept = answer;
+    },
+    renew: async (token, answer) => {
+      if (kept?.answer !== "yes" || kept.token !== token) {
+        return false;
+      }
+      kept = answer;
+      return true;
+    },
+  };
+};
+
+export type OperatorsUsageDataDependencies = Pick<
+  UsageDataReporterDependencies,
+  "lighthouse" | "env" | "now"
+>;
+
+/**
+ * Usage data as the operator switched it on for everyone the shared server serves: nobody is asked, and one
+ * grant is requested for the whole process on the first thing worth counting, however many callers arrive
+ * together. A grant that could not be had is requested again on the next one. Callers never wait on it.
+ */
+export const operatorsUsageDataPort = (
+  dependencies: OperatorsUsageDataDependencies,
+): McpUsageDataPort => {
+  const reporter: UsageDataReporterDependencies = {
+    ...dependencies,
+    store: inMemoryUsageDataStore(),
+    source: "Mcp",
+  };
+  let switchingOn: Promise<boolean> | undefined;
+  const switchedOn = async (): Promise<boolean> => {
+    switchingOn ??= switchUsageDataOn(reporter).then(
+      (outcome) => outcome === "on",
+      () => false,
+    );
+    const on = await switchingOn;
+    if (!on) {
+      switchingOn = undefined;
+    }
+    return on;
+  };
+  const report = async (step: UsageDataStep): Promise<void> => {
+    if (!step.reached || step.occurrences.length === 0) {
+      return;
+    }
+    if (await switchedOn()) {
+      await settleUsageDataStep(reporter, step);
+    }
+  };
+  return async ({ reached, occurrences }) => {
+    void report({ reached, occurrences });
   };
 };
 
@@ -316,6 +398,23 @@ export const startMcpHttpServer = async (
   };
 
   const oauth = options.oauth;
+  const usageData =
+    options.usageData === undefined
+      ? undefined
+      : operatorsUsageDataPort({
+          lighthouse: createLighthouseClient(
+            {
+              connection: {
+                kind: "explicit",
+                lighthouseUrl: options.lighthouseUrl,
+              },
+              auth: { kind: "none" },
+            },
+            { fetch: insecureFetch },
+          ),
+          env: options.usageData.env,
+          now: () => new Date(),
+        });
 
   // Each request gets its own McpServer + transport (stateless/sessionless)
   const httpServer = createServer(async (req, res) => {
@@ -375,6 +474,7 @@ export const startMcpHttpServer = async (
             hasCallersOwnCredential(req.headers),
           ),
         voterKeyRequired: NO_SHARED_VOTES,
+        usageData,
       });
 
       const transport = new StreamableHTTPServerTransport({
@@ -463,6 +563,7 @@ export const runMcpHttpRuntime = async (
     port: parsedPort,
     apiKey: env.LIGHTHOUSE_API_KEY,
     oauth: oauthResult.oauth,
+    usageData: usageData.on ? { env } : undefined,
   });
 
   write(renderMcpHttpBanner(server.url));

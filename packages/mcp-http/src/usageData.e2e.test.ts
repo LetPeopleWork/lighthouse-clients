@@ -191,7 +191,7 @@ describe("off unless the operator says on", () => {
   );
 
   // @US-06 @driving_port @real-io @error @contract-shape:unbounded-preservation
-  it.skip.each(["1", "true"])(
+  it.each(["1", "true"])(
     "sends nothing under DO_NOT_TRACK=%s even with LIGHTHOUSE_USAGE_DATA=on",
     async (doNotTrack) => {
       const lighthouse = await aFakeLighthouse();
@@ -211,7 +211,7 @@ describe("off unless the operator says on", () => {
 
 describe("switched on, the shared server reports for its callers without asking them", () => {
   // @US-06 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.skip("reports Priya's refresh through the shared server with source Mcp, and never asks her", async () => {
+  it("reports Priya's refresh through the shared server with source Mcp, and never asks her", async () => {
     const lighthouse = await aFakeLighthouse();
     const shared = await tomasStarts(lighthouse, {
       LIGHTHOUSE_USAGE_DATA: "on",
@@ -238,7 +238,7 @@ describe("switched on, the shared server reports for its callers without asking 
   });
 
   // @US-06 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.skip.each<[string, Record<string, unknown>, string]>([
+  it.each<[string, Record<string, unknown>, string]>([
     [
       "lighthouse_forecast_manual",
       { id: 3, remainingItems: 25 },
@@ -260,7 +260,7 @@ describe("switched on, the shared server reports for its callers without asking 
   });
 
   // @US-06 @driving_port @real-io @contract-shape:unbounded-preservation
-  it.skip("hands every caller the same result it gives with usage data off", async () => {
+  it("hands every caller the same result it gives with usage data off", async () => {
     const lighthouse = await aFakeLighthouse();
     const off = await tomasStarts(lighthouse);
     const on = await tomasStarts(lighthouse, { LIGHTHOUSE_USAGE_DATA: "on" });
@@ -283,7 +283,7 @@ describe("switched on, the shared server reports for its callers without asking 
 
   // @US-06 @driving_port @real-io @boundary @contract-shape:bounded-change
   // One process, one grant, requested once however many callers arrive together.
-  it.skip("requests one grant for three callers arriving at once", async () => {
+  it("requests one grant for three callers arriving at once", async () => {
     const lighthouse = await aFakeLighthouse();
     const shared = await tomasStarts(lighthouse, {
       LIGHTHOUSE_USAGE_DATA: "on",
@@ -303,7 +303,7 @@ describe("switched on, the shared server reports for its callers without asking 
 
   // @US-06 @driving_port @real-io @contract-shape:bounded-change
   // A restart is a new grant and a new pseudonym; the old one lapses by itself.
-  it.skip("requests a fresh grant after a restart", async () => {
+  it("requests a fresh grant after a restart", async () => {
     const lighthouse = await aFakeLighthouse();
     const before = await tomasStarts(lighthouse, {
       LIGHTHOUSE_USAGE_DATA: "on",
@@ -331,7 +331,7 @@ describe("switched on, the shared server reports for its callers without asking 
 
   // @US-06 @driving_port @real-io @boundary @contract-shape:bounded-change
   // Nobody is asked, so the young-install rule that delays a question does not delay the operator's on.
-  it.skip("reports on an instance installed less than three days ago", async () => {
+  it("reports on an instance installed less than three days ago", async () => {
     const lighthouse = await aFakeLighthouse({ usageData: { mayAsk: false } });
     const shared = await tomasStarts(lighthouse, {
       LIGHTHOUSE_USAGE_DATA: "on",
