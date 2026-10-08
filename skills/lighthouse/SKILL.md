@@ -297,7 +297,7 @@ Users ask naturally ("tell me about the Mars Colonization Feature"). Claude hand
 - **Use the read that exists.** If a tool in your tool list or a command in `references/tools-and-commands.md` answers the question, call it. Never answer from general knowledge what Lighthouse can read, and never say Lighthouse cannot tell when it can.
 - **Quote the `summary` as written.** A tool that carries a `summary` states its answer as the web does; quote it, and reason over the other fields, which are the facts.
 - **Use the tool's words.** An instance may rename Feature, Work Item, Team, Portfolio, Cycle Time, Throughput, WIP, Blocked or SLE. Answer in the words each tool's `summary` uses; where there is none, use those defaults.
-- **Never invent a tool.** Some reads exist only in `lh`: Arrivals, a Portfolio's current WIP and what is Blocked in it right now, the Predictability Score, a Portfolio's Cycle Time percentiles, and creating, changing or deleting Teams and Portfolios. Over MCP, name the command instead, for example `lh metrics team --id 3 --metrics arrivals`, and do not work the answer out from other reads.
+- **Never invent a tool.** Some reads exist only in `lh`: Arrivals per day (their signals are read over MCP with `lighthouse_team_metrics_processBehaviorChart` and `metricType: "Arrivals"`), a Portfolio's current WIP and what is Blocked in it right now, the Predictability Score, a Portfolio's Cycle Time percentiles, and creating, changing or deleting Teams and Portfolios. Over MCP, name the command instead, for example `lh metrics team --id 3 --metrics arrivals`, and do not work the answer out from other reads.
 - **An older Lighthouse is not a fault.** When a read is refused because it "requires a version newer than" the running one, tell the user this Lighthouse must be upgraded for that answer. Do not call it an error in Lighthouse, do not retry, and do not guess the answer.
 - **No per-person answers.** Lighthouse counts Work Items, not people. Never break an answer down by person or assignee.
 
@@ -309,13 +309,13 @@ Users ask naturally ("tell me about the Mars Colonization Feature"). Claude hand
 | The connected Work Tracking Systems | — | `lighthouse_worktracking_list`; one of them: `lighthouse_worktracking_get` with `{id}` |
 | Recurring blackout rules | — | `lighthouse_blackout_list`; only on request: `lighthouse_blackout_create`, and with an id from the list `lighthouse_blackout_update` / `lighthouse_blackout_delete` |
 | A Team's settings, SLE, System WIP Limit | `lighthouse_team_list` | `lighthouse_team_get` with `{id: <team_id>}`; `lighthouse_team_refresh` only on request |
-| A Team's flow metrics | `lighthouse_team_list` | `lighthouse_team_metrics_throughput`, `lighthouse_team_metrics_cycleTimePercentiles`, `lighthouse_team_metrics_workItemAge`, `lighthouse_team_metrics_workItemAgePercentiles`, `lighthouse_team_metrics_totalWorkItemAge`, `lighthouse_team_metrics_wip`, `lighthouse_team_metrics_blockedCountHistory`, `lighthouse_team_metrics_percentilesOverTime`, `lighthouse_team_metrics_processBehaviorOverTime` |
+| A Team's flow metrics | `lighthouse_team_list` | `lighthouse_team_metrics_throughput`, `lighthouse_team_metrics_cycleTimePercentiles`, `lighthouse_team_metrics_workItemAge`, `lighthouse_team_metrics_workItemAgePercentiles`, `lighthouse_team_metrics_totalWorkItemAge`, `lighthouse_team_metrics_wip`, `lighthouse_team_metrics_sleRisk`, `lighthouse_team_metrics_blockedCountHistory`, `lighthouse_team_metrics_percentilesOverTime`, `lighthouse_team_metrics_processBehaviorChart`, `lighthouse_team_metrics_processBehaviorOverTime` |
 | Where a Team's Work Items spend their time | `lighthouse_team_list` | `lighthouse_team_metrics_cumulativeStateTime`; one state's Work Items: `lighthouse_team_metrics_cumulativeStateTimeItems` with `{id, state}`; Work Items to narrow it to: `lighthouse_team_metrics_cumulativeStateTimeCandidates` |
 | A Team forecast | `lighthouse_team_list` | `lighthouse_forecast_manual`, `lighthouse_forecast_backtest` |
 | How much a Team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the Team sees on its Refinement tab |
 | Vote, comment or take back a vote on a Work Item in refinement | `lighthouse_team_refinement_get` → `referenceId` | `lighthouse_team_refinement_vote` / `lighthouse_team_refinement_comment` / `lighthouse_team_refinement_voteTakeBack`; see below |
 | A Portfolio's settings | `lighthouse_portfolio_list` | `lighthouse_portfolio_get`; `lighthouse_portfolio_refresh` only on request |
-| A Portfolio's flow metrics | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_throughput`, `lighthouse_portfolio_metrics_workItemAge`, `lighthouse_portfolio_metrics_workItemAgePercentiles`, `lighthouse_portfolio_metrics_totalWorkItemAge`, `lighthouse_portfolio_metrics_blockedCountHistory`, `lighthouse_portfolio_metrics_percentilesOverTime`, `lighthouse_portfolio_metrics_processBehaviorOverTime` |
+| A Portfolio's flow metrics | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_throughput`, `lighthouse_portfolio_metrics_workItemAge`, `lighthouse_portfolio_metrics_workItemAgePercentiles`, `lighthouse_portfolio_metrics_totalWorkItemAge`, `lighthouse_portfolio_metrics_blockedCountHistory`, `lighthouse_portfolio_metrics_percentilesOverTime`, `lighthouse_portfolio_metrics_processBehaviorChart`, `lighthouse_portfolio_metrics_processBehaviorOverTime` |
 | Where a Portfolio's Features spend their time | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_cumulativeStateTime`, `lighthouse_portfolio_metrics_cumulativeStateTimeItems`, `lighthouse_portfolio_metrics_cumulativeStateTimeCandidates` |
 | How a Delivery's scope moved | `lighthouse_portfolio_list` → `lighthouse_delivery_list` with `{id: <portfolio_id>}` | `lighthouse_delivery_metrics` with `{id: <delivery_id>}`; add `{detail: "epics"}` only when the per-Feature split is the question |
 | Feature details | `lighthouse_portfolio_list` (Features listed inline) | `lighthouse_feature_get` with `{ids: [...]}` |
@@ -387,15 +387,16 @@ Answer the way a good flow coach would: from Lighthouse's numbers, in plain word
 ### Aging: when to talk, when to act
 
 - Past the 50th percentile of the Team's Cycle Time (`lighthouse_team_metrics_cycleTimePercentiles`): worth a conversation.
-- SLE Risk of 70% or more, or past the SLE: act today (swarm, split, unblock, or finish and accept the miss). Where SLE Risk cannot be read, use the 70th percentile instead and say it is the fallback.
+- SLE Risk of 70% or more, or past the SLE (`lighthouse_team_metrics_sleRisk`, Lighthouse's own risk per Work Item; never work a risk out yourself): act today (swarm, split, unblock, or finish and accept the miss). Where SLE Risk cannot be read, use the 70th percentile instead and say it is the fallback.
 - Say it about the Work Item, never about a person: "GR-051 has been in progress 9 days. What would help it finish?"
 
 ### Signals and noise
 
+- Read the signals from Lighthouse: `lighthouse_team_metrics_processBehaviorChart` or `lighthouse_portfolio_metrics_processBehaviorChart` with the chart's `metricType`. Quote the signals its `summary` names; never work a signal out yourself.
 - Inside the process limits there is nothing to explain. Say so and offer no cause: "This week is inside the limits; it needs no explanation."
 - A signal says *that* something moved, not *what* moved it. Name the signal and since when, then ask what changed around then. Never supply the cause yourself.
 - Throughput up: before celebrating, check whether the Work Items got smaller. Splitting Work Items raises Throughput without delivering more.
-- A chart without a baseline has limits that mean little; say so once.
+- A chart without a baseline: Lighthouse names no signal on it, and neither do you. Say once that its limits come from the range shown, and suggest setting a baseline in the Team's or Portfolio's settings.
 
 ### Velocity, points and hours
 

@@ -113,7 +113,7 @@ A signal shows that something moved, not what moved it. Ask what changed around 
 
 **Status:** Act when no baseline is configured or a Large Change is detected; Observe on a Moderate Change (and no Large Change); Sustain when a baseline is configured and no special cause is detected.
 
-**The baseline matters.** "These charts need a baseline to work." It is set in the Team or Portfolio settings. Without one, Lighthouse uses the selected date range as the baseline, so the limits move whenever the range does. Limits mean little without a baseline: say so whenever you read a signal off a chart that has none.
+**The baseline matters.** "These charts need a baseline to work." It is set in the Team or Portfolio settings. Without one, Lighthouse uses the selected date range as the baseline, so the limits move whenever the range does. Without a baseline Lighthouse names no signal on that chart, and neither do you: say that its limits come from the range shown, suggest setting a baseline in the Team's or Portfolio's settings, and raise no signal from it.
 
 **How to use them:**
 - If all data is within limits with no patterns → your process is stable (predictable)

@@ -36,8 +36,9 @@ the user's own.
 
 ## MCP tools
 
-All 45. `{id}` is the Team's or Portfolio's numeric id; see the ID table in `SKILL.md` for where it comes
-from. Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both inclusive).
+`{id}` is the Team's or Portfolio's numeric id; see the ID table in `SKILL.md` for where it comes from.
+Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both inclusive), except
+`lighthouse_team_metrics_wip` and `lighthouse_team_metrics_sleRisk`, which take only `{id}` and answer for today.
 
 ### Lighthouse itself
 
@@ -64,7 +65,7 @@ from. Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both i
 | `lighthouse_team_metrics_sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: Lighthouse's own risk per Work Item, with the finished Work Items behind it. At risk starts at 70%. Use it for "what will miss our SLE" and "what should we swarm on"; never work a risk out yourself. Needs a Lighthouse newer than v26.9.19.10. |
 | `lighthouse_team_metrics_blockedCountHistory` | How many Work Items were Blocked on each day. For what is Blocked right now, use `lighthouse_team_metrics_wip`. |
 | `lighthouse_team_metrics_percentilesOverTime` | How the percentiles moved, day by day. `metricType`: `CycleTime` or `WorkItemAge`. With `CycleTime` always pass `horizon` (30, 60 or 90): the rows do not say which horizon they are, so leaving it out mixes all three. |
-| `lighthouse_team_metrics_processBehaviorChart` | One Process Behaviour Chart as Lighthouse computes it: the limits, every day, and the signals Lighthouse found (Large Change, Moderate Change, Moderate Shift, Small Shift) on the days they fired. `metricType` is required: `Throughput`, `Arrivals`, `Wip`, `WorkItemAge` (Total Work Item Age) or `CycleTime`. Use it for "is something unusual going on" and "did our process change"; never work a signal out yourself. |
+| `lighthouse_team_metrics_processBehaviorChart` | One Process Behaviour Chart as Lighthouse computes it: the limits, every point (a day, or on `CycleTime` a finished Work Item), and the signals Lighthouse found (Large Change, Moderate Change, Moderate Shift, Small Shift) on the days they fired. `metricType` is required: `Throughput`, `Arrivals`, `Wip`, `WorkItemAge` (Total Work Item Age) or `CycleTime`. Use it for "is something unusual going on" and "did our process change"; never work a signal out yourself. |
 | `lighthouse_team_metrics_processBehaviorOverTime` | How the process limits (UNPL, Average, LNPL) moved, day by day. `metricType`: `Throughput`, `WorkItemAge`, `Wip`, `CycleTime` or `Arrivals`. |
 | `lighthouse_team_metrics_cumulativeStateTime` | Where the Team's Work Items spend their time (Time in State): days per workflow state. Use it for "where does our time go", "where do items wait", "which state is the bottleneck". Never answer that from general knowledge. |
 | `lighthouse_team_metrics_cumulativeStateTimeItems` | Which Work Items made up one state's time, with `{id, state}`; `state` is a state name from the read above. |
@@ -88,7 +89,7 @@ from. Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both i
 | `lighthouse_portfolio_metrics_blockedCountHistory` | How many Features were Blocked on each day. |
 | `lighthouse_portfolio_metrics_percentilesOverTime` | As the Team tool, for the Portfolio. Pass `horizon` with `CycleTime`. |
 | `lighthouse_portfolio_metrics_processBehaviorOverTime` | As the Team tool; also takes `FeatureSize`. |
-| `lighthouse_portfolio_metrics_processBehaviorChart` | As the Team tool; also takes `FeatureSize`. |
+| `lighthouse_portfolio_metrics_processBehaviorChart` | As the Team tool; also takes `FeatureSize`, where every point is a finished Feature. |
 | `lighthouse_portfolio_metrics_cumulativeStateTime` | Where the Portfolio's Features spend their time. |
 | `lighthouse_portfolio_metrics_cumulativeStateTimeItems` | Which Features made up one state's time, with `{id, state}`. |
 | `lighthouse_portfolio_metrics_cumulativeStateTimeCandidates` | The Features the user can narrow Time in State to. |
@@ -197,7 +198,8 @@ MCP has no tool for these. Over MCP, tell the user the read exists and name the 
 "Gravity's Arrivals are read with `lh metrics team --id 3 --metrics arrivals`." Do not work the answer out
 from other reads, and do not call a tool that is not in your tool list.
 
-- Arrivals (`--metrics arrivals`)
+- Arrivals per day (`--metrics arrivals`); their signals are read over MCP with
+  `lighthouse_team_metrics_processBehaviorChart` and `metricType: "Arrivals"`
 - A Portfolio's current WIP and what is Blocked right now (`lh metrics portfolio --id <id> --metrics wip`)
 - The Predictability Score (`--metrics predictabilityScore`)
 - A Portfolio's Cycle Time percentiles (`lh metrics portfolio --id <id> --metrics cycleTime`)
