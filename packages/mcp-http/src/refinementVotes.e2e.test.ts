@@ -278,7 +278,8 @@ describe("votes through the shared MCP server", () => {
         status: 400,
         body: {
           status: 400,
-          title: "A vote or comment needs the key the sender's browser keeps.",
+          title:
+            "A vote, comment or take-back needs the key the sender's browser keeps.",
           code: "voter-key-required",
         },
       },

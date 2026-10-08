@@ -940,7 +940,7 @@ describe("lh refinement vote, comment and take-back", () => {
     {
       refusal: refusing(
         403,
-        "A vote or comment needs a person to send it.",
+        "A vote, comment or take-back needs a person to send it.",
         "vote-needs-a-person",
       ),
       says: "This key belongs to no person, so it cannot vote. Use a personal API key.",
