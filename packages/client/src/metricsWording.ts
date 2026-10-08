@@ -18,6 +18,7 @@ import type {
   WorkItemAgeEntry,
   WorkItemAgeOverTimeResult,
 } from "./index";
+import { THROUGHPUT_CHART } from "./processBehaviorChartTypes";
 import type { Terms } from "./terminology";
 import { dayOf, isDay, isNumber, isRecord, isText } from "./wireFacts";
 
@@ -1631,6 +1632,8 @@ const chartSubject = (
   terms: Terms,
 ): string => {
   switch (metricType) {
+    case THROUGHPUT_CHART:
+      return terms.throughput;
     case "Arrivals":
       return "Arrivals";
     case "Wip":
@@ -1641,11 +1644,14 @@ const chartSubject = (
       return terms.cycleTime;
     case "FeatureSize":
       return `${terms.feature} Size`;
-    default:
-      // The Throughput chart: its type's name is also a word an instance renames, so it is never spelled here.
-      return terms.throughput;
   }
 };
+
+/** "Total Work Item Age Process Behaviour Chart": a chart's title as the web titles it. */
+export const processBehaviorChartTitle = (
+  metricType: ProcessBehaviorMetricType,
+  terms: Terms,
+): string => `${chartSubject(metricType, terms)} Process Behaviour Chart`;
 
 /** A chart's title and what Lighthouse found on it. */
 export type ProcessBehaviorChartWording = {
@@ -1703,6 +1709,6 @@ export const describeProcessBehaviorChart = (
   metricType: ProcessBehaviorMetricType,
   terms: Terms,
 ): ProcessBehaviorChartWording => ({
-  title: `${chartSubject(metricType, terms)} Process Behaviour Chart`,
+  title: processBehaviorChartTitle(metricType, terms),
   sentence: chartSaid(chart),
 });

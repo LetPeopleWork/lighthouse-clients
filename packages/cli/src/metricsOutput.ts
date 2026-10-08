@@ -40,8 +40,8 @@ import {
   type MetricsSubject,
   metricsHeadlineLabel,
   type PercentileValue,
-  type ProcessBehaviorChartView,
   type ProcessBehaviorMetricType,
+  processBehaviorChartTitle,
   readArrivals,
   readBlocked,
   readCumulativeStateTime,
@@ -432,13 +432,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 // A chart that could not be read still carries its title, so the reader sees which one is missing.
-const NOTHING_READ: ProcessBehaviorChartView = {
-  status: null,
-  statusReason: "",
-  baselineConfigured: null,
-  days: [],
-};
-
 const chartRow = (
   chartType: ProcessBehaviorMetricType,
   value: unknown,
@@ -446,11 +439,7 @@ const chartRow = (
 ): readonly string[] => {
   const answer = readMetricAnswer(value, readProcessBehaviorChart);
   if (answer === null || isMetricRefusal(answer)) {
-    const { title } = describeProcessBehaviorChart(
-      NOTHING_READ,
-      chartType,
-      terms,
-    );
+    const title = processBehaviorChartTitle(chartType, terms);
     const line =
       answer === null
         ? describeUnknownMetric(title)
