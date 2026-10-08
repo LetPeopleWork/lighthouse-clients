@@ -12,13 +12,12 @@ import {
 import { aTempDirectory } from "../../../test-support/tempDirectories";
 import { type McpHttpServerHandle, runMcpHttpRuntime } from "./bin";
 
-// Story 6193, slice 05 (US-06). Tomás Rivera runs Northwind's shared MCP server for forty people's
+// Tomás Rivera runs Northwind's shared MCP server for forty people's
 // assistants. Nobody is asked: his one variable, LIGHTHOUSE_USAGE_DATA=on, decides for the server's
 // users, and without it nothing is sent. The grant lives in the process's memory, never on disk, and no
 // caller's credential ever rides on a usage data call.
 // Driving port: `runMcpHttpRuntime`, as the container starts it, with its environment given explicitly and
-// a Lighthouse on a socket; assistants call it over real HTTP. One guard is active; the rest are pending
-// until DELIVER slice 05.
+// a Lighthouse on a socket; assistants call it over real HTTP.
 
 const ON_LINE = "Usage data: on (LIGHTHOUSE_USAGE_DATA)";
 const OFF_LINE = "Usage data: off";
@@ -111,7 +110,7 @@ const reported = (lighthouse: FakeLighthouse) =>
 
 describe("off unless the operator says on", () => {
   // @US-06 @driving_port @real-io @guard @kpi @contract-shape:unbounded-preservation
-  // Active now and after: a shared server nobody switched on makes no usage data request at all.
+  // A shared server nobody switched on makes no usage data request at all.
   it("makes no usage data request when LIGHTHOUSE_USAGE_DATA is not set", async () => {
     const lighthouse = await aFakeLighthouse();
     const shared = await tomasStarts(lighthouse);

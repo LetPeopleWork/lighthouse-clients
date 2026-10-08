@@ -26,13 +26,13 @@ import {
 } from "../../cli/test-support/lhSession";
 import { createLocalLighthouseMcpServer } from "./localServer";
 
-// Story 6193, slice 04 (US-05). Priya Raman uses Claude Desktop with the local Lighthouse MCP server. The
+// Priya Raman uses Claude Desktop with the local Lighthouse MCP server. The
 // first tool call that succeeds against a Lighthouse nobody on her laptop has answered for asks her once,
 // through the assistant (MCP elicitation), in the approved words; the tool's answer reaches her unchanged
 // either way. Her answer is the one lh reads, so either surface answering stops both asking. With a yes,
 // the six mapped tools report their web events with source Mcp.
 // Driving port: the server `runMcpStdioRuntime` connects to stdio, here connected to an in-process MCP
-// client instead; only Lighthouse and the assistant are outside it. Pending until DELIVER slice 04.
+// client instead; only Lighthouse and the assistant are outside it.
 
 const THE_QUESTION_LINES = [
   "May Lighthouse send usage data?",
@@ -318,7 +318,7 @@ describe("the stored answer decides, wherever it was given", () => {
   });
 
   // @US-05 @driving_port @real-io @kpi @contract-shape:bounded-change
-  // KPI-5: 0 repeat questions across the two surfaces.
+  // One answer serves both surfaces, so nobody is asked twice.
   it.each<[string, Parameters<typeof anEarlierAnswer>[2], number]>([
     ["a yes", aYesGiven("lenas-token", 1 * HOURS), 1],
     ["a No", aNo(), 0],
@@ -536,7 +536,7 @@ describe("the six mapped tools report the web's events with source Mcp", () => {
   });
 
   // @US-05 @driving_port @real-io @infrastructure-failure @kpi @contract-shape:unbounded-preservation
-  // KPI-7: the send happens after the result is returned, so a Lighthouse that never takes events delays
+  // The send happens after the result is returned, so a Lighthouse that never takes events delays
   // no tool result.
   it("returns Priya's refresh at once though her Lighthouse never takes the event", async () => {
     const { lighthouse, assistant } = await priyaWhoSaidYes();

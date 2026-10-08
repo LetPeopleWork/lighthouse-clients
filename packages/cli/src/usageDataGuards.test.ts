@@ -14,8 +14,8 @@ import {
 } from "../test-support/lhSession";
 import { runCli } from "./bin";
 
-// Story 6193, slices 02–03: what usage data must never change, held ACTIVE from DISTILL on. Each passes on
-// today's lh, which sends nothing, and must keep passing once it can. They run the production entry point
+// What usage data must never change. These held before lh could send anything and must keep holding now
+// that it can. They run the production entry point
 // (`runCli`, and the built `bin` in a child process) against a Lighthouse on a socket, with the process
 // environment set explicitly for the run and put back afterwards: CI, DO_NOT_TRACK and HOME are never
 // inherited from whoever runs the suite.
@@ -87,7 +87,7 @@ const lenaSaidYesAnHourAgo = (machine: Machine, lighthouseUrl: string) =>
 
 describe("a script is never asked and pays nothing", () => {
   // @US-02 @driving_port @real-io @guard @kpi @contract-shape:unbounded-preservation
-  // KPI-5 and the zero-request rule: without a stored yes, a run that cannot ask makes no usage data request.
+  // Without a stored yes, a run that cannot ask makes no usage data request.
   it("makes no usage data request and asks nothing in a CI run that never said yes", async () => {
     const lighthouse = await aFakeLighthouse();
     const buildAgent = await connectedTo(aMachine(), lighthouse.url);

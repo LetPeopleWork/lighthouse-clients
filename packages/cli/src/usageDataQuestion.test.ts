@@ -28,12 +28,12 @@ import {
 } from "../test-support/lhSession";
 import { readUsageDataAnswer } from "./usageDataQuestion";
 
-// Story 6193, slice 02 (US-02). The first time Lena Fischer uses lh against a Lighthouse in a terminal, it
+// The first time Lena Fischer uses lh against a Lighthouse in a terminal, it
 // asks once, after the command's answer, in the maintainer's approved words, defaulting to No. A yes grants
 // and is kept for that Lighthouse beside the voter keys; a No is kept and never posted; Ctrl-C is no
 // answer. From then on her forecasts are reported as TeamManualForecastRun from the command line.
 // Driving port: `runCliSession` (lh as one run of the process); only Lighthouse, the terminal and the clock
-// are outside it. Every scenario is pending until DELIVER slice 02.
+// are outside it.
 
 const THE_QUESTION = [
   "May Lighthouse send usage data?",
@@ -75,7 +75,7 @@ const batchesHandedIn = (lighthouse: FakeLighthouse) =>
 
 describe("lh asks once, after the answer, in the approved words", () => {
   // @US-02 @driving_port @real-io @kpi @contract-shape:bounded-change
-  // The thinnest end-to-end client path: question, grant, kept answer. KPI-5: at most one question.
+  // The thinnest end-to-end client path: question, grant, kept answer. A person is asked at most once.
   it("asks Lena once, after her forecast, and keeps her yes for that Lighthouse", async () => {
     const lighthouse = await aFakeLighthouse();
 
@@ -204,7 +204,7 @@ describe("lh asks once, after the answer, in the approved words", () => {
 
 describe("lh asks only where a person can answer, and only where it may", () => {
   // @US-02 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
-  // KPI-5: no question without a full terminal. A script with no stored yes pays nothing: not one usage
+  // No question without a full terminal. A script with no stored yes pays nothing: not one usage
   // data request.
   it.each<[string, TerminalShape, Readonly<Record<string, string>>]>([
     ["no terminal at all", NO_TERMINAL, {}],
@@ -273,7 +273,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
   );
 
   // @US-02 @driving_port @real-io @error @version-skew @kpi @contract-shape:unbounded-preservation
-  // KPI-4: a client never sends to a Lighthouse that would count it as a browser. Nothing is printed either.
+  // A client never sends to a Lighthouse that would count it as a browser. Nothing is printed either.
   it.each<[string, UsageDataSide]>([
     [
       "has stopped usage data (its administrator's switch)",
@@ -304,7 +304,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
   );
 
   // @US-02 @driving_port @real-io @infrastructure-failure @kpi @contract-shape:unbounded-preservation
-  // KPI-7: a Lighthouse that takes the connection and never answers about usage data costs at most a second;
+  // A Lighthouse that takes the connection and never answers about usage data costs at most a second;
   // the question waits for a day it can be asked properly.
   it("asks nothing this time when the Lighthouse never answers about usage data, and asks the next time", async () => {
     const lighthouse = await aFakeLighthouse({
@@ -515,7 +515,7 @@ describe("a yes outlives a long gap without a new question", () => {
   });
 
   // @US-02 @driving_port @real-io @version-skew @kpi @contract-shape:unbounded-preservation
-  // KPI-4 after a rollback: once the day-old check finds a Lighthouse that no longer labels sources, nothing
+  // After a rollback: once the day-old check finds a Lighthouse that no longer labels sources, nothing
   // more is sent, and the yes is kept for when it does again.
   it("sends nothing once a day-old check finds the Lighthouse rolled back to one that cannot label lh", async () => {
     const lighthouse = await aFakeLighthouse();
@@ -533,7 +533,6 @@ describe("a yes outlives a long gap without a new question", () => {
   });
 
   // @US-02 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
-  // KPI-5: 0 sends after a No.
   it("sends nothing for Marco, whose No is on file, whatever he runs", async () => {
     const lighthouse = await aFakeLighthouse();
     const marco = await lenaAt(lighthouse);
@@ -548,7 +547,7 @@ describe("a yes outlives a long gap without a new question", () => {
 
 describe("usage data never changes what lh answers", () => {
   // @US-02 @driving_port @real-io @infrastructure-failure @kpi @contract-shape:unbounded-preservation
-  // KPI-7: with a yes and a Lighthouse that never takes the events, the answer, its format and its exit code
+  // With a yes and a Lighthouse that never takes the events, the answer, its format and its exit code
   // are what usage data off gives, and the run ends within a second of it.
   it.each(["--json", "--toon", "--pretty"])(
     "prints the forecast %s exactly as with usage data off, and waits at most a second for a Lighthouse that never takes the event",

@@ -63,7 +63,8 @@ const REFINEMENT_OF_GRAVITY = ["refinement", "get", "--team-id", "3"];
 
 describe("each mapped command reports its web event once, after it succeeded", () => {
   // @US-04 @driving_port @real-io @kpi @contract-shape:bounded-change
-  // KPI-3: the client share of each mirrored event. Seven commands here; the forecast is slice 02's.
+  // Each is the web's own event, so lh's share of it can be counted beside the browser's. The eighth
+  // mapped command, the forecast, is covered in usageDataQuestion.test.ts, where it is first reported.
   it.each<[string, readonly string[], string]>([
     [
       "team create",

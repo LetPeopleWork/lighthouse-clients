@@ -29,11 +29,11 @@ import {
 } from "../test-support/lhSession";
 import { describeUsageDataStatus } from "./usageDataQuestion";
 
-// Story 6193, slice 02 (US-03). `lh config usage-data` says what Lena answered for the Lighthouse she is
-// connected to and whether that Lighthouse takes usage data; `on` and `off` change the answer without a
-// question, in or out of a terminal. The copy is the maintainer's approved set; two lines it did not cover
-// are pinned from the nearest approved wording (AFK copy defaults, revisited at the hold).
-// Driving port: `runCliSession`. Every scenario is pending until DELIVER slice 02.
+// `lh config usage-data` says what Lena answered for the Lighthouse she is connected to and whether that
+// Lighthouse takes usage data; `on` and `off` change the answer without a question, in or out of a
+// terminal. The copy is the maintainer's approved set; two lines it did not cover are pinned from the
+// nearest approved wording.
+// Driving port: `runCliSession`.
 
 const answerLine = (url: string, answer: string) =>
   `Usage data from lh to ${url}: ${answer}`;
@@ -50,12 +50,12 @@ const STOPPED_NOTHING_CHANGED =
 const DO_NOT_TRACK_IS_SET =
   "DO_NOT_TRACK is set, so lh sends no usage data whatever is stored.";
 
-// AFK copy default (not in the approved set): the withdrawal could not reach Lighthouse. The first line is
-// the approved off line; the second follows the approved "Could not ask this Lighthouse…" line.
+// Not in the approved set: the withdrawal could not reach Lighthouse. The first line is the approved off
+// line; the second follows the approved "Could not ask this Lighthouse…" line.
 const COULD_NOT_TELL =
   "Could not tell this Lighthouse; the yes it holds lapses by itself within 30 days.";
 
-// AFK copy default (not in the approved set): the voter key file's refusal, for the answers file.
+// Not in the approved set: the voter key file's refusal, worded for the answers file.
 const unreadableAnswersFile = (path: string) =>
   `The usage data file ${path} cannot be read; fix or remove it.`;
 
@@ -339,7 +339,6 @@ describe("the lines lh config usage-data prints, from what it knows", () => {
 
 describe("lh config usage-data off withdraws the yes and stops sending", () => {
   // @US-03 @driving_port @real-io @kpi @contract-shape:bounded-change
-  // KPI-5: 0 sends after off.
   it("withdraws Lena's grant at her Lighthouse, forgets the token, and sends nothing afterwards", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaWhoSaidYes(lighthouse);
@@ -483,7 +482,7 @@ describe("lh config usage-data on records a yes without a question", () => {
   });
 
   // @US-03 @driving_port @real-io @error @version-skew @kpi @contract-shape:unbounded-preservation
-  // KPI-4: switching on against a Lighthouse that cannot label lh would only mislabel lh as a browser.
+  // Switching on against a Lighthouse that cannot label lh would only mislabel lh as a browser.
   it("records nothing against a Lighthouse that predates labelled sources, and says so", async () => {
     const lighthouse = await aFakeLighthouse({
       usageData: { acceptedSources: null },
@@ -499,7 +498,7 @@ describe("lh config usage-data on records a yes without a question", () => {
   });
 
   // @US-03 @driving_port @real-io @error @infrastructure-failure @contract-shape:unbounded-preservation
-  // AFK default: a Lighthouse that cannot be asked records nothing and fails the command, since what was
+  // A Lighthouse that cannot be asked records nothing and fails the command, since what was
   // asked for did not happen.
   it("records nothing when the Lighthouse cannot be asked, says so, and exits 1", async () => {
     const lighthouse = await aFakeLighthouse({
