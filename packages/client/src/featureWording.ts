@@ -119,14 +119,15 @@ export const describeFeatureListHeadings = (terms: Terms): string[] => [
 
 const dayOf = (wire: string): string => formatCalendarDay(wire) ?? wire;
 
+const countOfWorkItems = (count: number, terms: Terms): string =>
+  `${count} ${count === 1 ? terms.workItem : terms.workItems}`;
+
 /** How much of the Feature's work is done, over every Team: "8 of 13 Work Items". */
 export const describeFeatureProgress = (
   feature: Pick<FeatureListItem, "totalWork" | "remainingWork">,
   terms: Terms,
 ): string =>
-  `${feature.totalWork - feature.remainingWork} of ${feature.totalWork} ${
-    feature.totalWork === 1 ? terms.workItem : terms.workItems
-  }`;
+  `${feature.totalWork - feature.remainingWork} of ${countOfWorkItems(feature.totalWork, terms)}`;
 
 /**
  * When work begins, as the web's Feature list says it. A day work already began is a fact, so it outranks a
@@ -167,4 +168,82 @@ export const describeFeatureRow = (
   describeFeatureStart(feature),
   describeFeatureCompletion(feature),
   feature.state,
+];
+
+/** One Work Item of a Feature as the Feature's Work Items list states it. */
+export type FeatureWorkItem = {
+  readonly referenceId: string;
+  readonly name: string;
+  readonly type: string;
+  readonly state: string;
+};
+
+const readFeatureWorkItem = (value: unknown): FeatureWorkItem | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const referenceId = textOf(value.referenceId);
+  const name = textOf(value.name);
+  const type = textOf(value.type);
+  const state = textOf(value.state);
+  if (
+    referenceId === undefined ||
+    name === undefined ||
+    type === undefined ||
+    state === undefined
+  ) {
+    return null;
+  }
+  return { referenceId, name, type, state };
+};
+
+/** Every Work Item in the answer, or null when it is not a list or any one lacks its reference, name, type or state. */
+export const readFeatureWorkItems = (
+  value: unknown,
+): FeatureWorkItem[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const items = value.map(readFeatureWorkItem);
+  return items.every((item) => item !== null) ? items : null;
+};
+
+/**
+ * The first Feature of an answer as a heading names it, its reference before its name:
+ * "OE-002 Deep-sea camera stream". Undefined when the answer holds no named Feature.
+ */
+export const describeFeatureTitle = (value: unknown): string | undefined => {
+  const feature: unknown = Array.isArray(value) ? value[0] : undefined;
+  if (!isRecord(feature)) {
+    return undefined;
+  }
+  const name = textOf(feature.name);
+  if (name === undefined) {
+    return undefined;
+  }
+  const referenceId = textOf(feature.referenceId);
+  return referenceId === undefined ? name : `${referenceId} ${name}`;
+};
+
+/** "OE-002 Deep-sea camera stream · 3 Work Items", named by whatever stands in for the Feature. */
+export const describeFeatureWorkItemsHeading = (
+  featureName: string,
+  count: number,
+  terms: Terms,
+): string => `${featureName} · ${countOfWorkItems(count, terms)}`;
+
+/** The column headings of a Feature's Work Items. */
+export const describeFeatureWorkItemHeadings = (): string[] => [
+  "ID",
+  "Name",
+  "Type",
+  "State",
+];
+
+/** One Work Item as a row of the list, in the order of its headings. */
+export const describeFeatureWorkItemRow = (item: FeatureWorkItem): string[] => [
+  item.referenceId,
+  item.name,
+  item.type,
+  item.state,
 ];

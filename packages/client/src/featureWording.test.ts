@@ -5,7 +5,10 @@ import {
   describeFeatureProgress,
   describeFeatureRow,
   describeFeatureStart,
+  describeFeatureTitle,
+  describeFeatureWorkItemsHeading,
   readFeatureList,
+  readFeatureWorkItems,
 } from "./featureWording";
 import { resolveTerms, SEEDED_TERMS } from "./terminology";
 
@@ -193,5 +196,70 @@ describe("the Feature list's row", () => {
       "Fri 20 Nov 2026",
       "In Progress",
     ]);
+  });
+});
+
+describe("the heading of a Feature's Work Items", () => {
+  it.each([
+    {
+      of: "a named Feature",
+      answer: [cameraStream()],
+      title: "OE-002 Deep-sea camera stream",
+    },
+    {
+      of: "a Feature without a reference",
+      answer: [cameraStream({ referenceId: "" })],
+      title: "Deep-sea camera stream",
+    },
+    { of: "no Feature", answer: [], title: undefined },
+    {
+      of: "a Feature without a name",
+      answer: [cameraStream({ name: "" })],
+      title: undefined,
+    },
+    {
+      of: "an answer that is not a list",
+      answer: cameraStream(),
+      title: undefined,
+    },
+  ])("names $of as $title", ({ answer, title }) => {
+    expect(describeFeatureTitle(answer)).toBe(title);
+  });
+
+  it.each([
+    { count: 3, heading: "Feature [id: 2] · 3 Work Items" },
+    { count: 1, heading: "Feature [id: 2] · 1 Work Item" },
+    { count: 0, heading: "Feature [id: 2] · 0 Work Items" },
+  ])("counts $count as '$heading'", ({ count, heading }) => {
+    expect(
+      describeFeatureWorkItemsHeading("Feature [id: 2]", count, SEEDED_TERMS),
+    ).toBe(heading);
+  });
+});
+
+describe("readFeatureWorkItems", () => {
+  const workItem = (facts: Record<string, unknown> = {}) => ({
+    referenceId: "GR-061",
+    name: "Export flow report as PDF",
+    type: "User Story",
+    state: "In Progress",
+    ...facts,
+  });
+
+  it("keeps each Work Item's reference, name, type and state", () => {
+    expect(readFeatureWorkItems([workItem()])).toEqual([workItem()]);
+  });
+
+  it.each(["referenceId", "name", "type", "state"])(
+    "recognises no list when a Work Item comes without its %s",
+    (fact) => {
+      expect(
+        readFeatureWorkItems([workItem(), workItem({ [fact]: null })]),
+      ).toBeNull();
+    },
+  );
+
+  it("recognises no list when the answer is not one", () => {
+    expect(readFeatureWorkItems(workItem())).toBeNull();
   });
 });

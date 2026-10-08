@@ -4,6 +4,7 @@ import {
   type CliStandaloneConnection,
   type ConnectivityValidationResult,
   createLighthouseClient,
+  describeFeatureTitle,
   type LighthouseApiResult,
   type LighthouseClient,
   type MetricsDateRange,
@@ -23,7 +24,7 @@ import {
   mapApiResultToCliResult,
 } from "./commandResult";
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
-import { renderFeatureList } from "./featureOutput";
+import { renderFeatureList, renderFeatureWorkItems } from "./featureOutput";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
 import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
@@ -2240,6 +2241,38 @@ const showFeatures = async (
   );
 };
 
+// The Work Items answer does not carry the Feature's name, so the pretty view reads it from the Feature;
+// --json and --toon ask for the Work Items alone.
+const showFeatureWorkItems = async (
+  featureId: number,
+  client: CliClientOperations,
+  outputFormat: OutputFormat,
+): Promise<CliCommandResult> => {
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(
+      await client.getFeatureWorkItems(featureId),
+      outputFormat,
+    );
+  }
+
+  const [workItems, wording] = await Promise.all([
+    client.getFeatureWorkItems(featureId),
+    readAnswerWording(client, {
+      term: "feature",
+      id: featureId,
+      read: async () => {
+        const features = await client.getFeaturesByIds([featureId]);
+        return features.ok
+          ? { ok: true, value: { name: describeFeatureTitle(features.value) } }
+          : features;
+      },
+    }),
+  ]);
+  return mapApiResultToCliResult(workItems, outputFormat, (facts) =>
+    renderFeatureWorkItems(facts, wording),
+  );
+};
+
 const runFeatureGroup = async (
   action: string | undefined,
   args: readonly string[],
@@ -2289,10 +2322,7 @@ const runFeatureGroup = async (
       return getErrorResult("Missing required --id for feature workitems.");
     }
 
-    return mapApiResultToCliResult(
-      await client.getFeatureWorkItems(featureId),
-      outputFormat,
-    );
+    return showFeatureWorkItems(featureId, client, outputFormat);
   }
 
   return getUnknownSubcommandResult(

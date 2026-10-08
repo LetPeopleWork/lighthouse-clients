@@ -17,7 +17,6 @@ import {
 } from "../test-support/cliHarness";
 
 // Story 6218, slice 07 (US-07): Features as the Feature list shows them, and a Feature's Work Items.
-// Every scenario but the format guards is pending until DELIVER slice 07 un-skips it.
 
 const threeFeaturesByReference = [
   "feature",
@@ -147,7 +146,7 @@ describe("lh feature get --pretty", () => {
   });
 
   // @US-07 @kpi — KPI-5
-  it.skip("says it in the words an instance has renamed every term to", async () => {
+  it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = marcosLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -184,7 +183,7 @@ describe("lh feature get --pretty", () => {
 
 describe("lh feature workitems --pretty", () => {
   // @driving_port @US-07 @contract-shape:pure-function — WorkItemsDialog.tsx
-  it.skip("shows Marco the Work Items of OE-002 under the Feature's name", async () => {
+  it("shows Marco the Work Items of OE-002 under the Feature's name", async () => {
     const lighthouse = marcosLighthouse();
 
     const result = await lighthouse.run(workItemsOfOE002);
@@ -208,7 +207,7 @@ describe("lh feature workitems --pretty", () => {
   });
 
   // @error @infrastructure-failure @US-07 — C14: the heading survives a failed name read
-  it.skip.each([
+  it.each([
     {
       why: "is refused",
       answer: refused("forbidden", "You may not read this Feature"),
