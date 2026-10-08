@@ -252,10 +252,9 @@ const labels = (state: UsageDataState, source: ClientUsageDataSource) =>
   state.acceptedSources?.includes(source) === true;
 
 const isFresh = (confirmedAt: string, now: Date): boolean => {
-  const confirmed = Date.parse(confirmedAt);
-  return (
-    !Number.isNaN(confirmed) && now.getTime() - confirmed < RECONFIRM_AFTER_MS
-  );
+  const age = now.getTime() - Date.parse(confirmedAt);
+  // A yes confirmed "in the future" (a clock set wrong) would otherwise never be confirmed again.
+  return age >= 0 && age < RECONFIRM_AFTER_MS;
 };
 
 const planForYes = (

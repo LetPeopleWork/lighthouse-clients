@@ -19,6 +19,7 @@ const TOKEN = "lenas-token";
 
 const anHourAgo = new Date(NOW.getTime() - HOUR).toISOString();
 const twoDaysAgo = new Date(NOW.getTime() - 48 * HOUR).toISOString();
+const twoDaysAhead = new Date(NOW.getTime() + 48 * HOUR).toISOString();
 
 const aState = (overrides: Partial<UsageDataState> = {}): UsageDataState => ({
   decision: null,
@@ -201,7 +202,7 @@ describe("planning a usage data step", () => {
     });
   });
 
-  it.each([twoDaysAgo, "not a date"])(
+  it.each([twoDaysAgo, twoDaysAhead, "not a date"])(
     "reads the state with the token first when the yes was confirmed at %j",
     (confirmedAt) => {
       expect(

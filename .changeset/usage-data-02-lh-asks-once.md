@@ -10,3 +10,5 @@ When a yes cannot be recorded, `lh` names the Lighthouse as `lh config usage-dat
 A yes turned off with `lh config usage-data off` while another `lh` was renewing it stays off: the renewal sends nothing and withdraws the grant it was given.
 
 A yes Lighthouse granted but your machine could not keep (another answer was kept first, or the answers file could not be written) is withdrawn at Lighthouse rather than left granted with nobody holding it.
+
+A yes whose confirmation date lies in the future, as after a clock set wrong, is checked with Lighthouse again like a day-old one instead of counting as confirmed forever.
