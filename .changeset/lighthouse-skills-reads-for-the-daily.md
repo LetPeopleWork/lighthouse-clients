@@ -42,3 +42,11 @@ days and baselines still has its signals named, and the chart itself always come
 chart type, with the range; a chart Lighthouse cannot answer carries its refusal while the others still come
 back. The charts are read only when named, and `pbc`, `processbehaviorchart` and `processbehaviourchart` name
 them too.
+
+With `--pretty` it prints one line per chart under the range, each titled as the web titles it ("Throughput
+Process Behaviour Chart", "Total Work Item Age Process Behaviour Chart", in the instance's own words), followed
+by the same sentence the assistant's summary gives: the signals with their days, "No signals", that no baseline
+is set, or why Lighthouse could not compute it. A chart that cannot be read says so on its own line and leaves
+every other chart in place.
+
+`lh metrics team` and `lh metrics portfolio` without `--metrics` print and read exactly what they did before.

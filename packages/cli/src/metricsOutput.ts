@@ -14,6 +14,7 @@ import {
   describePercentilesOverTimeDays,
   describePredictabilityScore,
   describePredictabilityScoreDays,
+  describeProcessBehaviorChart,
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
   describeRefusedMetric,
@@ -39,6 +40,8 @@ import {
   type MetricsSubject,
   metricsHeadlineLabel,
   type PercentileValue,
+  type ProcessBehaviorChartView,
+  type ProcessBehaviorMetricType,
   readArrivals,
   readBlocked,
   readCumulativeStateTime,
@@ -47,6 +50,7 @@ import {
   readMetricsSubject,
   readPercentilesOverTime,
   readPredictabilityScore,
+  readProcessBehaviorChart,
   readProcessBehaviorOverTime,
   readSleRisk,
   readThroughput,
@@ -55,6 +59,7 @@ import {
   readWorkItemAge,
   readWorkItemAgePercentiles,
   type ServiceLevelExpectation,
+  type Terms,
   timeInStateItemCount,
 } from "@letpeoplework/lighthouse-client";
 import { toTableLines } from "./table";
@@ -423,6 +428,58 @@ const sleRiskDays: DayView = {
   },
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+// A chart that could not be read still carries its title, so the reader sees which one is missing.
+const NOTHING_READ: ProcessBehaviorChartView = {
+  status: null,
+  statusReason: "",
+  baselineConfigured: null,
+  days: [],
+};
+
+const chartRow = (
+  chartType: ProcessBehaviorMetricType,
+  value: unknown,
+  terms: Terms,
+): readonly string[] => {
+  const answer = readMetricAnswer(value, readProcessBehaviorChart);
+  if (answer === null || isMetricRefusal(answer)) {
+    const { title } = describeProcessBehaviorChart(
+      NOTHING_READ,
+      chartType,
+      terms,
+    );
+    const line =
+      answer === null
+        ? describeUnknownMetric(title)
+        : describeRefusedMetric(title, answer);
+    return [title, line.detail];
+  }
+  const { title, sentence } = describeProcessBehaviorChart(
+    answer,
+    chartType,
+    terms,
+  );
+  return [title, sentence];
+};
+
+// One line per chart, its title as the web titles it, then what Lighthouse found on it. The charts are keyed
+// by the chart types lh itself asked for, in the order it asked.
+const processBehaviorChartDays = overTheRange(({ subject, wording }) => {
+  const section = subject.sections.processBehaviorChart;
+  if (!isRecord(section) || !isRecord(section.charts)) {
+    return null;
+  }
+  const rows = Object.entries(section.charts).map(([chartType, chart]) =>
+    chartRow(chartType as ProcessBehaviorMetricType, chart, wording.terms),
+  );
+  return rows.length === 0
+    ? null
+    : { sentence: toTableLines(rows).join("\n"), tables: [] };
+});
+
 // One entry per metric name `--metrics` accepts; a name without one prints the generic view.
 const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
   throughput: dayViewOf(
@@ -466,6 +523,7 @@ const DAY_VIEWS: Readonly<Partial<Record<string, DayView>>> = {
       describeProcessBehaviorOverTimeDays(view, wording.terms),
   ),
   sleRisk: sleRiskDays,
+  processBehaviorChart: processBehaviorChartDays,
 };
 
 const tableLines = (days: MetricDays): string[] => [

@@ -297,6 +297,7 @@ const DELIVERED_SLICES: ReadonlySet<string> = new Set([
   "08",
   "09",
   "sle-risk",
+  "process-behaviour-charts",
 ]);
 const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
   DELIVERED_SLICES.has(form.slice),

@@ -96,8 +96,7 @@ const chartRoutesAsked = (lighthouse: FakeLighthouse): string[] =>
 
 describe("Priya sees every chart of Gravity's and whether Lighthouse found a signal on it", () => {
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("prints one line per chart under the range, each titled as the web titles it", async () => {
+  it("prints one line per chart under the range, each titled as the web titles it", async () => {
     const lighthouse = await gravitysLighthouse({
       "totalWorkItemAge/pbc": totalAgeWithALargeChange(),
       "cycleTime/pbc": chartNotReady(),
@@ -163,8 +162,7 @@ describe("Priya sees every chart of Gravity's and whether Lighthouse found a sig
   });
 
   // @driving_port @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("reads a Portfolio's six charts, Feature Size among them", async () => {
+  it("reads a Portfolio's six charts, Feature Size among them", async () => {
     const lighthouse = await aFakeLighthouse({
       replies: chartsOf("portfolios/2", PORTFOLIO_CHART_ROUTES),
     });
@@ -206,8 +204,7 @@ describe("Priya sees every chart of Gravity's and whether Lighthouse found a sig
 
 describe("a chart whose limits mean little claims no signal", () => {
   // @error @real-io @contract-shape:pure-function
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("says no baseline is set and names no signal", async () => {
+  it("says no baseline is set and names no signal", async () => {
     const lighthouse = await gravitysLighthouse({
       "wipOverTime/pbc": chartWithoutABaseline(),
     });
@@ -224,8 +221,7 @@ describe("a chart whose limits mean little claims no signal", () => {
 
   // @error @real-io @contract-shape:pure-function
   // A blackout day is a day the Team did not work; whatever the chart flagged on it is not a signal.
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("lists a blackout day as one and never as a signal", async () => {
+  it("lists a blackout day as one and never as a signal", async () => {
     const lighthouse = await gravitysLighthouse({
       "throughput/pbc": throughputWithABlackoutDay(),
     });
@@ -242,8 +238,7 @@ describe("a chart whose limits mean little claims no signal", () => {
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("titles the charts in the instance's own words", async () => {
+  it("titles the charts in the instance's own words", async () => {
     const lighthouse = await gravitysLighthouse(
       {},
       {
@@ -268,8 +263,7 @@ describe("a chart whose limits mean little claims no signal", () => {
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until lh reads Process Behaviour Charts.
-  it.skip("shows the other charts when one cannot be read", async () => {
+  it("shows the other charts when one cannot be read", async () => {
     const lighthouse = await gravitysLighthouse(
       {},
       { "GET /teams/3/metrics/cycleTime/pbc": { status: 500 } },
