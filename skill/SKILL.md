@@ -26,7 +26,7 @@ Read the relevant section based on what the user needs. If they share data or sc
 
 ## ⚡ Priority: How to Connect to Lighthouse
 
-All three Lighthouse client packages expose **identical capabilities** — choose based on what's available in the current environment, following this priority order:
+MCP stdio and MCP HTTP offer the same tools; the CLI covers those and a little more. Only the CLI creates, updates and deletes Teams and Portfolios, and reads arrivals, WIP, cycle-time data and the predictability score. Refinement votes, comments and take-backs work from the CLI and MCP stdio; through MCP HTTP they need a Lighthouse with sign-in and the caller's own credential. Choose based on what's available in the current environment, following this priority order:
 
 ```
 1. MCP tools already connected  →  use them directly
