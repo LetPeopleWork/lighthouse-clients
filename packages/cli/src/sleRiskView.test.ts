@@ -310,7 +310,7 @@ describe("when there is no SLE Risk to show", () => {
 });
 
 describe("the client's SLE Risk read", () => {
-  // The newest release that still answered on the route with the older, date-driven shape.
+  // The newest release whose answer on the route still left out how many finished Work Items went on to miss.
   const LAST_SERVER_WITHOUT_SLE_RISK = "v26.9.19.10";
 
   const aClientOn = (version: string, sleRisk: unknown) => {
