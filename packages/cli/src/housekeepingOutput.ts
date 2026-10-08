@@ -6,6 +6,7 @@ import {
   describeConnectionType,
   describeNoBlackoutRules,
   describeOptionValue,
+  describeWorkTrackingSystemCount,
   hideConnectionSecrets,
   readBlackoutRules,
   readWorkTrackingConnection,
@@ -50,6 +51,9 @@ export const renderWorkTrackingConnectionList = (
   const connections = readWorkTrackingConnections(value);
   if (connections === null) {
     return asGenericViewWithSecretsHidden(value);
+  }
+  if (connections.length === 0) {
+    return `${describeWorkTrackingSystemCount(0, terms)}.`;
   }
   return [
     terms.workTrackingSystems,

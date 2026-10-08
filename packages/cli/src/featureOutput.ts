@@ -1,5 +1,6 @@
 import {
   type AnswerWording,
+  describeFeatureListCount,
   describeFeatureListHeadings,
   describeFeatureRow,
   describeFeatureWorkItemHeadings,
@@ -19,6 +20,9 @@ export const renderFeatureList = (
   const features = readFeatureList(value);
   if (features === null) {
     return null;
+  }
+  if (features.length === 0) {
+    return `${describeFeatureListCount(0, terms)}.`;
   }
   return toTableLines([
     describeFeatureListHeadings(terms),

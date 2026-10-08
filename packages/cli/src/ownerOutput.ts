@@ -1,6 +1,7 @@
 import {
   describeFeatureCount,
   describeLastUpdated,
+  describeOwnerCount,
   describeOwnerListHeadings,
   describeOwnerListTitle,
   describeOwnerName,
@@ -24,6 +25,9 @@ export const renderOwnerList = (
   const owners = readOwnerList(value);
   if (owners === null) {
     return null;
+  }
+  if (owners.length === 0) {
+    return `${describeOwnerCount(kind, 0, terms)}.`;
   }
   return [
     describeOwnerListTitle(kind, terms),
@@ -69,8 +73,8 @@ export const renderPortfolioList = (
   terms: Terms,
 ): string | null => {
   const table = renderOwnerList(value, "portfolio", terms);
-  if (table === null) {
-    return null;
+  if (table === null || readOwnerList(value)?.length === 0) {
+    return table;
   }
   return [
     table,

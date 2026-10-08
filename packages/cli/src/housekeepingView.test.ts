@@ -215,6 +215,24 @@ describe("lh worktracking --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
+  it.each([
+    { renamed: {}, says: "No Work Tracking Systems." },
+    { renamed: EVERY_TERM_RENAMED, says: "No Trackers." },
+  ])(
+    "says '$says' when there are no Work Tracking Systems",
+    async ({ renamed, says }) => {
+      const lighthouse = sofiasLighthouse({
+        listWorkTrackingConnections: ok([]),
+        getTerminology: ok(terminology(renamed)),
+      });
+
+      const result = await lighthouse.run(["worktracking", "list"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toBe(says);
+    },
+  );
+
   // The view survives a failed terminology read
   it("titles the list in the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = sofiasLighthouse({

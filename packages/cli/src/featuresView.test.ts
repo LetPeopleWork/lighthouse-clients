@@ -178,6 +178,23 @@ describe("lh feature get --pretty", () => {
   });
 });
 
+describe("lh feature get --pretty with nothing to list", () => {
+  it.each([
+    { renamed: {}, says: "No Features." },
+    { renamed: EVERY_TERM_RENAMED, says: "No Outcomes." },
+  ])("says '$says' when no Feature matches", async ({ renamed, says }) => {
+    const lighthouse = marcosLighthouse({
+      getFeaturesByIds: ok([]),
+      getTerminology: ok(terminology(renamed)),
+    });
+
+    const result = await lighthouse.run(["feature", "get", "--ids", "2"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe(says);
+  });
+});
+
 describe("lh feature workitems --pretty", () => {
   // WorkItemsDialog.tsx
   it("shows Marco the Work Items of OE-002 under the Feature's name", async () => {

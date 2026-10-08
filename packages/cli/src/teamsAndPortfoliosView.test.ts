@@ -110,6 +110,43 @@ describe("lh team list --pretty", () => {
   );
 });
 
+describe("lh team list and portfolio list --pretty with nothing to list", () => {
+  it.each([
+    { group: "team", read: "listTeams", renamed: {}, says: "No Teams." },
+    {
+      group: "portfolio",
+      read: "listPortfolios",
+      renamed: {},
+      says: "No Portfolios.",
+    },
+    {
+      group: "team",
+      read: "listTeams",
+      renamed: EVERY_TERM_RENAMED,
+      says: "No Squads.",
+    },
+    {
+      group: "portfolio",
+      read: "listPortfolios",
+      renamed: EVERY_TERM_RENAMED,
+      says: "No Programmes.",
+    },
+  ])(
+    "says '$says' for `lh $group list` when there are none",
+    async ({ group, read, renamed, says }) => {
+      const lighthouse = aLighthouse({
+        [read]: ok([]),
+        getTerminology: ok(terminology(renamed)),
+      });
+
+      const result = await lighthouse.run([group, "list"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toBe(says);
+    },
+  );
+});
+
 describe("lh team get --pretty", () => {
   it("tells Lena Gravity's settings as the Team page states them", async () => {
     const lighthouse = aLighthouse({ getTeam: ok(gravity()) });
