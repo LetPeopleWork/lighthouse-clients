@@ -1,5 +1,5 @@
 import { decode } from "@toon-format/toon";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   gravityBeforeTheDaily,
   gravitysSleRisk,
@@ -110,6 +110,25 @@ describe("when there is no risk to read", () => {
     expect(result.isError).toBe(false);
     expect(summaryOf(result)).toContain("SLE Risk");
     expect(summaryOf(result)).not.toContain("has no SLE");
+  });
+
+  // @error @contract-shape:bounded-change
+  it("names the Team by its id and says only the title when it cannot be read and nothing is at risk", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-08T12:00:00Z"));
+    try {
+      const result = await gravitysDaily({
+        getTeam: refused("dependency-failure", "Team timed out"),
+        getTeamSleRisk: ok([]),
+      }).call(TOOL, { id: 3 });
+
+      expect(summaryOf(result).split("\n")).toEqual([
+        "Team [id: 3] · as of Thu 8 Oct 2026",
+        "SLE Risk",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // @error @contract-shape:bounded-change
