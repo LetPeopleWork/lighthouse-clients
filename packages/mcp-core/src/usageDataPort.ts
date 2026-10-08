@@ -68,7 +68,13 @@ export type AskingOnceDependencies = {
   readonly mightAsk: () => Promise<boolean>;
   /** Settles one call's usage data; never expected to throw. */
   readonly settle: (step: UsageDataStep) => Promise<unknown>;
+  readonly now?: () => Date;
 };
+
+// A Lighthouse that would not let the question be put (too young, vetoed, not taking MCP usage data, or not
+// answering) is not asked again on every tool call: it is looked at again at most once an hour, and calls in
+// between do not wait for it.
+const QUESTION_RETRY_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
  * A port that puts the question at most once in this process. Only a call that might ask waits for its
@@ -79,6 +85,8 @@ export const askingOnceInThisProcess = (
   dependencies: AskingOnceDependencies,
 ): McpUsageDataPort => {
   let asked = false;
+  let notAskableUntil = Number.NEGATIVE_INFINITY;
+  const now = () => (dependencies.now?.() ?? new Date()).getTime();
   const once =
     (ask: NonNullable<UsageDataStep["ask"]>) =>
     async (): Promise<UsageDataQuestionAnswer> => {
@@ -104,11 +112,20 @@ export const askingOnceInThisProcess = (
   };
   return async (step) => {
     const { ask, ...withoutAsk } = step;
-    if (ask === undefined || asked || !(await mightAskQuietly())) {
+    if (
+      ask === undefined ||
+      asked ||
+      !step.reached ||
+      now() < notAskableUntil ||
+      !(await mightAskQuietly())
+    ) {
       void settleQuietly(withoutAsk);
       return;
     }
     await settleQuietly({ ...withoutAsk, ask: once(ask) });
+    if (!asked) {
+      notAskableUntil = now() + QUESTION_RETRY_INTERVAL_MS;
+    }
   };
 };
 

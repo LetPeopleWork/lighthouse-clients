@@ -136,6 +136,83 @@ describe("the usage data port asks at most once in a process", () => {
   });
 });
 
+describe("a Lighthouse that will not let the question be put", () => {
+  const aMoment = (ms: number) =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
+
+  /** A port whose settle reads the state before a question, as the reporter does, and is never allowed to ask. */
+  const aPortNeverAllowedToAsk = (readMs: number) => {
+    let clock = new Date("2026-10-08T09:00:00Z");
+    const stateReads = { count: 0 };
+    const port = askingOnceInThisProcess({
+      mightAsk: async () => true,
+      settle: async (step) => {
+        if (step.ask !== undefined) {
+          stateReads.count += 1;
+          await aMoment(readMs);
+        }
+      },
+      now: () => clock,
+    });
+    const minutesPass = (minutes: number) => {
+      clock = new Date(clock.getTime() + minutes * 60_000);
+    };
+    return { port, stateReads, minutesPass };
+  };
+
+  it.each<[string, number]>([
+    ["refuses it", 20],
+    ["takes the whole usage data budget to answer", 1_000],
+  ])(
+    "lets the next call return at once, without reading the state again, when Lighthouse %s",
+    async (_why, readMs) => {
+      const { port, stateReads } = aPortNeverAllowedToAsk(readMs);
+      await port(aStep(countingAsk("yes").ask));
+      const started = performance.now();
+
+      await port(aStep(countingAsk("yes").ask));
+
+      expect(performance.now() - started).toBeLessThan(100);
+      expect(stateReads.count).toBe(1);
+    },
+  );
+
+  it.each<[string, number, number]>([
+    ["a minute short of an hour", 59, 1],
+    ["a full hour", 60, 2],
+  ])(
+    "reads the state again only once %s has passed",
+    async (_after, minutesLater, readsExpected) => {
+      const { port, stateReads, minutesPass } = aPortNeverAllowedToAsk(20);
+      await port(aStep(countingAsk("yes").ask));
+      minutesPass(minutesLater);
+
+      await port(aStep(countingAsk("yes").ask));
+
+      expect(stateReads.count).toBe(readsExpected);
+    },
+  );
+
+  it("is not judged on a call that did not reach Lighthouse", async () => {
+    const port = askingOnceInThisProcess({
+      mightAsk: async () => true,
+      settle: async (step) => {
+        if (step.reached && step.ask !== undefined) {
+          await step.ask();
+        }
+      },
+    });
+    const { asked, ask } = countingAsk("yes");
+
+    await port({ ...aStep(ask), reached: false });
+    await port(aStep(ask));
+
+    expect(asked.times).toBe(1);
+  });
+});
+
 describe("the question through the assistant", () => {
   it.each([
     ["accept", "yes"],

@@ -22,3 +22,7 @@ Lighthouse never delays a tool, and a call Lighthouse refused reports nothing. `
 
 `mcp-core`'s `registerMcpTools` takes an optional `usageData` port; without one, every tool behaves as
 before. `createMcpCoreRuntime` gains `callCountedTool`, which returns a tool's result with what it counts.
+
+When the Lighthouse will not let the question be put (installed less than three days ago, stopped by its
+administrator, not taking usage data from MCP, or not answering), tool calls stop waiting on it, and the
+server looks at its usage data state again at most once an hour instead of on every tool call.
