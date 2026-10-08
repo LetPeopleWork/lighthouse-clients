@@ -512,6 +512,23 @@ describe("lh config usage-data on records a yes without a question", () => {
     expect(run.stderr).toContain(COULD_NOT_ASK);
     expect(await theStoredAnswerFor(lena, lighthouse.url)).toBe(undefined);
   });
+
+  // The Lighthouse allows usage data but cannot mint the grant: nothing is kept, and the command fails.
+  it("records nothing when the Lighthouse cannot grant the yes, names it, and exits 1", async () => {
+    const lighthouse = await aFakeLighthouse({
+      usageData: { consentAnswers: "by-failing" },
+    });
+    const lena = await lenaAt(lighthouse);
+
+    const run = await lhOn(lena).run(ON);
+
+    expect(run.exitCode).toBe(1);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toContain(
+      `Could not record your answer at ${lighthouse.url}; nothing is sent. Try lh config usage-data on.`,
+    );
+    expect(await theStoredAnswerFor(lena, lighthouse.url)).toBe(undefined);
+  });
 });
 
 describe("the consent token stays a secret", () => {

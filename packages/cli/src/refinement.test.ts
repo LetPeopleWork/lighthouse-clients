@@ -874,6 +874,28 @@ describe("lh refinement get", () => {
     expect(result.stderr).not.toContain("Team 3 does not exist");
   });
 
+  it.each(["--json", "--toon"])(
+    "reports a failed refinement read %s",
+    async (format) => {
+      const { dependencies } = aLighthouse({
+        refinement: {
+          ok: false,
+          error: { category: "unexpected", reason: "refinement unavailable" },
+        },
+      });
+
+      const result = await runCliCommand(
+        [...refinementOfGravity(), format],
+        dependencies,
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("refinement unavailable");
+      expect(result.usage?.occurrences ?? []).toEqual([]);
+    },
+  );
+
   it.each([
     { args: ["refinement", "get"], says: "Missing required --team-id" },
     {

@@ -2677,3 +2677,34 @@ describe("runCliCommand", () => {
     expect(result.stderr).toContain("--id");
   });
 });
+
+describe("lh config usage-data without usage data wired in", () => {
+  // A caller that wires no usage data store, as getDefaultDependencies does, gets the config group's help.
+  it.each<[string, readonly string[]]>([
+    ["(none)", []],
+    ["on", ["on"]],
+    ["off", ["off"]],
+  ])(
+    "answers the subcommand %s with the config group's help, exit 1",
+    async (named, subject) => {
+      const { dependencies } = getDependencies({
+        connection: {
+          mode: "server",
+          endpointUrl: "http://localhost:5000",
+          authMode: "disabled",
+        },
+      });
+
+      const result = await runCliCommand(
+        ["config", "usage-data", ...subject],
+        dependencies,
+      );
+
+      expect(result.exitCode).toBe(1);
+      const lines = result.stderr.split("\n");
+      expect(lines[0]).toBe(`Unknown config usage-data subcommand: ${named}`);
+      expect(lines).toContain("  lh config usage-data");
+      expect(lines).toContain("  lh config usage-data on|off");
+    },
+  );
+});
