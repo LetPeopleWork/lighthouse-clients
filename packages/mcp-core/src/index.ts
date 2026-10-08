@@ -5,6 +5,7 @@ import {
   describeBacktestActual,
   describeBacktestPeriod,
   describeBacktestSummary,
+  describeBlackoutRuleWriteConfirmation,
   describeBlockedDays,
   describeCycleTimeDays,
   describeDeliveryCount,
@@ -20,6 +21,7 @@ import {
   describePercentilesOverTimeDays,
   describePortfolioSummary,
   describeProcessBehaviorOverTimeDays,
+  describeRefreshConfirmation,
   describeTeamSummary,
   describeThroughputDays,
   describeTimeInStateContributorDays,
@@ -54,7 +56,9 @@ import {
   readTotalWorkItemAge,
   readWorkItemAge,
   readWorkItemAgePercentiles,
+  readWrittenBlackoutRule,
   summariseDeliveryMetricsHistory,
+  type WriteVerb,
 } from "@letpeoplework/lighthouse-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -826,7 +830,8 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
   {
     name: "lighthouse_team_refresh",
-    description: "Trigger data refresh for a team by ID.",
+    description:
+      "Trigger data refresh for a team by ID. A second text block, `summary`, confirms it in one line as lh does, in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
   {
@@ -850,7 +855,8 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
   {
     name: "lighthouse_portfolio_refresh",
-    description: "Trigger data refresh for a portfolio by ID.",
+    description:
+      "Trigger data refresh for a portfolio by ID. A second text block, `summary`, confirms it in one line as lh does, in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
   {
@@ -1138,7 +1144,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_blackout_create",
     description:
-      "Create a recurring blackout rule (weekdays + every-N-weeks interval + start date + optional open end). Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5.",
+      "Create a recurring blackout rule (weekdays + every-N-weeks interval + start date + optional open end). Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5. A second text block, `summary`, confirms it in one line as lh does; the first block is the facts, unchanged, the rule's own `summary` field included.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1151,7 +1157,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_blackout_update",
     description:
-      "Update a recurring blackout rule by ID. Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5.",
+      "Update a recurring blackout rule by ID. Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5. A second text block, `summary`, confirms it in one line as lh does; the first block is the facts, unchanged, the rule's own `summary` field included.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1165,7 +1171,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_blackout_delete",
     description:
-      "Delete a recurring blackout rule by ID. Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5.",
+      "Delete a recurring blackout rule by ID. Premium, system-admin only. Requires Lighthouse newer than v26.5.29.5. A second text block, `summary`, confirms it in one line as lh does; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
   {
@@ -1389,6 +1395,68 @@ const summaryOrNull = (summarise: () => string | null): string | null => {
   } catch {
     return null;
   }
+};
+
+/**
+ * A write's facts block exactly as before, with the line lh confirms it with in a second block. The
+ * confirmation never sits inside the facts: a blackout rule's own `summary` field is Lighthouse's
+ * wording of its schedule and must reach the assistant untouched.
+ */
+const withConfirmation = (
+  facts: string,
+  confirm: () => string | null,
+): McpToolResult => {
+  const confirmation = summaryOrNull(confirm);
+  if (confirmation === null) {
+    return getSuccessToolResult(facts);
+  }
+  return {
+    isError: false,
+    content: [
+      { type: "text", text: facts },
+      { type: "text", text: `summary: ${confirmation}` },
+    ],
+  };
+};
+
+/** A refresh as before, confirmed as queued in the instance's word for a Team or Portfolio. */
+const answerRefresh = async (
+  client: McpRuntimeClient,
+  kind: OwnerKind,
+  id: number,
+  refresh: LighthouseRead,
+): Promise<McpToolResult> => {
+  const [result, terms] = await Promise.all([refresh, readTerms(client)]);
+  if (!result.ok) {
+    return getErrorToolResult(
+      `${kind} refresh: ${result.error.category} (${result.error.reason})`,
+    );
+  }
+  return withConfirmation(`${kind} refreshed: ${id}`, () =>
+    describeRefreshConfirmation(kind, id, terms),
+  );
+};
+
+/** A written blackout rule as before, confirmed with Lighthouse's own wording of its schedule. */
+const answerBlackoutRuleWrite = async (
+  verb: WriteVerb,
+  write: LighthouseRead,
+): Promise<McpToolResult> => {
+  const result = await write;
+  if (!result.ok) {
+    return getErrorToolResult(
+      `blackout: ${result.error.category} (${result.error.reason})`,
+    );
+  }
+  return withConfirmation(
+    `recurringBlackoutRule: ${encodePayload(result.value)}`,
+    () => {
+      const rule = readWrittenBlackoutRule(result.value);
+      return rule === null
+        ? null
+        : describeBlackoutRuleWriteConfirmation(verb, rule);
+    },
+  );
 };
 
 /** The Features under their label with their count in the instance's words, or Lighthouse's refusal as before. */
@@ -2113,14 +2181,7 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("team: invalid id");
       }
 
-      const result = await client.refreshTeam(id);
-      if (result.ok) {
-        return getSuccessToolResult(`team refreshed: ${id}`);
-      }
-
-      return getErrorToolResult(
-        `team refresh: ${result.error.category} (${result.error.reason})`,
-      );
+      return answerRefresh(client, "team", id, client.refreshTeam(id));
     }
 
     const refinementTool = findRefinementTool(name);
@@ -2155,13 +2216,11 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("portfolio: invalid id");
       }
 
-      const result = await client.refreshPortfolio(id);
-      if (result.ok) {
-        return getSuccessToolResult(`portfolio refreshed: ${id}`);
-      }
-
-      return getErrorToolResult(
-        `portfolio refresh: ${result.error.category} (${result.error.reason})`,
+      return answerRefresh(
+        client,
+        "portfolio",
+        id,
+        client.refreshPortfolio(id),
       );
     }
 
@@ -2711,14 +2770,9 @@ export const createMcpCoreRuntime = (
 
     if (name === "lighthouse_blackout_create") {
       const payload = isObjectRecord(argumentsPayload) ? argumentsPayload : {};
-      const result = await client.createRecurringBlackoutRule(payload);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `recurringBlackoutRule: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `blackout: ${result.error.category} (${result.error.reason})`,
+      return answerBlackoutRuleWrite(
+        "Created",
+        client.createRecurringBlackoutRule(payload),
       );
     }
 
@@ -2729,14 +2783,9 @@ export const createMcpCoreRuntime = (
       }
       const payload = isObjectRecord(argumentsPayload) ? argumentsPayload : {};
       const { id: _ignoredId, ...rulePayload } = payload;
-      const result = await client.updateRecurringBlackoutRule(id, rulePayload);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `recurringBlackoutRule: ${encodePayload(result.value)}`,
-        );
-      }
-      return getErrorToolResult(
-        `blackout: ${result.error.category} (${result.error.reason})`,
+      return answerBlackoutRuleWrite(
+        "Updated",
+        client.updateRecurringBlackoutRule(id, rulePayload),
       );
     }
 
@@ -2746,11 +2795,13 @@ export const createMcpCoreRuntime = (
         return getErrorToolResult("blackout: invalid id (rule id required)");
       }
       const result = await client.deleteRecurringBlackoutRule(id);
-      if (result.ok) {
-        return getSuccessToolResult(`recurringBlackoutRule deleted: ${id}`);
+      if (!result.ok) {
+        return getErrorToolResult(
+          `blackout: ${result.error.category} (${result.error.reason})`,
+        );
       }
-      return getErrorToolResult(
-        `blackout: ${result.error.category} (${result.error.reason})`,
+      return withConfirmation(`recurringBlackoutRule deleted: ${id}`, () =>
+        describeBlackoutRuleWriteConfirmation("Deleted", { id }),
       );
     }
 

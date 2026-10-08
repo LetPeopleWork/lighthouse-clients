@@ -22,3 +22,17 @@ refresh keep today's lines (`Team deleted: 9`, `Team refreshed: 3`, …).
 A confirmation never fails on a word: an answer without a name is confirmed by its id (`Created: Team [id:
 9].`), a rule without a description by its schedule alone, and when the instance's terms cannot be read the
 seeded words stand in.
+
+The write tools confirm in one line
+
+`lighthouse_team_refresh` and `lighthouse_portfolio_refresh` keep their facts block (`team refreshed: 3`)
+and add the CLI's confirmation as a second block, `summary: Refresh queued: Team [id: 3]. Lighthouse
+updates it in the background.`, in the instance's word for a Team or Portfolio. `lighthouse_blackout_create`,
+`lighthouse_blackout_update` and `lighthouse_blackout_delete` do the same (`summary: Created: recurring
+blackout rule [id: 5] — Every Friday — every 2 weeks — from 2026-10-09 — no end (Focus Friday).`); the
+rule's own `summary` field, Lighthouse's wording of its schedule, stays in the facts untouched. When the
+answer is in a shape the confirmation cannot read, the facts go out exactly as before, and the tool never
+fails because of it.
+
+`--pretty` is for people and its layout may change in any minor release; `--json`, `--toon` and the MCP
+tools' facts are the contract that scripts and agents read.

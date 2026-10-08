@@ -11,7 +11,7 @@ import { anAssistantOn } from "../test-support/mcpHarness";
 // Portfolio create, update or delete). Each keeps today's text block byte for byte and adds the CLI's
 // one-line confirmation as a second block. A blackout rule already carries a `summary` field of its own (the
 // server's schedule), so it takes the second block too: putting the confirmation in that field would
-// overwrite a fact. Pending until DELIVER slice 08.
+// overwrite a fact.
 
 const sofiasAssistant = (reads = {}) =>
   anAssistantOn({
@@ -28,7 +28,7 @@ const textBlocks = (...texts: string[]) =>
 
 describe("the write tools' summary", () => {
   // @driving_port @US-08 @contract-shape:bounded-change
-  it.skip.each([
+  it.each([
     {
       tool: "lighthouse_team_refresh",
       argumentsPayload: { id: 3 },
