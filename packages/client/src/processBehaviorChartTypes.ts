@@ -5,16 +5,20 @@ import type { ProcessBehaviorMetricType } from "./index";
 export const THROUGHPUT_CHART =
   "Throughput" satisfies ProcessBehaviorMetricType;
 
-const CHART_TYPES: Readonly<Record<ProcessBehaviorMetricType, true>> = {
-  [THROUGHPUT_CHART]: true,
-  Arrivals: true,
-  Wip: true,
-  WorkItemAge: true,
-  CycleTime: true,
-  FeatureSize: true,
+/** Where each chart is read, under a Team's or a Portfolio's metrics. */
+export const PROCESS_BEHAVIOR_CHART_ROUTES: Readonly<
+  Record<ProcessBehaviorMetricType, string>
+> = {
+  [THROUGHPUT_CHART]: "throughput/pbc",
+  Arrivals: "arrivals/pbc",
+  Wip: "wipOverTime/pbc",
+  WorkItemAge: "totalWorkItemAge/pbc",
+  CycleTime: "cycleTime/pbc",
+  FeatureSize: "featureSize/pbc",
 };
 
 /** Whether a text names a chart type Lighthouse draws a Process Behaviour Chart for. */
 export const isProcessBehaviorMetricType = (
   value: string,
-): value is ProcessBehaviorMetricType => Object.hasOwn(CHART_TYPES, value);
+): value is ProcessBehaviorMetricType =>
+  Object.hasOwn(PROCESS_BEHAVIOR_CHART_ROUTES, value);

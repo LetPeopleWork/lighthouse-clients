@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getNormalizedLighthouseUrl } from "./lighthouseUrl";
+import { PROCESS_BEHAVIOR_CHART_ROUTES } from "./processBehaviorChartTypes";
 import {
   readUsageDataState,
   type UsageDataBatch,
@@ -2063,17 +2064,6 @@ const getProcessBehaviorTypeQuerySuffix = (
   metricType?: ProcessBehaviorMetricType,
 ): string =>
   metricType === undefined ? "" : `&type=${encodeURIComponent(metricType)}`;
-
-const PROCESS_BEHAVIOR_CHART_ROUTES: Readonly<
-  Record<ProcessBehaviorMetricType, string>
-> = {
-  Throughput: "throughput/pbc",
-  Arrivals: "arrivals/pbc",
-  Wip: "wipOverTime/pbc",
-  WorkItemAge: "totalWorkItemAge/pbc",
-  CycleTime: "cycleTime/pbc",
-  FeatureSize: "featureSize/pbc",
-};
 
 type WipItemDto = {
   readonly id: number;
