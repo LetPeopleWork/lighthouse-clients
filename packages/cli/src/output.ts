@@ -196,7 +196,8 @@ const formatPrettyLines = (value: unknown, depth = 0): string[] => {
   return [`${indent}${JSON.stringify(value)}`];
 };
 
-const formatPretty = (value: unknown): string =>
+/** The generic view: every field of the answer by its wire name. */
+export const formatPretty = (value: unknown): string =>
   formatPrettyLines(value).join("\n");
 
 export const isOutputFormat = (value: unknown): value is OutputFormat =>

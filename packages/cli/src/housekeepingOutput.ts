@@ -6,6 +6,7 @@ import {
   describeConnectionType,
   describeNoBlackoutRules,
   describeOptionValue,
+  hideConnectionSecrets,
   readBlackoutRules,
   readWorkTrackingConnection,
   readWorkTrackingConnections,
@@ -13,7 +14,12 @@ import {
   WORK_TRACKING_CONNECTION_LIST_HEADINGS,
   WORK_TRACKING_OPTION_HEADINGS,
 } from "@letpeoplework/lighthouse-client";
+import { formatPretty } from "./output";
 import { toTableLines } from "./table";
+
+// An answer the view does not recognise still goes to the generic view, but never with a secret in it.
+const asGenericViewWithSecretsHidden = (value: unknown): string =>
+  formatPretty(hideConnectionSecrets(value));
 
 /** The recurring blackout rules as the settings page lists them, or null when the answer is not in a shape it knows. */
 export const renderBlackoutRuleList = (value: unknown): string | null => {
@@ -36,14 +42,14 @@ export const renderBlackoutRuleList = (value: unknown): string | null => {
   ].join("\n");
 };
 
-/** The Work Tracking Systems as the Overview lists them, or null when the answer is not in a shape it knows. */
+/** The Work Tracking Systems as the Overview lists them, or the generic view with every secret hidden. */
 export const renderWorkTrackingConnectionList = (
   value: unknown,
   terms: Terms,
-): string | null => {
+): string => {
   const connections = readWorkTrackingConnections(value);
   if (connections === null) {
-    return null;
+    return asGenericViewWithSecretsHidden(value);
   }
   return [
     terms.workTrackingSystems,
@@ -57,11 +63,11 @@ export const renderWorkTrackingConnectionList = (
   ].join("\n");
 };
 
-/** One connection with its options as the editor labels them, or null when the answer is not in a shape it knows. */
-export const renderWorkTrackingConnection = (value: unknown): string | null => {
+/** One connection with its options as the editor labels them, or the generic view with every secret hidden. */
+export const renderWorkTrackingConnection = (value: unknown): string => {
   const connection = readWorkTrackingConnection(value);
   if (connection === null) {
-    return null;
+    return asGenericViewWithSecretsHidden(value);
   }
   return [
     describeConnectionName(connection),

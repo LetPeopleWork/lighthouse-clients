@@ -206,6 +206,47 @@ export const readWorkTrackingConnection = (
     : null;
 };
 
+const withValueHidden = (
+  option: unknown,
+  declared: readonly Record<string, unknown>[],
+): unknown => {
+  if (!isRecord(option)) {
+    return SECRET_NOT_SHOWN;
+  }
+  const declaration = declared.find(
+    (candidate) => candidate.key === option.key,
+  );
+  const knownNotSecret =
+    option.isSecret === false && declaration?.isSecret !== true;
+  return knownNotSecret || !("value" in option)
+    ? option
+    : { ...option, value: SECRET_NOT_SHOWN };
+};
+
+const withConnectionSecretsHidden = (connection: unknown): unknown => {
+  if (!isRecord(connection) || !("options" in connection)) {
+    return connection;
+  }
+  const declared = declaredOptionsOf(connection);
+  return {
+    ...connection,
+    options: Array.isArray(connection.options)
+      ? connection.options.map((option) => withValueHidden(option, declared))
+      : SECRET_NOT_SHOWN,
+  };
+};
+
+/**
+ * A copy of a connection, or a list of them, with every option value that is not known to be safe to show
+ * replaced by the secret stand-in. Only an option that says it is not secret, and that its authentication
+ * method does not declare secret, keeps its value: a server that sends a shape lh does not recognise has
+ * already shown it cannot be trusted to flag its secrets.
+ */
+export const hideConnectionSecrets = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(withConnectionSecretsHidden)
+    : withConnectionSecretsHidden(value);
+
 /** The list's column headings, as the Overview heads them. */
 export const WORK_TRACKING_CONNECTION_LIST_HEADINGS = ["Name", "Type"] as const;
 

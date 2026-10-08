@@ -33,11 +33,12 @@ const HACKATHON = aBlackoutRule({
 const LEAKED_TOKEN = "ATATT-leaked-token";
 
 // A server that wrongly hands a secret's value back.
-const aLeakyConnection = () =>
+const aLeakyConnection = (facts: Record<string, unknown> = {}) =>
   aConnection({
     options: aConnection().options.map((option) =>
       option.isSecret ? { ...option, value: LEAKED_TOKEN } : option,
     ),
+    ...facts,
   });
 
 const sofiasLighthouse = (reads = {}, options = {}) =>
@@ -144,6 +145,45 @@ describe("lh worktracking --pretty", () => {
     );
     expect(result.stdout).not.toContain(LEAKED_TOKEN);
     expect(list.stdout).not.toContain(LEAKED_TOKEN);
+  });
+
+  // One option in a shape the view does not know sends the whole connection to the generic view, which
+  // must still hide every value it cannot prove is not a secret.
+  it.each([
+    { sibling: { key: "Port", value: 443, isSecret: false } },
+    { sibling: { key: "Extra", value: "x" } },
+  ])(
+    "never prints a wrongly-sent secret when $sibling.key sends the connection to the generic view",
+    async ({ sibling }) => {
+      const connection = aLeakyConnection();
+      const lighthouse = sofiasLighthouse({
+        getWorkTrackingConnection: ok({
+          ...connection,
+          options: [...connection.options, sibling],
+        }),
+      });
+
+      const result = await lighthouse.run(["worktracking", "get", "--id", "1"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(looksLikeTheGenericView(result.stdout)).toBe(true);
+      expect(result.stdout).not.toContain(LEAKED_TOKEN);
+    },
+  );
+
+  it("never prints a wrongly-sent secret when a nameless connection sends the list to the generic view", async () => {
+    const lighthouse = sofiasLighthouse({
+      listWorkTrackingConnections: ok([
+        aLeakyConnection(),
+        aLeakyConnection({ id: 2, name: null }),
+      ]),
+    });
+
+    const result = await lighthouse.run(["worktracking", "list"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(looksLikeTheGenericView(result.stdout)).toBe(true);
+    expect(result.stdout).not.toContain(LEAKED_TOKEN);
   });
 
   // An option the editor has no label for

@@ -8,6 +8,7 @@ import {
   describeReachable,
   describeVersion,
   describeWorkTrackingSystemCount,
+  hideConnectionSecrets,
   readBlackoutRules,
   readWorkTrackingConnection,
   readWorkTrackingConnections,
@@ -172,6 +173,66 @@ describe("readWorkTrackingConnection", () => {
   ])("reads %j as unrecognised", (value) => {
     expect(readWorkTrackingConnection(value)).toBeNull();
   });
+});
+
+describe("hideConnectionSecrets", () => {
+  const HIDDEN = "(secret, not shown)";
+
+  it("shows only the values of options that say they are not secret and are not declared secret", () => {
+    const hidden = hideConnectionSecrets(
+      jiraConnection([
+        { key: "Jira Url", value: "https://jira", isSecret: false },
+        { key: "Port", value: 443, isSecret: false },
+        { key: "Api Token", value: "leaked", isSecret: false },
+        { key: "Password", value: "leaked", isSecret: true },
+        { key: "Extra", value: "leaked" },
+        { key: "Odd", value: "leaked", isSecret: "no" },
+      ]),
+    );
+
+    expect(hidden).toEqual(
+      jiraConnection([
+        { key: "Jira Url", value: "https://jira", isSecret: false },
+        { key: "Port", value: 443, isSecret: false },
+        { key: "Api Token", value: HIDDEN, isSecret: false },
+        { key: "Password", value: HIDDEN, isSecret: true },
+        { key: "Extra", value: HIDDEN },
+        { key: "Odd", value: HIDDEN, isSecret: "no" },
+      ]),
+    );
+  });
+
+  it("hides an option that is not an object, and options that are not a list", () => {
+    expect(hideConnectionSecrets(jiraConnection(["leaked" as never]))).toEqual(
+      jiraConnection([HIDDEN as never]),
+    );
+    expect(
+      hideConnectionSecrets({
+        ...jiraConnection([]),
+        options: { a: "leaked" },
+      }),
+    ).toEqual({ ...jiraConnection([]), options: HIDDEN });
+  });
+
+  it("hides the secrets of every connection in a list, and leaves the answer it was given untouched", () => {
+    const leaky = jiraConnection([
+      { key: "Api Token", value: "leaked", isSecret: true },
+    ]);
+    const answer = [leaky, { ...leaky, name: null }];
+
+    const hidden = hideConnectionSecrets(answer);
+
+    expect(JSON.stringify(hidden)).not.toContain("leaked");
+    expect(answer[1]).toEqual({ ...leaky, name: null });
+    expect(JSON.stringify(answer)).toContain("leaked");
+  });
+
+  it.each([null, "text", 3, { id: 1 }])(
+    "passes %j through as it is",
+    (value) => {
+      expect(hideConnectionSecrets(value)).toEqual(value);
+    },
+  );
 });
 
 describe("readWorkTrackingConnections", () => {
