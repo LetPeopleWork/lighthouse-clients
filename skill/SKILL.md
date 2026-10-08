@@ -26,7 +26,7 @@ Read the relevant section based on what the user needs. If they share data or sc
 
 ## ⚡ Priority: How to Connect to Lighthouse
 
-MCP stdio and MCP HTTP offer the same tools; the CLI covers those and a little more. Only the CLI creates, updates and deletes Teams and Portfolios, and reads arrivals, WIP, cycle-time data and the predictability score. Refinement votes, comments and take-backs work from the CLI and MCP stdio; through MCP HTTP they need a Lighthouse with sign-in and the caller's own credential. Choose based on what's available in the current environment, following this priority order:
+MCP stdio and MCP HTTP offer the same tools; the CLI covers those and a little more. Only the CLI creates, updates and deletes Teams and Portfolios, and reads Arrivals, current WIP with what is Blocked right now, a Portfolio's Cycle Time percentiles and the Predictability Score. Refinement votes, comments and take-backs work from the CLI and MCP stdio; through MCP HTTP they need a Lighthouse with sign-in and the caller's own credential. Choose based on what's available in the current environment, following this priority order:
 
 ```
 1. MCP tools already connected  →  use them directly
@@ -222,7 +222,7 @@ npm install -g @letpeoplework/lighthouse-cli
 
 Verify:
 ```bash
-lh version 2>&1 || node $(npm root -g)/@letpeoplework/lighthouse-cli/dist/bin.js version
+lh version get 2>&1 || node $(npm root -g)/@letpeoplework/lighthouse-cli/dist/bin.js version get
 ```
 
 > **Container/claude.ai environments:** If `lh` is not on PATH after install, use the full path:
@@ -252,51 +252,27 @@ export LIGHTHOUSE_API_KEY=<key>
 
 **Command reference**
 
-All commands support `--pretty` (default), `--json` (machine-readable), `--toon` (ASCII). `--pretty` is for people: it reads like the web, in the instance's terminology, and its layout and wording may change in any minor release. Scripts and agents read `--json` or `--toon` (or the MCP tools' facts), which carry the facts unchanged. Use `--json` whenever you parse the output.
+Every command takes `--pretty` (the default), `--json` or `--toon`. `--pretty` is for people: it reads like the web, in the instance's terminology, and its layout may change in any minor release. **Whenever you read `lh` output to answer from it, run the command with `--json`** and answer from its fields. Quote numbers and likelihoods exactly as they come; never round them.
 
 ```bash
-# List
-lh team list
-lh portfolio list
-
-# Metrics (last 30/90 days by default)
-lh metrics team --id <id>
-lh metrics portfolio --id <id>
-lh metrics team --id <id> --start-date 2025-01-01 --end-date 2025-03-31
-lh metrics team --id <id> --metrics throughput,cycleTime,wip
-
-# Forecasting
-lh forecast manual --team-id <id> --remaining <n> --target-date <date>
-lh forecast backtest \
-  --team-id <id> \
-  --start-date <date> --end-date <date> \
-  --hist-start-date <date> --hist-end-date <date>
-
-# Other
-lh delivery list --portfolio-id <id>
-lh delivery metrics --delivery-id <id> [--detail epics]
-lh worktracking list
-lh feature list
-lh refinement get --team-id <id>   # how many Work Items to refine, and how the votes stand
-lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]
-lh refinement comment --team-id <id> --work-item <ref> --text <text> [--as <name>]
-lh refinement take-back --team-id <id> --work-item <ref>
+lh team list --json
+lh portfolio list --json
+lh metrics team --id <id> --metrics throughput,cycleTime,wip --json
+lh forecast manual --team-id <id> --remaining <n> --target-date <date> --json
+lh refinement get --team-id <id> --json
 lh health check
-lh config output
-lh config output set --format json
-lh config voter set --name <name>  # the name votes carry without sign-in; ask the user for it
 ```
 
-Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItemAge`, `arrivals`, `predictabilityScore`
+**Read `references/tools-and-commands.md` whenever the user asks for something this page does not show**: another metric (Time in State, Blocked, Arrivals, percentiles or process limits over time, the Predictability Score), one Team, Portfolio, Feature or Delivery, recurring blackout rules, Work Tracking connections, creating, changing or deleting a Team or Portfolio, or an `lh` flag. It names every MCP tool, every `lh` command and every `--metrics` key, each with when to use it.
 
 **Common CLI workflows:**
 
 | Goal | Commands |
 |------|----------|
 | Team metrics this quarter | `lh team list --json` → `lh metrics team --id <id> --start-date ... --end-date ... --json` |
-| Forecast 20 items | `lh team list --json` → `lh forecast manual --team-id <id> --remaining 20 --json` |
+| Will 20 Work Items be done by a date? | `lh team list --json` → `lh forecast manual --team-id <id> --remaining 20 --target-date <date> --json`; state the likelihood exactly as it comes |
+| Where Work Items spend their time | `lh team list --json` → `lh metrics team --id <id> --metrics cumulativeStateTime --json` |
 | Health check | `lh health check` |
-| Throughput + cycle time as JSON | `lh metrics team --id <id> --metrics throughput,cycleTime --json` |
 
 **Troubleshooting:**
 
@@ -306,7 +282,7 @@ Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItem
 | `Not connected` error | `lh connection connect` first |
 | TLS / cert errors | Add `--insecure` to connect command |
 | Auth failures | Set `LIGHTHOUSE_API_KEY` env var or reconnect with `--api-key` |
-| Old version | `npm install -g @letpeoplework/lighthouse-cli@latest` |
+| Old CLI version | `npm install -g @letpeoplework/lighthouse-cli@latest` |
 
 ---
 
@@ -314,20 +290,38 @@ Allowed metrics: `throughput`, `wip`, `cycleTime`, `workItemAge`, `totalWorkItem
 
 **Golden rule: Never ask the user for IDs. Resolve them silently in the background.**
 
-Users ask naturally ("tell me about the Mars Colonization feature"). Claude handles the two-step lookup without surfacing it.
+Users ask naturally ("tell me about the Mars Colonization Feature"). Claude handles the two-step lookup without surfacing it.
+
+### Reading Lighthouse — the rules
+
+- **Use the read that exists.** If a tool in your tool list or a command in `references/tools-and-commands.md` answers the question, call it. Never answer from general knowledge what Lighthouse can read, and never say Lighthouse cannot tell when it can.
+- **Quote the `summary` as written.** A tool that carries a `summary` states its answer as the web does; quote it, and reason over the other fields, which are the facts.
+- **Use the tool's words.** An instance may rename Feature, Work Item, Team, Portfolio, Cycle Time, Throughput, WIP, Blocked or SLE. Answer in the words each tool's `summary` uses; where there is none, use those defaults.
+- **Never invent a tool.** Some reads exist only in `lh`: Arrivals, current WIP and what is Blocked right now, the Predictability Score, a Portfolio's Cycle Time percentiles, and creating, changing or deleting Teams and Portfolios. Over MCP, name the command instead, for example `lh metrics team --id 3 --metrics arrivals`, and do not work the answer out from other reads.
+- **An older Lighthouse is not a fault.** When a read is refused because it "requires a version newer than" the running one, tell the user this Lighthouse must be upgraded for that answer. Do not call it an error in Lighthouse, do not retry, and do not guess the answer.
+- **No per-person answers.** Lighthouse counts Work Items, not people. Never break an answer down by person or assignee.
 
 ### ID Resolution Table
 
 | User wants | Step 1: get IDs from | Step 2: call |
 |---|---|---|
-| Team metrics / forecast | `lighthouse_team_list` | `lighthouse_team_metrics_*`, `lighthouse_forecast_*` |
-| Portfolio metrics / deliveries | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_*`, `lighthouse_delivery_list` |
-| How a delivery's scope moved | `lighthouse_delivery_list` → delivery IDs | `lighthouse_delivery_metrics` with `{id: <delivery_id>}`; add `{detail: "epics"}` only when the per-epic split is the question |
-| Feature details | `lighthouse_portfolio_list` (features listed inline) | `lighthouse_feature_get` with `{ids: [...]}` |
-| Feature work items | `lighthouse_portfolio_list` → feature IDs | `lighthouse_feature_workitems` with `{id: <feature_id>}` |
-| Team details | `lighthouse_team_list` | `lighthouse_team_get` with `{id: <team_id>}` |
-| How much a team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the team sees on its Refinement tab |
-| Vote, comment or take back a vote on a Work Item in refinement | `lighthouse_team_refinement_get` → `referenceId` | `lighthouse_team_refinement_vote` / `_comment` / `_voteTakeBack`; see below |
+| Whether Lighthouse is reachable, its version | — | `lighthouse_health_check`, `lighthouse_version_get` |
+| The connected Work Tracking Systems | — | `lighthouse_worktracking_list`; one of them: `lighthouse_worktracking_get` with `{id}` |
+| Recurring blackout rules | — | `lighthouse_blackout_list`; only on request: `lighthouse_blackout_create`, and with an id from the list `lighthouse_blackout_update` / `lighthouse_blackout_delete` |
+| A Team's settings, SLE, System WIP Limit | `lighthouse_team_list` | `lighthouse_team_get` with `{id: <team_id>}`; `lighthouse_team_refresh` only on request |
+| A Team's flow metrics | `lighthouse_team_list` | `lighthouse_team_metrics_throughput`, `lighthouse_team_metrics_cycleTimePercentiles`, `lighthouse_team_metrics_workItemAge`, `lighthouse_team_metrics_workItemAgePercentiles`, `lighthouse_team_metrics_totalWorkItemAge`, `lighthouse_team_metrics_blockedCountHistory`, `lighthouse_team_metrics_percentilesOverTime`, `lighthouse_team_metrics_processBehaviorOverTime` |
+| Where a Team's Work Items spend their time | `lighthouse_team_list` | `lighthouse_team_metrics_cumulativeStateTime`; one state's Work Items: `lighthouse_team_metrics_cumulativeStateTimeItems` with `{id, state}`; Work Items to narrow it to: `lighthouse_team_metrics_cumulativeStateTimeCandidates` |
+| A Team forecast | `lighthouse_team_list` | `lighthouse_forecast_manual`, `lighthouse_forecast_backtest` |
+| How much a Team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the Team sees on its Refinement tab |
+| Vote, comment or take back a vote on a Work Item in refinement | `lighthouse_team_refinement_get` → `referenceId` | `lighthouse_team_refinement_vote` / `lighthouse_team_refinement_comment` / `lighthouse_team_refinement_voteTakeBack`; see below |
+| A Portfolio's settings | `lighthouse_portfolio_list` | `lighthouse_portfolio_get`; `lighthouse_portfolio_refresh` only on request |
+| A Portfolio's flow metrics | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_throughput`, `lighthouse_portfolio_metrics_workItemAge`, `lighthouse_portfolio_metrics_workItemAgePercentiles`, `lighthouse_portfolio_metrics_totalWorkItemAge`, `lighthouse_portfolio_metrics_blockedCountHistory`, `lighthouse_portfolio_metrics_percentilesOverTime`, `lighthouse_portfolio_metrics_processBehaviorOverTime` |
+| Where a Portfolio's Features spend their time | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_cumulativeStateTime`, `lighthouse_portfolio_metrics_cumulativeStateTimeItems`, `lighthouse_portfolio_metrics_cumulativeStateTimeCandidates` |
+| How a Delivery's scope moved | `lighthouse_portfolio_list` → `lighthouse_delivery_list` with `{id: <portfolio_id>}` | `lighthouse_delivery_metrics` with `{id: <delivery_id>}`; add `{detail: "epics"}` only when the per-Feature split is the question |
+| Feature details | `lighthouse_portfolio_list` (Features listed inline) | `lighthouse_feature_get` with `{ids: [...]}` |
+| A Feature's Work Items | `lighthouse_portfolio_list` → Feature IDs | `lighthouse_feature_workitems` with `{id: <feature_id>}` |
+
+`references/tools-and-commands.md` says when to use each of these and what their parameters mean.
 
 ### Refinement votes — ask first, ask the name
 
@@ -345,8 +339,8 @@ This tool **requires** either `ids` (array of numbers) or `refs` (array of strin
 # WRONG — returns "provide ids or refs" validation error
 lighthouse_feature_get({})
 
-# CORRECT — get feature IDs from portfolio list first, then fetch
-lighthouse_portfolio_list()            # → features[{id, name}] listed inline per portfolio
+# CORRECT — get Feature IDs from the Portfolio list first, then fetch
+lighthouse_portfolio_list()            # → features[{id, name}] listed inline per Portfolio
 lighthouse_feature_get({ids: [7, 8, 9]})
 ```
 
@@ -354,33 +348,17 @@ If you see the message `features: provide ids (array of numbers) or refs (array 
 
 ### Batching — don't over-fetch
 
-`lighthouse_portfolio_list` already returns each portfolio's feature list (id + name). If the user only needs feature names and IDs, **do not call `lighthouse_feature_get`** — the data is already there. Only call `feature_get` when you need additional detail (status, size, dates, etc.).
-
-### Work Item Age — direct MCP tools and CLI
-
-Use the dedicated tools to retrieve work item age data:
-- `lighthouse_team_metrics_workItemAge({id: <team_id>})` — per-item daily ages for the team's WIP
-- `lighthouse_team_metrics_totalWorkItemAge({id: <team_id>})` — daily total age summed across all WIP items
-- `lighthouse_portfolio_metrics_workItemAge({id: <portfolio_id>})` — per-item daily ages for portfolio WIP
-- `lighthouse_portfolio_metrics_totalWorkItemAge({id: <portfolio_id>})` — daily total age for portfolio WIP
-- `lighthouse_team_metrics_blockedCountHistory({id: <team_id>})` — how many items were blocked on each captured day (blocked-over-time trend); portfolio twin `lighthouse_portfolio_metrics_blockedCountHistory`. For what is blocked right now and for how long, read current WIP — blocked items carry `isBlocked` + `blockedSince`.
-- `lighthouse_team_metrics_percentilesOverTime({id: <team_id>, metricType: "CycleTime"|"WorkItemAge", horizon: 30|60|90})` — the dated p50/p70/p85/p95 quartet per recorded day; portfolio twin `lighthouse_portfolio_metrics_percentilesOverTime`. Pass an explicit `horizon` with `CycleTime`: the rows carry no horizon field, so omitting it interleaves 30/60/90 indistinguishably. `WorkItemAge` is always as-of-today and ignores a horizon.
-- `lighthouse_team_metrics_processBehaviorOverTime({id: <team_id>, metricType: "Throughput"|"WorkItemAge"|"Wip"|"CycleTime"|"Arrivals"})` — the dated UNPL/Average/LNPL triple per recorded day; portfolio twin `lighthouse_portfolio_metrics_processBehaviorOverTime`, which additionally accepts `"FeatureSize"` (portfolio-only).
-- Both over-time series hold the days Lighthouse **recorded**. By default it never fills in a day it missed, so an empty series on a recently upgraded server is honest emptiness, not a failure. Where a System Admin has switched on *Fill in past days on over-time charts* (a Preview, off by default), a read that finds missing days starts working them out in the background — a second call a little later may return more days; that is expected, not an inconsistency. Process-behaviour days without a usable baseline are omitted rather than zeroed — an empty series never means "a process pinned at zero". Say so plainly rather than reporting no data as a fault.
-
-All accept optional `startDate` / `endDate` parameters. Results include a `daily` array of `{ date, items[{id, name, referenceId, age}] }` (per-item) or `{ date, totalAge, itemCount }` (total).
-
-A tool that carries a `summary` states its answer there as the web does, in the instance's terminology: quote it to the user. Every other field is the facts, the same as the tool returned before it had a summary; reason over those. The forecast tools carry one: `lighthouse_forecast_manual` the heading and likelihood sentence, `lighthouse_forecast_backtest` the heading, period and actual Throughput. So do the per-metric tools of a Team and a Portfolio, with the heading and sentence `lh metrics --metrics <name>` prints, Time in State included; its drill-down into one state states the heading and the title above its Work Items, and the candidate list carries none. An object answer carries `summary` as a field; a list answer (the percentiles, the blocked history, the percentiles over time, the process limits) keeps its facts in the first text block and states the summary in a second one, `summary: …`. The Team, Portfolio, Delivery and Feature lists (`lighthouse_team_list`, `lighthouse_portfolio_list`, `lighthouse_delivery_list`, `lighthouse_feature_get`) count their answer that way (`summary: 3 Features`), and `lighthouse_feature_workitems` heads its Work Items with the Feature they belong to (`summary: OE-002 Deep-sea camera stream · 3 Work Items`). The housekeeping tools do the same: `lighthouse_health_check` adds `summary: Lighthouse is reachable.`, `lighthouse_version_get` `summary: Lighthouse v26.10.3.6`, `lighthouse_worktracking_list` and `lighthouse_blackout_list` count their answer (`summary: 3 Work Tracking Systems`, `summary: 2 recurring blackout rules`), and `lighthouse_worktracking_get` carries a `summary` naming the connection and its type, never an option's value. The write tools (`lighthouse_team_refresh`, `lighthouse_portfolio_refresh`, `lighthouse_blackout_create`, `_update` and `_delete`) keep their facts block and confirm in a second one (`summary: Refresh queued: Team [id: 3]. Lighthouse updates it in the background.`); a blackout rule's own `summary` field inside the facts is Lighthouse's wording of its schedule, not the confirmation.
-
-For age data on items within a specific *feature*, use `lighthouse_feature_workitems({id: <feature_id>})` — returns work items with a `workItemAge` field.
+`lighthouse_portfolio_list` already returns each Portfolio's Feature list (id + name). If the user only needs Feature names and IDs, **do not call `lighthouse_feature_get`** — the data is already there. Only call it when you need more detail (state, size, dates).
 
 ### Forecast workflows
 
 | User question | Tool sequence |
 |---|---|
-| "When will feature X be done?" | `portfolio_list` → feature ID → `forecast_manual({id: team_id, remainingItems: N})` |
-| "What's the chance we hit date D?" | `team_list` → team ID → `forecast_manual({id: team_id, targetDate: "YYYY-MM-DD"})` |
-| "How accurate are our forecasts?" | `team_list` → team ID → `forecast_backtest({id, startDate, endDate, historicalStartDate, historicalEndDate})` |
+| "When will Feature X be done?" | `lighthouse_portfolio_list` → Feature ID → `lighthouse_forecast_manual({id: team_id, remainingItems: N})` |
+| "What's the chance we hit date D?" | `lighthouse_team_list` → Team ID → `lighthouse_forecast_manual({id: team_id, remainingItems: N, targetDate: "YYYY-MM-DD"})` |
+| "How accurate are our forecasts?" | `lighthouse_team_list` → Team ID → `lighthouse_forecast_backtest({id, startDate, endDate, historicalStartDate, historicalEndDate})` |
+
+Quote the forecast's `summary` and its likelihood exactly; never round it.
 
 ---
 
@@ -442,7 +420,7 @@ Follow this pattern:
 
 **Service Level Expectations** — Flow design should not optimize for maximum speed universally. Define what "fast enough" means per work class and customer segment, then design SLEs around those expectations. Separate flow classes (expedite lanes, priority tracks) are only justified when business context demands differentiated service. The question is not "how fast can we deliver?" but "how do we deliver sustainably at the speed each segment needs?" See: [What Breakfast at a Diner Taught Us About Flow, Kanban, and Service Level Expectations](https://blog.letpeople.work/p/what-breakfast-at-a-diner-taught)
 
-**Widget Reference** — Consult `references/lighthouse-mechanics.md` for widget-specific guidance covering: Work Items In Progress, WIP Over Time, Work Item Aging Chart, Started vs. Closed, Throughput Run Chart, Predictability Score, Process Behaviour Charts, Cycle Time Percentiles, Cycle Time Scatterplot, Simplified CFD, Total Work Item Age, Feature Size, and Estimation vs. Cycle Time.
+**Widget Reference** — Consult `references/lighthouse-mechanics.md` for widget-specific guidance covering: Work Items In Progress, WIP Over Time, Work Item Aging Chart, Started vs. Closed, Throughput Run Chart, Predictability Score, Process Behaviour Charts, Cycle Time Percentiles, Cycle Time Scatterplot, Simplified CFD, Total Work Item Age, Time in State, Blocked Over Time, Percentiles and Process Limits Over Time, Feature Size, and Estimation vs. Cycle Time.
 
 ### Response Style
 

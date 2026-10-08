@@ -419,9 +419,8 @@ describe("the check names what is wrong, so the failing test says what to fix", 
 
 describe("the skills and the clients agree", () => {
   // @walking_skeleton @driving_port @real-io @contract-shape:pure-function
-  // Today's general skill still tells assistants to run `lh feature list`, a command lh never had; the
-  // update of the general skill removes it, and from then on this holds every skill to what exists.
-  it.skip("no skill names a tool, an lh command or a metric that does not exist", async () => {
+  // An assistant told to run a command that does not exist fails in front of the user, so no skill may name one.
+  it("no skill names a tool, an lh command or a metric that does not exist", async () => {
     const catalogue = await readCatalogue();
     const files = skillFolders().flatMap(({ folder }) => textOf(folder));
 
@@ -429,8 +428,8 @@ describe("the skills and the clients agree", () => {
   });
 
   // @driving_port @real-io @contract-shape:pure-function
-  // Pending until the general skill is brought up to date: today it names about half of what exists.
-  it.skip("the general skill names every MCP tool, every lh command and every metric key", async () => {
+  // A read the general skill never names is a read assistants do not find, so every one must appear in it.
+  it("the general skill names every MCP tool, every lh command and every metric key", async () => {
     const catalogue = await readCatalogue();
 
     expect(
