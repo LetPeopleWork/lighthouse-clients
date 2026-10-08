@@ -451,7 +451,7 @@ describe("the answers file", () => {
 describe("a yes outlives a long gap without a new question", () => {
   // @US-02 @driving_port @real-io @contract-shape:bounded-change
   // A grant confirmed within the day is used as it is: no state read, the event goes.
-  it.skip("sends with a yes confirmed 23 hours ago without asking Lighthouse anything first", async () => {
+  it("sends with a yes confirmed 23 hours ago without asking Lighthouse anything first", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
     await anEarlierAnswer(
@@ -469,7 +469,7 @@ describe("a yes outlives a long gap without a new question", () => {
   });
 
   // @US-02 @driving_port @real-io @contract-shape:bounded-change
-  it.skip("checks a day-old yes with Lighthouse, then sends and notes it as confirmed now", async () => {
+  it("checks a day-old yes with Lighthouse, then sends and notes it as confirmed now", async () => {
     const lighthouse = await aFakeLighthouse();
     const { lena } = await lenaAnswers(lighthouse, "y");
     const token = lighthouse.mintedTokens()[0];
@@ -492,7 +492,7 @@ describe("a yes outlives a long gap without a new question", () => {
 
   // @US-02 @driving_port @real-io @kpi @contract-shape:bounded-change
   // Six weeks away is not a change of mind: the lapsed grant is renewed without a question.
-  it.skip("renews the grant Lighthouse let lapse after 31 days away, without asking Lena again", async () => {
+  it("renews the grant Lighthouse let lapse after 31 days away, without asking Lena again", async () => {
     const lighthouse = await aFakeLighthouse();
     const { lena } = await lenaAnswers(lighthouse, "y");
     lighthouse.changeUsageData({ forgetsGrants: true });
@@ -517,7 +517,7 @@ describe("a yes outlives a long gap without a new question", () => {
   // @US-02 @driving_port @real-io @version-skew @kpi @contract-shape:unbounded-preservation
   // KPI-4 after a rollback: once the day-old check finds a Lighthouse that no longer labels sources, nothing
   // more is sent, and the yes is kept for when it does again.
-  it.skip("sends nothing once a day-old check finds the Lighthouse rolled back to one that cannot label lh", async () => {
+  it("sends nothing once a day-old check finds the Lighthouse rolled back to one that cannot label lh", async () => {
     const lighthouse = await aFakeLighthouse();
     const { lena } = await lenaAnswers(lighthouse, "y");
     const kept = await theStoredAnswerFor(lena, lighthouse.url);
@@ -534,7 +534,7 @@ describe("a yes outlives a long gap without a new question", () => {
 
   // @US-02 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
   // KPI-5: 0 sends after a No.
-  it.skip("sends nothing for Marco, whose No is on file, whatever he runs", async () => {
+  it("sends nothing for Marco, whose No is on file, whatever he runs", async () => {
     const lighthouse = await aFakeLighthouse();
     const marco = await lenaAt(lighthouse);
     await anEarlierAnswer(marco, lighthouse.url, aNo());
@@ -550,7 +550,7 @@ describe("usage data never changes what lh answers", () => {
   // @US-02 @driving_port @real-io @infrastructure-failure @kpi @contract-shape:unbounded-preservation
   // KPI-7: with a yes and a Lighthouse that never takes the events, the answer, its format and its exit code
   // are what usage data off gives, and the run ends within a second of it.
-  it.skip.each(["--json", "--toon", "--pretty"])(
+  it.each(["--json", "--toon", "--pretty"])(
     "prints the forecast %s exactly as with usage data off, and waits at most a second for a Lighthouse that never takes the event",
     async (format) => {
       const lighthouse = await aFakeLighthouse();
