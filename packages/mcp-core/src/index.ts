@@ -82,12 +82,15 @@ import {
   getErrorToolResult,
   getNumericId,
   getSuccessToolResult,
+  isToolResult,
   type McpToolResult,
   withSummary,
   withSummaryBlock,
 } from "./toolResult";
 import {
   askThroughTheAssistant,
+  type CountedToolResult,
+  countedToolResult,
   type McpUsageDataPort,
   usageDataOccurrencesOf,
 } from "./usageDataPort";
@@ -771,6 +774,11 @@ export type McpCoreRuntime = {
     name: string,
     argumentsPayload: unknown,
   ) => Promise<McpToolResult>;
+  /** The tool's result with what it did that the web counts too. */
+  readonly callCountedTool: (
+    name: string,
+    argumentsPayload: unknown,
+  ) => Promise<CountedToolResult>;
 };
 
 const recurringBlackoutRuleProperties = {
@@ -2111,11 +2119,12 @@ const isReadOnlyTool = (toolName: McpToolDefinition["name"]): boolean =>
     toolName.endsWith("_delete")
   );
 
-export const createMcpCoreRuntime = (
-  dependencies: McpCoreRuntimeDependencies,
-): McpCoreRuntime => ({
-  listTools: () => toolDefinitions,
-  callTool: async (name: string, argumentsPayload: unknown) => {
+const answerToolCall =
+  (dependencies: McpCoreRuntimeDependencies) =>
+  async (
+    name: string,
+    argumentsPayload: unknown,
+  ): Promise<McpToolResult | CountedToolResult> => {
     const client = dependencies.createClient();
 
     if (name === "lighthouse_health_check") {
@@ -2921,8 +2930,29 @@ export const createMcpCoreRuntime = (
     }
 
     return getErrorToolResult(`Unknown tool: ${name}`);
-  },
-});
+  };
+
+const countedOf = (
+  name: string,
+  answered: McpToolResult | CountedToolResult,
+): CountedToolResult =>
+  isToolResult(answered)
+    ? countedToolResult(answered, usageDataOccurrencesOf(name))
+    : answered;
+
+export const createMcpCoreRuntime = (
+  dependencies: McpCoreRuntimeDependencies,
+): McpCoreRuntime => {
+  const answer = answerToolCall(dependencies);
+  const callCountedTool = async (name: string, argumentsPayload: unknown) =>
+    countedOf(name, await answer(name, argumentsPayload));
+  return {
+    listTools: () => toolDefinitions,
+    callTool: async (name, argumentsPayload) =>
+      (await callCountedTool(name, argumentsPayload)).result,
+    callCountedTool,
+  };
+};
 
 /** The server, and through it what the assistant said it can do once it connected. */
 type McpToolServer = Pick<McpServer, "registerTool"> & {
@@ -2951,10 +2981,13 @@ export const registerMcpTools = (
         },
       },
       async (argumentsPayload, extra) => {
-        const result = await runtime.callTool(tool.name, argumentsPayload);
+        const { result, occurrences } = await runtime.callCountedTool(
+          tool.name,
+          argumentsPayload,
+        );
         await dependencies.usageData?.({
           reached: !result.isError,
-          occurrences: result.isError ? [] : usageDataOccurrencesOf(tool.name),
+          occurrences,
           ask: canElicit(server)
             ? askThroughTheAssistant((params, options) =>
                 extra.sendRequest(

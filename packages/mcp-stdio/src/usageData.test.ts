@@ -404,7 +404,7 @@ describe("the six mapped tools report the web's events with source Mcp", () => {
   };
 
   // @US-05 @driving_port @real-io @kpi @contract-shape:bounded-change
-  it.skip.each<
+  it.each<
     [
       string,
       Record<string, unknown>,
@@ -478,7 +478,7 @@ describe("the six mapped tools report the web's events with source Mcp", () => {
   );
 
   // @US-05 @driving_port @real-io @error @kpi @contract-shape:unbounded-preservation
-  it.skip.each<[string, Record<string, unknown>]>([
+  it.each<[string, Record<string, unknown>]>([
     [
       "lighthouse_forecast_backtest",
       {
@@ -511,7 +511,7 @@ describe("the six mapped tools report the web's events with source Mcp", () => {
   );
 
   // @US-05 @driving_port @real-io @error @contract-shape:unbounded-preservation
-  it.skip("reports nothing for a refresh Lighthouse refused", async () => {
+  it("reports nothing for a refresh Lighthouse refused", async () => {
     const lighthouse = await aFakeLighthouse({
       replies: {
         "POST /teams/3": {
@@ -538,7 +538,7 @@ describe("the six mapped tools report the web's events with source Mcp", () => {
   // @US-05 @driving_port @real-io @infrastructure-failure @kpi @contract-shape:unbounded-preservation
   // KPI-7: the send happens after the result is returned, so a Lighthouse that never takes events delays
   // no tool result.
-  it.skip("returns Priya's refresh at once though her Lighthouse never takes the event", async () => {
+  it("returns Priya's refresh at once though her Lighthouse never takes the event", async () => {
     const { lighthouse, assistant } = await priyaWhoSaidYes();
     lighthouse.changeUsageData({ answers: "never" });
 

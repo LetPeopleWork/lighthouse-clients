@@ -1,4 +1,5 @@
 import type {
+  UsageDataOccurrence,
   UsageDataQuestionAnswer,
   UsageDataStep,
 } from "@letpeoplework/lighthouse-client";
@@ -6,10 +7,13 @@ import { describe, expect, it } from "vitest";
 import {
   askingOnceInThisProcess,
   askThroughTheAssistant,
+  countedToolResult,
   type SendElicitation,
   USAGE_DATA_ELICITATION_MESSAGE,
   USAGE_DATA_QUESTION_TIMEOUT_MS,
   usageDataOccurrencesOf,
+  usageDataOccurrencesOfARead,
+  usageDataOccurrencesOfAVote,
 } from "./usageDataPort";
 
 const never = <T>() => new Promise<T>(() => undefined);
@@ -179,4 +183,69 @@ describe("what a tool reports", () => {
   ])("%s reports %j", (tool, occurrences) => {
     expect(usageDataOccurrencesOf(tool)).toEqual(occurrences);
   });
+
+  const refused = {
+    ok: false,
+    error: { category: "unexpected", reason: "500", statusCode: 500 },
+  } as const;
+  const aRefinementDay = {
+    nextRefinementDate: "2026-10-08",
+    isRefinementDay: true,
+  };
+
+  it.each<[string, () => readonly UsageDataOccurrence[], boolean]>([
+    [
+      "a vote that made the Work Item Ready",
+      () =>
+        usageDataOccurrencesOfAVote(aRefinementDay, {
+          ok: true,
+          value: { madeReady: true },
+        }),
+      true,
+    ],
+    [
+      "a vote Lighthouse refused",
+      () => usageDataOccurrencesOfAVote(aRefinementDay, refused),
+      false,
+    ],
+    [
+      "a Refinement day's verdict",
+      () =>
+        usageDataOccurrencesOfARead({
+          ok: true,
+          value: {
+            isRefinementDay: true,
+            workItems: [{}],
+            need: { verdict: "In" },
+          } as never,
+        }),
+      true,
+    ],
+    [
+      "a Refinement Lighthouse refused",
+      () => usageDataOccurrencesOfARead(refused),
+      false,
+    ],
+    [
+      "a counted result that is an error",
+      () =>
+        countedToolResult({ isError: true, content: [] }, [
+          { name: "TeamRefreshTriggered" },
+        ]).occurrences,
+      false,
+    ],
+    [
+      "a counted result that succeeded",
+      () =>
+        countedToolResult({ isError: false, content: [] }, [
+          { name: "TeamRefreshTriggered" },
+        ]).occurrences,
+      true,
+    ],
+  ])(
+    "counts something for %s only when Lighthouse answered it",
+    (_what, occurrencesOf, countsSomething) => {
+      expect(occurrencesOf().length > 0).toBe(countsSomething);
+    },
+  );
 });

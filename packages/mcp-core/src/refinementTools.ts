@@ -30,6 +30,12 @@ import {
   isToolResult,
   type McpToolResult,
 } from "./toolResult";
+import {
+  type CountedToolResult,
+  countedToolResult,
+  usageDataOccurrencesOfARead,
+  usageDataOccurrencesOfAVote,
+} from "./usageDataPort";
 
 /** The voter key one MCP server keeps for the one Lighthouse it talks to. */
 export type McpVoterKeyStore = LighthouseVoterKeyStore;
@@ -60,7 +66,7 @@ type RefinementTool = (
   argumentsPayload: unknown,
   client: RefinementToolClient,
   dependencies: RefinementToolDependencies,
-) => Promise<McpToolResult>;
+) => Promise<McpToolResult | CountedToolResult>;
 
 const CHANNEL = "Assistant";
 
@@ -259,14 +265,19 @@ type WriteVoter = {
   readonly voterKey?: string;
 };
 
+type ResolvedWriter = {
+  readonly voter: WriteVoter;
+  readonly refinement: TeamRefinement;
+};
+
 // The name is checked before a key is minted, so a refused call leaves nothing behind.
-const resolveWriteVoter = async (
+const resolveWriter = async (
   label: string,
   argumentsPayload: unknown,
   client: RefinementToolClient,
   dependencies: RefinementToolDependencies,
   teamId: number,
-): Promise<WriteVoter | McpToolResult> => {
+): Promise<ResolvedWriter | McpToolResult> => {
   const refinement = await readRefinementFor(
     label,
     client,
@@ -277,14 +288,16 @@ const resolveWriteVoter = async (
     return refinement;
   }
   if (isSignedIn(refinement)) {
-    return {};
+    return { voter: {}, refinement };
   }
   const voterName = getNonBlankArgument(argumentsPayload, "voterName");
   if (voterName === undefined) {
     return getErrorToolResult(`${label}: ${ASK_FOR_THE_NAME}`);
   }
   const voterKey = await keepServerVoterKey(label, dependencies.voterKeyStore);
-  return isToolResult(voterKey) ? voterKey : { voterName, voterKey };
+  return isToolResult(voterKey)
+    ? voterKey
+    : { voter: { voterName, voterKey }, refinement };
 };
 
 const getRefinementWriteToolResult = async (
@@ -335,8 +348,11 @@ const getRefinement: RefinementTool = async (
   }
 
   const summary = describeRefinementSummary(refinement.value, wording.value);
-  return getSuccessToolResult(
-    `refinement: ${encodePayload({ summary, ...refinement.value })}`,
+  return countedToolResult(
+    getSuccessToolResult(
+      `refinement: ${encodePayload({ summary, ...refinement.value })}`,
+    ),
+    usageDataOccurrencesOfARead(refinement),
   );
 };
 
@@ -364,33 +380,37 @@ const castVote: RefinementTool = async (
     return refused;
   }
 
-  const voter = await resolveWriteVoter(
+  const writer = await resolveWriter(
     "vote",
     argumentsPayload,
     client,
     dependencies,
     target.teamId,
   );
-  if (isToolResult(voter)) {
-    return voter;
+  if (isToolResult(writer)) {
+    return writer;
   }
+  const { voter, refinement } = writer;
 
   const result = await client.castRefinementVote(
     target.teamId,
     target.workItem,
     { answer, channel: CHANNEL, comment, ...voter },
   );
-  return getRefinementWriteToolResult(
-    "vote",
-    result,
-    client,
-    dependencies,
-    (row) =>
-      describeRecordedVote(
-        { workItem: target.workItem, voterName: voter.voterName },
-        answer,
-        row,
-      ),
+  return countedToolResult(
+    await getRefinementWriteToolResult(
+      "vote",
+      result,
+      client,
+      dependencies,
+      (row) =>
+        describeRecordedVote(
+          { workItem: target.workItem, voterName: voter.voterName },
+          answer,
+          row,
+        ),
+    ),
+    usageDataOccurrencesOfAVote(refinement, result),
   );
 };
 
@@ -412,16 +432,17 @@ const addComment: RefinementTool = async (
     return refused;
   }
 
-  const voter = await resolveWriteVoter(
+  const writer = await resolveWriter(
     "comment",
     argumentsPayload,
     client,
     dependencies,
     target.teamId,
   );
-  if (isToolResult(voter)) {
-    return voter;
+  if (isToolResult(writer)) {
+    return writer;
   }
+  const { voter } = writer;
 
   const result = await client.addRefinementComment(
     target.teamId,

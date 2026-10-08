@@ -1,13 +1,20 @@
-import type {
-  PlainUsageDataEventName,
-  UsageDataOccurrence,
-  UsageDataQuestionAnswer,
-  UsageDataStep,
+import {
+  type LighthouseApiResult,
+  type PlainUsageDataEventName,
+  type RefinementMomentFacts,
+  refinementDayVerdictOf,
+  sizingMomentOf,
+  type TeamRefinement,
+  type UsageDataOccurrence,
+  type UsageDataQuestionAnswer,
+  type UsageDataStep,
+  type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import type {
   ElicitRequestFormParams,
   ElicitResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import type { McpToolResult } from "./toolResult";
 
 /**
  * Where a tool call's usage data goes once its result is in hand. The promise resolves when the result may
@@ -118,4 +125,58 @@ export const usageDataOccurrencesOf = (
 ): readonly UsageDataOccurrence[] => {
   const name = TOOL_EVENTS[toolName];
   return name === undefined ? [] : [{ name }];
+};
+
+/** A tool's result with what it did that the web counts too; a result that is an error counts nothing. */
+export type CountedToolResult = {
+  readonly result: McpToolResult;
+  readonly occurrences: readonly UsageDataOccurrence[];
+};
+
+export const countedToolResult = (
+  result: McpToolResult,
+  occurrences: readonly UsageDataOccurrence[],
+): CountedToolResult => ({
+  result,
+  occurrences: result.isError ? [] : occurrences,
+});
+
+/**
+ * A vote Lighthouse took, at the moment the Refinement read before it says, and the Work Item becoming
+ * Ready when only Lighthouse's answer can say this vote made it so.
+ */
+export const usageDataOccurrencesOfAVote = (
+  readBeforeTheVote: RefinementMomentFacts,
+  answered: LighthouseApiResult<Pick<VotedRow, "madeReady">>,
+): readonly UsageDataOccurrence[] => {
+  if (!answered.ok) {
+    return [];
+  }
+  const sizingMoment = sizingMomentOf(readBeforeTheVote);
+  const cast: UsageDataOccurrence = {
+    name: "TeamSizingVoteCast",
+    sizingMoment,
+  };
+  return answered.value.madeReady
+    ? [cast, { name: "TeamSizingReadinessReached", sizingMoment }]
+    : [cast];
+};
+
+/** The verdict a Refinement Lighthouse answered shows, when it is a Refinement day's. */
+export const usageDataOccurrencesOfARead = (
+  answered: LighthouseApiResult<
+    Pick<TeamRefinement, "isRefinementDay" | "workItems" | "need">
+  >,
+): readonly UsageDataOccurrence[] => {
+  if (!answered.ok) {
+    return [];
+  }
+  const refinementVerdict = refinementDayVerdictOf({
+    isRefinementDay: answered.value.isRefinementDay,
+    workItemsListed: answered.value.workItems.length,
+    verdict: answered.value.need.verdict,
+  });
+  return refinementVerdict === null
+    ? []
+    : [{ name: "TeamRefinementDayVerdictShown", refinementVerdict }];
 };
