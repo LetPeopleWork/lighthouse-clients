@@ -45,22 +45,28 @@ export const withSummary = (
   facts: unknown,
   summary: string | null,
 ): McpToolResult => {
-  if (summary === null) {
-    return getSuccessToolResult(`${label}: ${encodePayload(facts)}`);
-  }
-  if (isFactsObject(facts) && !("summary" in facts)) {
+  if (summary !== null && isFactsObject(facts) && !("summary" in facts)) {
     return getSuccessToolResult(
       `${label}: ${encodePayload({ summary, ...facts })}`,
     );
   }
-  return {
-    isError: false,
-    content: [
-      { type: "text", text: `${label}: ${encodePayload(facts)}` },
-      { type: "text", text: `summary: ${summary}` },
-    ],
-  };
+  return withSummaryBlock(`${label}: ${encodePayload(facts)}`, summary);
 };
+
+/** A text block exactly as it is, with the summary in a second block after it; without one, the text alone. */
+export const withSummaryBlock = (
+  text: string,
+  summary: string | null,
+): McpToolResult =>
+  summary === null
+    ? getSuccessToolResult(text)
+    : {
+        isError: false,
+        content: [
+          { type: "text", text },
+          { type: "text", text: `summary: ${summary}` },
+        ],
+      };
 
 export const getErrorToolResult = (text: string): McpToolResult => ({
   isError: true,

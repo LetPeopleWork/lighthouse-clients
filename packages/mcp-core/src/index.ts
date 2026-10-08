@@ -13,7 +13,6 @@ import {
   describeDeliveryCount,
   describeDeliveryMetricsHeading,
   describeFeatureListCount,
-  describeFeatureTitle,
   describeFeatureWorkItemsHeading,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
@@ -48,6 +47,7 @@ import {
   readDeliveryList,
   readDeliveryMetricsHistory,
   readFeatureList,
+  readFeatureWording,
   readFeatureWorkItems,
   readManualForecast,
   readOwnerList,
@@ -83,6 +83,7 @@ import {
   getSuccessToolResult,
   type McpToolResult,
   withSummary,
+  withSummaryBlock,
 } from "./toolResult";
 
 export type { McpVoterKeyStore } from "./refinementTools";
@@ -1413,19 +1414,18 @@ const summaryOrNull = (summarise: () => string | null): string | null => {
 const withConfirmation = (
   facts: string,
   confirm: () => string | null,
-): McpToolResult => {
-  const confirmation = summaryOrNull(confirm);
-  if (confirmation === null) {
-    return getSuccessToolResult(facts);
-  }
-  return {
-    isError: false,
-    content: [
-      { type: "text", text: facts },
-      { type: "text", text: `summary: ${confirmation}` },
-    ],
-  };
-};
+): McpToolResult => withSummaryBlock(facts, summaryOrNull(confirm));
+
+/** How many a list holds, in words; left out when the list cannot be read. */
+const countSummary = (
+  facts: unknown,
+  readList: (value: unknown) => readonly unknown[] | null,
+  describeCount: (count: number) => string,
+): string | null =>
+  summaryOrNull(() => {
+    const listed = readList(facts);
+    return listed === null ? null : describeCount(listed.length);
+  });
 
 /** A refresh as before, confirmed as queued in the instance's word for a Team or Portfolio. */
 const answerRefresh = async (
@@ -1481,12 +1481,9 @@ const answerFeatures = async (
   return withSummary(
     "features",
     result.value,
-    summaryOrNull(() => {
-      const features = readFeatureList(result.value);
-      return features === null
-        ? null
-        : describeFeatureListCount(features.length, terms);
-    }),
+    countSummary(result.value, readFeatureList, (count) =>
+      describeFeatureListCount(count, terms),
+    ),
   );
 };
 
@@ -1526,11 +1523,12 @@ const answerOwnerList = async (
       `${label}: ${result.error.category} (${result.error.reason})`,
     );
   }
-  const owners = readOwnerList(result.value);
   return withSummary(
     label,
     result.value,
-    owners === null ? null : describeOwnerCount(kind, owners.length, terms),
+    countSummary(result.value, readOwnerList, (count) =>
+      describeOwnerCount(kind, count, terms),
+    ),
   );
 };
 
@@ -2150,12 +2148,11 @@ export const createMcpCoreRuntime = (
         return withSummary(
           "worktracking",
           connections.value,
-          summaryOrNull(() => {
-            const listed = readWorkTrackingConnections(connections.value);
-            return listed === null
-              ? null
-              : describeWorkTrackingSystemCount(listed.length, terms);
-          }),
+          countSummary(
+            connections.value,
+            readWorkTrackingConnections,
+            (count) => describeWorkTrackingSystemCount(count, terms),
+          ),
         );
       }
 
@@ -2678,19 +2675,7 @@ export const createMcpCoreRuntime = (
       // The Work Items answer does not carry the Feature's name, so the heading reads it from the Feature.
       const [result, wording] = await Promise.all([
         client.getFeatureWorkItems(id),
-        readAnswerWording(client, {
-          term: "feature",
-          id,
-          read: async () => {
-            const features = await client.getFeaturesByIds([id]);
-            return features.ok
-              ? {
-                  ok: true,
-                  value: { name: describeFeatureTitle(features.value) },
-                }
-              : features;
-          },
-        }),
+        readFeatureWording(client, id),
       ]);
       if (!result.ok) {
         return getErrorToolResult(
@@ -2734,12 +2719,9 @@ export const createMcpCoreRuntime = (
       return withSummary(
         "deliveries",
         result.value,
-        summaryOrNull(() => {
-          const deliveries = readDeliveryList(result.value);
-          return deliveries === null
-            ? null
-            : describeDeliveryCount(deliveries.length, terms);
-        }),
+        countSummary(result.value, readDeliveryList, (count) =>
+          describeDeliveryCount(count, terms),
+        ),
       );
     }
 
@@ -2787,12 +2769,11 @@ export const createMcpCoreRuntime = (
         return withSummary(
           "recurringBlackoutRules",
           result.value,
-          summaryOrNull(() => {
-            const rules = readBlackoutRules(result.value);
-            return rules === null
-              ? null
-              : describeBlackoutRuleCount(rules.length);
-          }),
+          countSummary(
+            result.value,
+            readBlackoutRules,
+            describeBlackoutRuleCount,
+          ),
         );
       }
       return getErrorToolResult(
