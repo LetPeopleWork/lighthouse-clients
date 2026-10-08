@@ -16,8 +16,8 @@ import {
   factsBlockOf,
 } from "../test-support/mcpHarness";
 
-// Story 6218, slice 01: the forecast tools hand an assistant the facts plus the `summary` lh prints above its
-// tables (ADR-224: an object answer gains a `summary` field, nothing else changes).
+// The forecast tools hand an assistant the facts plus the `summary` lh prints above its tables: an object
+// answer gains a `summary` field, and nothing else in it changes.
 
 const MANUAL = "lighthouse_forecast_manual";
 const BACKTEST = "lighthouse_forecast_backtest";
@@ -41,7 +41,6 @@ const gravitysAssistant = (reads = {}) =>
   });
 
 describe("the forecast tools' summary", () => {
-  // @driving_port @US-01 @contract-shape:bounded-change
   it("hands an assistant the manual forecast's facts together with the heading and sentence lh prints", async () => {
     const assistant = gravitysAssistant();
 
@@ -56,7 +55,6 @@ describe("the forecast tools' summary", () => {
     });
   });
 
-  // @driving_port @US-01 @contract-shape:bounded-change
   it("hands an assistant the backtest's facts together with its heading and period", async () => {
     const assistant = gravitysAssistant();
 
@@ -72,7 +70,7 @@ describe("the forecast tools' summary", () => {
     );
   });
 
-  // @error @infrastructure-failure @US-01 — the summary's reads never fail the tool
+  // The summary's reads never fail the tool
   it("words the summary with the seeded words and the Team's id when neither can be read", async () => {
     const assistant = gravitysAssistant({
       getTeam: refused("forbidden", "You may not read this Team"),
@@ -87,7 +85,6 @@ describe("the forecast tools' summary", () => {
     );
   });
 
-  // @US-01 @kpi — KPI-5
   it("words the summary in the instance's renamed terms", async () => {
     const assistant = gravitysAssistant({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -100,7 +97,7 @@ describe("the forecast tools' summary", () => {
     expect(seededWordsIn(summary)).toEqual([]);
   });
 
-  // @error @version-skew @US-01 — ADR-224 rule 3: no recognised shape, no summary, today's answer exactly
+  // No recognised shape, no summary, today's answer exactly
   it("adds no summary to an answer it does not recognise, and hands the facts over as they came", async () => {
     const { whenForecasts, ...rest } = gravitysForecast();
     const reshaped = { ...rest, completionForecasts: whenForecasts };
@@ -116,7 +113,6 @@ describe("the forecast tools' summary", () => {
     expect(factsBlockOf(result)).toBe(`${FORECAST_LABEL}${encode(reshaped)}`);
   });
 
-  // @driving_port @US-01
   it.each([MANUAL, BACKTEST])(
     "tells an assistant in %s's description that `summary` states the answer as the web does",
     (tool) => {
@@ -132,7 +128,6 @@ describe("the forecast tools' summary", () => {
 });
 
 describe("the forecast tools keep their errors as they are", () => {
-  // @error @US-01 — guard, green today
   it("passes a Lighthouse refusal straight through, without a summary", async () => {
     const assistant = gravitysAssistant({
       runManualForecast: refused(

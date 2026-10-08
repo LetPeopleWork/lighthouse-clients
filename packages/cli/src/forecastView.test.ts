@@ -18,8 +18,7 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 01 (US-01): the forecast reads like the Forecast tab and Backtest Results.
-// Every scenario but the format guards is pending until DELIVER slice 01 un-skips it.
+// The forecast reads like the Forecast tab and Backtest Results.
 
 const forecastOfGravity = (...flags: string[]) => [
   "forecast",
@@ -64,7 +63,6 @@ const LIKELIHOOD_FOR_25 =
   "Likelihood to close 25 Work Items by Fri 30 Oct 2026";
 
 describe("lh forecast manual --pretty", () => {
-  // @driving_port @US-01 @contract-shape:pure-function
   it("tells Lena when Gravity's 25 Work Items will be done, in the Forecast tab's words and levels", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -88,7 +86,7 @@ describe("lh forecast manual --pretty", () => {
       "50% Risky 25",
       `${LIKELIHOOD_FOR_25}: 48.20%`,
     ]);
-    // KPI: the answer fits in 15 lines (from ~40 in the generic view).
+    // The answer fits in 15 lines (from ~40 in the generic view).
     expect(shownLines(result.stdout).length).toBeLessThanOrEqual(15);
     expect(lighthouse.asked().sort()).toEqual([
       "getTeam",
@@ -97,7 +95,7 @@ describe("lh forecast manual --pretty", () => {
     ]);
   });
 
-  // @boundary @US-01 — the web's thresholds (ForecastLevel.ts): ≤50 Risky, ≤70 Realistic, ≤85 Confident, else Certain
+  // The web's thresholds (ForecastLevel.ts): ≤50 Risky, ≤70 Realistic, ≤85 Confident, else Certain
   it.each([
     { chance: 30, level: "Risky" },
     { chance: 50, level: "Risky" },
@@ -133,7 +131,7 @@ describe("lh forecast manual --pretty", () => {
     },
   );
 
-  // @boundary @US-01 — formatLikelihood.ts: >95% while work remains, two decimals otherwise
+  // formatLikelihood.ts: >95% while work remains, two decimals otherwise
   it.each([
     { likelihood: 48.2034, remaining: 25, reads: "48.20%" },
     { likelihood: 95, remaining: 25, reads: "95.00%" },
@@ -164,7 +162,7 @@ describe("lh forecast manual --pretty", () => {
     },
   );
 
-  // @error @US-01 — cannotForecast.ts
+  // cannotForecast.ts
   it("says it cannot forecast when Lighthouse has no likelihood to give", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(gravitysForecast({ likelihood: null })),
@@ -178,7 +176,7 @@ describe("lh forecast manual --pretty", () => {
     );
   });
 
-  // @error @US-01 — insufficientForecastData.ts
+  // insufficientForecastData.ts
   it("says a Team with too little history needs more days instead of giving a number", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: ok(gravity({ id: 2, name: "Lightspeed" })),
@@ -205,7 +203,7 @@ describe("lh forecast manual --pretty", () => {
     expect(result.stdout).not.toContain("Likelihood to close");
   });
 
-  // @error @US-01 @version-skew — an older Lighthouse sends no hasSufficientData; absent is not "insufficient"
+  // An older Lighthouse sends no hasSufficientData; absent is not "insufficient"
   it("states the likelihood as usual when an older Lighthouse does not say whether the history is enough", async () => {
     const { hasSufficientData: _notSent, ...olderAnswer } = gravitysForecast();
     const lighthouse = gravitysLighthouse({
@@ -218,7 +216,6 @@ describe("lh forecast manual --pretty", () => {
     expect(result.stdout).not.toContain("Not enough data");
   });
 
-  // @boundary @US-01 — AC-01.3
   it("shows only the When table when Lena asks only how long 25 Work Items take", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(
@@ -240,7 +237,6 @@ describe("lh forecast manual --pretty", () => {
     expect(result.stdout).not.toContain("Likelihood to close");
   });
 
-  // @boundary @US-01 — AC-01.3
   it("shows only the How Many table when Lena asks only what fits by a date", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(
@@ -266,7 +262,7 @@ describe("lh forecast manual --pretty", () => {
     expect(result.stdout).not.toContain("Likelihood to close");
   });
 
-  // @US-01 — ManualForecaster.tsx toggle label
+  // ManualForecaster.tsx toggle label
   it("says in the heading when the forecast used the Team's filtered Throughput", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: ok(gravitysForecast({ filterApplied: true })),
@@ -288,7 +284,7 @@ describe("lh forecast manual --pretty", () => {
     );
   });
 
-  // @US-01 @kpi — KPI-5: every configurable word is the instance's
+  // Every configurable word is the instance's
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -309,7 +305,7 @@ describe("lh forecast manual --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @error @infrastructure-failure @US-01 — D4: a failed Terminology read leaves the seeded words
+  // A failed Terminology read leaves the seeded words
   it("falls back to the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: refused("unexpected", "Terminology is unavailable"),
@@ -324,7 +320,7 @@ describe("lh forecast manual --pretty", () => {
     );
   });
 
-  // @error @infrastructure-failure @US-01 — C14: a heading is never worth an error
+  // A heading is never worth an error
   it("heads the forecast with the Team's id when its name cannot be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: refused("forbidden", "You may not read this Team"),
@@ -339,7 +335,7 @@ describe("lh forecast manual --pretty", () => {
     );
   });
 
-  // @error @version-skew @US-01 — D5 + M1: an answer lh does not recognise prints the generic view, silently
+  // An answer lh does not recognise prints the generic view, silently
   it.each([
     {
       reshaped: "the dates are under another name",
@@ -382,7 +378,7 @@ describe("lh forecast manual --pretty", () => {
     }
   });
 
-  // @boundary @US-01 @reader-time-zone — D15: a calendar day is never shifted by the reader's zone
+  // A calendar day is never shifted by the reader's zone
   it.each(["America/Adak", "Pacific/Kiritimati"])(
     "prints Lighthouse's days unshifted for a reader in %s",
     async (zone) => {
@@ -398,7 +394,6 @@ describe("lh forecast manual --pretty", () => {
 });
 
 describe("lh forecast backtest --pretty", () => {
-  // @driving_port @US-01 @contract-shape:pure-function
   it("shows Lena where September's actual landed among the forecast percentiles", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -418,7 +413,7 @@ describe("lh forecast backtest --pretty", () => {
     ]);
   });
 
-  // @boundary @US-01 — the chart's dashed line, in text (D9 / CHOSEN WORDING)
+  // The chart's dashed line, in text
   it.each([
     { actual: 30, after: "Chance Work Items", before: "50% 24" },
     { actual: 19, after: "70% 21", before: "85% 18" },
@@ -443,7 +438,6 @@ describe("lh forecast backtest --pretty", () => {
     },
   );
 
-  // @error @infrastructure-failure @US-01
   it("heads the backtest with the Team's id when its name cannot be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: refused("unexpected", "Lighthouse did not answer"),
@@ -458,10 +452,9 @@ describe("lh forecast backtest --pretty", () => {
   });
 });
 
-// Guards, green today and on every slice after: the facts formats and the error form do not move (D4, KPI-2).
+// Scripts read --json, --toon and the error form, so the pretty views must never change them.
 // The expected bytes are a fresh fixture serialised as today's code serialises it, never the CLI's own output.
 describe("lh forecast keeps the facts formats and errors as they are", () => {
-  // @driving_port @US-01 @contract-shape:unbounded-preservation
   it.each([
     { flag: "--json", serialise: (value: unknown) => JSON.stringify(value) },
     { flag: "--toon", serialise: (value: unknown) => encode(value as never) },
@@ -481,7 +474,6 @@ describe("lh forecast keeps the facts formats and errors as they are", () => {
     },
   );
 
-  // @driving_port @US-01 @contract-shape:unbounded-preservation
   it.each([
     { flag: "--json", serialise: (value: unknown) => JSON.stringify(value) },
     { flag: "--toon", serialise: (value: unknown) => encode(value as never) },
@@ -498,7 +490,7 @@ describe("lh forecast keeps the facts formats and errors as they are", () => {
     },
   );
 
-  // @error @US-01 — errors keep today's form (System Constraint 5)
+  // Errors keep today's form
   it("passes a Lighthouse refusal straight through, as today", async () => {
     const lighthouse = gravitysLighthouse({
       runManualForecast: refused(

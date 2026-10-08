@@ -1,6 +1,6 @@
 // Lighthouse's answers as they arrive on the wire: camelCase, enums as strings, a DateTime as ISO with
 // `Z`, a DateOnly as `yyyy-mm-dd`. Each builder takes only the facts a scenario is about; the rest are the
-// demo data the sketches use (Team Gravity, Portfolio Ocean Explorer, "today" Tue 6 Oct 2026).
+// Lighthouse demo data (Team Gravity, Portfolio Ocean Explorer, "today" Tue 6 Oct 2026).
 
 export type Answer =
   | { readonly ok: true; readonly value: unknown }
@@ -117,7 +117,7 @@ const when = (probability: number, day: string) => ({
   excludedSummary: null,
 });
 
-// Gravity, 25 Work Items, target Fri 30 Oct 2026 (cli-sketches §1).
+// Gravity, 25 Work Items, target Fri 30 Oct 2026.
 export const gravitysForecast = (facts: Record<string, unknown> = {}) => ({
   remainingItems: 25,
   targetDate: "2026-10-30T00:00:00Z",
@@ -309,7 +309,7 @@ export const aDelivery = (facts: Record<string, unknown> = {}) => ({
   ...facts,
 });
 
-// Ocean Explorer's four Deliveries (cli-sketches §7): on track, capped, overdue, thin history.
+// Ocean Explorer's four Deliveries: on track, capped, overdue, thin history.
 export const oceanExplorersDeliveries = () => [
   aDelivery(),
   aDelivery({
@@ -496,7 +496,7 @@ export const aFeature = (facts: Record<string, unknown> = {}) => ({
   ...facts,
 });
 
-// OE-001 done, OE-002 on its way, OE-007 without a forecast (Zenith has no history) — cli-sketches §8.
+// OE-001 done, OE-002 on its way, OE-007 without a forecast (Zenith has no history).
 export const threeOceanExplorerFeatures = () => [
   aFeature({
     name: "Sonar mapping",

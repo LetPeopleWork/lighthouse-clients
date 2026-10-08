@@ -19,16 +19,14 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 05 (US-05): Teams and Portfolios as the Overview's tables and the Team page's settings.
-// Every scenario but the format guards is pending until DELIVER slice 05 un-skips it. Timestamps are read
-// in Zurich, where 05:14 UTC on 6 Oct is 07:14 — the sketch's clock.
+// Teams and Portfolios read as the Overview's tables and the Team page's settings. Timestamps are read in
+// Zurich, where 05:14 UTC on 6 Oct is 07:14.
 
 const READERS_ZONE = "Europe/Zurich";
 
 const inZurich = <T>(body: () => Promise<T>) => inTimeZone(READERS_ZONE, body);
 
 describe("lh team list --pretty", () => {
-  // @driving_port @US-05 @contract-shape:pure-function
   it("shows Lena every Team in the Overview's table, with the id beside the name", async () => {
     const lighthouse = aLighthouse({ listTeams: ok(sevenTeams()) });
 
@@ -47,7 +45,7 @@ describe("lh team list --pretty", () => {
     expect(lighthouse.asked().sort()).toEqual(["getTerminology", "listTeams"]);
   });
 
-  // @US-05 — the Tags column the web shows; Lighthouse sends no tags today, so it stays empty until one does
+  // The Tags column the web shows; Lighthouse sends no tags today, so it stays empty until one does
   it("lists a Team's tags when Lighthouse sends them", async () => {
     const lighthouse = aLighthouse({
       listTeams: ok([aTeam({ tags: ["mobile", "payments"] })]),
@@ -60,7 +58,7 @@ describe("lh team list --pretty", () => {
     );
   });
 
-  // @error @US-05 — AC-05.4: a missing cell says —
+  // A missing cell says —
   it("says '—' for a Team Lighthouse sent without a last update", async () => {
     const { lastUpdated: _notSent, ...pulsar } = aTeam({
       name: "Pulsar",
@@ -74,7 +72,7 @@ describe("lh team list --pretty", () => {
     expect(result.stdout).not.toContain("undefined");
   });
 
-  // @error @version-skew @US-05 — AC-05.4 + M1: one item without name and id sends the whole list to the generic view
+  // One item without name and id sends the whole list to the generic view
   it("shows the list as it came when a Team in it has no name or id", async () => {
     const recognised = await aLighthouse({ listTeams: ok(sevenTeams()) }).run([
       "team",
@@ -92,7 +90,7 @@ describe("lh team list --pretty", () => {
     expect(result.stdout).not.toContain("Last Updated");
   });
 
-  // @boundary @US-05 @reader-time-zone — D15: Last Updated is the reader's local time
+  // Last Updated is the reader's local time
   it.each([
     { zone: "America/Adak", reads: "Mon 5 Oct 2026, 20:14" },
     { zone: "Pacific/Kiritimati", reads: "Tue 6 Oct 2026, 19:14" },
@@ -113,7 +111,6 @@ describe("lh team list --pretty", () => {
 });
 
 describe("lh team get --pretty", () => {
-  // @driving_port @US-05 @contract-shape:pure-function
   it("tells Lena Gravity's settings as the Team page states them", async () => {
     const lighthouse = aLighthouse({ getTeam: ok(gravity()) });
 
@@ -135,7 +132,7 @@ describe("lh team get --pretty", () => {
     ]);
   });
 
-  // @error @US-05 — SleQuickSetting.tsx, SystemWipQuickSetting.tsx, FeatureWipQuickSetting.tsx
+  // SleQuickSetting.tsx, SystemWipQuickSetting.tsx, FeatureWipQuickSetting.tsx
   it("says 'Not set' for each setting Meridian has left unset", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok(
@@ -158,7 +155,7 @@ describe("lh team get --pretty", () => {
     expect(lines).toContain("Feature WIP: Not set");
   });
 
-  // @boundary @US-05 — C15: the resolved dates, rolling or fixed; one Feature in the singular
+  // The resolved dates, rolling or fixed; one Feature in the singular
   it("says the Throughput dates are fixed, and counts a single Feature WIP in the singular", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok(
@@ -181,7 +178,6 @@ describe("lh team get --pretty", () => {
     expect(lines).toContain("Feature WIP: 1 Feature");
   });
 
-  // @US-05 @kpi — KPI-5
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok(gravity()),
@@ -205,7 +201,7 @@ describe("lh team get --pretty", () => {
 });
 
 describe("lh portfolio list and get --pretty", () => {
-  // @driving_port @US-05 — D10: a hint instead of one Delivery read per Portfolio
+  // A hint instead of one Delivery read per Portfolio
   it("lists the Portfolios and points at their Deliveries without fetching them", async () => {
     const lighthouse = aLighthouse({ listPortfolios: ok(fivePortfolios()) });
 
@@ -226,7 +222,7 @@ describe("lh portfolio list and get --pretty", () => {
     expect(lighthouse.asked()).not.toContain("listDeliveries");
   });
 
-  // @driving_port @US-05 — PortfolioFeatureWipQuickSetting.tsx counts the involved Teams
+  // PortfolioFeatureWipQuickSetting.tsx counts the involved Teams
   it("tells Lena Ocean Explorer's settings as the Portfolio page states them", async () => {
     const lighthouse = aLighthouse({ getPortfolio: ok(oceanExplorer()) });
 
@@ -246,7 +242,7 @@ describe("lh portfolio list and get --pretty", () => {
     ]);
   });
 
-  // @error @US-05 — a Portfolio no Team works on
+  // A Portfolio no Team works on
   it("says 'Not set' for the Feature WIP of a Portfolio no Team works on", async () => {
     const lighthouse = aLighthouse({
       getPortfolio: ok(aPortfolio({ involvedTeams: [] })),
@@ -258,9 +254,8 @@ describe("lh portfolio list and get --pretty", () => {
   });
 });
 
-// Guards, green today and on every slice after (D4, KPI-2).
+// Scripts read --json and --toon, so the pretty views must never change them.
 describe("lh team and portfolio keep the facts formats as they are", () => {
-  // @driving_port @US-05 @contract-shape:unbounded-preservation
   it.each([
     {
       args: ["team", "list"],

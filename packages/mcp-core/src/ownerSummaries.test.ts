@@ -22,7 +22,6 @@ import {
 // a single Team or Portfolio gains a `summary` field holding the page's heading and settings.
 
 describe("the Team and Portfolio list tools' summary", () => {
-  // @driving_port @US-05 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_team_list",
@@ -72,7 +71,7 @@ describe("the Team and Portfolio list tools' summary", () => {
     },
   );
 
-  // @error @infrastructure-failure @US-05 — the summary's reads never fail the tool
+  // The summary's reads never fail the tool
   it("counts in the seeded words when the instance's terms cannot be read", async () => {
     const assistant = anAssistantOn({
       listTeams: ok(sevenTeams()),
@@ -85,7 +84,7 @@ describe("the Team and Portfolio list tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: 7 Teams");
   });
 
-  // @error @version-skew @US-05 — a row without a name and id cannot be counted as a Team
+  // A row without a name and id cannot be counted as a Team
   it("adds no count to a list whose Teams it does not recognise", async () => {
     const recognised = await anAssistantOn({
       listTeams: ok(sevenTeams()),
@@ -103,7 +102,6 @@ describe("the Team and Portfolio list tools' summary", () => {
 });
 
 describe("the Team and Portfolio get tools' summary", () => {
-  // @driving_port @US-05 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_team_get",
@@ -138,7 +136,6 @@ describe("the Team and Portfolio get tools' summary", () => {
     },
   );
 
-  // @driving_port @US-05
   it.each([
     "lighthouse_team_list",
     "lighthouse_team_get",

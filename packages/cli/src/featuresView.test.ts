@@ -16,7 +16,7 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 07 (US-07): Features as the Feature list shows them, and a Feature's Work Items.
+// Features read as the Feature list shows them, and a Feature's Work Items as its dialog lists them.
 
 const threeFeaturesByReference = [
   "feature",
@@ -38,7 +38,6 @@ const FEATURE_LIST_HEADER =
   "Feature Name Progress Forecasted Start Forecasted Completion (85%) State";
 
 describe("lh feature get --pretty", () => {
-  // @driving_port @US-07 @contract-shape:pure-function
   it("shows Marco his Features as the Feature list shows them", async () => {
     const lighthouse = marcosLighthouse();
 
@@ -60,7 +59,7 @@ describe("lh feature get --pretty", () => {
     ]);
   });
 
-  // @boundary @US-07 — ForecastedStartCell.tsx: an observed start outranks "cannot forecast"
+  // ForecastedStartCell.tsx: an observed start outranks "cannot forecast"
   it.each([
     {
       start: "an observed start",
@@ -129,7 +128,7 @@ describe("lh feature get --pretty", () => {
     },
   );
 
-  // @error @US-07 — D13: '—' when Lighthouse sends no 85% date
+  // '—' when Lighthouse sends no 85% date
   it("says '—' for the completion when Lighthouse sends no 85% date", async () => {
     const lighthouse = marcosLighthouse({
       getFeaturesByIds: ok([aFeature({ forecasts: [] })]),
@@ -145,7 +144,6 @@ describe("lh feature get --pretty", () => {
     );
   });
 
-  // @US-07 @kpi — KPI-5
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = marcosLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -164,7 +162,6 @@ describe("lh feature get --pretty", () => {
     expect(seededWordsIn(`${list.stdout}\n${workItems.stdout}`)).toEqual([]);
   });
 
-  // @error @version-skew @US-07 — D5 + M1
   it("shows the Features as they came when one arrives without its per-Team work", async () => {
     const recognised = await marcosLighthouse().run(threeFeaturesByReference);
     expect(shownLines(recognised.stdout)[0]).toBe(FEATURE_LIST_HEADER);
@@ -182,7 +179,7 @@ describe("lh feature get --pretty", () => {
 });
 
 describe("lh feature workitems --pretty", () => {
-  // @driving_port @US-07 @contract-shape:pure-function — WorkItemsDialog.tsx
+  // WorkItemsDialog.tsx
   it("shows Marco the Work Items of OE-002 under the Feature's name", async () => {
     const lighthouse = marcosLighthouse();
 
@@ -206,7 +203,7 @@ describe("lh feature workitems --pretty", () => {
     ]);
   });
 
-  // @error @infrastructure-failure @US-07 — C14: the heading survives a failed name read
+  // The heading survives a failed name read
   it.each([
     {
       why: "is refused",
@@ -229,9 +226,8 @@ describe("lh feature workitems --pretty", () => {
   );
 });
 
-// Guards, green today and on every slice after (D4, KPI-2).
+// Scripts read --json and --toon, so the pretty views must never change them.
 describe("lh feature keeps the facts formats as they are", () => {
-  // @driving_port @US-07 @contract-shape:unbounded-preservation
   it("hands scripts the Features unchanged with --json and --toon", async () => {
     const lighthouse = marcosLighthouse();
 
@@ -246,7 +242,7 @@ describe("lh feature keeps the facts formats as they are", () => {
     ]);
   });
 
-  // @driving_port @US-07 @contract-shape:unbounded-preservation — AC-07.3: no Feature-name read
+  // No Feature-name read
   it("hands scripts the Work Items unchanged with --json and --toon, without reading the Feature", async () => {
     const lighthouse = marcosLighthouse();
 

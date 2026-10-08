@@ -13,7 +13,7 @@ import {
   summaryBlockOf,
 } from "../test-support/mcpHarness";
 
-// Story 6218, slice 07: the Feature tools. Both answers are lists, so their facts stay byte for byte and a
+// The Feature tools. Both answers are lists, so their facts stay byte for byte and a
 // second block carries the summary.
 
 const marcosAssistant = (reads = {}) =>
@@ -25,7 +25,6 @@ const marcosAssistant = (reads = {}) =>
   });
 
 describe("the Feature tools' summary", () => {
-  // @driving_port @US-07 @contract-shape:bounded-change — M3
   it("keeps the Features' facts as they are and adds a count", async () => {
     const result = await marcosAssistant().call("lighthouse_feature_get", {
       refs: ["OE-001", "OE-002", "OE-007"],
@@ -38,7 +37,6 @@ describe("the Feature tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: 3 Features");
   });
 
-  // @driving_port @US-07 @contract-shape:bounded-change
   it("keeps the Work Items' facts as they are and adds the heading lh prints", async () => {
     const result = await marcosAssistant().call(
       "lighthouse_feature_workitems",
@@ -55,7 +53,7 @@ describe("the Feature tools' summary", () => {
     );
   });
 
-  // @error @infrastructure-failure @US-07 — the summary's reads never fail the tool
+  // The summary's reads never fail the tool
   it("heads the Work Items with the Feature's id when its name cannot be read", async () => {
     const assistant = marcosAssistant({
       getFeaturesByIds: refused("forbidden", "You may not read this Feature"),

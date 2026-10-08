@@ -109,7 +109,7 @@ const WRITES = [
 ];
 
 describe("lh writes --pretty", () => {
-  // @driving_port @US-08 @contract-shape:bounded-change — AC-08.1: all 11 write forms
+  // All 11 write forms
   it.each(WRITES)(
     "confirms `lh $args` in one line: '$reads'",
     async ({ args, reads }) => {
@@ -121,7 +121,7 @@ describe("lh writes --pretty", () => {
     },
   );
 
-  // @error @version-skew @US-08 — AC-08.2: a write answer without a name
+  // A write answer without a name
   it("names the new Team by its id when Lighthouse's answer carries no name", async () => {
     const lighthouse = sofiasLighthouse({ createTeam: ok({ id: 9 }) });
 
@@ -136,7 +136,7 @@ describe("lh writes --pretty", () => {
     expect(result.stdout).toBe("Created: Team [id: 9].");
   });
 
-  // @error @US-08 — a rule without a description says only the schedule
+  // A rule without a description says only the schedule
   it("confirms a blackout rule without a description by its schedule alone", async () => {
     const lighthouse = sofiasLighthouse({
       createRecurringBlackoutRule: ok(aBlackoutRule({ description: "" })),
@@ -154,7 +154,7 @@ describe("lh writes --pretty", () => {
     );
   });
 
-  // @US-08 @kpi — KPI-5: the entity word is the instance's
+  // The entity word is the instance's
   it("names the Team and Portfolio in the words an instance has renamed them to", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -177,7 +177,6 @@ describe("lh writes --pretty", () => {
     expect(seededWordsIn(`${refresh.stdout}\n${update.stdout}`)).toEqual([]);
   });
 
-  // @error @infrastructure-failure @US-08 — D4
   it("confirms in the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: refused("unexpected", "Terminology is unavailable"),
@@ -190,9 +189,8 @@ describe("lh writes --pretty", () => {
   });
 });
 
-// Guards, green today and on every slice after (D4, DSN-12, KPI-2).
+// Scripts read --json, --toon, today's lines and the errors, so the pretty views must never change them.
 describe("lh writes keep the facts formats, today's lines and errors as they are", () => {
-  // @driving_port @US-08 @contract-shape:unbounded-preservation — DSN-12
   it.each([
     { args: ["team", "delete", "--id", "9"], line: "Team deleted: 9" },
     { args: ["team", "refresh", "--id", "3"], line: "Team refreshed: 3" },
@@ -222,7 +220,6 @@ describe("lh writes keep the facts formats, today's lines and errors as they are
     },
   );
 
-  // @driving_port @US-08 @contract-shape:unbounded-preservation — AC-08.3
   it.each([
     {
       args: ["team", "create", "--payload-file", "lightspeed.json"],
@@ -250,7 +247,7 @@ describe("lh writes keep the facts formats, today's lines and errors as they are
     },
   );
 
-  // @error @US-08 — errors keep today's form
+  // Errors keep today's form
   it("passes a refused delete straight through", async () => {
     const lighthouse = sofiasLighthouse({
       deleteTeam: refused("not-found", "Team 9 not found"),

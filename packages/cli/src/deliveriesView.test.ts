@@ -42,7 +42,6 @@ const likelihoodCellOf = async (delivery: Record<string, unknown>) => {
 };
 
 describe("lh delivery list --pretty", () => {
-  // @driving_port @US-06 @contract-shape:pure-function
   it("shows Lena every Delivery of Ocean Explorer in one table, each with the card's answer", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
@@ -64,7 +63,7 @@ describe("lh delivery list --pretty", () => {
     ]);
   });
 
-  // @error @US-06 — as on the card's header chip, Cannot forecast outranks Not enough data
+  // As on the card's header chip, Cannot forecast outranks Not enough data
   it.each([
     {
       why: "a Team has no throughput history",
@@ -81,7 +80,7 @@ describe("lh delivery list --pretty", () => {
     expect(await likelihoodCellOf(delivery)).toContain(" Cannot forecast ");
   });
 
-  // @boundary @US-06 — thin history matters only while work remains
+  // Thin history matters only while work remains
   it("states the likelihood of a finished Delivery even on thin history", async () => {
     const cell = await likelihoodCellOf({
       hasSufficientData: false,
@@ -93,7 +92,7 @@ describe("lh delivery list --pretty", () => {
     expect(cell).not.toContain("Not enough data");
   });
 
-  // @error @version-skew @US-06 — Overdue only when Lighthouse says so, never worked out from the date
+  // Overdue only when Lighthouse says so, never worked out from the date
   it("never calls a Delivery overdue when an older Lighthouse does not say", async () => {
     const { isOverdue: _notSent, ...older } = aDelivery({
       date: "2026-10-02T00:00:00Z",
@@ -111,7 +110,6 @@ describe("lh delivery list --pretty", () => {
     expect(result.stdout).not.toContain("Overdue");
   });
 
-  // @error @US-06
   it("says '—' for the 85% forecast when Lighthouse sends none", async () => {
     const cell = await likelihoodCellOf({
       completionDates: [
@@ -127,7 +125,7 @@ describe("lh delivery list --pretty", () => {
     expect(cell.endsWith(" 78% —")).toBe(true);
   });
 
-  // @error @US-06 — the web's own words for a Portfolio without Deliveries
+  // The web's own words for a Portfolio without Deliveries
   it("says Ocean Explorer has no Deliveries when the list is empty", async () => {
     const lighthouse = oceanExplorersLighthouse({ listDeliveries: ok([]) });
 
@@ -140,7 +138,7 @@ describe("lh delivery list --pretty", () => {
     ]);
   });
 
-  // @error @infrastructure-failure @US-06 — the Portfolio is read only for its name, so losing it never loses the list
+  // The Portfolio is read only for its name, so losing it never loses the list
   it("heads the list with the Portfolio's id when its name cannot be read", async () => {
     const lighthouse = oceanExplorersLighthouse({
       getPortfolio: refused("forbidden", "You may not read this Portfolio"),
@@ -152,7 +150,6 @@ describe("lh delivery list --pretty", () => {
     expect(shownLines(result.stdout)[0]).toBe("Portfolio [id: 2] · Deliveries");
   });
 
-  // @US-06 @kpi
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = oceanExplorersLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -169,7 +166,7 @@ describe("lh delivery list --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @boundary @US-06 @reader-time-zone — a calendar day is never shifted by the reader's time zone
+  // A calendar day is never shifted by the reader's time zone
   it.each(["America/Adak", "Pacific/Kiritimati"])(
     "dates each Delivery as Lighthouse does for a reader in %s",
     async (zone) => {
@@ -183,7 +180,7 @@ describe("lh delivery list --pretty", () => {
     },
   );
 
-  // @error @version-skew @US-06 — a list the view cannot fully read prints as it came, never with a hole in it
+  // A list the view cannot fully read prints as it came, never with a hole in it
   it("shows the list as it came when a Delivery arrives without its date", async () => {
     const recognised = await oceanExplorersLighthouse().run(
       deliveriesOfOceanExplorer,
@@ -205,7 +202,7 @@ describe("lh delivery list --pretty", () => {
 });
 
 describe("lh delivery metrics --pretty", () => {
-  // @driving_port @US-06 @contract-shape:pure-function — the metrics read carries no Delivery name, so its id heads the view
+  // The metrics read carries no Delivery name, so its id heads the view
   it("shows Lena the Q4 Release day by day", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
@@ -225,7 +222,7 @@ describe("lh delivery metrics --pretty", () => {
     ]);
   });
 
-  // @driving_port @US-06 — only the latest day in detail; every day's detail stays in --json
+  // Only the latest day in detail; every day's detail stays in --json
   it("adds the latest day's Features and chances with --detail epics", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
@@ -253,7 +250,7 @@ describe("lh delivery metrics --pretty", () => {
     ]);
   });
 
-  // @error @US-06 — days are recorded forward only, so a new Delivery has none to show yet
+  // Days are recorded forward only, so a new Delivery has none to show yet
   it.each([
     { how: "summarised", flags: [] as string[] },
     { how: "in detail", flags: ["--detail", "epics"] },
@@ -279,7 +276,6 @@ describe("lh delivery metrics --pretty", () => {
 
 // Scripts read --json and --toon, so the pretty views must never change them.
 describe("lh delivery keeps the facts formats as they are", () => {
-  // @driving_port @US-06 @contract-shape:unbounded-preservation
   it("hands scripts the Deliveries unchanged with --json and --toon, and asks only for them", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
@@ -291,7 +287,6 @@ describe("lh delivery keeps the facts formats as they are", () => {
     expect(lighthouse.asked()).toEqual(["listDeliveries", "listDeliveries"]);
   });
 
-  // @driving_port @US-06 @contract-shape:unbounded-preservation
   it("hands scripts the recorded days unchanged with --json, summarised and in detail", async () => {
     const lighthouse = oceanExplorersLighthouse();
 

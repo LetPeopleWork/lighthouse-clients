@@ -17,7 +17,7 @@ import { SEEDED_TERMS } from "./terminology";
 // the named file when it changes.
 
 describe("the web's forecast display rules, restated for the clients", () => {
-  // @boundary @US-01 @contract-shape:pure-function — ForecastLevel.ts: ≤50 Risky, ≤70 Realistic, ≤85 Confident
+  // ForecastLevel.ts: ≤50 Risky, ≤70 Realistic, ≤85 Confident
   it.each([
     { chance: 0, level: "Risky" },
     { chance: 50, level: "Risky" },
@@ -36,7 +36,7 @@ describe("the web's forecast display rules, restated for the clients", () => {
     },
   );
 
-  // @boundary @US-01 @US-06 @contract-shape:pure-function — formatLikelihood.ts, CERTAINTY_CAP_THRESHOLD = 95
+  // formatLikelihood.ts, CERTAINTY_CAP_THRESHOLD = 95
   it.each([
     { value: 95, hasRemainingWork: true, precision: "fixed2", reads: "95.00%" },
     {

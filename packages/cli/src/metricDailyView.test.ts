@@ -18,8 +18,7 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 03 (US-03): `--metrics <name>` prints that metric's sentence and its every-day table.
-// Every scenario is pending until DELIVER slice 03 un-skips it.
+// `--metrics <name>` prints that metric's sentence and its every-day table.
 
 const metricOfGravity = (metric: string, ...flags: string[]) => [
   "metrics",
@@ -41,7 +40,6 @@ const NOTHING_RECORDED =
   "Nothing to show for the selected range. Days appear here as Lighthouse records them.";
 
 describe("lh metrics team --metrics <name> --pretty", () => {
-  // @driving_port @US-03 @contract-shape:pure-function
   it("shows Priya each day's throughput under the total", async () => {
     const result = await gravitysLighthouse().run(
       metricOfGravity("throughput"),
@@ -62,7 +60,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     expect(lines.filter((line) => / 2026 \d+$/u.test(line))).toHaveLength(30);
   });
 
-  // @driving_port @US-03 — AC-03.1: each of the ten names, a sentence then its table (KPI-1 component)
+  // Each of the ten names, a sentence then its table
   it.each([
     {
       metric: "throughput",
@@ -140,7 +138,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     },
   );
 
-  // @US-03 — WorkItemsDialog.tsx: ID, Name, State, the age and the blocked marker
+  // WorkItemsDialog.tsx: ID, Name, State, the age and the blocked marker
   it("lists the Work Items in progress with their age and since when they are blocked", async () => {
     const result = await gravitysLighthouse().run(metricOfGravity("wip"));
 
@@ -153,7 +151,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     expect(lines).toContain("Tue 6 Oct 2026 9");
   });
 
-  // @US-03 — the Closed Work Items dialog
+  // The Closed Work Items dialog
   it("lists each closed Work Item with the day it closed and its Cycle Time", async () => {
     const result = await gravitysLighthouse().run(metricOfGravity("cycleTime"));
 
@@ -162,7 +160,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     );
   });
 
-  // @US-03 — PredictabilityScore.tsx, its explanation verbatim
+  // PredictabilityScore.tsx, its explanation verbatim
   it("explains the predictability score in the dashboard's own words", async () => {
     const result = await gravitysLighthouse().run(
       metricOfGravity("predictabilityScore"),
@@ -173,7 +171,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     );
   });
 
-  // @error @US-03 — AC-03.2: overTimeEmptyState.ts, verbatim
+  // overTimeEmptyState.ts, verbatim
   it.each([
     { metric: "percentilesOverTime", read: "getTeamPercentilesOverTime" },
     {
@@ -193,7 +191,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     },
   );
 
-  // @US-03 — AC-03.4: several names, each complete, in the order given
+  // Several names, each complete, in the order given
   it.each([
     {
       asked: "throughput,blocked",
@@ -220,7 +218,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     },
   );
 
-  // @US-03 — AC-03.3: a named cycle time definition names the sentence (the Team's settings carry the names)
+  // A named cycle time definition names the sentence (the Team's settings carry the names)
   it("names the cycle time definition Priya chose", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamSettings: ok({
@@ -246,7 +244,6 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     );
   });
 
-  // @US-03 @kpi — KPI-5
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -263,7 +260,7 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @error @version-skew @US-03 — D5 + M1: one metric lh cannot read prints the generic view, silently
+  // One metric lh cannot read prints the generic view, silently
   it("shows the facts as they came when the one metric asked for has a shape lh does not know", async () => {
     const recognised = await gravitysLighthouse().run(
       metricOfGravity("totalWorkItemAge"),
@@ -285,7 +282,6 @@ describe("lh metrics team --metrics <name> --pretty", () => {
     expect(result.stdout).not.toContain("undefined");
   });
 
-  // @boundary @US-03 @reader-time-zone — D15
   it.each(["America/Adak", "Pacific/Kiritimati"])(
     "dates each day as Lighthouse recorded it for a reader in %s",
     async (zone) => {

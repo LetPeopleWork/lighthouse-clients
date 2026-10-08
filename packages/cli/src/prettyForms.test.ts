@@ -27,7 +27,7 @@ import {
 import { aLighthouse } from "../test-support/cliHarness";
 import { formatPayload } from "./output";
 
-// Story 6218, KPI-1 (DSN-10): every `lh` form that answers a question or confirms a change has its own view,
+// Every `lh` form that answers a question or confirms a change has its own view,
 // and every form is accounted for. The list below is the contract: 42 forms change, 10 stay as they are on
 // purpose, each with its reason. The first describe is a guard: a new subcommand or metric that nobody placed on
 // either list fails it.
@@ -221,7 +221,7 @@ const everyRead = () => ({
   getVersion: ok("v26.10.3.6"),
 });
 
-// What the form printed before this story: the generic view of the facts `--json` hands over, or today's
+// What the form printed before it had a view of its own: the generic view of the facts `--json` hands over, or today's
 // hand-written line for the forms whose `--json` is that line.
 const genericViewOf = async (
   lighthouse: ReturnType<typeof aLighthouse>,
@@ -238,7 +238,6 @@ const genericViewOf = async (
 };
 
 describe("every lh form is accounted for", () => {
-  // @US-09 @kpi — KPI-1 completeness, guard: green today
   it("lists every subcommand the help offers as either converted or unchanged on purpose", async () => {
     const lighthouse = aLighthouse(everyRead());
     const overview = await lighthouse.run(["help"]);
@@ -267,7 +266,6 @@ describe("every lh form is accounted for", () => {
     expect(CHANGING_FORMS.length + 1).toBe(42);
   });
 
-  // @US-03 @kpi — KPI-1 completeness over METRIC_KEYS, guard: green today
   it("gives every metric name lh accepts its own form", async () => {
     const refusal = await aLighthouse({}).run(METRICS("no-such-metric"));
     const allowed = (refusal.stderr.split("Allowed: ")[1] ?? "")
@@ -299,7 +297,7 @@ const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
 );
 
 describe("every converted lh form has a view of its own", () => {
-  // @driving_port @US-01..@US-09 @kpi — KPI-1: 0 forms left on the generic view
+  // 0 forms left on the generic view
   const noLongerTheGenericView = async ({
     args,
   }: {
@@ -321,7 +319,7 @@ describe("every converted lh form has a view of its own", () => {
     noLongerTheGenericView,
   );
 
-  // @driving_port @US-09 @kpi — the 42nd form
+  // The 42nd form
   it("slice 09: `lh health check` on a standalone Lighthouse no longer prints today's line", async () => {
     const lighthouse = aLighthouse(everyRead(), {
       connection: { mode: "standalone" },

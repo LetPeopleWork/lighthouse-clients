@@ -28,7 +28,6 @@ const Q4_HEADING =
   "Delivery [id: 11] · Delivery Date Tue 15 Dec 2026 · recorded since Tue 15 Sep 2026";
 
 describe("the Delivery tools' summary", () => {
-  // @driving_port @US-06 @contract-shape:bounded-change
   it.each([
     { deliveries: oceanExplorersDeliveries(), says: "summary: 4 Deliveries" },
     { deliveries: [aDelivery()], says: "summary: 1 Delivery" },
@@ -49,7 +48,6 @@ describe("the Delivery tools' summary", () => {
     },
   );
 
-  // @driving_port @US-06 @contract-shape:bounded-change
   it("keeps the summarised recorded days as they are and adds their heading in a second block", async () => {
     const result = await deliveriesAssistant().call(
       "lighthouse_delivery_metrics",
@@ -63,7 +61,6 @@ describe("the Delivery tools' summary", () => {
     expect(summaryBlockOf(result) ?? "").toContain(Q4_HEADING);
   });
 
-  // @driving_port @US-06 @contract-shape:bounded-change
   it("hands the detailed recorded days over with their heading as a summary field", async () => {
     const result = await deliveriesAssistant().call(
       "lighthouse_delivery_metrics",

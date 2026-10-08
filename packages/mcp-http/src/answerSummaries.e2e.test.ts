@@ -4,9 +4,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { afterEach, describe, expect, it } from "vitest";
 import { type McpHttpServerHandle, startMcpHttpServer } from "./bin";
 
-// Story 6218 (ADR-224): a list answer's summary rides in a second text block. This proves the block reaches an
-// assistant's MCP SDK client over the HTTP transport, against a recording `node:http` Lighthouse. Pending until
-// DELIVER slice 05 adds the first list summary.
+// A list answer's summary rides in a second text block. This proves the block reaches an assistant's MCP SDK
+// client over the HTTP transport, against a recording `node:http` Lighthouse.
 
 const gravity = {
   name: "Gravity",
@@ -79,7 +78,6 @@ describe("an answer's summary over the shared MCP server", () => {
     lighthouse = undefined;
   });
 
-  // @real-io @adapter-integration @US-05 @contract-shape:bounded-change
   it("hands an assistant's MCP client the Team list's facts and then its summary, as two blocks", async () => {
     lighthouse = await startLighthouse();
     mcp = await startMcpHttpServer({

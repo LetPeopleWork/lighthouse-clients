@@ -16,7 +16,7 @@ import {
   summaryBlockOf,
 } from "../test-support/mcpHarness";
 
-// Story 6218, slice 09: the housekeeping tools. Health, version and the two lists keep their facts block byte
+// The housekeeping tools. Health, version and the two lists keep their facts block byte
 // for byte and gain a second block; a single connection gains a `summary` field that names it and its type
 // and never carries an option's value.
 
@@ -47,7 +47,6 @@ const sofiasAssistant = (reads = {}, options = {}) =>
   );
 
 describe("the housekeeping tools' summary", () => {
-  // @driving_port @US-09 @contract-shape:bounded-change
   it("keeps the health answer as it is and adds that Lighthouse is reachable", async () => {
     const result = await sofiasAssistant().call("lighthouse_health_check", {});
 
@@ -56,7 +55,6 @@ describe("the housekeeping tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: Lighthouse is reachable.");
   });
 
-  // @driving_port @US-09 @contract-shape:bounded-change
   it("keeps the version as it is and adds the footer's words", async () => {
     const result = await sofiasAssistant().call("lighthouse_version_get", {});
 
@@ -64,7 +62,6 @@ describe("the housekeeping tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: Lighthouse v26.10.3.6");
   });
 
-  // @driving_port @US-09 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_worktracking_list",
@@ -87,7 +84,7 @@ describe("the housekeeping tools' summary", () => {
     },
   );
 
-  // @boundary @US-09 — one of each
+  // One of each
   it.each([
     {
       tool: "lighthouse_worktracking_list",
@@ -108,7 +105,6 @@ describe("the housekeeping tools' summary", () => {
     },
   );
 
-  // @US-09 @kpi
   it("counts the Work Tracking Systems in the words an instance has renamed them to", async () => {
     const assistant = sofiasAssistant({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -119,7 +115,7 @@ describe("the housekeeping tools' summary", () => {
     expect(summaryBlockOf(result)).toBe("summary: 3 Trackers");
   });
 
-  // @driving_port @US-09 @contract-shape:bounded-change — the summary names, never reveals
+  // The summary names, never reveals
   it("names a connection and its type, and leaves every option value out of the summary", async () => {
     const leaky = aConnection({
       options: aConnection().options.map((option) =>
@@ -140,7 +136,6 @@ describe("the housekeeping tools' summary", () => {
 });
 
 describe("the housekeeping tools keep their errors as they are", () => {
-  // @error @infrastructure-failure @US-09 — guard, green today
   it("passes an unreachable Lighthouse straight through, without a summary", async () => {
     const assistant = sofiasAssistant(
       {},
@@ -155,7 +150,6 @@ describe("the housekeeping tools keep their errors as they are", () => {
     ]);
   });
 
-  // @error @US-09 — guard, green today
   it("passes a refused connection read straight through, without a summary", async () => {
     const assistant = sofiasAssistant({
       getWorkTrackingConnection: refused("not-found", "Connection 9 not found"),

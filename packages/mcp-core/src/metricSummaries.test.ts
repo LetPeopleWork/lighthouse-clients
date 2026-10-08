@@ -18,9 +18,8 @@ import {
   summaryBlockOf,
 } from "../test-support/mcpHarness";
 
-// Story 6218, slice 03: the per-metric tools add the sentence lh prints above that metric's table. A list
-// answer keeps its facts block byte for byte and gains a second block `summary: …`; an object answer gains a
-// `summary` field (ADR-224).
+// The per-metric tools add the sentence lh prints above that metric's table. A list answer keeps its facts
+// block byte for byte and gains a second block `summary: …`; an object answer gains a `summary` field.
 
 const gravitysRange = { id: 3, startDate: "2026-09-07", endDate: "2026-10-06" };
 const oceanExplorersRange = {
@@ -46,7 +45,6 @@ const answered = (read: string): unknown =>
   ).value;
 
 describe("the per-metric tools' summary, on a list answer", () => {
-  // @driving_port @US-03 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_team_metrics_cycleTimePercentiles",
@@ -95,7 +93,6 @@ describe("the per-metric tools' summary, on a list answer", () => {
     },
   );
 
-  // @error @US-03 — AC-03.2 on the MCP side
   it("says nothing is recorded yet, in the web's words, for an empty percentile history", async () => {
     const assistant = gravitysAssistant({
       getTeamPercentilesOverTime: ok([]),
@@ -114,7 +111,6 @@ describe("the per-metric tools' summary, on a list answer", () => {
 });
 
 describe("the per-metric tools' summary, on an object answer", () => {
-  // @driving_port @US-03 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_team_metrics_throughput",
@@ -220,7 +216,6 @@ describe("the per-metric tools' summary, as lh heads it", () => {
 });
 
 describe("the per-metric tools without a summary", () => {
-  // @error @version-skew @US-03 — ADR-224 rule 3
   it("adds no summary to a percentile history it does not recognise", async () => {
     const recognised = await gravitysAssistant().call(
       "lighthouse_team_metrics_blockedCountHistory",
@@ -248,7 +243,7 @@ describe("the per-metric tools without a summary", () => {
     ]);
   });
 
-  // @error @US-03 — guard, green today: a refusal stays today's error, with no summary
+  // A refusal stays today's error, with no summary
   it("passes a refused metric straight through", async () => {
     const assistant = gravitysAssistant({
       getTeamCycleTimePercentiles: refused("not-found", "Team 3 not found"),

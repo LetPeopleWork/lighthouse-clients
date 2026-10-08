@@ -18,7 +18,7 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 04 (US-04): Time in State as a table in workflow order, with its drill-down.
+// Time in State reads as a table in workflow order, with its drill-down.
 
 const timeInStateOfGravity = (...flags: string[]) => [
   "metrics",
@@ -43,7 +43,6 @@ const STATES_IN_WORKFLOW_ORDER = [
 ];
 
 describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
-  // @driving_port @US-04 @contract-shape:pure-function
   it("shows Priya where Gravity's time goes, one state per row in workflow order", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -59,7 +58,6 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     expect(lines.slice(header, header + 5)).toEqual(STATES_IN_WORKFLOW_ORDER);
   });
 
-  // @boundary @US-04 — AC-04.1
   it("says '—' for a state without a median", async () => {
     const result = await gravitysLighthouse().run(timeInStateOfGravity());
 
@@ -67,7 +65,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     expect(result.stdout).not.toContain("null");
   });
 
-  // @US-04 — AC-04.3: the picker's list is the web's control, not an answer
+  // The picker's list is the web's control, not an answer
   it("does not print the list of Work Items the web offers to pick from", async () => {
     const result = await gravitysLighthouse().run(timeInStateOfGravity());
 
@@ -77,7 +75,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     expect(result.stdout).not.toContain("GR-041");
   });
 
-  // @driving_port @US-04 — the drill-down dialog, verbatim
+  // The drill-down dialog, verbatim
   it("lists the Work Items contributing to Review with their days", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -97,7 +95,7 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     ]);
   });
 
-  // @boundary @US-04 — AC-04.2: the picked subset narrows the count, as the web narrows it
+  // The picked subset narrows the count, as the web narrows it
   it("counts only the Work Items Priya picked", async () => {
     const result = await gravitysLighthouse().run(
       timeInStateOfGravity("--item-ids", "61,64"),
@@ -108,7 +106,6 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     );
   });
 
-  // @US-04 @kpi — KPI-5
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -127,7 +124,6 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @error @version-skew @US-04 — D5 + M1
   it("shows the facts as they came when the states arrive without their workflow order", async () => {
     const recognised = await gravitysLighthouse().run(timeInStateOfGravity());
     expect(shownLines(recognised.stdout)).toContain(
@@ -151,7 +147,6 @@ describe("lh metrics team --metrics cumulativeStateTime --pretty", () => {
 });
 
 describe("lh metrics --metrics cumulativeStateTime keeps the facts formats as they are", () => {
-  // @driving_port @US-04 @contract-shape:unbounded-preservation — guard, green today
   it("hands scripts the bar, the candidates and the drill-down unchanged with --json", async () => {
     const lighthouse = gravitysLighthouse();
 

@@ -7,7 +7,7 @@ import {
 } from "../../../test-support/lighthouseAnswers";
 import { anAssistantOn } from "../test-support/mcpHarness";
 
-// Story 6218, slice 08: the write tools MCP has (refresh, blackout create/update/delete; MCP has no Team or
+// The write tools MCP has (refresh, blackout create/update/delete; MCP has no Team or
 // Portfolio create, update or delete). Each keeps today's text block byte for byte and adds the CLI's
 // one-line confirmation as a second block. A blackout rule already carries a `summary` field of its own (the
 // server's schedule), so it takes the second block too: putting the confirmation in that field would
@@ -27,7 +27,6 @@ const textBlocks = (...texts: string[]) =>
   texts.map((text) => ({ type: "text", text }));
 
 describe("the write tools' summary", () => {
-  // @driving_port @US-08 @contract-shape:bounded-change
   it.each([
     {
       tool: "lighthouse_team_refresh",
@@ -76,7 +75,6 @@ describe("the write tools' summary", () => {
 });
 
 describe("the write tools keep their errors as they are", () => {
-  // @error @US-08 — guard, green today
   it("passes a refused refresh straight through, without a summary", async () => {
     const assistant = sofiasAssistant({
       refreshTeam: refused("not-found", "Team 3 not found"),

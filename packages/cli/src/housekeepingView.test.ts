@@ -17,8 +17,7 @@ import {
   shownLines,
 } from "../test-support/cliHarness";
 
-// Story 6218, slice 09 (US-09): the housekeeping commands read as the web's settings pages, its footer, or a
-// plain sentence.
+// The housekeeping commands read as the web's settings pages, its footer, or a plain sentence.
 
 const HACKATHON = aBlackoutRule({
   id: 6,
@@ -54,7 +53,7 @@ const sofiasLighthouse = (reads = {}, options = {}) =>
   );
 
 describe("lh blackout list --pretty", () => {
-  // @driving_port @US-09 @contract-shape:pure-function — BlackoutSettings.tsx
+  // BlackoutSettings.tsx
   it("shows Sofia the recurring blackout rules as the settings page lists them", async () => {
     const lighthouse = sofiasLighthouse();
 
@@ -69,7 +68,6 @@ describe("lh blackout list --pretty", () => {
     ]);
   });
 
-  // @boundary @US-09 — chosen wording
   it("says so when there are no recurring blackout rules", async () => {
     const lighthouse = sofiasLighthouse({ getRecurringBlackoutRules: ok([]) });
 
@@ -79,7 +77,7 @@ describe("lh blackout list --pretty", () => {
     expect(shownLines(result.stdout)).toEqual(["No recurring blackout rules."]);
   });
 
-  // @boundary @US-09 — a rule without a description
+  // A rule without a description
   it("leaves the Description cell empty for a rule without one", async () => {
     const lighthouse = sofiasLighthouse({
       getRecurringBlackoutRules: ok([aBlackoutRule({ description: "" })]),
@@ -97,7 +95,7 @@ describe("lh blackout list --pretty", () => {
 });
 
 describe("lh worktracking --pretty", () => {
-  // @driving_port @US-09 @contract-shape:pure-function — OverviewDashboard.tsx connectionColumns
+  // OverviewDashboard.tsx connectionColumns
   it("shows Sofia the Work Tracking Systems as the Overview lists them", async () => {
     const lighthouse = sofiasLighthouse();
 
@@ -113,7 +111,7 @@ describe("lh worktracking --pretty", () => {
     ]);
   });
 
-  // @driving_port @US-09 @contract-shape:pure-function — EditConnection.tsx, field names as the editor labels them
+  // EditConnection.tsx, field names as the editor labels them
   it("shows Sofia one connection with its options as the editor labels them", async () => {
     const lighthouse = sofiasLighthouse();
 
@@ -130,7 +128,6 @@ describe("lh worktracking --pretty", () => {
     ]);
   });
 
-  // @error @security @US-09 @contract-shape:unbounded-preservation — AC-09.2, the slice's risk carrier
   it("never prints a secret's value, even when Lighthouse wrongly sends it", async () => {
     const lighthouse = sofiasLighthouse({
       getWorkTrackingConnection: ok(aLeakyConnection()),
@@ -149,7 +146,7 @@ describe("lh worktracking --pretty", () => {
     expect(list.stdout).not.toContain(LEAKED_TOKEN);
   });
 
-  // @error @version-skew @US-09 — an option the editor has no label for
+  // An option the editor has no label for
   it("labels an option by its key when the connection's method does not name it", async () => {
     const lighthouse = sofiasLighthouse({
       getWorkTrackingConnection: ok(
@@ -167,7 +164,6 @@ describe("lh worktracking --pretty", () => {
     ]);
   });
 
-  // @US-09 @kpi — KPI-5
   it("titles the list in the word an instance has renamed Work Tracking Systems to", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -179,7 +175,7 @@ describe("lh worktracking --pretty", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @error @infrastructure-failure @US-09 — D4: the view survives a failed terminology read
+  // The view survives a failed terminology read
   it("titles the list in the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: refused("unexpected", "Terminology is unavailable"),
@@ -192,7 +188,6 @@ describe("lh worktracking --pretty", () => {
     expect(shownLines(result.stdout)[0]).toBe("Work Tracking Systems");
   });
 
-  // @error @version-skew @US-09 — D5 + M1
   it("shows a connection as it came when it arrives without its options", async () => {
     const recognised = await sofiasLighthouse().run([
       "worktracking",
@@ -215,7 +210,7 @@ describe("lh worktracking --pretty", () => {
 });
 
 describe("lh version get and lh health check --pretty", () => {
-  // @driving_port @US-09 @contract-shape:pure-function — LighthouseVersion.tsx
+  // LighthouseVersion.tsx
   it("shows the version as the footer does", async () => {
     const result = await sofiasLighthouse().run(["version", "get"]);
 
@@ -223,7 +218,6 @@ describe("lh version get and lh health check --pretty", () => {
     expect(result.stdout).toBe("Lighthouse v26.10.3.6");
   });
 
-  // @driving_port @US-09 @contract-shape:pure-function — chosen wording
   it("says the Lighthouse it is connected to is reachable", async () => {
     const result = await sofiasLighthouse().run(["health", "check"]);
 
@@ -233,7 +227,6 @@ describe("lh version get and lh health check --pretty", () => {
     );
   });
 
-  // @boundary @US-09 — chosen wording
   it("says the standalone Lighthouse is reachable", async () => {
     const lighthouse = sofiasLighthouse(
       {},
@@ -247,9 +240,8 @@ describe("lh version get and lh health check --pretty", () => {
   });
 });
 
-// Guards, green today and on every slice after (D4, AC-09.3, AC-09.4, KPI-2).
+// Scripts read --json, --toon and the failure lines, so the pretty views must never change them.
 describe("lh housekeeping keeps the facts formats and failures as they are", () => {
-  // @error @infrastructure-failure @US-09 @contract-shape:unbounded-preservation — AC-09.3
   it("reports an unreachable Lighthouse as before", async () => {
     const lighthouse = sofiasLighthouse(
       {},
@@ -263,7 +255,6 @@ describe("lh housekeeping keeps the facts formats and failures as they are", () 
     expect(result.stderr).toBe("unreachable: connection refused");
   });
 
-  // @driving_port @US-09 @contract-shape:unbounded-preservation — DSN-12
   it.each([["--json"], ["--toon"]])(
     "keeps today's health line under %s",
     async (format) => {
@@ -276,7 +267,6 @@ describe("lh housekeeping keeps the facts formats and failures as they are", () 
     },
   );
 
-  // @driving_port @US-09 @contract-shape:unbounded-preservation — AC-09.4
   it.each([
     { args: ["blackout", "list"], answer: () => [aBlackoutRule(), HACKATHON] },
     { args: ["worktracking", "list"], answer: () => threeConnections() },
@@ -296,7 +286,7 @@ describe("lh housekeeping keeps the facts formats and failures as they are", () 
     },
   );
 
-  // @error @security @US-09 — the facts formats hand over what Lighthouse sent, as today
+  // The facts formats hand over what Lighthouse sent, as today
   it("hands scripts a connection exactly as Lighthouse sent it", async () => {
     const lighthouse = sofiasLighthouse({
       getWorkTrackingConnection: ok(aLeakyConnection()),
@@ -313,7 +303,7 @@ describe("lh housekeeping keeps the facts formats and failures as they are", () 
     expect(json.stdout).toBe(JSON.stringify(aLeakyConnection()));
   });
 
-  // @error @US-09 — errors keep today's form
+  // Errors keep today's form
   it("passes a refused connection read straight through", async () => {
     const lighthouse = sofiasLighthouse({
       getWorkTrackingConnection: refused("not-found", "Connection 9 not found"),

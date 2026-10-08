@@ -1,5 +1,5 @@
 // What Lighthouse answers to each metrics read for Team Gravity between Mon 7 Sep and Tue 6 Oct 2026
-// (30 days), in the shapes the server sends (cli-sketches §2–§4). Keyed by the client method that reads it.
+// (30 days), in the shapes the server sends. Keyed by the client method that reads it.
 
 import { type Answer, aWorkItem, ok } from "./lighthouseAnswers";
 

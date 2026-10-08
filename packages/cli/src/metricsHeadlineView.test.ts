@@ -18,8 +18,7 @@ import {
 } from "../../../test-support/metricsAnswers";
 import { aLighthouse, prose, shownLines } from "../test-support/cliHarness";
 
-// Story 6218, slice 02 (US-02): `lh metrics team|portfolio` without `--metrics` prints the dashboard's
-// headline on one screen. Every scenario but the format guards is pending until DELIVER slice 02.
+// `lh metrics team|portfolio` without `--metrics` prints the dashboard's headline on one screen.
 
 const metricsOfGravity = (...flags: string[]) => [
   "metrics",
@@ -57,7 +56,7 @@ const sha256 = (text: string): string =>
   createHash("sha256").update(text).digest("hex");
 
 describe("lh metrics team --pretty, the headline", () => {
-  // @driving_port @US-02 @kpi @contract-shape:pure-function — KPI-3: at most 30 lines
+  // At most 30 lines
   it("shows Priya Gravity's headline numbers and percentiles on one screen", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -75,7 +74,7 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(lighthouse.asked()).toContain("getTeam");
   });
 
-  // @US-02 — D7: one line per over-time metric, every day one flag away
+  // One line per over-time metric, every day one flag away
   it("summarises each over-time metric in one line and says where every day is", async () => {
     const result = await gravitysLighthouse().run(metricsOfGravity());
 
@@ -94,7 +93,7 @@ describe("lh metrics team --pretty, the headline", () => {
     );
   });
 
-  // @error @US-02 — AC-02.3: an empty series says the web's empty-state sentence (overTimeEmptyState.ts)
+  // An empty series says the web's empty-state sentence (overTimeEmptyState.ts)
   it("says why an over-time metric with nothing recorded has no line of numbers", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamPercentilesOverTime: ok([]),
@@ -108,7 +107,7 @@ describe("lh metrics team --pretty, the headline", () => {
     );
   });
 
-  // @error @infrastructure-failure @US-02 — AC-02.4: a refused section prints its refusal in place
+  // A refused section prints its refusal in place
   it("shows a refused metric's reason in its own line and every other number around it", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamPredictabilityScore: refused(
@@ -129,7 +128,7 @@ describe("lh metrics team --pretty, the headline", () => {
     }
   });
 
-  // @error @version-skew @US-02 — M2: render the rest, one line for the section lh does not recognise
+  // Render the rest, one line for the section lh does not recognise
   it("names a metric it cannot read as shown only with --json, and renders the rest", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamTotalWorkItemAgeOverTime: ok({
@@ -152,7 +151,7 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(result.stdout).not.toContain("undefined");
   });
 
-  // @boundary @US-02 — SystemWipQuickSetting.tsx omits the limit when none is set
+  // SystemWipQuickSetting.tsx omits the limit when none is set
   it("leaves out the WIP limit for a Team that has none", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: ok(gravity({ name: "Meridian", id: 4, systemWIPLimit: 0 })),
@@ -170,7 +169,7 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(result.stdout).not.toContain("Limit");
   });
 
-  // @error @version-skew @US-02 — a server older than v26.7.3.1 flags no Work Item as blocked
+  // A server older than v26.7.3.1 flags no Work Item as blocked
   it("leaves out the blocked count when Lighthouse does not say which Work Items are blocked", async () => {
     const withoutFlags = (
       gravitysMetrics().getTeamWip as { value: unknown[] }
@@ -193,7 +192,7 @@ describe("lh metrics team --pretty, the headline", () => {
     ).toEqual([]);
   });
 
-  // @boundary @US-02 — AC-02.2: n days / 1 day, and — for a percentile one side lacks
+  // n days / 1 day, and — for a percentile one side lacks
   it("says '1 day' for a single day and '—' where a percentile is missing", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamCycleTimePercentiles: ok([
@@ -215,7 +214,7 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(lines).toContain("50th 1 day 3 days");
   });
 
-  // @US-02 — D8: the CLI's own placeholder is not an answer
+  // The CLI's own placeholder is not an answer
   it("does not print the work distribution placeholder", async () => {
     const result = await gravitysLighthouse().run(metricsOfGravity());
 
@@ -224,7 +223,6 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(result.stdout).not.toContain("No dedicated backend endpoint");
   });
 
-  // @US-02 @kpi — KPI-5
   it("says it in the words an instance has renamed every term to", async () => {
     const lighthouse = gravitysLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
@@ -243,7 +241,6 @@ describe("lh metrics team --pretty, the headline", () => {
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
-  // @error @infrastructure-failure @US-02 — D4 + C14
   it("heads the headline with the Team's id, in the seeded words, when neither name nor terms can be read", async () => {
     const lighthouse = gravitysLighthouse({
       getTeam: refused("forbidden", "You may not read this Team"),
@@ -263,7 +260,7 @@ describe("lh metrics team --pretty, the headline", () => {
 });
 
 describe("lh metrics portfolio --pretty, the headline", () => {
-  // @driving_port @US-02 — a Portfolio counts Features
+  // A Portfolio counts Features
   it("counts Features for Ocean Explorer over its 90 days", async () => {
     const lighthouse = aLighthouse({
       getPortfolio: ok(oceanExplorer()),
@@ -291,8 +288,8 @@ describe("lh metrics portfolio --pretty, the headline", () => {
   });
 });
 
-// Guards, green today and on every slice after (D4, KPI-2). The composite payload is long, so its bytes are
-// pinned by their SHA-256, captured on the code before this story.
+// Scripts read --json and --toon, so the pretty views must never change them. The composite payload is
+// long, so its bytes are pinned by their SHA-256, captured before the pretty views existed.
 describe("lh metrics keeps the facts formats as they are", () => {
   const EVERY_METRICS_READ = [
     "getTeamArrivals",
@@ -312,7 +309,6 @@ describe("lh metrics keeps the facts formats as they are", () => {
     "getTeamWorkItemAgePercentiles",
   ];
 
-  // @driving_port @US-02 @contract-shape:unbounded-preservation
   it("hands scripts the whole metrics payload unchanged with --json, and asks Lighthouse nothing more", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -326,7 +322,6 @@ describe("lh metrics keeps the facts formats as they are", () => {
     expect([...lighthouse.asked()].sort()).toEqual(EVERY_METRICS_READ);
   });
 
-  // @driving_port @US-02 @contract-shape:unbounded-preservation
   it("hands scripts the whole metrics payload unchanged with --toon, and asks Lighthouse nothing more", async () => {
     const lighthouse = gravitysLighthouse();
 
@@ -339,7 +334,6 @@ describe("lh metrics keeps the facts formats as they are", () => {
     expect([...lighthouse.asked()].sort()).toEqual(EVERY_METRICS_READ);
   });
 
-  // @driving_port @US-03 @contract-shape:unbounded-preservation
   it("hands scripts one metric's payload unchanged with --json", async () => {
     const lighthouse = gravitysLighthouse({
       getTeamPercentilesOverTime: ok(percentilesHistory()),

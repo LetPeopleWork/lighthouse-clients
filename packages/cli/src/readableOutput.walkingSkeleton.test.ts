@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { ok } from "../../../test-support/lighthouseAnswers";
 import { aLighthouse } from "../test-support/cliHarness";
 
-// Story 6218's walking skeleton. Every converted command reuses the seam `lh refinement get` already ships
-// through: a renderer per command, the shared table, the instance's words with the seeded fallback. Slice 01
-// moves the table and the word resolver out of refinement's files; this pins what Priya reads today, byte for
-// byte, so the move cannot change it (DoD 4). Green before and after every slice.
+// Every readable view reuses the seam `lh refinement get` was first built on: a renderer per command, the
+// shared table, the instance's words with the seeded fallback. The table and the word resolver moved out of
+// refinement's files to be shared; this pins what refinement prints, byte for byte, so sharing them cannot
+// change it.
 
 const gr = (referenceId: string, name: string, parentReferenceId: string) => ({
   referenceId,
@@ -55,7 +55,6 @@ const gravitysRefinement = {
 };
 
 describe("story 6218 walking skeleton: the pretty seam every command reuses", () => {
-  // @walking_skeleton @driving_port @US-01 @contract-shape:unbounded-preservation
   it("still tells Priya, byte for byte, where Team Gravity's refinement stands while the shared table and words move", async () => {
     const lighthouse = aLighthouse({
       getTeam: ok({ id: 3, name: "Team Gravity" }),
