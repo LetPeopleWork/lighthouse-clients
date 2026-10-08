@@ -1,0 +1,20 @@
+Gravity · Mon 7 Sep 2026 – Tue 6 Oct 2026 (30 days)
+
+Work Items in Progress  9         System WIP Limit: 10 Work Items
+Total Throughput        31        1.0 / day
+Total Arrivals          28        0.9 / day
+Blocked Work Items      2
+Total Work Item Age     84 days   across 9 Work Items
+Predictability Score    63.4%
+Time in State           4 states  across 42 Work Items
+
+Percentile  Cycle Time  Work Item Age
+95th        21 days     18 days
+85th        12 days     11 days
+70th        8 days      6 days
+50th        5 days      3 days
+
+Over time (one row per recorded day: lh metrics team --id 3 --metrics <name>)
+Cycle Time 85th percentile  14 days on Mon 7 Sep → 12 days on Tue 6 Oct  29 days recorded
+Throughput process limits   0 – 3.1 / day, average 1.0, on Tue 6 Oct     29 days recorded
+Blocked Work Items          1 on Mon 7 Sep → 2 on Tue 6 Oct              30 days recorded

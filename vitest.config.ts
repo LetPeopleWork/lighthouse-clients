@@ -26,7 +26,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["packages/*/src/**/*.test.ts"],
+    include: ["packages/*/src/**/*.test.ts", "skills/**/*.test.ts"],
     coverage: {
       enabled: false,
     },

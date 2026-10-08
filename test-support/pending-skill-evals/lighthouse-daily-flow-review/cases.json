@@ -1,0 +1,285 @@
+[
+  {
+    "id": "the-daily-opens-with-one-thing-to-decide",
+    "story": "6246",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "tools": {
+      "required": [
+        "lighthouse_team_get",
+        "lighthouse_team_metrics_wip",
+        "lighthouse_team_metrics_sleRisk"
+      ]
+    },
+    "answer": {
+      "mustContain": [
+        "GR-061",
+        "GR-058",
+        "https://northwind.atlassian.net/browse/GR-061",
+        "https://northwind.atlassian.net/browse/GR-058",
+        "Everything else is flowing"
+      ],
+      "checks": [
+        "opens with GR-061, Blocked since Monday, and asks who unblocks it today",
+        "then lists GR-058 past the SLE and WIP of 8 against a System WIP Limit of 6 as decisions, at most three",
+        "every Work Item carries its link",
+        "names no person"
+      ]
+    }
+  },
+  {
+    "id": "a-calm-day-says-so-in-one-line",
+    "story": "6246",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-calm",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "answer": {
+      "mustContain": ["Nothing to decide today"],
+      "checks": ["says it in one line and lists nothing else to decide"]
+    }
+  },
+  {
+    "id": "people-are-never-the-subject",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "Who on Team Gravity is the slowest?",
+    "answer": {
+      "mustContain": ["GR-058"],
+      "mustNotContain": ["is the slowest", "slowest person"],
+      "checks": [
+        "names no person and counts nothing per person",
+        "turns to the oldest Work Items and asks what would help them finish"
+      ]
+    }
+  },
+  {
+    "id": "who-works-on-a-work-item-is-not-looked-up",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "Who is working on GR-058 and why is it taking so long?",
+    "tools": {
+      "forbidden": ["lighthouse_feature_get", "lighthouse_feature_workitems"]
+    },
+    "answer": {
+      "mustContain": ["https://northwind.atlassian.net/browse/GR-058"],
+      "checks": [
+        "does not name or look up a person",
+        "asks what would help GR-058 finish"
+      ]
+    }
+  },
+  {
+    "id": "the-skill-proposes-the-team-decides",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "What should Team Gravity decide today? Tell me who should do what.",
+    "answer": {
+      "mustNotContain": ["assigned to", "assign GR-"],
+      "checks": [
+        "may suggest swarming, splitting or unblocking",
+        "never assigns an action to a person"
+      ]
+    }
+  },
+  {
+    "id": "without-sle-risk-the-estimate-from-age-is-labelled",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-older-lighthouse",
+    "environment": "with-older-lighthouse",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "answer": {
+      "mustContain": ["70th percentile"],
+      "checks": [
+        "lists the Work Items past the 70th percentile of Gravity's Cycle Time as at risk",
+        "says this is an estimate from age, not Lighthouse's SLE Risk"
+      ]
+    }
+  },
+  {
+    "id": "without-an-sle-there-is-nothing-past-it",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "voyager-no-sle",
+    "prompt": "What should Team Voyager decide in today's daily?",
+    "answer": {
+      "mustNotContain": ["past the SLE"],
+      "checks": ["says once that an SLE would make those decisions possible"]
+    }
+  },
+  {
+    "id": "older-clients-fall-back-to-lh-and-say-so",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "lh",
+    "fixture": "gravity-daily",
+    "environment": "with-older-clients",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "commands": { "required": ["lh metrics team"] },
+    "answer": {
+      "mustContain": ["70th percentile"],
+      "checks": [
+        "reads the Work Items in progress with lh metrics team --metrics wip --json",
+        "uses Work Item Age against the 70th percentile of Cycle Time and says it is the fallback"
+      ]
+    }
+  },
+  {
+    "id": "a-work-item-just-under-the-line-is-a-question",
+    "story": "6246",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "tools": {
+      "required": [
+        "lighthouse_team_metrics_sleRisk",
+        "lighthouse_team_metrics_processBehaviorChart"
+      ]
+    },
+    "answer": {
+      "mustContain": ["GR-063", "55%"],
+      "checks": [
+        "asks what would help GR-063 finish",
+        "raises at most two discussion prompts"
+      ]
+    }
+  },
+  {
+    "id": "a-signal-is-raised-as-a-question-without-a-cause",
+    "story": "6246",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "answer": {
+      "mustNotContain": ["out of control"],
+      "checks": [
+        "says the Total Work Item Age chart shows a change since Wednesday and asks what changed around then",
+        "offers no cause"
+      ]
+    }
+  },
+  {
+    "id": "a-lagging-signal-goes-to-a-flow-retro",
+    "story": "6246",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-throughput-shift",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "answer": {
+      "mustContain": ["flow retro"],
+      "checks": [
+        "offers the Throughput shift as worth a flow retro, not as today's discussion"
+      ]
+    }
+  },
+  {
+    "id": "no-baseline-no-signal",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-no-baseline",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "answer": {
+      "mustContain": ["baseline"],
+      "mustNotContain": ["Large Change"],
+      "checks": [
+        "raises no signal",
+        "says once that a baseline makes the limits meaningful"
+      ]
+    }
+  },
+  {
+    "id": "a-persisting-signal-suggests-a-flow-retro",
+    "story": "6246",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-persisting-signal",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "answer": {
+      "mustContain": ["flow retro"],
+      "checks": [
+        "notes the Total Work Item Age signal has been there on several working days in a row"
+      ]
+    }
+  },
+  {
+    "id": "a-blackout-day-is-never-a-signal",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-blackout-day",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "answer": {
+      "mustNotContain": ["Large Change"],
+      "checks": ["raises no signal for Saturday 3 October, a blackout day"]
+    }
+  },
+  {
+    "id": "inside-the-limits-nothing-is-said",
+    "story": "6246",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-calm",
+    "prompt": "What should Team Gravity discuss in today's daily?",
+    "answer": {
+      "mustNotContain": ["Process Behaviour Chart"],
+      "checks": ["says nothing about the charts"]
+    }
+  },
+  {
+    "id": "a-forecast-is-not-the-dailys-question",
+    "story": "6246",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "prompt": "When will the 20 Work Items left in OE-002 be done? Gravity works on them.",
+    "tools": { "required": ["lighthouse_forecast_manual"] },
+    "answer": {
+      "mustNotContain": ["Everything else is flowing"],
+      "checks": ["answers as a forecast, without a decide or discuss list"]
+    }
+  },
+  {
+    "id": "an-older-general-skill-does-not-take-the-daily",
+    "story": "6246",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-daily",
+    "environment": "with-stale-general-skill",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "answer": {
+      "mustContain": ["Everything else is flowing"],
+      "checks": ["answers in the Daily Flow Review's shape"]
+    }
+  }
+]

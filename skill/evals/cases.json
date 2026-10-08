@@ -1,0 +1,330 @@
+[
+  {
+    "id": "time-in-state-is-read-not-guessed",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "Where do Gravity's Work Items spend their time?",
+    "tools": {
+      "required": [
+        "lighthouse_team_list",
+        "lighthouse_team_metrics_cumulativeStateTime"
+      ]
+    },
+    "answer": {
+      "mustContain": ["Review"],
+      "checks": [
+        "quotes the tool's summary heading and sentence as written",
+        "does not answer from general knowledge about workflows"
+      ]
+    }
+  },
+  {
+    "id": "lh-output-is-parsed-as-facts",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "lh",
+    "fixture": "northwind",
+    "prompt": "Will the 20 Work Items left in OE-002 be done by 30 November? Gravity works on them.",
+    "commands": { "required": ["lh forecast manual"] },
+    "answer": {
+      "checks": [
+        "runs lh forecast manual with --json",
+        "states the likelihood exactly as Lighthouse reports it, without rounding it"
+      ]
+    }
+  },
+  {
+    "id": "an-older-lighthouse-is-reported-honestly",
+    "story": "6245",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind-v26-6-7-1",
+    "environment": "with-older-lighthouse",
+    "prompt": "How have Gravity's Cycle Time percentiles trended over the last month?",
+    "tools": { "required": ["lighthouse_team_metrics_percentilesOverTime"] },
+    "answer": {
+      "mustContain": ["upgrade"],
+      "mustNotContain": ["bug in Lighthouse", "Lighthouse is broken"],
+      "checks": [
+        "says this Lighthouse must be upgraded for that answer",
+        "does not describe the refusal as an error in Lighthouse"
+      ]
+    }
+  },
+  {
+    "id": "a-read-only-lh-offers-is-named-not-invented",
+    "story": "6245",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "Show me Gravity's Arrivals for the last 30 days.",
+    "answer": {
+      "mustContain": ["lh metrics team", "arrivals"],
+      "checks": [
+        "calls no tool that is missing from the server's tool list",
+        "does not work Arrivals out from other reads"
+      ]
+    }
+  },
+  {
+    "id": "the-refinement-verdict-is-explained-from-the-teams-numbers",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "What does 'Above range' mean on Gravity's Refinement tab?",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustContain": ["11", "6", "9"],
+      "mustNotContain": ["well done", "great job"],
+      "checks": [
+        "explains that the extra ready Work Items will wait, using Gravity's numbers",
+        "does not call being above range a success"
+      ]
+    }
+  },
+  {
+    "id": "a-missing-refinement-number-comes-with-its-fix",
+    "story": "6245",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "How many Work Items should Voyager refine?",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustContain": ["Refinement cadence"],
+      "checks": [
+        "says Lighthouse cannot tell until a Refinement cadence is set in Voyager's Team settings",
+        "states no number of its own"
+      ]
+    }
+  },
+  {
+    "id": "signal-types-are-named-as-lighthouse-names-them",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "What is a Moderate Shift on one of Lighthouse's charts?",
+    "answer": {
+      "mustContain": [
+        "Large Change",
+        "Moderate Change",
+        "Moderate Shift",
+        "Small Shift",
+        "baseline"
+      ],
+      "checks": ["says a signal shows that something moved, not what moved it"]
+    }
+  },
+  {
+    "id": "sle-risk-is-the-share-of-finished-work-items-that-went-past",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "What does an SLE Risk of 78% on GR-061 mean?",
+    "answer": {
+      "mustContain": ["78%", "7 days"],
+      "checks": [
+        "describes SLE Risk as the share of finished Work Items that reached GR-061's age and went on past the SLE"
+      ]
+    }
+  },
+  {
+    "id": "the-usage-data-answer-stays-the-persons",
+    "story": "6245",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "lh",
+    "fixture": "northwind",
+    "prompt": "lh just asked me whether it may send usage data. Should I say yes?",
+    "commands": {
+      "forbidden": ["lh config usage-data on", "lh config usage-data off"]
+    },
+    "answer": {
+      "mustContain": ["settings/usagedata"],
+      "mustNotContain": ["you should say yes", "you should say no"],
+      "checks": [
+        "says what is sent and what is never sent",
+        "leaves the answer to the person and recommends neither"
+      ]
+    }
+  },
+  {
+    "id": "a-forecast-is-a-choice-of-confidence",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "When will the 20 Work Items left in OE-002 be done? Gravity works on them.",
+    "tools": { "required": ["lighthouse_forecast_manual"] },
+    "answer": {
+      "mustContain": ["on or before"],
+      "mustNotContain": ["certain"],
+      "checks": [
+        "states at least two likelihoods, each with on or before and a date",
+        "asks which one to plan against"
+      ]
+    }
+  },
+  {
+    "id": "a-hidden-plural-is-a-forecast",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "Will Gravity make the end of November with OE-002's 20 remaining Work Items?",
+    "tools": { "required": ["lighthouse_forecast_manual"] },
+    "answer": {
+      "mustNotContain": ["certain"],
+      "checks": ["answers with likelihoods, not with one date"]
+    }
+  },
+  {
+    "id": "one-work-item-is-answered-with-the-sle-and-its-age",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "How long will GR-064 take?",
+    "tools": { "forbidden": ["lighthouse_forecast_manual"] },
+    "answer": {
+      "mustContain": ["7 days", "85%"],
+      "checks": ["answers with Gravity's SLE and GR-064's current age"]
+    }
+  },
+  {
+    "id": "an-open-question-leads-with-aging",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "How is Gravity doing?",
+    "answer": {
+      "mustContain": ["GR-058", "GR-061"],
+      "checks": [
+        "starts with the oldest Work Items in progress against the SLE and what is Blocked, before any forecast"
+      ]
+    }
+  },
+  {
+    "id": "a-velocity-question-gets-throughput-and-no-lecture",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "What's Gravity's velocity?",
+    "answer": {
+      "mustNotContain": ["anti-pattern", "Kanban forbids"],
+      "checks": [
+        "states Gravity's Throughput for a stated period",
+        "adds at most one sentence on what story points would lose",
+        "does not refuse the question"
+      ]
+    }
+  },
+  {
+    "id": "noise-is-left-alone",
+    "story": "6245",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "Why did Gravity's Throughput drop this week?",
+    "answer": {
+      "checks": [
+        "says the week is inside the limits and needs no explanation",
+        "offers no cause"
+      ]
+    }
+  },
+  {
+    "id": "a-throughput-rise-prompts-a-size-check",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "Gravity's Throughput is up 40% this month. Should we celebrate?",
+    "answer": {
+      "checks": [
+        "suggests checking whether the Work Items got smaller before celebrating"
+      ]
+    }
+  },
+  {
+    "id": "the-instances-own-words-are-used",
+    "story": "6245",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind-renamed-terms",
+    "prompt": "What is the oldest thing Gravity is working on right now?",
+    "answer": {
+      "mustContain": ["Ticket"],
+      "mustNotContain": ["Work Item"],
+      "checks": ["uses the words of the tool's summary"]
+    }
+  },
+  {
+    "id": "planning-my-week-is-not-a-lighthouse-question",
+    "story": "6245",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "Help me plan my week: I have three meetings and a dentist appointment.",
+    "tools": {
+      "forbidden": ["lighthouse_team_list", "lighthouse_portfolio_list"]
+    },
+    "answer": { "checks": ["makes no Lighthouse call"] }
+  },
+  {
+    "id": "running-the-daily-is-not-the-general-skills-question",
+    "story": "6245",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "prompt": "How should we run our daily?",
+    "answer": {
+      "checks": [
+        "does not produce a list of what to decide today",
+        "may point to the Daily Flow Review skill"
+      ]
+    }
+  },
+  {
+    "id": "a-csv-of-the-board-is-not-read-from-lighthouse",
+    "story": "6245",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "northwind",
+    "environment": "with-prokanban-skill",
+    "prompt": "I exported our board to a CSV file. What is our Cycle Time?",
+    "tools": { "forbidden": ["lighthouse_team_list"] },
+    "answer": {
+      "checks": [
+        "works from the file the person brought, not from Lighthouse",
+        "may name the ProKanban skill for work from a file"
+      ]
+    }
+  }
+]

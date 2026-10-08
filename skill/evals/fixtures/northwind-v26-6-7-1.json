@@ -1,0 +1,517 @@
+{
+  "version": "v26.6.7.1",
+  "routes": {
+    "GET /api/v1/auth/mode": {
+      "mode": "Disabled"
+    },
+    "GET /api/v1/terminology/all": [
+      {
+        "id": 1,
+        "key": "workItem",
+        "description": "",
+        "defaultValue": "Work Item",
+        "value": "Work Item"
+      },
+      {
+        "id": 2,
+        "key": "workItems",
+        "description": "",
+        "defaultValue": "Work Items",
+        "value": "Work Items"
+      },
+      {
+        "id": 3,
+        "key": "feature",
+        "description": "",
+        "defaultValue": "Feature",
+        "value": "Feature"
+      },
+      {
+        "id": 4,
+        "key": "features",
+        "description": "",
+        "defaultValue": "Features",
+        "value": "Features"
+      },
+      {
+        "id": 5,
+        "key": "cycleTime",
+        "description": "",
+        "defaultValue": "Cycle Time",
+        "value": "Cycle Time"
+      },
+      {
+        "id": 6,
+        "key": "throughput",
+        "description": "",
+        "defaultValue": "Throughput",
+        "value": "Throughput"
+      },
+      {
+        "id": 7,
+        "key": "workInProgress",
+        "description": "",
+        "defaultValue": "Work In Progress",
+        "value": "Work In Progress"
+      },
+      {
+        "id": 8,
+        "key": "wip",
+        "description": "",
+        "defaultValue": "WIP",
+        "value": "WIP"
+      },
+      {
+        "id": 9,
+        "key": "workItemAge",
+        "description": "",
+        "defaultValue": "Work Item Age",
+        "value": "Work Item Age"
+      },
+      {
+        "id": 10,
+        "key": "tag",
+        "description": "",
+        "defaultValue": "Tag",
+        "value": "Tag"
+      },
+      {
+        "id": 11,
+        "key": "workTrackingSystem",
+        "description": "",
+        "defaultValue": "Work Tracking System",
+        "value": "Work Tracking System"
+      },
+      {
+        "id": 12,
+        "key": "workTrackingSystems",
+        "description": "",
+        "defaultValue": "Work Tracking Systems",
+        "value": "Work Tracking Systems"
+      },
+      {
+        "id": 13,
+        "key": "blocked",
+        "description": "",
+        "defaultValue": "Blocked",
+        "value": "Blocked"
+      },
+      {
+        "id": 14,
+        "key": "serviceLevelExpectation",
+        "description": "",
+        "defaultValue": "Service Level Expectation",
+        "value": "Service Level Expectation"
+      },
+      {
+        "id": 15,
+        "key": "sle",
+        "description": "",
+        "defaultValue": "SLE",
+        "value": "SLE"
+      },
+      {
+        "id": 16,
+        "key": "team",
+        "description": "",
+        "defaultValue": "Team",
+        "value": "Team"
+      },
+      {
+        "id": 17,
+        "key": "teams",
+        "description": "",
+        "defaultValue": "Teams",
+        "value": "Teams"
+      },
+      {
+        "id": 18,
+        "key": "portfolio",
+        "description": "",
+        "defaultValue": "Portfolio",
+        "value": "Portfolio"
+      },
+      {
+        "id": 19,
+        "key": "portfolios",
+        "description": "",
+        "defaultValue": "Portfolios",
+        "value": "Portfolios"
+      },
+      {
+        "id": 20,
+        "key": "delivery",
+        "description": "",
+        "defaultValue": "Delivery",
+        "value": "Delivery"
+      },
+      {
+        "id": 21,
+        "key": "deliveries",
+        "description": "",
+        "defaultValue": "Deliveries",
+        "value": "Deliveries"
+      },
+      {
+        "id": 22,
+        "key": "refinement",
+        "description": "",
+        "defaultValue": "Refinement",
+        "value": "Refinement"
+      },
+      {
+        "id": 23,
+        "key": "refinements",
+        "description": "",
+        "defaultValue": "Refinements",
+        "value": "Refinements"
+      }
+    ],
+    "GET /api/v1/teams": [
+      {
+        "name": "Gravity",
+        "id": 3,
+        "lastUpdated": "2026-10-06T05:14:00Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 6,
+        "featureWip": 2,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 1,
+            "name": "Apollo"
+          },
+          {
+            "id": 2,
+            "name": "Ocean Explorer"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-09-07T00:00:00Z",
+        "throughputEndDate": "2026-10-06T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": true
+      },
+      {
+        "name": "Voyager",
+        "id": 6,
+        "lastUpdated": "2026-10-06T05:14:00Z",
+        "serviceLevelExpectationProbability": 0,
+        "serviceLevelExpectationRange": 0,
+        "systemWIPLimit": 0,
+        "featureWip": 2,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 1,
+            "name": "Apollo"
+          },
+          {
+            "id": 2,
+            "name": "Ocean Explorer"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-09-07T00:00:00Z",
+        "throughputEndDate": "2026-10-06T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": false
+      }
+    ],
+    "GET /api/v1/teams/3": {
+      "name": "Gravity",
+      "id": 3,
+      "lastUpdated": "2026-10-06T05:14:00Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 7,
+      "systemWIPLimit": 6,
+      "featureWip": 2,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        }
+      ],
+      "portfolios": [
+        {
+          "id": 1,
+          "name": "Apollo"
+        },
+        {
+          "id": 2,
+          "name": "Ocean Explorer"
+        }
+      ],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-09-07T00:00:00Z",
+      "throughputEndDate": "2026-10-06T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": true
+    },
+    "GET /api/v1/teams/6": {
+      "name": "Voyager",
+      "id": 6,
+      "lastUpdated": "2026-10-06T05:14:00Z",
+      "serviceLevelExpectationProbability": 0,
+      "serviceLevelExpectationRange": 0,
+      "systemWIPLimit": 0,
+      "featureWip": 2,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        }
+      ],
+      "portfolios": [
+        {
+          "id": 1,
+          "name": "Apollo"
+        },
+        {
+          "id": 2,
+          "name": "Ocean Explorer"
+        }
+      ],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-09-07T00:00:00Z",
+      "throughputEndDate": "2026-10-06T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": false
+    },
+    "GET /api/v1/portfolios": [
+      {
+        "name": "Ocean Explorer",
+        "id": 2,
+        "lastUpdated": "2026-10-06T04:58:00Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 45,
+        "systemWIPLimit": 5,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          },
+          {
+            "id": 7,
+            "name": "Ballast control"
+          },
+          {
+            "id": 8,
+            "name": "Pressure alarms v2"
+          }
+        ],
+        "involvedTeams": [
+          {
+            "id": 3,
+            "name": "Gravity"
+          },
+          {
+            "id": 6,
+            "name": "Voyager"
+          },
+          {
+            "id": 7,
+            "name": "Zenith"
+          }
+        ],
+        "featureSizeTargetProbability": 85,
+        "featureSizeTargetRange": 30
+      }
+    ],
+    "GET /api/v1/portfolios/2": {
+      "name": "Ocean Explorer",
+      "id": 2,
+      "lastUpdated": "2026-10-06T04:58:00Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 45,
+      "systemWIPLimit": 5,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        },
+        {
+          "id": 7,
+          "name": "Ballast control"
+        },
+        {
+          "id": 8,
+          "name": "Pressure alarms v2"
+        }
+      ],
+      "involvedTeams": [
+        {
+          "id": 3,
+          "name": "Gravity"
+        },
+        {
+          "id": 6,
+          "name": "Voyager"
+        },
+        {
+          "id": 7,
+          "name": "Zenith"
+        }
+      ],
+      "featureSizeTargetProbability": 85,
+      "featureSizeTargetRange": 30
+    },
+    "GET /api/v1/teams/3/metrics/cycleTimePercentiles": [
+      {
+        "percentile": 50,
+        "value": 4
+      },
+      {
+        "percentile": 70,
+        "value": 6
+      },
+      {
+        "percentile": 85,
+        "value": 7
+      },
+      {
+        "percentile": 95,
+        "value": 11
+      }
+    ]
+  }
+}

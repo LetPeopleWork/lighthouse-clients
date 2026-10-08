@@ -1,0 +1,2452 @@
+{
+  "version": "v26.10.8.1",
+  "routes": {
+    "GET /api/v1/auth/mode": {
+      "mode": "Disabled"
+    },
+    "GET /api/v1/terminology/all": [
+      {
+        "id": 1,
+        "key": "workItem",
+        "description": "",
+        "defaultValue": "Work Item",
+        "value": "Work Item"
+      },
+      {
+        "id": 2,
+        "key": "workItems",
+        "description": "",
+        "defaultValue": "Work Items",
+        "value": "Work Items"
+      },
+      {
+        "id": 3,
+        "key": "feature",
+        "description": "",
+        "defaultValue": "Feature",
+        "value": "Feature"
+      },
+      {
+        "id": 4,
+        "key": "features",
+        "description": "",
+        "defaultValue": "Features",
+        "value": "Features"
+      },
+      {
+        "id": 5,
+        "key": "cycleTime",
+        "description": "",
+        "defaultValue": "Cycle Time",
+        "value": "Cycle Time"
+      },
+      {
+        "id": 6,
+        "key": "throughput",
+        "description": "",
+        "defaultValue": "Throughput",
+        "value": "Throughput"
+      },
+      {
+        "id": 7,
+        "key": "workInProgress",
+        "description": "",
+        "defaultValue": "Work In Progress",
+        "value": "Work In Progress"
+      },
+      {
+        "id": 8,
+        "key": "wip",
+        "description": "",
+        "defaultValue": "WIP",
+        "value": "WIP"
+      },
+      {
+        "id": 9,
+        "key": "workItemAge",
+        "description": "",
+        "defaultValue": "Work Item Age",
+        "value": "Work Item Age"
+      },
+      {
+        "id": 10,
+        "key": "tag",
+        "description": "",
+        "defaultValue": "Tag",
+        "value": "Tag"
+      },
+      {
+        "id": 11,
+        "key": "workTrackingSystem",
+        "description": "",
+        "defaultValue": "Work Tracking System",
+        "value": "Work Tracking System"
+      },
+      {
+        "id": 12,
+        "key": "workTrackingSystems",
+        "description": "",
+        "defaultValue": "Work Tracking Systems",
+        "value": "Work Tracking Systems"
+      },
+      {
+        "id": 13,
+        "key": "blocked",
+        "description": "",
+        "defaultValue": "Blocked",
+        "value": "Blocked"
+      },
+      {
+        "id": 14,
+        "key": "serviceLevelExpectation",
+        "description": "",
+        "defaultValue": "Service Level Expectation",
+        "value": "Service Level Expectation"
+      },
+      {
+        "id": 15,
+        "key": "sle",
+        "description": "",
+        "defaultValue": "SLE",
+        "value": "SLE"
+      },
+      {
+        "id": 16,
+        "key": "team",
+        "description": "",
+        "defaultValue": "Team",
+        "value": "Team"
+      },
+      {
+        "id": 17,
+        "key": "teams",
+        "description": "",
+        "defaultValue": "Teams",
+        "value": "Teams"
+      },
+      {
+        "id": 18,
+        "key": "portfolio",
+        "description": "",
+        "defaultValue": "Portfolio",
+        "value": "Portfolio"
+      },
+      {
+        "id": 19,
+        "key": "portfolios",
+        "description": "",
+        "defaultValue": "Portfolios",
+        "value": "Portfolios"
+      },
+      {
+        "id": 20,
+        "key": "delivery",
+        "description": "",
+        "defaultValue": "Delivery",
+        "value": "Delivery"
+      },
+      {
+        "id": 21,
+        "key": "deliveries",
+        "description": "",
+        "defaultValue": "Deliveries",
+        "value": "Deliveries"
+      },
+      {
+        "id": 22,
+        "key": "refinement",
+        "description": "",
+        "defaultValue": "Refinement",
+        "value": "Refinement"
+      },
+      {
+        "id": 23,
+        "key": "refinements",
+        "description": "",
+        "defaultValue": "Refinements",
+        "value": "Refinements"
+      }
+    ],
+    "GET /api/v1/teams": [
+      {
+        "name": "Gravity",
+        "id": 3,
+        "lastUpdated": "2026-10-06T05:14:00Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 6,
+        "featureWip": 2,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 1,
+            "name": "Apollo"
+          },
+          {
+            "id": 2,
+            "name": "Ocean Explorer"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-09-07T00:00:00Z",
+        "throughputEndDate": "2026-10-06T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": true
+      },
+      {
+        "name": "Voyager",
+        "id": 6,
+        "lastUpdated": "2026-10-06T05:14:00Z",
+        "serviceLevelExpectationProbability": 0,
+        "serviceLevelExpectationRange": 0,
+        "systemWIPLimit": 0,
+        "featureWip": 2,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 1,
+            "name": "Apollo"
+          },
+          {
+            "id": 2,
+            "name": "Ocean Explorer"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-09-07T00:00:00Z",
+        "throughputEndDate": "2026-10-06T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": false
+      }
+    ],
+    "GET /api/v1/teams/3": {
+      "name": "Gravity",
+      "id": 3,
+      "lastUpdated": "2026-10-06T05:14:00Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 7,
+      "systemWIPLimit": 6,
+      "featureWip": 2,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        }
+      ],
+      "portfolios": [
+        {
+          "id": 1,
+          "name": "Apollo"
+        },
+        {
+          "id": 2,
+          "name": "Ocean Explorer"
+        }
+      ],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-09-07T00:00:00Z",
+      "throughputEndDate": "2026-10-06T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": true
+    },
+    "GET /api/v1/teams/6": {
+      "name": "Voyager",
+      "id": 6,
+      "lastUpdated": "2026-10-06T05:14:00Z",
+      "serviceLevelExpectationProbability": 0,
+      "serviceLevelExpectationRange": 0,
+      "systemWIPLimit": 0,
+      "featureWip": 2,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        }
+      ],
+      "portfolios": [
+        {
+          "id": 1,
+          "name": "Apollo"
+        },
+        {
+          "id": 2,
+          "name": "Ocean Explorer"
+        }
+      ],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-09-07T00:00:00Z",
+      "throughputEndDate": "2026-10-06T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": false
+    },
+    "GET /api/v1/portfolios": [
+      {
+        "name": "Ocean Explorer",
+        "id": 2,
+        "lastUpdated": "2026-10-06T04:58:00Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 45,
+        "systemWIPLimit": 5,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          },
+          {
+            "id": 7,
+            "name": "Ballast control"
+          },
+          {
+            "id": 8,
+            "name": "Pressure alarms v2"
+          }
+        ],
+        "involvedTeams": [
+          {
+            "id": 3,
+            "name": "Gravity"
+          },
+          {
+            "id": 6,
+            "name": "Voyager"
+          },
+          {
+            "id": 7,
+            "name": "Zenith"
+          }
+        ],
+        "featureSizeTargetProbability": 85,
+        "featureSizeTargetRange": 30
+      }
+    ],
+    "GET /api/v1/portfolios/2": {
+      "name": "Ocean Explorer",
+      "id": 2,
+      "lastUpdated": "2026-10-06T04:58:00Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 45,
+      "systemWIPLimit": 5,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        },
+        {
+          "id": 7,
+          "name": "Ballast control"
+        },
+        {
+          "id": 8,
+          "name": "Pressure alarms v2"
+        }
+      ],
+      "involvedTeams": [
+        {
+          "id": 3,
+          "name": "Gravity"
+        },
+        {
+          "id": 6,
+          "name": "Voyager"
+        },
+        {
+          "id": 7,
+          "name": "Zenith"
+        }
+      ],
+      "featureSizeTargetProbability": 85,
+      "featureSizeTargetRange": 30
+    },
+    "GET /api/v1/teams/3/refinement": {
+      "refinementConfigured": true,
+      "workItems": [
+        {
+          "referenceId": "GR-040",
+          "name": "Ready item 1",
+          "url": "https://northwind.atlassian.net/browse/GR-040",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-041",
+          "name": "Ready item 2",
+          "url": "https://northwind.atlassian.net/browse/GR-041",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-042",
+          "name": "Ready item 3",
+          "url": "https://northwind.atlassian.net/browse/GR-042",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-043",
+          "name": "Ready item 4",
+          "url": "https://northwind.atlassian.net/browse/GR-043",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-044",
+          "name": "Ready item 5",
+          "url": "https://northwind.atlassian.net/browse/GR-044",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-045",
+          "name": "Ready item 6",
+          "url": "https://northwind.atlassian.net/browse/GR-045",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-046",
+          "name": "Ready item 7",
+          "url": "https://northwind.atlassian.net/browse/GR-046",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-047",
+          "name": "Ready item 8",
+          "url": "https://northwind.atlassian.net/browse/GR-047",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-048",
+          "name": "Ready item 9",
+          "url": "https://northwind.atlassian.net/browse/GR-048",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-049",
+          "name": "Ready item 10",
+          "url": "https://northwind.atlassian.net/browse/GR-049",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-050",
+          "name": "Ready item 11",
+          "url": "https://northwind.atlassian.net/browse/GR-050",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        }
+      ],
+      "yardstick": {
+        "source": "Sle",
+        "days": 7,
+        "probability": 85
+      },
+      "voterIdentity": "SelfDeclared",
+      "readyByVotesCount": 11,
+      "stagesConfigured": false,
+      "readyCount": 11,
+      "readySource": "Votes",
+      "nextRefinementDate": "2026-10-15",
+      "isRefinementDay": false,
+      "daysUntilNextRefinement": 2,
+      "need": {
+        "verdict": "Above",
+        "unavailableReason": null,
+        "low": 6,
+        "high": 9,
+        "lowPercentile": 50,
+        "highPercentile": 85,
+        "horizonWorkingDays": 5,
+        "cycleStart": "2026-10-15",
+        "cycleEnd": "2026-10-22"
+      }
+    },
+    "GET /api/v1/teams/6/refinement": {
+      "refinementConfigured": false,
+      "workItems": [],
+      "yardstick": {
+        "source": "Sle",
+        "days": 7,
+        "probability": 85
+      },
+      "voterIdentity": "SelfDeclared",
+      "readyByVotesCount": 0,
+      "stagesConfigured": false,
+      "readyCount": 0,
+      "readySource": "Votes",
+      "nextRefinementDate": null,
+      "isRefinementDay": false,
+      "daysUntilNextRefinement": null,
+      "need": {
+        "verdict": null,
+        "unavailableReason": "NoCadence",
+        "low": null,
+        "high": null,
+        "lowPercentile": null,
+        "highPercentile": null,
+        "horizonWorkingDays": null,
+        "cycleStart": null,
+        "cycleEnd": null
+      }
+    },
+    "GET /api/v1/teams/3/metrics/wip": [
+      {
+        "name": "Fleet map tiles",
+        "id": 58,
+        "referenceId": "GR-058",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-058",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 9,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Sensor calibration import",
+        "id": 61,
+        "referenceId": "GR-061",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-061",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": true,
+        "blockedSince": "2026-10-05T08:00:00Z",
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 6,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Alert digest email",
+        "id": 63,
+        "referenceId": "GR-063",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-063",
+        "type": "User Story",
+        "state": "Review",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 5,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Retry failed Jira sync",
+        "id": 64,
+        "referenceId": "GR-064",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-064",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 4,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Dive log filters",
+        "id": 65,
+        "referenceId": "GR-065",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-065",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 3,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Crew roster import",
+        "id": 66,
+        "referenceId": "GR-066",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-066",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 2,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Hull telemetry labels",
+        "id": 67,
+        "referenceId": "GR-067",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-067",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 2,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      },
+      {
+        "name": "Pressure alarm sound",
+        "id": 68,
+        "referenceId": "GR-068",
+        "parentWorkItemReference": "OE-002",
+        "url": "https://northwind.atlassian.net/browse/GR-068",
+        "type": "User Story",
+        "state": "In Progress",
+        "isBlocked": false,
+        "blockedSince": null,
+        "stateCategory": "Doing",
+        "cycleTime": 0,
+        "namedCycleTimes": [],
+        "workItemAge": 1,
+        "startedDate": "2026-09-23T07:00:00Z",
+        "closedDate": null,
+        "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+        "approximate": false
+      }
+    ],
+    "GET /api/v1/teams/3/metrics/sleRisk": [
+      {
+        "referenceId": "GR-063",
+        "risk": 55,
+        "finishedItemsStillOpenAtThisAge": 11,
+        "finishedItemsThatWentOnToMiss": 6
+      },
+      {
+        "referenceId": "GR-058",
+        "risk": 100,
+        "finishedItemsStillOpenAtThisAge": 11,
+        "finishedItemsThatWentOnToMiss": null
+      },
+      {
+        "referenceId": "GR-061",
+        "risk": 78,
+        "finishedItemsStillOpenAtThisAge": 9,
+        "finishedItemsThatWentOnToMiss": 7
+      },
+      {
+        "referenceId": "GR-064",
+        "risk": 30,
+        "finishedItemsStillOpenAtThisAge": 20,
+        "finishedItemsThatWentOnToMiss": 6
+      },
+      {
+        "referenceId": "GR-065",
+        "risk": 12,
+        "finishedItemsStillOpenAtThisAge": 25,
+        "finishedItemsThatWentOnToMiss": 3
+      },
+      {
+        "referenceId": "GR-066",
+        "risk": 8,
+        "finishedItemsStillOpenAtThisAge": 25,
+        "finishedItemsThatWentOnToMiss": 2
+      },
+      {
+        "referenceId": "GR-067",
+        "risk": 8,
+        "finishedItemsStillOpenAtThisAge": 25,
+        "finishedItemsThatWentOnToMiss": 2
+      },
+      {
+        "referenceId": "GR-068",
+        "risk": 3,
+        "finishedItemsStillOpenAtThisAge": 40,
+        "finishedItemsThatWentOnToMiss": 1
+      }
+    ],
+    "GET /api/v1/teams/3/metrics/cycleTimePercentiles": [
+      {
+        "percentile": 50,
+        "value": 4
+      },
+      {
+        "percentile": 70,
+        "value": 6
+      },
+      {
+        "percentile": 85,
+        "value": 7
+      },
+      {
+        "percentile": 95,
+        "value": 11
+      }
+    ],
+    "GET /api/v1/teams/3/metrics/workItemAgePercentiles": [
+      {
+        "percentile": 50,
+        "value": 2
+      },
+      {
+        "percentile": 70,
+        "value": 4
+      },
+      {
+        "percentile": 85,
+        "value": 6
+      },
+      {
+        "percentile": 95,
+        "value": 9
+      }
+    ],
+    "GET /api/v1/teams/3/metrics/throughput": {
+      "workItemsPerUnitOfTime": {
+        "0": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1000,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          },
+          {
+            "name": "Export flow report as PDF",
+            "id": 1001,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "1": [],
+        "2": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1020,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "3": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1030,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "4": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1040,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "5": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1050,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "6": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1060,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "7": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1070,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "8": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1080,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "9": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1090,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "10": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1100,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "11": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1110,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "12": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1120,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "13": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1130,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "14": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1140,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "15": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1150,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "16": [],
+        "17": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1170,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "18": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1180,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "19": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1190,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "20": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1200,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "21": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1210,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "22": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1220,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "23": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1230,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "24": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1240,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "25": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1250,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "26": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1260,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "27": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1270,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "28": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1280,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ],
+        "29": [
+          {
+            "name": "Export flow report as PDF",
+            "id": 1290,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          },
+          {
+            "name": "Export flow report as PDF",
+            "id": 1291,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          },
+          {
+            "name": "Export flow report as PDF",
+            "id": 1292,
+            "referenceId": "GR-061",
+            "parentWorkItemReference": "OE-002",
+            "url": null,
+            "type": "User Story",
+            "state": "In Progress",
+            "isBlocked": false,
+            "blockedSince": null,
+            "stateCategory": "Doing",
+            "cycleTime": 0,
+            "namedCycleTimes": [],
+            "workItemAge": 14,
+            "startedDate": "2026-09-23T07:00:00Z",
+            "closedDate": null,
+            "currentStateEnteredAt": "2026-09-23T07:00:00Z",
+            "approximate": false
+          }
+        ]
+      },
+      "history": 30,
+      "daysWithThroughput": 28,
+      "total": 31
+    },
+    "GET /api/v1/teams/3/metrics/cumulativeStateTime": {
+      "states": [
+        {
+          "state": "Review",
+          "workflowOrder": 3,
+          "totalDays": 88,
+          "completedContributionDays": 70,
+          "ongoingContributionDays": 18,
+          "itemCount": 27,
+          "completedItemCount": 21,
+          "ongoingItemCount": 6,
+          "meanDays": 3.26,
+          "medianDays": 2
+        },
+        {
+          "state": "To Do",
+          "workflowOrder": 1,
+          "totalDays": 96,
+          "completedContributionDays": 60,
+          "ongoingContributionDays": 36,
+          "itemCount": 18,
+          "completedItemCount": 12,
+          "ongoingItemCount": 6,
+          "meanDays": 5.33,
+          "medianDays": 4
+        },
+        {
+          "state": "Test",
+          "workflowOrder": 4,
+          "totalDays": 61,
+          "completedContributionDays": 55,
+          "ongoingContributionDays": 6,
+          "itemCount": 23,
+          "completedItemCount": 20,
+          "ongoingItemCount": 3,
+          "meanDays": 2.66,
+          "medianDays": null
+        },
+        {
+          "state": "In Progress",
+          "workflowOrder": 2,
+          "totalDays": 241,
+          "completedContributionDays": 190,
+          "ongoingContributionDays": 51,
+          "itemCount": 31,
+          "completedItemCount": 22,
+          "ongoingItemCount": 9,
+          "meanDays": 7.77,
+          "medianDays": 6
+        }
+      ]
+    },
+    "GET /api/v1/teams/3/metrics/cumulativeStateTime/candidates": {
+      "items": [
+        {
+          "workItemId": 40,
+          "referenceId": "GR-040",
+          "title": "Backlog item 1",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 41,
+          "referenceId": "GR-041",
+          "title": "Backlog item 2",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 42,
+          "referenceId": "GR-042",
+          "title": "Backlog item 3",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 43,
+          "referenceId": "GR-043",
+          "title": "Backlog item 4",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 44,
+          "referenceId": "GR-044",
+          "title": "Backlog item 5",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 45,
+          "referenceId": "GR-045",
+          "title": "Backlog item 6",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 46,
+          "referenceId": "GR-046",
+          "title": "Backlog item 7",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 47,
+          "referenceId": "GR-047",
+          "title": "Backlog item 8",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 48,
+          "referenceId": "GR-048",
+          "title": "Backlog item 9",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 49,
+          "referenceId": "GR-049",
+          "title": "Backlog item 10",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 50,
+          "referenceId": "GR-050",
+          "title": "Backlog item 11",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 51,
+          "referenceId": "GR-051",
+          "title": "Backlog item 12",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 52,
+          "referenceId": "GR-052",
+          "title": "Backlog item 13",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 53,
+          "referenceId": "GR-053",
+          "title": "Backlog item 14",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 54,
+          "referenceId": "GR-054",
+          "title": "Backlog item 15",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 55,
+          "referenceId": "GR-055",
+          "title": "Backlog item 16",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 56,
+          "referenceId": "GR-056",
+          "title": "Backlog item 17",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 57,
+          "referenceId": "GR-057",
+          "title": "Backlog item 18",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 58,
+          "referenceId": "GR-058",
+          "title": "Backlog item 19",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 59,
+          "referenceId": "GR-059",
+          "title": "Backlog item 20",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 60,
+          "referenceId": "GR-060",
+          "title": "Backlog item 21",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 61,
+          "referenceId": "GR-061",
+          "title": "Backlog item 22",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 62,
+          "referenceId": "GR-062",
+          "title": "Backlog item 23",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 63,
+          "referenceId": "GR-063",
+          "title": "Backlog item 24",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 64,
+          "referenceId": "GR-064",
+          "title": "Backlog item 25",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 65,
+          "referenceId": "GR-065",
+          "title": "Backlog item 26",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 66,
+          "referenceId": "GR-066",
+          "title": "Backlog item 27",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 67,
+          "referenceId": "GR-067",
+          "title": "Backlog item 28",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 68,
+          "referenceId": "GR-068",
+          "title": "Backlog item 29",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 69,
+          "referenceId": "GR-069",
+          "title": "Backlog item 30",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 70,
+          "referenceId": "GR-070",
+          "title": "Backlog item 31",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 71,
+          "referenceId": "GR-071",
+          "title": "Backlog item 32",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 72,
+          "referenceId": "GR-072",
+          "title": "Backlog item 33",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 73,
+          "referenceId": "GR-073",
+          "title": "Backlog item 34",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 74,
+          "referenceId": "GR-074",
+          "title": "Backlog item 35",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 75,
+          "referenceId": "GR-075",
+          "title": "Backlog item 36",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 76,
+          "referenceId": "GR-076",
+          "title": "Backlog item 37",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 77,
+          "referenceId": "GR-077",
+          "title": "Backlog item 38",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 78,
+          "referenceId": "GR-078",
+          "title": "Backlog item 39",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 79,
+          "referenceId": "GR-079",
+          "title": "Backlog item 40",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 80,
+          "referenceId": "GR-080",
+          "title": "Backlog item 41",
+          "workItemType": "User Story"
+        },
+        {
+          "workItemId": 81,
+          "referenceId": "GR-081",
+          "title": "Backlog item 42",
+          "workItemType": "User Story"
+        }
+      ]
+    },
+    "GET /api/v1/teams/3/metrics/blockedCountHistory": [
+      {
+        "recordedAt": "2026-09-07",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-08",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-09",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-10",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-11",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-12",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-13",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-14",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-15",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-16",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-17",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-18",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-19",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-20",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-21",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-22",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-23",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-24",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-25",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-26",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-27",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-28",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-29",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-09-30",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-10-01",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-10-02",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-10-03",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-10-04",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-10-05",
+        "blockedCount": 1
+      },
+      {
+        "recordedAt": "2026-10-06",
+        "blockedCount": 2
+      }
+    ],
+    "POST /api/v1/forecast/manual/3": {
+      "remainingItems": 20,
+      "targetDate": "2026-11-30T00:00:00Z",
+      "likelihood": 72.4,
+      "whenForecasts": [
+        {
+          "probability": 50,
+          "expectedDate": "2026-11-20T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 70,
+          "expectedDate": "2026-11-26T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 85,
+          "expectedDate": "2026-12-02T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 95,
+          "expectedDate": "2026-12-10T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        }
+      ],
+      "howManyForecasts": [
+        {
+          "probability": 50,
+          "value": 26
+        },
+        {
+          "probability": 70,
+          "value": 23
+        },
+        {
+          "probability": 85,
+          "value": 20
+        },
+        {
+          "probability": 95,
+          "value": 17
+        }
+      ],
+      "filterApplied": false,
+      "excludedSummary": null,
+      "hasSufficientData": true
+    },
+    "GET /api/v1/teams/3/metrics/throughput/pbc": {
+      "status": "Ready",
+      "statusReason": "",
+      "xAxisKind": "Date",
+      "average": 3,
+      "upperNaturalProcessLimit": 6,
+      "lowerNaturalProcessLimit": 0,
+      "baselineConfigured": true,
+      "dataPoints": [
+        {
+          "xValue": "2026-10-02",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-03",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-04",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-05",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-06",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-07",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-08",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        }
+      ]
+    },
+    "GET /api/v1/teams/3/metrics/arrivals/pbc": {
+      "status": "Ready",
+      "statusReason": "",
+      "xAxisKind": "Date",
+      "average": 3,
+      "upperNaturalProcessLimit": 6,
+      "lowerNaturalProcessLimit": 0,
+      "baselineConfigured": true,
+      "dataPoints": [
+        {
+          "xValue": "2026-10-02",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-03",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-04",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-05",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-06",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-07",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-08",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        }
+      ]
+    },
+    "GET /api/v1/teams/3/metrics/wipOverTime/pbc": {
+      "status": "Ready",
+      "statusReason": "",
+      "xAxisKind": "Date",
+      "average": 3,
+      "upperNaturalProcessLimit": 6,
+      "lowerNaturalProcessLimit": 0,
+      "baselineConfigured": true,
+      "dataPoints": [
+        {
+          "xValue": "2026-10-02",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-03",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-04",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-05",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-06",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-07",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-08",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        }
+      ]
+    },
+    "GET /api/v1/teams/3/metrics/totalWorkItemAge/pbc": {
+      "status": "Ready",
+      "statusReason": "",
+      "xAxisKind": "Date",
+      "average": 3,
+      "upperNaturalProcessLimit": 6,
+      "lowerNaturalProcessLimit": 0,
+      "baselineConfigured": true,
+      "dataPoints": [
+        {
+          "xValue": "2026-10-02",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-03",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-04",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-05",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-06",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-07",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-08",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        }
+      ]
+    },
+    "GET /api/v1/teams/3/metrics/cycleTime/pbc": {
+      "status": "Ready",
+      "statusReason": "",
+      "xAxisKind": "Date",
+      "average": 3,
+      "upperNaturalProcessLimit": 6,
+      "lowerNaturalProcessLimit": 0,
+      "baselineConfigured": true,
+      "dataPoints": [
+        {
+          "xValue": "2026-10-02",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-03",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-04",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-05",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-06",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-07",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        },
+        {
+          "xValue": "2026-10-08",
+          "yValue": 3,
+          "specialCauses": ["None"],
+          "workItemIds": [],
+          "isBlackout": false
+        }
+      ]
+    }
+  }
+}

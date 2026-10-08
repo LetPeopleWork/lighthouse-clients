@@ -1,0 +1,874 @@
+{
+  "version": "v26.10.8.1",
+  "routes": {
+    "GET /api/v1/auth/mode": {
+      "mode": "Disabled"
+    },
+    "GET /api/v1/terminology/all": [
+      {
+        "id": 1,
+        "key": "workItem",
+        "description": "",
+        "defaultValue": "Work Item",
+        "value": "Work Item"
+      },
+      {
+        "id": 2,
+        "key": "workItems",
+        "description": "",
+        "defaultValue": "Work Items",
+        "value": "Work Items"
+      },
+      {
+        "id": 3,
+        "key": "feature",
+        "description": "",
+        "defaultValue": "Feature",
+        "value": "Feature"
+      },
+      {
+        "id": 4,
+        "key": "features",
+        "description": "",
+        "defaultValue": "Features",
+        "value": "Features"
+      },
+      {
+        "id": 5,
+        "key": "cycleTime",
+        "description": "",
+        "defaultValue": "Cycle Time",
+        "value": "Cycle Time"
+      },
+      {
+        "id": 6,
+        "key": "throughput",
+        "description": "",
+        "defaultValue": "Throughput",
+        "value": "Throughput"
+      },
+      {
+        "id": 7,
+        "key": "workInProgress",
+        "description": "",
+        "defaultValue": "Work In Progress",
+        "value": "Work In Progress"
+      },
+      {
+        "id": 8,
+        "key": "wip",
+        "description": "",
+        "defaultValue": "WIP",
+        "value": "WIP"
+      },
+      {
+        "id": 9,
+        "key": "workItemAge",
+        "description": "",
+        "defaultValue": "Work Item Age",
+        "value": "Work Item Age"
+      },
+      {
+        "id": 10,
+        "key": "tag",
+        "description": "",
+        "defaultValue": "Tag",
+        "value": "Tag"
+      },
+      {
+        "id": 11,
+        "key": "workTrackingSystem",
+        "description": "",
+        "defaultValue": "Work Tracking System",
+        "value": "Work Tracking System"
+      },
+      {
+        "id": 12,
+        "key": "workTrackingSystems",
+        "description": "",
+        "defaultValue": "Work Tracking Systems",
+        "value": "Work Tracking Systems"
+      },
+      {
+        "id": 13,
+        "key": "blocked",
+        "description": "",
+        "defaultValue": "Blocked",
+        "value": "Blocked"
+      },
+      {
+        "id": 14,
+        "key": "serviceLevelExpectation",
+        "description": "",
+        "defaultValue": "Service Level Expectation",
+        "value": "Service Level Expectation"
+      },
+      {
+        "id": 15,
+        "key": "sle",
+        "description": "",
+        "defaultValue": "SLE",
+        "value": "SLE"
+      },
+      {
+        "id": 16,
+        "key": "team",
+        "description": "",
+        "defaultValue": "Team",
+        "value": "Team"
+      },
+      {
+        "id": 17,
+        "key": "teams",
+        "description": "",
+        "defaultValue": "Teams",
+        "value": "Teams"
+      },
+      {
+        "id": 18,
+        "key": "portfolio",
+        "description": "",
+        "defaultValue": "Portfolio",
+        "value": "Portfolio"
+      },
+      {
+        "id": 19,
+        "key": "portfolios",
+        "description": "",
+        "defaultValue": "Portfolios",
+        "value": "Portfolios"
+      },
+      {
+        "id": 20,
+        "key": "delivery",
+        "description": "",
+        "defaultValue": "Delivery",
+        "value": "Delivery"
+      },
+      {
+        "id": 21,
+        "key": "deliveries",
+        "description": "",
+        "defaultValue": "Deliveries",
+        "value": "Deliveries"
+      },
+      {
+        "id": 22,
+        "key": "refinement",
+        "description": "",
+        "defaultValue": "Refinement",
+        "value": "Refinement"
+      },
+      {
+        "id": 23,
+        "key": "refinements",
+        "description": "",
+        "defaultValue": "Refinements",
+        "value": "Refinements"
+      }
+    ],
+    "GET /api/v1/teams": [
+      {
+        "name": "Gravity",
+        "id": 3,
+        "lastUpdated": "2026-10-06T05:14:00Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 6,
+        "featureWip": 2,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 1,
+            "name": "Apollo"
+          },
+          {
+            "id": 2,
+            "name": "Ocean Explorer"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-09-07T00:00:00Z",
+        "throughputEndDate": "2026-10-06T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": true
+      },
+      {
+        "name": "Voyager",
+        "id": 6,
+        "lastUpdated": "2026-10-06T05:14:00Z",
+        "serviceLevelExpectationProbability": 0,
+        "serviceLevelExpectationRange": 0,
+        "systemWIPLimit": 0,
+        "featureWip": 2,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 1,
+            "name": "Apollo"
+          },
+          {
+            "id": 2,
+            "name": "Ocean Explorer"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-09-07T00:00:00Z",
+        "throughputEndDate": "2026-10-06T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": false
+      }
+    ],
+    "GET /api/v1/teams/3": {
+      "name": "Gravity",
+      "id": 3,
+      "lastUpdated": "2026-10-06T05:14:00Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 7,
+      "systemWIPLimit": 6,
+      "featureWip": 2,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        }
+      ],
+      "portfolios": [
+        {
+          "id": 1,
+          "name": "Apollo"
+        },
+        {
+          "id": 2,
+          "name": "Ocean Explorer"
+        }
+      ],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-09-07T00:00:00Z",
+      "throughputEndDate": "2026-10-06T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": true
+    },
+    "GET /api/v1/teams/6": {
+      "name": "Voyager",
+      "id": 6,
+      "lastUpdated": "2026-10-06T05:14:00Z",
+      "serviceLevelExpectationProbability": 0,
+      "serviceLevelExpectationRange": 0,
+      "systemWIPLimit": 0,
+      "featureWip": 2,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        }
+      ],
+      "portfolios": [
+        {
+          "id": 1,
+          "name": "Apollo"
+        },
+        {
+          "id": 2,
+          "name": "Ocean Explorer"
+        }
+      ],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-09-07T00:00:00Z",
+      "throughputEndDate": "2026-10-06T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": false
+    },
+    "GET /api/v1/portfolios": [
+      {
+        "name": "Ocean Explorer",
+        "id": 2,
+        "lastUpdated": "2026-10-06T04:58:00Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 45,
+        "systemWIPLimit": 5,
+        "features": [
+          {
+            "id": 1,
+            "name": "Sonar mapping"
+          },
+          {
+            "id": 2,
+            "name": "Deep-sea camera stream"
+          },
+          {
+            "id": 3,
+            "name": "Pressure alarms"
+          },
+          {
+            "id": 4,
+            "name": "Dive log export"
+          },
+          {
+            "id": 5,
+            "name": "Hull telemetry"
+          },
+          {
+            "id": 6,
+            "name": "Crew roster"
+          },
+          {
+            "id": 7,
+            "name": "Ballast control"
+          },
+          {
+            "id": 8,
+            "name": "Pressure alarms v2"
+          }
+        ],
+        "involvedTeams": [
+          {
+            "id": 3,
+            "name": "Gravity"
+          },
+          {
+            "id": 6,
+            "name": "Voyager"
+          },
+          {
+            "id": 7,
+            "name": "Zenith"
+          }
+        ],
+        "featureSizeTargetProbability": 85,
+        "featureSizeTargetRange": 30
+      }
+    ],
+    "GET /api/v1/portfolios/2": {
+      "name": "Ocean Explorer",
+      "id": 2,
+      "lastUpdated": "2026-10-06T04:58:00Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 45,
+      "systemWIPLimit": 5,
+      "features": [
+        {
+          "id": 1,
+          "name": "Sonar mapping"
+        },
+        {
+          "id": 2,
+          "name": "Deep-sea camera stream"
+        },
+        {
+          "id": 3,
+          "name": "Pressure alarms"
+        },
+        {
+          "id": 4,
+          "name": "Dive log export"
+        },
+        {
+          "id": 5,
+          "name": "Hull telemetry"
+        },
+        {
+          "id": 6,
+          "name": "Crew roster"
+        },
+        {
+          "id": 7,
+          "name": "Ballast control"
+        },
+        {
+          "id": 8,
+          "name": "Pressure alarms v2"
+        }
+      ],
+      "involvedTeams": [
+        {
+          "id": 3,
+          "name": "Gravity"
+        },
+        {
+          "id": 6,
+          "name": "Voyager"
+        },
+        {
+          "id": 7,
+          "name": "Zenith"
+        }
+      ],
+      "featureSizeTargetProbability": 85,
+      "featureSizeTargetRange": 30
+    },
+    "GET /api/v1/teams/3/refinement": {
+      "refinementConfigured": true,
+      "workItems": [
+        {
+          "referenceId": "GR-051",
+          "name": "Export Fleet Report to PDF",
+          "url": "https://northwind.atlassian.net/browse/GR-051",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": null,
+          "split": {
+            "yes": 1,
+            "yesBut": 0,
+            "no": 2
+          },
+          "readiness": "NeedsDiscussion",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": true,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-052",
+          "name": "Dive log filters",
+          "url": "https://northwind.atlassian.net/browse/GR-052",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-053",
+          "name": "Crew roster import",
+          "url": "https://northwind.atlassian.net/browse/GR-053",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-055",
+          "name": "Hull telemetry dashboard",
+          "url": "https://northwind.atlassian.net/browse/GR-055",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 0,
+          "myVote": null,
+          "split": {
+            "yes": 0,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "MoreVotersNeeded",
+          "missingVotes": 3,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-054",
+          "name": "Hull telemetry labels",
+          "url": "https://northwind.atlassian.net/browse/GR-054",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        },
+        {
+          "referenceId": "GR-057",
+          "name": "Sonar alert routing",
+          "url": "https://northwind.atlassian.net/browse/GR-057",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 1,
+          "myVote": null,
+          "split": {
+            "yes": 0,
+            "yesBut": 1,
+            "no": 0
+          },
+          "readiness": "NeedsDiscussion",
+          "missingVotes": 2,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": true,
+          "hasOpenQuestion": true
+        },
+        {
+          "referenceId": "GR-056",
+          "name": "Pressure alarm sound",
+          "url": "https://northwind.atlassian.net/browse/GR-056",
+          "state": "Refinement",
+          "parentReferenceId": "OE-002",
+          "voteCount": 3,
+          "myVote": "Yes",
+          "split": {
+            "yes": 3,
+            "yesBut": 0,
+            "no": 0
+          },
+          "readiness": "Ready",
+          "missingVotes": 0,
+          "stage": null,
+          "signalsDisagree": false,
+          "hasComments": false,
+          "hasOpenQuestion": false
+        }
+      ],
+      "yardstick": {
+        "source": "Sle",
+        "days": 7,
+        "probability": 85
+      },
+      "voterIdentity": "SelfDeclared",
+      "readyByVotesCount": 4,
+      "stagesConfigured": false,
+      "readyCount": 4,
+      "readySource": "Votes",
+      "nextRefinementDate": "2026-10-14",
+      "isRefinementDay": true,
+      "daysUntilNextRefinement": 0,
+      "need": {
+        "verdict": "Below",
+        "unavailableReason": null,
+        "low": 6,
+        "high": 9,
+        "lowPercentile": 50,
+        "highPercentile": 85,
+        "horizonWorkingDays": 5,
+        "cycleStart": "2026-10-15",
+        "cycleEnd": "2026-10-22"
+      }
+    },
+    "GET /api/v1/teams/6/refinement": {
+      "refinementConfigured": false,
+      "workItems": [],
+      "yardstick": {
+        "source": "Sle",
+        "days": 7,
+        "probability": 85
+      },
+      "voterIdentity": "SelfDeclared",
+      "readyByVotesCount": 0,
+      "stagesConfigured": false,
+      "readyCount": 0,
+      "readySource": "Votes",
+      "nextRefinementDate": null,
+      "isRefinementDay": false,
+      "daysUntilNextRefinement": null,
+      "need": {
+        "verdict": null,
+        "unavailableReason": "NoCadence",
+        "low": null,
+        "high": null,
+        "lowPercentile": null,
+        "highPercentile": null,
+        "horizonWorkingDays": null,
+        "cycleStart": null,
+        "cycleEnd": null
+      }
+    },
+    "POST /api/v1/forecast/manual/3": {
+      "remainingItems": 20,
+      "targetDate": "2026-11-30T00:00:00Z",
+      "likelihood": 72.4,
+      "whenForecasts": [
+        {
+          "probability": 50,
+          "expectedDate": "2026-11-20T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 70,
+          "expectedDate": "2026-11-26T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 85,
+          "expectedDate": "2026-12-02T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 95,
+          "expectedDate": "2026-12-10T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        }
+      ],
+      "howManyForecasts": [
+        {
+          "probability": 50,
+          "value": 26
+        },
+        {
+          "probability": 70,
+          "value": 23
+        },
+        {
+          "probability": 85,
+          "value": 20
+        },
+        {
+          "probability": 95,
+          "value": 17
+        }
+      ],
+      "filterApplied": false,
+      "excludedSummary": null,
+      "hasSufficientData": true
+    },
+    "POST /api/v1/teams/3/refinement/work-items/GR-051/votes": {
+      "referenceId": "GR-051",
+      "name": "Export Fleet Report to PDF",
+      "url": "https://northwind.atlassian.net/browse/GR-051",
+      "state": "Refinement",
+      "parentReferenceId": "OE-002",
+      "voteCount": 3,
+      "myVote": "YesBut",
+      "split": {
+        "yes": 1,
+        "yesBut": 0,
+        "no": 2
+      },
+      "readiness": "NeedsDiscussion",
+      "missingVotes": 0,
+      "stage": null,
+      "signalsDisagree": false,
+      "hasComments": true,
+      "hasOpenQuestion": false,
+      "madeReady": false
+    },
+    "POST /api/v1/teams/3/refinement/work-items/GR-051/comments": {
+      "referenceId": "GR-051",
+      "name": "Export Fleet Report to PDF",
+      "url": "https://northwind.atlassian.net/browse/GR-051",
+      "state": "Refinement",
+      "parentReferenceId": "OE-002",
+      "voteCount": 3,
+      "myVote": "YesBut",
+      "split": {
+        "yes": 1,
+        "yesBut": 0,
+        "no": 2
+      },
+      "readiness": "NeedsDiscussion",
+      "missingVotes": 0,
+      "stage": null,
+      "signalsDisagree": false,
+      "hasComments": true,
+      "hasOpenQuestion": false,
+      "madeReady": false
+    },
+    "POST /api/v1/teams/3/refinement/work-items/GR-055/votes": {
+      "referenceId": "GR-055",
+      "name": "Hull telemetry dashboard",
+      "url": "https://northwind.atlassian.net/browse/GR-055",
+      "state": "Refinement",
+      "parentReferenceId": "OE-002",
+      "voteCount": 0,
+      "myVote": "No",
+      "split": {
+        "yes": 0,
+        "yesBut": 0,
+        "no": 0
+      },
+      "readiness": "MoreVotersNeeded",
+      "missingVotes": 3,
+      "stage": null,
+      "signalsDisagree": false,
+      "hasComments": false,
+      "hasOpenQuestion": false,
+      "madeReady": false
+    },
+    "POST /api/v1/teams/3/refinement/work-items/GR-055/comments": {
+      "referenceId": "GR-055",
+      "name": "Hull telemetry dashboard",
+      "url": "https://northwind.atlassian.net/browse/GR-055",
+      "state": "Refinement",
+      "parentReferenceId": "OE-002",
+      "voteCount": 0,
+      "myVote": "No",
+      "split": {
+        "yes": 0,
+        "yesBut": 0,
+        "no": 0
+      },
+      "readiness": "MoreVotersNeeded",
+      "missingVotes": 3,
+      "stage": null,
+      "signalsDisagree": false,
+      "hasComments": false,
+      "hasOpenQuestion": false,
+      "madeReady": false
+    },
+    "POST /api/v1/teams/3/refinement/work-items/GR-057/votes": {
+      "referenceId": "GR-057",
+      "name": "Sonar alert routing",
+      "url": "https://northwind.atlassian.net/browse/GR-057",
+      "state": "Refinement",
+      "parentReferenceId": "OE-002",
+      "voteCount": 1,
+      "myVote": "No",
+      "split": {
+        "yes": 0,
+        "yesBut": 1,
+        "no": 0
+      },
+      "readiness": "NeedsDiscussion",
+      "missingVotes": 2,
+      "stage": null,
+      "signalsDisagree": false,
+      "hasComments": true,
+      "hasOpenQuestion": true,
+      "madeReady": false
+    },
+    "POST /api/v1/teams/3/refinement/work-items/GR-057/comments": {
+      "referenceId": "GR-057",
+      "name": "Sonar alert routing",
+      "url": "https://northwind.atlassian.net/browse/GR-057",
+      "state": "Refinement",
+      "parentReferenceId": "OE-002",
+      "voteCount": 1,
+      "myVote": "No",
+      "split": {
+        "yes": 0,
+        "yesBut": 1,
+        "no": 0
+      },
+      "readiness": "NeedsDiscussion",
+      "missingVotes": 2,
+      "stage": null,
+      "signalsDisagree": false,
+      "hasComments": true,
+      "hasOpenQuestion": true,
+      "madeReady": false
+    }
+  }
+}

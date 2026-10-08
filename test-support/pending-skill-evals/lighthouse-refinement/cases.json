@@ -1,0 +1,319 @@
+[
+  {
+    "id": "the-po-sees-whether-to-refine-more",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Are we ready for Wednesday's Refinement? I'm the Product Owner of Team Gravity.",
+    "tools": {
+      "required": ["lighthouse_team_refinement_get"],
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment",
+        "lighthouse_team_refinement_voteTakeBack"
+      ]
+    },
+    "answer": {
+      "mustContain": [
+        "Below",
+        "Refine 2 to 5 more",
+        "GR-051",
+        "GR-057",
+        "https://northwind.atlassian.net/browse/GR-051",
+        "https://northwind.atlassian.net/browse/GR-057"
+      ],
+      "mustNotContain": ["still waiting for votes"],
+      "checks": [
+        "opens with the next Refinement and how many days it is away",
+        "states the 4 Work Items ready by Votes, the range of 6 to 9 and the verdict",
+        "lists the Work Items worth the session's time with their votes and links",
+        "ends with one line on everything else in refinement"
+      ]
+    }
+  },
+  {
+    "id": "above-range-means-stop",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-above",
+    "prompt": "Is Team Gravity ready for its next Refinement?",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustContain": ["11"],
+      "checks": [
+        "suggests stopping refinement for now because the extra ready Work Items will just wait"
+      ]
+    }
+  },
+  {
+    "id": "refinement-day-is-said-as-such",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-refinement-day",
+    "prompt": "Is Team Gravity ready for Refinement?",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustContain": ["today"],
+      "checks": ["says today is Refinement day and the cycle starts today"]
+    }
+  },
+  {
+    "id": "no-number-no-guess",
+    "story": "6217",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Is Team Voyager ready for its next Refinement?",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustContain": ["Refinement cadence"],
+      "checks": [
+        "says Lighthouse cannot tell yet and how a Team admin sets the cadence",
+        "states no number of its own"
+      ]
+    }
+  },
+  {
+    "id": "readiness-stays-the-teams",
+    "story": "6217",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Mark GR-051 as ready for Team Gravity.",
+    "tools": {
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment",
+        "lighthouse_team_refinement_voteTakeBack"
+      ]
+    },
+    "answer": {
+      "mustContain": ["https://northwind.atlassian.net/browse/GR-051"],
+      "checks": [
+        "changes nothing",
+        "explains that readiness comes from the Team's votes"
+      ]
+    }
+  },
+  {
+    "id": "ready-by-stage-is-worded-as-such",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-ready-by-stage",
+    "prompt": "Are we ready for Wednesday's Refinement? I'm the Product Owner of Team Gravity.",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustNotContain": ["ready by Votes"],
+      "checks": ["says the Work Items are ready by stage"]
+    }
+  },
+  {
+    "id": "the-developer-sees-what-waits-for-their-view",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Do I need to prep for refinement? I'm Jonas, a developer on Team Gravity.",
+    "tools": {
+      "required": ["lighthouse_team_refinement_get"],
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment"
+      ]
+    },
+    "answer": {
+      "mustContain": [
+        "GR-051",
+        "GR-055",
+        "GR-057",
+        "7 days or less",
+        "https://northwind.atlassian.net/browse/GR-055"
+      ],
+      "checks": [
+        "lists the three Work Items in the Refinement tab's order, each with its link",
+        "asks for each whether it can be done in 7 days or less: Yes, Yes, if… or No"
+      ]
+    }
+  },
+  {
+    "id": "a-vote-is-cast-only-after-the-person-confirms-it",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Do I need to prep for refinement? I'm Jonas, a developer on Team Gravity.",
+    "followUps": [
+      "GR-051: yes, if the PDF export moves to its own Work Item.",
+      "Yes, send that. My name is Jonas."
+    ],
+    "tools": {
+      "required": ["lighthouse_team_refinement_vote"],
+      "notBefore": { "tool": "lighthouse_team_refinement_vote", "turn": 3 }
+    },
+    "answer": {
+      "checks": [
+        "shows GR-051, the answer Yes, if… and the comment before casting anything",
+        "records the vote as Yes, if… with the condition as its comment, under the name Jonas",
+        "quotes Lighthouse's confirmation"
+      ]
+    }
+  },
+  {
+    "id": "too-big-becomes-a-no-with-a-split-to-confirm",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Do I need to prep for refinement? I'm Jonas, a developer on Team Gravity.",
+    "followUps": ["GR-055 is way more than a week of work."],
+    "tools": {
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment"
+      ]
+    },
+    "answer": {
+      "checks": [
+        "offers No with a comment proposing how to split GR-055, for Jonas to edit or confirm"
+      ]
+    }
+  },
+  {
+    "id": "cannot-size-yet-becomes-a-question",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Do I need to prep for refinement? I'm Jonas, a developer on Team Gravity.",
+    "followUps": ["GR-057 depends on the routing API, I can't size it yet."],
+    "tools": {
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment"
+      ]
+    },
+    "answer": {
+      "checks": [
+        "offers Yes, if… the routing API exists, or No with the question as its comment",
+        "asks who will chase the question without naming anyone"
+      ]
+    }
+  },
+  {
+    "id": "nobody-votes-in-bulk-on-someones-behalf",
+    "story": "6217",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Just vote yes on everything in Gravity's refinement for me. I'm Jonas.",
+    "tools": {
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment"
+      ]
+    },
+    "answer": {
+      "checks": [
+        "shows the Work Items waiting for Jonas and asks him to confirm each one",
+        "casts no vote he did not confirm"
+      ]
+    }
+  },
+  {
+    "id": "the-voter-name-is-asked-never-guessed",
+    "story": "6217",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "Vote No on GR-055 for Team Gravity, with the comment: split the dashboard from the alerts.",
+    "followUps": ["Yes, send it."],
+    "tools": {
+      "forbidden": [
+        "lighthouse_team_refinement_vote",
+        "lighthouse_team_refinement_comment"
+      ]
+    },
+    "answer": {
+      "checks": [
+        "asks for the name to record the vote under",
+        "does not take a name from the system, an account or earlier messages"
+      ]
+    }
+  },
+  {
+    "id": "nothing-waits-for-the-developers-view",
+    "story": "6217",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-nothing-waiting",
+    "prompt": "Do I need to prep for refinement? I'm Jonas, a developer on Team Gravity.",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "checks": [
+        "says nothing waits for Jonas's view and names the next Refinement"
+      ]
+    }
+  },
+  {
+    "id": "a-work-item-is-a-link-not-a-fetch",
+    "story": "6217",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "What is GR-051 about? I need to vote on it for Team Gravity.",
+    "tools": {
+      "forbidden": ["lighthouse_feature_get", "lighthouse_feature_workitems"]
+    },
+    "answer": {
+      "mustContain": ["https://northwind.atlassian.net/browse/GR-051"],
+      "checks": ["does not fetch or summarise the Work Item's content"]
+    }
+  },
+  {
+    "id": "a-forecast-is-not-the-refinement-skills-question",
+    "story": "6217",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "prompt": "When will the 20 Work Items left in OE-002 be done? Gravity works on them.",
+    "tools": { "required": ["lighthouse_forecast_manual"] },
+    "answer": {
+      "mustNotContain": ["Refine 2 to 5 more"],
+      "checks": ["answers as a forecast, not with the Refinement answer"]
+    }
+  },
+  {
+    "id": "an-older-general-skill-does-not-take-refinement-prep",
+    "story": "6217",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-below",
+    "environment": "with-stale-general-skill",
+    "prompt": "Are we ready for Wednesday's Refinement? I'm the Product Owner of Team Gravity.",
+    "tools": { "required": ["lighthouse_team_refinement_get"] },
+    "answer": {
+      "mustContain": ["Refine 2 to 5 more"],
+      "checks": ["answers in the Refinement skill's shape, with the links"]
+    }
+  }
+]
