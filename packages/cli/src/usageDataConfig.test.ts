@@ -1,4 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
+import type {
+  ConnectivityCategory,
+  LighthouseApiResult,
+  StoredUsageDataAnswer,
+  UsageDataState,
+} from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
 import {
   aBatchOf,
@@ -21,6 +27,7 @@ import {
   theStoredAnswerFor,
   usageDataFileOf,
 } from "../test-support/lhSession";
+import { describeUsageDataStatus } from "./usageDataQuestion";
 
 // Story 6193, slice 02 (US-03). `lh config usage-data` says what Lena answered for the Lighthouse she is
 // connected to and whether that Lighthouse takes usage data; `on` and `off` change the answer without a
@@ -78,7 +85,7 @@ const stdoutLines = (stdout: string) =>
 
 describe("lh config usage-data says what Lena answered and what her Lighthouse allows", () => {
   // @US-03 @driving_port @real-io @contract-shape:pure-function
-  it.skip("shows Lena her yes and that her Lighthouse allows usage data", async () => {
+  it("shows Lena her yes and that her Lighthouse allows usage data", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaWhoSaidYes(lighthouse);
 
@@ -93,9 +100,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @real-io @contract-shape:pure-function
-  it.skip.each<
-    [string, (machine: Machine, url: string) => Promise<void>, string]
-  >([
+  it.each<[string, (machine: Machine, url: string) => Promise<void>, string]>([
     ["never asked", async () => undefined, "not asked yet (off)"],
     ["said No", (machine, url) => anEarlierAnswer(machine, url, aNo()), "off"],
   ])("shows an answer that was %s as %j", async (_how, given, shown) => {
@@ -112,7 +117,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @real-io @error @version-skew @contract-shape:pure-function
-  it.skip.each<[string, UsageDataSide, string]>([
+  it.each<[string, UsageDataSide, string]>([
     ["has stopped usage data", { administratorDisabled: true }, STOPPED],
     ["predates labelled sources", { acceptedSources: null }, PREDATES],
     [
@@ -141,7 +146,7 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
   });
 
   // @US-03 @driving_port @real-io @boundary @contract-shape:pure-function
-  it.skip("names DO_NOT_TRACK when it is in force, whatever is stored", async () => {
+  it("names DO_NOT_TRACK when it is in force, whatever is stored", async () => {
     const lighthouse = await aFakeLighthouse();
     const lena = await lenaAt(lighthouse);
     await anEarlierAnswer(
@@ -202,6 +207,133 @@ describe("lh config usage-data says what Lena answered and what her Lighthouse a
     const run = await lhOn(aMachine()).run(["config"]);
 
     expect(run.stdout).toContain("lh config usage-data");
+  });
+});
+
+describe("the lines lh config usage-data prints, from what it knows", () => {
+  const URL = "https://lighthouse.northwind.io";
+  const takesCli = (
+    overrides: Partial<UsageDataState> = {},
+  ): LighthouseApiResult<UsageDataState> => ({
+    ok: true,
+    value: {
+      decision: null,
+      mayAsk: true,
+      administratorDisabled: false,
+      acceptedSources: ["Browser", "Cli"],
+      ...overrides,
+    },
+  });
+  const failed = (
+    category: ConnectivityCategory,
+  ): LighthouseApiResult<UsageDataState> => ({
+    ok: false,
+    error: { category, reason: "it did not answer" },
+  });
+  const aYes: StoredUsageDataAnswer = {
+    answer: "yes",
+    token: "lenas-token",
+    confirmedAt: THURSDAY_MORNING.toISOString(),
+  };
+  const aKeptNo: StoredUsageDataAnswer = {
+    answer: "no",
+    decidedAt: THURSDAY_MORNING.toISOString(),
+  };
+
+  it.each<
+    [
+      string,
+      StoredUsageDataAnswer | undefined,
+      LighthouseApiResult<UsageDataState>,
+      boolean,
+      readonly string[],
+    ]
+  >([
+    [
+      "a yes, allowed",
+      aYes,
+      takesCli(),
+      false,
+      [answerLine(URL, "on"), ALLOWS],
+    ],
+    [
+      "a No, allowed",
+      aKeptNo,
+      takesCli(),
+      false,
+      [answerLine(URL, "off"), ALLOWS],
+    ],
+    [
+      "never asked, allowed",
+      undefined,
+      takesCli(),
+      false,
+      [answerLine(URL, "not asked yet (off)"), ALLOWS],
+    ],
+    [
+      "a yes, vetoed even where Cli is labelled",
+      aYes,
+      takesCli({ administratorDisabled: true }),
+      false,
+      [answerLine(URL, "on"), STOPPED],
+    ],
+    [
+      "a yes, sources not labelled",
+      aYes,
+      takesCli({ acceptedSources: null }),
+      false,
+      [answerLine(URL, "on"), PREDATES],
+    ],
+    [
+      "a yes, only Mcp labelled",
+      aYes,
+      takesCli({ acceptedSources: ["Mcp"] }),
+      false,
+      [answerLine(URL, "on"), PREDATES],
+    ],
+    [
+      "a yes, no usage data routes",
+      aYes,
+      failed("misconfigured"),
+      false,
+      [answerLine(URL, "on"), PREDATES],
+    ],
+    [
+      "a yes, unreachable",
+      aYes,
+      failed("unreachable"),
+      false,
+      [answerLine(URL, "on"), COULD_NOT_ASK],
+    ],
+    [
+      "a yes, failing",
+      aYes,
+      failed("dependency-failure"),
+      false,
+      [answerLine(URL, "on"), COULD_NOT_ASK],
+    ],
+    [
+      "a yes under DO_NOT_TRACK",
+      aYes,
+      takesCli(),
+      true,
+      [answerLine(URL, "on"), ALLOWS, DO_NOT_TRACK_IS_SET],
+    ],
+    [
+      "never asked under DO_NOT_TRACK, unreachable",
+      undefined,
+      failed("unreachable"),
+      true,
+      [
+        answerLine(URL, "not asked yet (off)"),
+        COULD_NOT_ASK,
+        DO_NOT_TRACK_IS_SET,
+      ],
+    ],
+  ])("%s", (_case, stored, state, doNotTrack, lines) => {
+    expect(
+      describeUsageDataStatus({ lighthouse: URL, stored, state, doNotTrack }),
+    ).toEqual(lines);
   });
 });
 

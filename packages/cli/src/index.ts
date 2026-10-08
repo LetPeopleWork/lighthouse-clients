@@ -57,6 +57,11 @@ import {
   type VoterDependencies,
 } from "./refinementCommands";
 import {
+  describeUsageDataStatus,
+  type UsageDataStatus,
+  usageDataFileUnreadable,
+} from "./usageDataQuestion";
+import {
   answerOwnerWrite,
   confirmRecordlessWrite,
   renderBlackoutRuleWritten,
@@ -164,6 +169,10 @@ export type RunCliCommandDependencies = {
   readonly validateStandaloneDiscovery: () => Promise<ConnectivityValidationResult>;
   readonly createClient: (connection: CliConnection) => CliClientOperations;
   readonly getEnvApiKey?: () => string | undefined;
+  /** What `lh config usage-data` shows for one Lighthouse, or the answers file when it cannot be read. */
+  readonly loadUsageDataStatus?: (
+    connection: CliConnection,
+  ) => Promise<UsageDataStatus | { readonly unreadableFile: string }>;
 } & VoterDependencies;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2588,6 +2597,30 @@ const runConfigVoter = async (
   return getSuccessResult(`Voter name set to ${name}.`);
 };
 
+const runConfigUsageData = async (
+  subject: string | undefined,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (subject !== undefined || dependencies.loadUsageDataStatus === undefined) {
+    return getUnknownSubcommandResult(
+      getConfigGroupHelpText(),
+      "config usage-data",
+      subject,
+    );
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  const status = await dependencies.loadUsageDataStatus(connectionOrError);
+  if ("unreadableFile" in status) {
+    return getErrorResult(usageDataFileUnreadable(status.unreadableFile));
+  }
+  return getSuccessResult(describeUsageDataStatus(status).join("\n"));
+};
+
 const runConfigGroup = async (
   action: string | undefined,
   subject: string | undefined,
@@ -2600,6 +2633,10 @@ const runConfigGroup = async (
 
   if (action === "voter") {
     return runConfigVoter(subject, args, dependencies);
+  }
+
+  if (action === "usage-data") {
+    return runConfigUsageData(subject, dependencies);
   }
 
   if (action !== "output") {

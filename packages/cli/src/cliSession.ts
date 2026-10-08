@@ -12,6 +12,7 @@ import {
   getUsageDataStorePath,
   getVoterKeyStorePath,
   isAPersonAtTheTerminal,
+  isDoNotTrackSet,
   type LighthouseClient,
   loadStandaloneDiscoveryContract,
   STANDALONE_VOTER_KEY_SCOPE,
@@ -28,6 +29,7 @@ import {
   readUsageDataAnswer,
   USAGE_DATA_CHANGE_ANY_TIME,
   USAGE_DATA_QUESTION,
+  type UsageDataStatus,
   usageDataNotRecorded,
 } from "./usageDataQuestion";
 
@@ -223,6 +225,39 @@ const createSessionClient = (
   );
 };
 
+const lighthouseOf = (connection: CliConnection): string =>
+  connection.mode === "server"
+    ? connection.endpointUrl
+    : STANDALONE_VOTER_KEY_SCOPE;
+
+// Reading the status gets the same one-second allowance as sending, so a Lighthouse that never answers
+// cannot hold the command up.
+const USAGE_DATA_STATUS_BUDGET_MS = 1_000;
+
+const loadUsageDataStatus = async (
+  connection: CliConnection,
+  env: SessionEnv,
+): Promise<UsageDataStatus | { readonly unreadableFile: string }> => {
+  const storePath = getUsageDataStorePath(env);
+  const stored = await createFileUsageDataStore(storePath).read(
+    lighthouseOf(connection),
+  );
+  if (stored === "unreadable") {
+    return { unreadableFile: storePath };
+  }
+  return {
+    lighthouse:
+      connection.mode === "server"
+        ? connection.endpointUrl
+        : "the standalone Lighthouse",
+    stored,
+    state: await createSessionClient(connection, env).getUsageDataState({
+      signal: AbortSignal.timeout(USAGE_DATA_STATUS_BUDGET_MS),
+    }),
+    doNotTrack: isDoNotTrackSet(env),
+  };
+};
+
 const commandDependencies = (env: SessionEnv): RunCliCommandDependencies => {
   const configPath = getConfigPath(env);
   const voterKeys = () => createFileVoterKeyStore(getVoterKeyStorePath(env));
@@ -262,13 +297,9 @@ const commandDependencies = (env: SessionEnv): RunCliCommandDependencies => {
       ),
     createClient: (connection) => createSessionClient(connection, env),
     getEnvApiKey: () => getEnvApiKey(env),
+    loadUsageDataStatus: (connection) => loadUsageDataStatus(connection, env),
   };
 };
-
-const lighthouseOf = (connection: CliConnection): string =>
-  connection.mode === "server"
-    ? connection.endpointUrl
-    : STANDALONE_VOTER_KEY_SCOPE;
 
 const settleUsageData = async (
   usage: CliCommandUsage,
