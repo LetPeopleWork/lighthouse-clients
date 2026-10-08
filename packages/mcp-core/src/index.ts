@@ -9,6 +9,9 @@ import {
   describeCycleTimeDays,
   describeDeliveryCount,
   describeDeliveryMetricsHeading,
+  describeFeatureListCount,
+  describeFeatureTitle,
+  describeFeatureWorkItemsHeading,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
   describeMetricSummary,
@@ -36,6 +39,8 @@ import {
   readCycleTimePercentiles,
   readDeliveryList,
   readDeliveryMetricsHistory,
+  readFeatureList,
+  readFeatureWorkItems,
   readManualForecast,
   readOwnerList,
   readPercentilesOverTime,
@@ -1071,7 +1076,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_feature_get",
     description:
-      "Get feature details by numeric IDs or external reference IDs.",
+      "Get feature details by numeric IDs or external reference IDs. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1095,7 +1100,8 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   },
   {
     name: "lighthouse_feature_workitems",
-    description: "Get work items linked to a feature by ID.",
+    description:
+      "Get work items linked to a feature by ID. A second text block, `summary`, heads them as lh does: the feature and how many work items it holds, in the instance's terminology; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
   {
@@ -1355,7 +1361,7 @@ const readMetricsWording = (
     ? readTeamWording(client, id)
     : readPortfolioWording(client, id);
 
-type MetricRead = Promise<
+type LighthouseRead = Promise<
   | { readonly ok: true; readonly value: unknown }
   | {
       readonly ok: false;
@@ -1374,7 +1380,7 @@ const readForSummary = async <T>(
   }
 };
 
-const answeredValue = (read: Awaited<MetricRead> | undefined): unknown =>
+const answeredValue = (read: Awaited<LighthouseRead> | undefined): unknown =>
   read?.ok === true ? read.value : undefined;
 
 const summaryOrNull = (summarise: () => string | null): string | null => {
@@ -1385,13 +1391,36 @@ const summaryOrNull = (summarise: () => string | null): string | null => {
   }
 };
 
+/** The Features under their label with their count in the instance's words, or Lighthouse's refusal as before. */
+const answerFeatures = async (
+  client: McpRuntimeClient,
+  read: LighthouseRead,
+): Promise<McpToolResult> => {
+  const [result, terms] = await Promise.all([read, readTerms(client)]);
+  if (!result.ok) {
+    return getErrorToolResult(
+      `features: ${result.error.category} (${result.error.reason})`,
+    );
+  }
+  return withSummary(
+    "features",
+    result.value,
+    summaryOrNull(() => {
+      const features = readFeatureList(result.value);
+      return features === null
+        ? null
+        : describeFeatureListCount(features.length, terms);
+    }),
+  );
+};
+
 /**
  * One per-metric tool's answer: the facts under their label with the metric stated as lh states it, or
  * Lighthouse's refusal exactly as before. The summary's own reads run beside the metric's.
  */
 const answerMetric = async <Context>(
   labels: { readonly answer: string; readonly refusal: string },
-  read: MetricRead,
+  read: LighthouseRead,
   context: Promise<Context>,
   summarise: (facts: unknown, context: Context) => string | null,
 ): Promise<McpToolResult> => {
@@ -1412,7 +1441,7 @@ const answerMetric = async <Context>(
 const answerOwnerList = async (
   kind: OwnerKind,
   label: string,
-  read: MetricRead,
+  read: LighthouseRead,
   client: McpRuntimeClient,
 ): Promise<McpToolResult> => {
   const [result, terms] = await Promise.all([read, readTerms(client)]);
@@ -1432,7 +1461,7 @@ const answerOwnerList = async (
 /** One Team or Portfolio: its facts, with the page's heading and settings as its summary when it can be read. */
 const answerOwner = async <Owner>(
   label: string,
-  read: MetricRead,
+  read: LighthouseRead,
   client: McpRuntimeClient,
   describe: {
     readonly read: (value: unknown) => Owner | null;
@@ -2542,30 +2571,14 @@ export const createMcpCoreRuntime = (
 
       if (Array.isArray(idsValue) && idsValue.length > 0) {
         const ids = idsValue.filter((v): v is number => typeof v === "number");
-        const result = await client.getFeaturesByIds(ids);
-        if (result.ok) {
-          return getSuccessToolResult(
-            `features: ${encodePayload(result.value)}`,
-          );
-        }
-        return getErrorToolResult(
-          `features: ${result.error.category} (${result.error.reason})`,
-        );
+        return answerFeatures(client, client.getFeaturesByIds(ids));
       }
 
       if (Array.isArray(refsValue) && refsValue.length > 0) {
         const refs = refsValue.filter(
           (v): v is string => typeof v === "string",
         );
-        const result = await client.getFeaturesByReferences(refs);
-        if (result.ok) {
-          return getSuccessToolResult(
-            `features: ${encodePayload(result.value)}`,
-          );
-        }
-        return getErrorToolResult(
-          `features: ${result.error.category} (${result.error.reason})`,
-        );
+        return answerFeatures(client, client.getFeaturesByReferences(refs));
       }
 
       return getErrorToolResult(
@@ -2578,14 +2591,41 @@ export const createMcpCoreRuntime = (
       if (id === null) {
         return getErrorToolResult("feature workitems: invalid id");
       }
-      const result = await client.getFeatureWorkItems(id);
-      if (result.ok) {
-        return getSuccessToolResult(
-          `feature workitems: ${encodePayload(result.value)}`,
+      // The Work Items answer does not carry the Feature's name, so the heading reads it from the Feature.
+      const [result, wording] = await Promise.all([
+        client.getFeatureWorkItems(id),
+        readAnswerWording(client, {
+          term: "feature",
+          id,
+          read: async () => {
+            const features = await client.getFeaturesByIds([id]);
+            return features.ok
+              ? {
+                  ok: true,
+                  value: { name: describeFeatureTitle(features.value) },
+                }
+              : features;
+          },
+        }),
+      ]);
+      if (!result.ok) {
+        return getErrorToolResult(
+          `feature workitems: ${result.error.category} (${result.error.reason})`,
         );
       }
-      return getErrorToolResult(
-        `feature workitems: ${result.error.category} (${result.error.reason})`,
+      return withSummary(
+        "feature workitems",
+        result.value,
+        summaryOrNull(() => {
+          const items = readFeatureWorkItems(result.value);
+          return items === null
+            ? null
+            : describeFeatureWorkItemsHeading(
+                wording.name,
+                items.length,
+                wording.terms,
+              );
+        }),
       );
     }
 

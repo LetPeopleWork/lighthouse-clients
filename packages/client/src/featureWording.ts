@@ -107,6 +107,17 @@ export const readFeatureList = (value: unknown): FeatureListItem[] | null => {
   return items.every((item) => item !== null) ? items : null;
 };
 
+/** How many Features the answer holds, in the instance's words: "No Features", "1 Feature", "3 Features". */
+export const describeFeatureListCount = (
+  count: number,
+  terms: Terms,
+): string => {
+  if (count === 0) {
+    return `No ${terms.features}`;
+  }
+  return `${count} ${count === 1 ? terms.feature : terms.features}`;
+};
+
 /** The Feature list's column headings, narrowed to the 85% chance of its completion forecast. */
 export const describeFeatureListHeadings = (terms: Terms): string[] => [
   terms.feature,

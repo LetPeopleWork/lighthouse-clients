@@ -17,3 +17,21 @@ per-Team work gets today's generic view, and `--json` / `--toon` are unchanged.
 `OE-002 Deep-sea camera stream · 3 Work Items`, and shows each Work Item's ID, name, type and state. When
 the Feature's name cannot be read, the heading says `Feature [id: 2]` instead and the list still shows.
 `--json` / `--toon` still ask for the Work Items alone.
+
+The Feature tools state their answer
+
+`lighthouse_feature_get` keeps its facts block and adds a second block counting the Features in the
+instance's words: `summary: 3 Features`, `summary: 1 Feature`, or `summary: No Features`.
+`lighthouse_feature_workitems` adds the heading `lh feature workitems` prints,
+`summary: OE-002 Deep-sea camera stream · 3 Work Items`, or `summary: Feature [id: 2] · 3 Work Items` when
+the Feature's name cannot be read. When the answer is in a shape the summary cannot read, the facts go out
+exactly as before, and the tool never fails because of it.
+
+`--pretty` is for people and its layout may change in any minor release; `--json`, `--toon` and the MCP
+tools' facts are the contract that scripts and agents read.
+
+The client package gains `readFeatureList`, `describeFeatureListCount`, `describeFeatureListHeadings`,
+`describeFeatureProgress`, `describeFeatureStart`, `describeFeatureCompletion`, `describeFeatureRow`,
+`readFeatureWorkItems`, `describeFeatureTitle`, `describeFeatureWorkItemsHeading`,
+`describeFeatureWorkItemHeadings`, `describeFeatureWorkItemRow` and the `FeatureListItem`, `FeatureStart`
+and `FeatureWorkItem` types.

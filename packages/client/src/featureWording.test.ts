@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   describeFeatureCompletion,
+  describeFeatureListCount,
   describeFeatureListHeadings,
   describeFeatureProgress,
   describeFeatureRow,
@@ -71,6 +72,23 @@ describe("readFeatureList", () => {
 
   it("recognises no Features as an empty list", () => {
     expect(readFeatureList([])).toEqual([]);
+  });
+});
+
+describe("describeFeatureListCount", () => {
+  const renamed = resolveTerms([
+    { key: "feature", value: "Outcome" },
+    { key: "features", value: "Outcomes" },
+  ]);
+
+  it.each([
+    { count: 0, terms: SEEDED_TERMS, says: "No Features" },
+    { count: 1, terms: SEEDED_TERMS, says: "1 Feature" },
+    { count: 3, terms: SEEDED_TERMS, says: "3 Features" },
+    { count: 0, terms: renamed, says: "No Outcomes" },
+    { count: 1, terms: renamed, says: "1 Outcome" },
+  ])("counts $count Features as '$says'", ({ count, terms, says }) => {
+    expect(describeFeatureListCount(count, terms)).toBe(says);
   });
 });
 
