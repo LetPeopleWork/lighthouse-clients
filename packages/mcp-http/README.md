@@ -27,6 +27,7 @@ The HTTP runtime exposes Lighthouse as MCP tools for:
 | `LIGHTHOUSE_BEARER_TOKEN` | No | Bearer token used for outbound Lighthouse requests. |
 | `HOST` | No | Bind host. Defaults to `127.0.0.1`. |
 | `PORT` | No | Bind port. Defaults to `3333`. |
+| `LIGHTHOUSE_USAGE_DATA` | No | `on` sends usage data for everyone this server serves. Off when unset. See [Usage data](#usage-data). |
 
 Set either `LIGHTHOUSE_API_KEY` or `LIGHTHOUSE_BEARER_TOKEN` when the target Lighthouse instance requires authentication and callers do not bring their own credential.
 
@@ -180,6 +181,19 @@ TOON is a structured text format designed for LLM consumption.
 MCP clients that display raw tool results will see TOON-encoded output.
 
 A tool that carries a `summary` states its answer there as the web does, in the instance's terminology. An object answer carries it as a `summary` field beside the facts. A list answer keeps its facts block exactly as before and carries the summary in a second text block, `summary: …`. Every other field is the facts, unchanged; when the tool does not recognise the answer's shape it adds no summary.
+
+### Usage data
+
+This server sends usage data only when whoever runs it sets `LIGHTHOUSE_USAGE_DATA=on`. Nobody it serves is asked: the operator decides for all of them.
+
+- `on`, in any case, switches it on. Unset, empty or `off` keeps it off. Any other value keeps it off too, and the server still starts, with one warning naming the values it takes.
+- `DO_NOT_TRACK` wins over `on`: the server sends nothing.
+- At start-up the server prints `Usage data: on (LIGHTHOUSE_USAGE_DATA)` or `Usage data: off`.
+- Switched on, it reports refreshing a Team, refreshing a Portfolio and running a manual forecast, each labelled as coming from MCP. Callers get the same answers either way.
+- The whole process counts as one: it requests one grant on the first call worth counting and holds it in memory only, so a restart counts as a new one. Nothing is written to disk.
+- No API key or bearer token travels with usage data: neither `LIGHTHOUSE_API_KEY` nor a caller's own credential.
+- When the Lighthouse's administrator has switched usage data off, or the Lighthouse is too old to take it from MCP, the server sends nothing and looks again at most once an hour, so switching it back on takes effect without a restart.
+- The Lighthouse Helm chart has no value for this yet, so a server deployed with the chart stays off.
 
 ### TLS certificate validation
 
