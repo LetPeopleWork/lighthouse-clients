@@ -223,6 +223,15 @@ const readInProgressNow = (value: unknown): InProgressNowView | null => {
     : { asOfDate: value.asOfDate, count: value.count, items };
 };
 
+/** What is in progress on a day, read from the bare list of Work Items the server answers with. */
+export const readInProgressItems = (
+  value: unknown,
+  asOfDate: string,
+): InProgressNowView | null => {
+  const items = readEvery(value, readInProgressItem);
+  return items === null ? null : { asOfDate, count: items.length, items };
+};
+
 export const readWip = (value: unknown): WipView | null => {
   if (!isRecord(value)) {
     return null;
@@ -728,6 +737,31 @@ export const describeBlockedNow = (
     value: String(blocked),
     detail: "",
   };
+};
+
+/**
+ * The sentences that stand in for what a WIP answer cannot show: no System WIP Limit, a Lighthouse that does
+ * not say which Work Items are Blocked (which is not the same as none being Blocked), and nothing in progress.
+ */
+export const describeWhatWipLeavesUnsaid = (
+  now: InProgressNowView,
+  scope: MetricsScope,
+  terms: Terms,
+  systemWipLimit: number | undefined,
+): readonly string[] => {
+  const counted = countedOf(scope, terms);
+  const blockedUnknown =
+    now.items.length > 0 &&
+    now.items.every((item) => item.isBlocked === undefined);
+  return [
+    ...(systemWipLimit === undefined
+      ? [`No System ${terms.wip} Limit is set.`]
+      : []),
+    ...(blockedUnknown
+      ? [`Lighthouse does not say which ${counted.many} are ${terms.blocked}.`]
+      : []),
+    ...(now.items.length === 0 ? [`No ${counted.many} are in progress.`] : []),
+  ];
 };
 
 // The dashboard's widgets average the total over every day of the range, to one decimal.

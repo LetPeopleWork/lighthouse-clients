@@ -23,6 +23,7 @@ import {
   describeTotalThroughput,
   describeTotalWorkItemAge,
   describeTotalWorkItemAgeDays,
+  describeWhatWipLeavesUnsaid,
   describeWipDays,
   describeWorkItemAgeDays,
   describeWorkItemAgePercentiles,
@@ -36,6 +37,7 @@ import {
   readCumulativeStateTime,
   readCycleTime,
   readCycleTimeDefinitionName,
+  readInProgressItems,
   readMetricAnswer,
   readMetricsSubject,
   readPercentilesOverTime,
@@ -1608,5 +1610,104 @@ describe("the metrics wording at its edges", () => {
       "GR-061 6 days",
       "2",
     ]);
+  });
+});
+
+describe("what a WIP answer says when there is less to say", () => {
+  const now = (items: readonly { isBlocked: boolean | undefined }[]) => ({
+    asOfDate: "2026-10-06",
+    count: items.length,
+    items,
+  });
+  const known = [{ isBlocked: true }, { isBlocked: false }];
+  const unknown = [{ isBlocked: undefined }, { isBlocked: undefined }];
+
+  it("adds nothing when there is a limit, Blocked facts and Work Items in progress", () => {
+    expect(
+      describeWhatWipLeavesUnsaid(now(known), "team", SEEDED_TERMS, 6),
+    ).toEqual([]);
+  });
+
+  it("says no System WIP Limit is set only when none is", () => {
+    expect(
+      describeWhatWipLeavesUnsaid(now(known), "team", SEEDED_TERMS, undefined),
+    ).toEqual(["No System WIP Limit is set."]);
+    expect(
+      describeWhatWipLeavesUnsaid(now(known), "team", SEEDED_TERMS, 1),
+    ).toEqual([]);
+  });
+
+  it("says Lighthouse does not say which are Blocked only when no Work Item says", () => {
+    expect(
+      describeWhatWipLeavesUnsaid(now(unknown), "team", SEEDED_TERMS, 6),
+    ).toEqual(["Lighthouse does not say which Work Items are Blocked."]);
+    expect(
+      describeWhatWipLeavesUnsaid(
+        now([{ isBlocked: undefined }, { isBlocked: false }]),
+        "team",
+        SEEDED_TERMS,
+        6,
+      ),
+    ).toEqual([]);
+  });
+
+  it("says nothing is in progress for an empty list, and nothing about Blocked", () => {
+    expect(
+      describeWhatWipLeavesUnsaid(now([]), "team", SEEDED_TERMS, 6),
+    ).toEqual(["No Work Items are in progress."]);
+    expect(
+      describeWhatWipLeavesUnsaid(
+        now([]),
+        "portfolio",
+        SEEDED_TERMS,
+        undefined,
+      ),
+    ).toEqual(["No System WIP Limit is set.", "No Features are in progress."]);
+  });
+
+  it("says it in the instance's own words", () => {
+    const terms = {
+      ...SEEDED_TERMS,
+      wip: "Load",
+      workItems: "Tickets",
+      blocked: "Stuck",
+    };
+    expect(
+      describeWhatWipLeavesUnsaid(now(unknown), "team", terms, undefined),
+    ).toEqual([
+      "No System Load Limit is set.",
+      "Lighthouse does not say which Tickets are Stuck.",
+    ]);
+  });
+
+  it("reads the bare list of Work Items in progress, counting them", () => {
+    expect(
+      readInProgressItems(
+        [{ isBlocked: true, referenceId: "GR-1" }],
+        "2026-10-06",
+      ),
+    ).toEqual({
+      asOfDate: "2026-10-06",
+      count: 1,
+      items: [
+        {
+          isBlocked: true,
+          referenceId: "GR-1",
+          name: undefined,
+          state: undefined,
+          workItemAge: undefined,
+          blockedSince: undefined,
+        },
+      ],
+    });
+    expect(readInProgressItems([], "2026-10-06")).toEqual({
+      asOfDate: "2026-10-06",
+      count: 0,
+      items: [],
+    });
+    expect(readInProgressItems({ items: [] }, "2026-10-06")).toBeNull();
+    expect(
+      readInProgressItems([{ isBlocked: "yes" }], "2026-10-06"),
+    ).toBeNull();
   });
 });

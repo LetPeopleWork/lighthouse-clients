@@ -31,12 +31,11 @@ import {
   describeTimeInStateDays,
   describeTotalWorkItemAgeDays,
   describeVersion,
+  describeWhatWipLeavesUnsaid,
   describeWorkItemAgeDays,
   describeWorkItemAgePercentiles,
   describeWorkTrackingSystemCount,
   getDefaultMetricsDateRange,
-  type InProgressNowView,
-  isMetricRefusal,
   LIGHTHOUSE_IS_REACHABLE,
   type MetricDayView,
   type MetricLine,
@@ -54,6 +53,7 @@ import {
   readFeatureList,
   readFeatureWording,
   readFeatureWorkItems,
+  readInProgressItems,
   readManualForecast,
   readOwnerList,
   readPercentilesOverTime,
@@ -66,7 +66,6 @@ import {
   readTimeInStateBar,
   readTimeInStateContributors,
   readTotalWorkItemAge,
-  readWip,
   readWorkItemAge,
   readWorkItemAgePercentiles,
   readWorkTrackingConnections,
@@ -1701,22 +1700,6 @@ const summariseTotalWorkItemAge =
         );
   };
 
-// The server answers with the bare list; the wording reads it in the shape lh's wip section carries it in.
-const readInProgressToday = (
-  items: unknown,
-  asOfDate: string,
-): InProgressNowView | null => {
-  const wip = readWip({
-    current: {
-      asOfDate,
-      count: Array.isArray(items) ? items.length : 0,
-      items,
-    },
-    overTime: { startDate: asOfDate, endDate: asOfDate, daily: [] },
-  });
-  return wip === null || isMetricRefusal(wip.current) ? null : wip.current;
-};
-
 const sentenceOf = (line: MetricLine): string =>
   line.detail === ""
     ? `${line.label}: ${line.value}`
@@ -1731,7 +1714,7 @@ const summariseCurrentWip =
       readonly systemWipLimit: number | undefined;
     },
   ): string | null => {
-    const now = readInProgressToday(facts, today);
+    const now = readInProgressItems(facts, today);
     if (now === null) {
       return null;
     }
@@ -1743,6 +1726,7 @@ const summariseCurrentWip =
         describeInProgressNow(now, "team", terms, known.systemWipLimit),
       ),
       blocked === null ? null : sentenceOf(blocked),
+      ...describeWhatWipLeavesUnsaid(now, "team", terms, known.systemWipLimit),
     );
   };
 

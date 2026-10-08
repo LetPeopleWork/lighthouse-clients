@@ -25,6 +25,7 @@ import {
   describeTotalWorkItemAge,
   describeTotalWorkItemAgeDays,
   describeUnknownMetric,
+  describeWhatWipLeavesUnsaid,
   describeWipDays,
   describeWorkItemAgeDays,
   isMetricRefusal,
@@ -311,15 +312,23 @@ const wipDays: DayView = {
   asOf: true,
   render: ({ subject, wording, systemWipLimit }) => {
     const wip = sectionOf(subject, "wip", readWip);
-    return wip !== null && answered(wip.current) && answered(wip.overTime)
-      ? describeWipDays(
-          wip.current,
-          wip.overTime,
-          subject.scope,
-          wording.terms,
-          systemWipLimit,
-        )
-      : null;
+    if (wip === null || !answered(wip.current) || !answered(wip.overTime)) {
+      return null;
+    }
+    const view = describeWipDays(
+      wip.current,
+      wip.overTime,
+      subject.scope,
+      wording.terms,
+      systemWipLimit,
+    );
+    const unsaid = describeWhatWipLeavesUnsaid(
+      wip.current,
+      subject.scope,
+      wording.terms,
+      systemWipLimit,
+    );
+    return { ...view, sentence: [view.sentence, ...unsaid].join("\n") };
   },
 };
 

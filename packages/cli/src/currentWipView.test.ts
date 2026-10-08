@@ -63,8 +63,7 @@ const wipOverTime = () => {
 
 describe("lh says what an assistant is told when there is less to say about WIP", () => {
   // @error @real-io @contract-shape:bounded-change
-  // Pending until the WIP wording gains its three sentences.
-  it.skip("tells a Team without a System WIP Limit that none is set", async () => {
+  it("tells a Team without a System WIP Limit that none is set", async () => {
     const run = await wipOf(
       await aTeamsLighthouse(6, voyager(), gravitysWorkInProgressToday()),
       6,
@@ -75,8 +74,7 @@ describe("lh says what an assistant is told when there is less to say about WIP"
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until the WIP wording gains its three sentences.
-  it.skip("says Lighthouse does not tell which Work Items are Blocked, rather than showing none Blocked", async () => {
+  it("says Lighthouse does not tell which Work Items are Blocked, rather than showing none Blocked", async () => {
     const run = await wipOf(
       await aTeamsLighthouse(
         3,
@@ -90,8 +88,7 @@ describe("lh says what an assistant is told when there is less to say about WIP"
   });
 
   // @error @real-io @contract-shape:bounded-change
-  // Pending until the WIP wording gains its three sentences.
-  it.skip("says nothing is in progress when nothing is", async () => {
+  it("says nothing is in progress when nothing is", async () => {
     const run = await wipOf(
       await aTeamsLighthouse(3, gravityBeforeTheDaily(), []),
       3,

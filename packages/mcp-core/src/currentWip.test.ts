@@ -92,8 +92,7 @@ describe("an assistant reads what is in progress right now through MCP", () => {
 
 describe("what the summary says when there is less to say", () => {
   // @error @contract-shape:bounded-change
-  // Pending until the clients offer this read over MCP.
-  it.skip("tells a Team without a System WIP Limit that none is set", async () => {
+  it("tells a Team without a System WIP Limit that none is set", async () => {
     const result = await anAssistantOn({
       getTeam: ok(voyager()),
       getTeamWip: ok(twoBlocked()),
@@ -105,8 +104,7 @@ describe("what the summary says when there is less to say", () => {
 
   // @error @contract-shape:bounded-change
   // An older Lighthouse lists the Work Items without saying which are Blocked; that is not "none Blocked".
-  // Pending until the clients offer this read over MCP.
-  it.skip("does not read a Lighthouse that says nothing about Blocked as nothing Blocked", async () => {
+  it("does not read a Lighthouse that says nothing about Blocked as nothing Blocked", async () => {
     const result = await anAssistantOn({
       getTeam: ok(gravityBeforeTheDaily()),
       getTeamWip: ok(workInProgressWithoutBlockedFacts()),
@@ -119,8 +117,7 @@ describe("what the summary says when there is less to say", () => {
   });
 
   // @error @contract-shape:bounded-change
-  // Pending until the clients offer this read over MCP.
-  it.skip("says nothing is in progress when nothing is", async () => {
+  it("says nothing is in progress when nothing is", async () => {
     const result = await anAssistantOn({
       getTeam: ok(gravityBeforeTheDaily()),
       getTeamWip: ok([]),
@@ -131,8 +128,7 @@ describe("what the summary says when there is less to say", () => {
   });
 
   // @error @contract-shape:bounded-change
-  // Pending until the clients offer this read over MCP.
-  it.skip("says it in the instance's own words", async () => {
+  it("says it in the instance's own words", async () => {
     const result = await anAssistantOn({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
       getTeam: ok(voyager()),
