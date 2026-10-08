@@ -376,6 +376,9 @@ jobs:
           done
           expect_pretty "Forecasted Start" facts feature get --ids "$ORION_FEATURE"
           expect_pretty "Refresh queued:" "exact:Team refreshed: $ZENITH" team refresh --id "$ZENITH"
+          expect_pretty "Work Tracking Systems" facts worktracking list
+          expect_pretty "Lighthouse v" facts version get
+          expect_pretty "is reachable." "exact:success" health check
 
           # Scenario 0 replaces scenario 2, so these lines stay last; later checks go above them.
           curl --fail --silent --insecure -X POST https://127.0.0.1:8443/api/v1/demo/scenarios/0/load
