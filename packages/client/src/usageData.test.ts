@@ -281,6 +281,11 @@ describe("planning a usage data step", () => {
       { kind: "ask" },
     ],
     ["a state that cannot be read", { state: "unavailable" }, NOTHING],
+    [
+      "a command that was refused or never reached it",
+      { reached: false, state: aState() },
+      NOTHING,
+    ],
   ])("for an undecided Lighthouse with %s", (_why, given, plan) => {
     expect(planUsageDataStep(facts(given))).toEqual(plan);
   });

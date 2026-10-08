@@ -274,7 +274,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
 
   // @US-02 @driving_port @real-io @error @version-skew @kpi @contract-shape:unbounded-preservation
   // KPI-4: a client never sends to a Lighthouse that would count it as a browser. Nothing is printed either.
-  it.skip.each<[string, UsageDataSide]>([
+  it.each<[string, UsageDataSide]>([
     [
       "has stopped usage data (its administrator's switch)",
       { administratorDisabled: true },
@@ -306,7 +306,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
   // @US-02 @driving_port @real-io @infrastructure-failure @kpi @contract-shape:unbounded-preservation
   // KPI-7: a Lighthouse that takes the connection and never answers about usage data costs at most a second;
   // the question waits for a day it can be asked properly.
-  it.skip("asks nothing this time when the Lighthouse never answers about usage data, and asks the next time", async () => {
+  it("asks nothing this time when the Lighthouse never answers about usage data, and asks the next time", async () => {
     const lighthouse = await aFakeLighthouse({
       usageData: { answers: "never" },
     });
@@ -324,7 +324,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
 
   // @US-02 @driving_port @real-io @boundary @contract-shape:unbounded-preservation
   // lh asks after a command that reached Lighthouse and succeeded; never inside help, config or connection.
-  it.skip.each<[string, readonly string[]]>([
+  it.each<[string, readonly string[]]>([
     ["help", ["help"]],
     ["the output format setting", ["config", "output", "get"]],
     ["the config group", ["config"]],
@@ -342,7 +342,7 @@ describe("lh asks only where a person can answer, and only where it may", () => 
   });
 
   // @US-02 @driving_port @real-io @contract-shape:bounded-change
-  it.skip("asks again for a second Lighthouse, and leaves the first one's answer as it was", async () => {
+  it("asks again for a second Lighthouse, and leaves the first one's answer as it was", async () => {
     const northwind = await aFakeLighthouse();
     const devInstance = await aFakeLighthouse();
     const { lena } = await lenaAnswers(northwind, "y");
