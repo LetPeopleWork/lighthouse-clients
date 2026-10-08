@@ -73,8 +73,7 @@ afterEach(() => {
 
 describe("an assistant reads a chart and the signals Lighthouse found on it", () => {
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("names the signal and the days it fired, beside the server's chart unchanged", async () => {
+  it("names the signal and the days it fired, beside the server's chart unchanged", async () => {
     const { result, summary, facts } = await readTotalWorkItemAge(
       totalAgeWithALargeChange(),
     );
@@ -88,8 +87,7 @@ describe("an assistant reads a chart and the signals Lighthouse found on it", ()
   });
 
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("says there are no signals when every day is inside the limits", async () => {
+  it("says there are no signals when every day is inside the limits", async () => {
     const { summary } = await readTotalWorkItemAge(aChart());
 
     expect(summary).toContain("No signals");
@@ -97,8 +95,7 @@ describe("an assistant reads a chart and the signals Lighthouse found on it", ()
   });
 
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("reads the range every metric tool reads when no dates are given", async () => {
+  it("reads the range every metric tool reads when no dates are given", async () => {
     const { assistant, reads } = gravitysChart(aChart());
 
     await assistant.call(TEAM_TOOL, { id: 3, metricType: "Throughput" });
@@ -109,8 +106,7 @@ describe("an assistant reads a chart and the signals Lighthouse found on it", ()
   });
 
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("reads a Portfolio's Feature Size chart", async () => {
+  it("reads a Portfolio's Feature Size chart", async () => {
     const reads: ChartRead[] = [];
     const result = await anAssistantOn({
       getPortfolio: ok(aPortfolio()),
@@ -203,8 +199,7 @@ describe("a chart whose limits mean little claims no signal", () => {
 describe("a question the chart tools cannot take", () => {
   // @error @contract-shape:bounded-change
   // Feature Size is charted for Portfolios only.
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("refuses a Team's Feature Size chart without asking Lighthouse", async () => {
+  it("refuses a Team's Feature Size chart without asking Lighthouse", async () => {
     const { assistant, reads } = gravitysChart(aChart());
 
     const result = await assistant.call(TEAM_TOOL, {
@@ -219,8 +214,7 @@ describe("a question the chart tools cannot take", () => {
   });
 
   // @error @contract-shape:bounded-change
-  // Pending until the clients read Process Behaviour Charts.
-  it.skip("asks which chart when none is named, without asking Lighthouse", async () => {
+  it("asks which chart when none is named, without asking Lighthouse", async () => {
     const { assistant, reads } = gravitysChart(aChart());
 
     const result = await assistant.call(TEAM_TOOL, { id: 3 });

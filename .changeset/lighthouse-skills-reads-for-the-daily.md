@@ -25,3 +25,9 @@ names cannot be read every risk is still listed by its reference.
 An assistant can read the same SLE Risk with `lighthouse_team_metrics_sleRisk`: Lighthouse's numbers for each
 Work Item unchanged, beside a summary in the words `lh --pretty` uses, every Work Item flush at the start of its
 line. An older Lighthouse's refusal comes back as the upgrade it asks for.
+
+An assistant can read one Process Behaviour Chart of a Team or Portfolio with
+`lighthouse_team_metrics_processBehaviorChart` and `lighthouse_portfolio_metrics_processBehaviorChart`,
+naming the chart with `metricType` (Feature Size for Portfolios only). Lighthouse's chart comes back unchanged,
+beside a summary that names each signal Lighthouse found with the days it fired ("Large Change on Wed 7 Oct,
+Thu 8 Oct"), or says there are no signals.

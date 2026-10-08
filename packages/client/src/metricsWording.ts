@@ -12,6 +12,7 @@ import type {
   MetricsDateRange,
   PercentilesOverTimeMetricType,
   PercentilesOverTimeSnapshot,
+  ProcessBehaviorMetricType,
   ProcessBehaviorSnapshot,
   TotalWorkItemAgeOverTimeResult,
   WorkItemAgeEntry,
@@ -1552,4 +1553,105 @@ export const describeSleRiskNow = (
   rows: [...entries]
     .sort((left, right) => right.risk - left.risk)
     .map((entry) => sleRiskRow(entry, sle, wording.terms, inProgress)),
+});
+
+// ── Process Behaviour Charts ─────────────────────────────────────────────────
+
+// Lighthouse sends each signal by its enum name; these are the product's names for them, never renamed.
+const SIGNALS: readonly (readonly [wire: string, name: string])[] = [
+  ["LargeChange", "Large Change"],
+  ["ModerateChange", "Moderate Change"],
+  ["ModerateShift", "Moderate Shift"],
+  ["SmallShift", "Small Shift"],
+];
+
+const NO_SIGNAL = "None";
+
+const isSignalName = (value: unknown): value is string =>
+  value === NO_SIGNAL || SIGNALS.some(([wire]) => wire === value);
+
+/** One day on a chart and the signals Lighthouse found on it, by their wire names. */
+export type ProcessBehaviorChartDay = {
+  readonly day: string;
+  readonly signals: readonly string[];
+};
+
+export type ProcessBehaviorChartView = {
+  readonly days: readonly ProcessBehaviorChartDay[];
+};
+
+const readChartDay = (value: unknown): ProcessBehaviorChartDay | null =>
+  isRecord(value) &&
+  isText(value.xValue) &&
+  Array.isArray(value.specialCauses) &&
+  value.specialCauses.every(isSignalName)
+    ? {
+        day: value.xValue,
+        signals: value.specialCauses.filter((cause) => cause !== NO_SIGNAL),
+      }
+    : null;
+
+/**
+ * A chart's days and their signals, or null when a signal arrives as anything but its name: a number would
+ * have to be guessed at, and a guessed signal is worse than none.
+ */
+export const readProcessBehaviorChart = (
+  value: unknown,
+): ProcessBehaviorChartView | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const days = readEvery(value.dataPoints, readChartDay);
+  return days === null ? null : { days };
+};
+
+const chartSubject = (
+  metricType: ProcessBehaviorMetricType,
+  terms: Terms,
+): string => {
+  switch (metricType) {
+    case "Arrivals":
+      return "Arrivals";
+    case "Wip":
+      return terms.workInProgress;
+    case "WorkItemAge":
+      return `Total ${terms.workItemAge}`;
+    case "CycleTime":
+      return terms.cycleTime;
+    case "FeatureSize":
+      return `${terms.feature} Size`;
+    default:
+      // The Throughput chart: its type's name is also a word an instance renames, so it is never spelled here.
+      return terms.throughput;
+  }
+};
+
+/** A chart's title and what Lighthouse found on it. */
+export type ProcessBehaviorChartWording = {
+  readonly title: string;
+  readonly sentence: string;
+};
+
+const signalsSentence = (chart: ProcessBehaviorChartView): string => {
+  const fired = SIGNALS.map(([wire, name]) => ({
+    name,
+    days: chart.days
+      .filter((day) => day.signals.includes(wire))
+      .map((day) => shortDayOf(day.day)),
+  })).filter((signal) => signal.days.length > 0);
+  return fired.length === 0
+    ? "No signals"
+    : fired
+        .map((signal) => `${signal.name} on ${signal.days.join(", ")}`)
+        .join("; ");
+};
+
+/** "Total Work Item Age Process Behaviour Chart", then each signal with the days it fired, or "No signals". */
+export const describeProcessBehaviorChart = (
+  chart: ProcessBehaviorChartView,
+  metricType: ProcessBehaviorMetricType,
+  terms: Terms,
+): ProcessBehaviorChartWording => ({
+  title: `${chartSubject(metricType, terms)} Process Behaviour Chart`,
+  sentence: signalsSentence(chart),
 });

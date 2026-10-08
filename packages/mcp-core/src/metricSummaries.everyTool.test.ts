@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { gravitysSleRisk } from "../../../test-support/dailyFlowAnswers";
+import {
+  aChart,
+  gravitysSleRisk,
+  totalAgeWithALargeChange,
+} from "../../../test-support/dailyFlowAnswers";
 import {
   gravity,
   oceanExplorer,
@@ -222,6 +226,42 @@ describe("every per-metric tool, under its own label and its owner's heading", (
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("lighthouse_team_metrics_processBehaviorChart", async () => {
+    const result = await anAssistant({
+      getTeamProcessBehaviorChart: ok(totalAgeWithALargeChange()),
+    }).call("lighthouse_team_metrics_processBehaviorChart", {
+      ...GRAVITYS_RANGE,
+      metricType: "WorkItemAge",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(summaryOf(result, "team processBehaviorChart: ")).toBe(
+      [
+        GRAVITYS_HEADING,
+        "Total Work Item Age Process Behaviour Chart",
+        "Large Change on Wed 7 Oct, Thu 8 Oct",
+      ].join("\n"),
+    );
+  });
+
+  it("lighthouse_portfolio_metrics_processBehaviorChart", async () => {
+    const result = await anAssistant({
+      getPortfolioProcessBehaviorChart: ok(aChart()),
+    }).call("lighthouse_portfolio_metrics_processBehaviorChart", {
+      ...OCEAN_EXPLORERS_RANGE,
+      metricType: "FeatureSize",
+    });
+
+    expect(result.isError).toBe(false);
+    expect(summaryOf(result, "portfolio processBehaviorChart: ")).toBe(
+      [
+        OCEAN_EXPLORERS_HEADING,
+        "Feature Size Process Behaviour Chart",
+        "No signals",
+      ].join("\n"),
+    );
   });
 
   it("names a Portfolio it cannot read by its term and id", async () => {

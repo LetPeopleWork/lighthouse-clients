@@ -1083,6 +1083,37 @@ export type ProcessBehaviorSnapshot = {
   readonly lnpl: number;
 };
 
+/** The chart types a Team has a Process Behaviour Chart for; Feature Size is charted for Portfolios only. */
+export type TeamProcessBehaviorMetricType = Exclude<
+  ProcessBehaviorMetricType,
+  "FeatureSize"
+>;
+
+/** One day on a Process Behaviour Chart, with the signals Lighthouse found on it by name. */
+export type ProcessBehaviorChartDataPoint = {
+  readonly xValue: string;
+  readonly yValue: number;
+  readonly specialCauses: readonly string[];
+  readonly workItemIds: readonly number[];
+  readonly isBlackout?: boolean;
+};
+
+/**
+ * A Process Behaviour Chart as Lighthouse computes it: its limits, why it could not be computed when its
+ * status is not Ready, and every day with the signals found on it. An older Lighthouse leaves out the
+ * baseline flag and the blackout days.
+ */
+export type ProcessBehaviorChart = {
+  readonly status: string;
+  readonly statusReason: string;
+  readonly xAxisKind: string;
+  readonly average: number;
+  readonly upperNaturalProcessLimit: number;
+  readonly lowerNaturalProcessLimit: number;
+  readonly baselineConfigured?: boolean;
+  readonly dataPoints: readonly ProcessBehaviorChartDataPoint[];
+};
+
 /**
  * One Work Item in progress and the chance it misses its Team's SLE, in percent. The miss count is
  * null when the Work Item is already past the SLE: that settles it without looking at any history.
@@ -1513,6 +1544,16 @@ export type LighthouseClient = {
     range?: MetricsDateRange,
     metricType?: ProcessBehaviorMetricType,
   ) => Promise<LighthouseApiResult<readonly ProcessBehaviorSnapshot[]>>;
+  readonly getTeamProcessBehaviorChart: (
+    teamId: number,
+    range: MetricsDateRange | undefined,
+    metricType: TeamProcessBehaviorMetricType,
+  ) => Promise<LighthouseApiResult<ProcessBehaviorChart>>;
+  readonly getPortfolioProcessBehaviorChart: (
+    portfolioId: number,
+    range: MetricsDateRange | undefined,
+    metricType: ProcessBehaviorMetricType,
+  ) => Promise<LighthouseApiResult<ProcessBehaviorChart>>;
   readonly getTeamSleRisk: (
     teamId: number,
   ) => Promise<LighthouseApiResult<readonly SleRiskEntry[]>>;
@@ -2022,6 +2063,17 @@ const getProcessBehaviorTypeQuerySuffix = (
   metricType?: ProcessBehaviorMetricType,
 ): string =>
   metricType === undefined ? "" : `&type=${encodeURIComponent(metricType)}`;
+
+const PROCESS_BEHAVIOR_CHART_ROUTES: Readonly<
+  Record<ProcessBehaviorMetricType, string>
+> = {
+  Throughput: "throughput/pbc",
+  Arrivals: "arrivals/pbc",
+  Wip: "wipOverTime/pbc",
+  WorkItemAge: "totalWorkItemAge/pbc",
+  CycleTime: "cycleTime/pbc",
+  FeatureSize: "featureSize/pbc",
+};
 
 type WipItemDto = {
   readonly id: number;
@@ -2892,6 +2944,28 @@ export const createLighthouseClient = (
         { method: "GET" },
       );
     },
+    getTeamProcessBehaviorChart: (
+      teamId: number,
+      range: MetricsDateRange | undefined,
+      metricType: TeamProcessBehaviorMetricType,
+    ) =>
+      requestJson<ProcessBehaviorChart>(
+        configuration,
+        dependencies,
+        `/v1/teams/${teamId}/metrics/${PROCESS_BEHAVIOR_CHART_ROUTES[metricType]}?${getMetricsDateRangeQuery(getResolvedMetricsDateRange(range))}`,
+        { method: "GET" },
+      ),
+    getPortfolioProcessBehaviorChart: (
+      portfolioId: number,
+      range: MetricsDateRange | undefined,
+      metricType: ProcessBehaviorMetricType,
+    ) =>
+      requestJson<ProcessBehaviorChart>(
+        configuration,
+        dependencies,
+        `/v1/portfolios/${portfolioId}/metrics/${PROCESS_BEHAVIOR_CHART_ROUTES[metricType]}?${getMetricsDateRangeQuery(getResolvedMetricsDateRange(range))}`,
+        { method: "GET" },
+      ),
     getTeamSleRisk: async (teamId: number) => {
       const unsupported = await ensureServerSupports("sleRisk");
       if (unsupported) {

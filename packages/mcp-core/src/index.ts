@@ -23,6 +23,7 @@ import {
   describeOwnerCount,
   describePercentilesOverTimeDays,
   describePortfolioSummary,
+  describeProcessBehaviorChart,
   describeProcessBehaviorOverTimeDays,
   describeRefreshConfirmation,
   describeSleRiskNow,
@@ -60,6 +61,7 @@ import {
   readOwnerList,
   readPercentilesOverTime,
   readPortfolio,
+  readProcessBehaviorChart,
   readProcessBehaviorOverTime,
   readRunChart,
   readServiceLevelExpectation,
@@ -152,6 +154,8 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_metrics_blockedCountHistory"
     | "lighthouse_team_metrics_wip"
     | "lighthouse_team_metrics_sleRisk"
+    | "lighthouse_team_metrics_processBehaviorChart"
+    | "lighthouse_portfolio_metrics_processBehaviorChart"
     | "lighthouse_team_metrics_percentilesOverTime"
     | "lighthouse_portfolio_metrics_percentilesOverTime"
     | "lighthouse_team_metrics_processBehaviorOverTime"
@@ -248,6 +252,48 @@ const processBehaviorOverTimeProperties = {
       'Process-behaviour family to read. Defaults to "Throughput" when omitted. "FeatureSize" is portfolio-only — a team never records it and returns an empty series.',
   },
 } as const;
+
+const processBehaviorMetricTypes = [
+  "Throughput",
+  "WorkItemAge",
+  "Wip",
+  "CycleTime",
+  "Arrivals",
+  "FeatureSize",
+] as const;
+
+// Feature Size is charted for Portfolios only.
+const TEAM_CHART_TYPES = [
+  "Throughput",
+  "WorkItemAge",
+  "Wip",
+  "CycleTime",
+  "Arrivals",
+] as const;
+
+type TeamChartType = (typeof TEAM_CHART_TYPES)[number];
+
+const chartTypeProperty = (chartTypes: readonly string[]) =>
+  ({
+    metricType: {
+      type: "string",
+      enum: chartTypes,
+      description: "Which Process Behaviour Chart to read.",
+    },
+  }) as const;
+
+const chartInputSchema = (
+  chartTypes: readonly string[],
+): McpToolDefinition["inputSchema"] => ({
+  type: "object",
+  properties: {
+    ...idInputSchema.properties,
+    ...chartTypeProperty(chartTypes),
+    ...dateRangeProperties,
+  },
+  required: ["id", "metricType"],
+  additionalProperties: false,
+});
 
 const cumulativeStateProperty = {
   state: {
@@ -520,6 +566,28 @@ type McpRuntimeClient = {
     asOfDate: string,
   ) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamProcessBehaviorChart: (
+    id: number,
+    range: { readonly startDate: string; readonly endDate: string },
+    metricType: TeamChartType,
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getPortfolioProcessBehaviorChart: (
+    id: number,
+    range: { readonly startDate: string; readonly endDate: string },
+    metricType: ProcessBehaviorMetricTypeArgument,
+  ) => Promise<
+    | { readonly ok: true; readonly value: unknown }
     | {
         readonly ok: false;
         readonly error: { readonly category: string; readonly reason: string };
@@ -1392,6 +1460,18 @@ const toolDefinitions: readonly McpToolDefinition[] = [
       'Get how likely each work item a team has in progress is to miss the team\'s SLE, by team ID: Lighthouse\'s own risk per work item (referenceId, risk in percent), with the finished work items that reached the same age (finishedItemsStillOpenAtThisAge) and how many of those went on to miss (finishedItemsThatWentOnToMiss, null when the work item is already past the SLE). A work item counts as at risk from 70%. Use it for "which work items will miss our SLE" and "what should we swarm on"; never compute a risk yourself. Needs a Lighthouse newer than v26.9.19.10. A second text block, `summary: …`, states the answer as lh does, in the instance\'s terminology: the heading, how many are at risk against the SLE, then every work item highest risk first with its name and age; the first block is the facts, unchanged.',
     inputSchema: idInputSchema,
   },
+  {
+    name: "lighthouse_team_metrics_processBehaviorChart",
+    description:
+      'Get one Process Behaviour Chart of a team by ID, as Lighthouse computes it: its status (and statusReason when it is not Ready), the average and natural process limits, whether a baseline is configured, and every day (xValue, yValue) with the signals Lighthouse found on it (specialCauses: LargeChange, ModerateChange, ModerateShift, SmallShift; None means no signal) and whether it is a blackout day (isBlackout). metricType picks the chart: Throughput, Arrivals, Wip, WorkItemAge (the Total Work Item Age chart) or CycleTime; a team has no FeatureSize chart. Use it for "is something unusual going on" and "did our process change"; never work a signal out yourself. Optionally filtered by start and end dates. A second text block, `summary: …`, states the answer as lh does, in the instance\'s terminology: the heading, the chart\'s title, and each signal with the days it fired, or that there are no signals; the facts are unchanged.',
+    inputSchema: chartInputSchema(TEAM_CHART_TYPES),
+  },
+  {
+    name: "lighthouse_portfolio_metrics_processBehaviorChart",
+    description:
+      'Get one Process Behaviour Chart of a portfolio by ID, as Lighthouse computes it: its status (and statusReason when it is not Ready), the average and natural process limits, whether a baseline is configured, and every day (xValue, yValue) with the signals Lighthouse found on it (specialCauses: LargeChange, ModerateChange, ModerateShift, SmallShift; None means no signal) and whether it is a blackout day (isBlackout). metricType picks the chart: Throughput, Arrivals, Wip, WorkItemAge (the Total Work Item Age chart), CycleTime or FeatureSize. Use it for "is something unusual going on" and "did our process change"; never work a signal out yourself. Optionally filtered by start and end dates. A second text block, `summary: …`, states the answer as lh does, in the instance\'s terminology: the heading, the chart\'s title, and each signal with the days it fired, or that there are no signals; the facts are unchanged.',
+    inputSchema: chartInputSchema(processBehaviorMetricTypes),
+  },
 ];
 
 const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
@@ -1822,6 +1902,21 @@ const readSleRiskContext = async (
   };
 };
 
+const summariseProcessBehaviorChart =
+  (range: MetricsDateRange, chartType: ProcessBehaviorMetricTypeArgument) =>
+  (facts: unknown, wording: AnswerWording): string | null => {
+    const chart = readProcessBehaviorChart(facts);
+    if (chart === null) {
+      return null;
+    }
+    const said = describeProcessBehaviorChart(chart, chartType, wording.terms);
+    return linesOf(
+      describeMetricsHeading(range, wording),
+      said.title,
+      said.sentence,
+    );
+  };
+
 // Only lh reads the Work Items Time in State can be narrowed to, so the bar is told without their count.
 const summariseTimeInState =
   (scope: MetricsScope, range: MetricsDateRange) =>
@@ -2005,17 +2100,16 @@ const getPercentilesOverTimeMetricType = (
   return percentilesOverTimeMetricTypes.find((candidate) => candidate === raw);
 };
 
-const processBehaviorMetricTypes = [
-  "Throughput",
-  "WorkItemAge",
-  "Wip",
-  "CycleTime",
-  "Arrivals",
-  "FeatureSize",
-] as const;
-
 type ProcessBehaviorMetricTypeArgument =
   (typeof processBehaviorMetricTypes)[number];
+
+const getChartType = <T extends string>(
+  argumentsPayload: unknown,
+  chartTypes: readonly T[],
+): T | undefined => {
+  const raw = getStringArgument(argumentsPayload, "metricType");
+  return chartTypes.find((candidate) => candidate === raw);
+};
 
 const getProcessBehaviorMetricType = (
   argumentsPayload: unknown,
@@ -2113,6 +2207,18 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   }),
   lighthouse_team_metrics_wip: z.object({ id: z.number().int() }),
   lighthouse_team_metrics_sleRisk: z.object({ id: z.number().int() }),
+  lighthouse_team_metrics_processBehaviorChart: z.object({
+    id: z.number().int(),
+    metricType: z.enum(TEAM_CHART_TYPES),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
+  lighthouse_portfolio_metrics_processBehaviorChart: z.object({
+    id: z.number().int(),
+    metricType: z.enum(processBehaviorMetricTypes),
+    startDate: isoDateStringSchema.optional(),
+    endDate: isoDateStringSchema.optional(),
+  }),
   lighthouse_team_metrics_percentilesOverTime: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
@@ -2541,6 +2647,47 @@ const answerToolCall =
         client.getTeamSleRisk(id),
         readSleRiskContext(client, id, today),
         summariseSleRisk(today),
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_processBehaviorChart") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const chartType = getChartType(argumentsPayload, TEAM_CHART_TYPES);
+      if (chartType === undefined) {
+        return getErrorToolResult("team metrics: invalid metricType");
+      }
+      const range =
+        getDateRange(argumentsPayload) ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("team", "processBehaviorChart"),
+        client.getTeamProcessBehaviorChart(id, range, chartType),
+        readMetricsWording(client, "team", id),
+        summariseProcessBehaviorChart(range, chartType),
+      );
+    }
+
+    if (name === "lighthouse_portfolio_metrics_processBehaviorChart") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("portfolio metrics: invalid id");
+      }
+      const chartType = getChartType(
+        argumentsPayload,
+        processBehaviorMetricTypes,
+      );
+      if (chartType === undefined) {
+        return getErrorToolResult("portfolio metrics: invalid metricType");
+      }
+      const range =
+        getDateRange(argumentsPayload) ?? getDefaultMetricsDateRange();
+      return answerMetric(
+        metricLabels("portfolio", "processBehaviorChart"),
+        client.getPortfolioProcessBehaviorChart(id, range, chartType),
+        readMetricsWording(client, "portfolio", id),
+        summariseProcessBehaviorChart(range, chartType),
       );
     }
 

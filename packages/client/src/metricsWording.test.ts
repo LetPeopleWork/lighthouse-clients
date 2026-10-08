@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  createLighthouseClient,
+  type ProcessBehaviorMetricType,
+} from "./index";
+import {
   daysInRange,
   describeArrivalsDays,
   describeAsOfHeading,
@@ -14,6 +18,7 @@ import {
   describePercentilesOverTimeDays,
   describePredictabilityScore,
   describePredictabilityScoreDays,
+  describeProcessBehaviorChart,
   describeProcessBehaviorOverTime,
   describeProcessBehaviorOverTimeDays,
   describeSleRiskNow,
@@ -43,6 +48,7 @@ import {
   readMetricsSubject,
   readPercentilesOverTime,
   readPredictabilityScore,
+  readProcessBehaviorChart,
   readProcessBehaviorOverTime,
   readRunChart,
   readServiceLevelExpectation,
@@ -1877,6 +1883,116 @@ describe("SLE Risk, read and said", () => {
           "3 of 4 finished Tickets that reached this age went past the PRM",
         ],
       ],
+    });
+  });
+});
+
+describe("a Process Behaviour Chart, read and said", () => {
+  const day = (xValue: string, specialCauses: readonly unknown[]) => ({
+    xValue,
+    yValue: 3,
+    specialCauses,
+    workItemIds: [],
+  });
+  const chartOf = (...dataPoints: readonly unknown[]) => ({
+    status: "Ready",
+    dataPoints,
+  });
+
+  it.each([
+    ["Throughput", "throughput/pbc"],
+    ["Arrivals", "arrivals/pbc"],
+    ["Wip", "wipOverTime/pbc"],
+    ["WorkItemAge", "totalWorkItemAge/pbc"],
+    ["CycleTime", "cycleTime/pbc"],
+    ["FeatureSize", "featureSize/pbc"],
+  ] as const)("reads the %s chart from %s, once", async (metricType, route) => {
+    const asked: string[] = [];
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://lighthouse.example",
+        },
+      },
+      {
+        fetch: async (url: string) => {
+          asked.push(url);
+          return new Response(JSON.stringify(chartOf()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    );
+    const range = { startDate: "2026-10-02", endDate: "2026-10-08" };
+
+    await client.getPortfolioProcessBehaviorChart(
+      2,
+      range,
+      metricType satisfies ProcessBehaviorMetricType,
+    );
+
+    const charts = asked.filter((url) => url.includes("/metrics/"));
+    expect(charts).toHaveLength(1);
+    expect(charts[0]).toContain(
+      `/portfolios/2/metrics/${route}?startDate=2026-10-02&endDate=2026-10-08`,
+    );
+  });
+
+  it("reads each day's signals by name and leaves out None", () => {
+    expect(
+      readProcessBehaviorChart(
+        chartOf(
+          day("2026-10-07", ["LargeChange", "SmallShift"]),
+          day("2026-10-08", ["None"]),
+        ),
+      ),
+    ).toEqual({
+      days: [
+        { day: "2026-10-07", signals: ["LargeChange", "SmallShift"] },
+        { day: "2026-10-08", signals: [] },
+      ],
+    });
+  });
+
+  it.each([
+    ["a signal sent as a number", chartOf(day("2026-10-07", [1]))],
+    ["a signal it does not know", chartOf(day("2026-10-07", ["Wobble"]))],
+    ["a chart without days", { status: "Ready" }],
+    ["no chart at all", null],
+  ])("reads nothing from %s", (_case, value) => {
+    expect(readProcessBehaviorChart(value)).toBeNull();
+  });
+
+  it("names each signal with the days it fired, in the order of their weight", () => {
+    const chart = readProcessBehaviorChart(
+      chartOf(
+        day("2026-10-06", ["SmallShift"]),
+        day("2026-10-07", ["LargeChange", "SmallShift"]),
+        day("2026-10-08", ["LargeChange"]),
+      ),
+    );
+
+    expect(
+      chart && describeProcessBehaviorChart(chart, "Throughput", SEEDED_TERMS),
+    ).toEqual({
+      title: "Throughput Process Behaviour Chart",
+      sentence:
+        "Large Change on Wed 7 Oct, Thu 8 Oct; Small Shift on Tue 6 Oct, Wed 7 Oct",
+    });
+  });
+
+  it("says there are no signals when no day carries one", () => {
+    const chart = readProcessBehaviorChart(
+      chartOf(day("2026-10-08", ["None"])),
+    );
+
+    expect(
+      chart && describeProcessBehaviorChart(chart, "Wip", SEEDED_TERMS),
+    ).toEqual({
+      title: "Work In Progress Process Behaviour Chart",
+      sentence: "No signals",
     });
   });
 });
