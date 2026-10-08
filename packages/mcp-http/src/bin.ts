@@ -267,6 +267,36 @@ export const refuseVotingWithoutSignIn = async (
   return hasOwnCredential ? null : NO_OWN_CREDENTIAL;
 };
 
+export type UsageDataSwitch = {
+  readonly on: boolean;
+  readonly warning?: string;
+};
+
+export const USAGE_DATA_ON_LINE = "Usage data: on (LIGHTHOUSE_USAGE_DATA)";
+export const USAGE_DATA_OFF_LINE = "Usage data: off";
+
+/**
+ * The operator decides for everyone the shared server serves, so nobody is asked and it is off unless
+ * LIGHTHOUSE_USAGE_DATA says on. A value that is neither on nor off is warned about but never stops the
+ * server: a typo must not break a deployment.
+ */
+export const resolveUsageDataSwitch = (
+  env: NodeJS.ProcessEnv,
+): UsageDataSwitch => {
+  const value = env.LIGHTHOUSE_USAGE_DATA?.trim() ?? "";
+  const normalised = value.toLowerCase();
+  if (normalised === "on") {
+    return { on: true };
+  }
+  if (normalised === "" || normalised === "off") {
+    return { on: false };
+  }
+  return {
+    on: false,
+    warning: `LIGHTHOUSE_USAGE_DATA takes on or off, not "${value}", so usage data is off.`,
+  };
+};
+
 export const startMcpHttpServer = async (
   options: McpHttpServerOptions,
 ): Promise<McpHttpServerHandle> => {
@@ -404,6 +434,8 @@ export const runMcpHttpRuntime = async (
     return 1;
   }
 
+  const usageData = resolveUsageDataSwitch(env);
+
   const oauthResult = resolveOAuthConfigFromEnv(env);
   if (oauthResult.error !== undefined) {
     writeError(oauthResult.error);
@@ -434,6 +466,10 @@ export const runMcpHttpRuntime = async (
   });
 
   write(renderMcpHttpBanner(server.url));
+  if (usageData.warning !== undefined) {
+    writeError(usageData.warning);
+  }
+  write(usageData.on ? USAGE_DATA_ON_LINE : USAGE_DATA_OFF_LINE);
   await onServerStarted?.(server);
   return 0;
 };

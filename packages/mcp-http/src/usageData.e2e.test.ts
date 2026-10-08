@@ -127,7 +127,7 @@ describe("off unless the operator says on", () => {
   });
 
   // @US-06 @driving_port @real-io @contract-shape:pure-function
-  it.skip("says usage data is off at start-up when LIGHTHOUSE_USAGE_DATA is not set", async () => {
+  it("says usage data is off at start-up when LIGHTHOUSE_USAGE_DATA is not set", async () => {
     const shared = await tomasStarts(await aFakeLighthouse());
 
     expect(shared.startUpLines()).toContain(OFF_LINE);
@@ -135,7 +135,7 @@ describe("off unless the operator says on", () => {
   });
 
   // @US-06 @driving_port @real-io @boundary @contract-shape:pure-function
-  it.skip.each(["on", "ON", "On"])(
+  it.each(["on", "ON", "On"])(
     "switches usage data on for LIGHTHOUSE_USAGE_DATA=%s and says so once at start-up",
     async (value) => {
       const shared = await tomasStarts(await aFakeLighthouse(), {
@@ -150,7 +150,7 @@ describe("off unless the operator says on", () => {
   );
 
   // @US-06 @driving_port @real-io @boundary @contract-shape:pure-function
-  it.skip.each(["off", "OFF", ""])(
+  it.each(["off", "OFF", ""])(
     "keeps usage data off without a warning for LIGHTHOUSE_USAGE_DATA=%j",
     async (value) => {
       const lighthouse = await aFakeLighthouse();
@@ -169,7 +169,7 @@ describe("off unless the operator says on", () => {
 
   // @US-06 @driving_port @real-io @error @contract-shape:pure-function
   // A typo never breaks a deployment: the server starts, off, and says once which values it takes.
-  it.skip.each(["yes", "true", "1", "enabled"])(
+  it.each(["yes", "true", "1", "enabled"])(
     "starts with usage data off and one warning naming on and off for LIGHTHOUSE_USAGE_DATA=%s",
     async (value) => {
       const lighthouse = await aFakeLighthouse();

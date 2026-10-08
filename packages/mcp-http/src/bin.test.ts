@@ -7,6 +7,7 @@ import {
   renderMcpHttpBanner,
   runMcpHttpRuntime,
   startMcpHttpServer,
+  USAGE_DATA_OFF_LINE,
 } from "./bin";
 
 describe("mcp-http runtime entrypoint", () => {
@@ -87,6 +88,7 @@ describe("mcp-http runtime entrypoint", () => {
     const write = vi.fn<(message: string) => void>();
     const writeError = vi.fn<(message: string) => void>();
     let statusCode = 0;
+    let serverUrl = "";
 
     const code = await runMcpHttpRuntime(
       {
@@ -97,6 +99,7 @@ describe("mcp-http runtime entrypoint", () => {
       write,
       writeError,
       async (server) => {
+        serverUrl = server.url;
         const health = await fetch(`${server.url}/health`);
         statusCode = health.status;
         await server.close();
@@ -104,7 +107,9 @@ describe("mcp-http runtime entrypoint", () => {
     );
 
     expect(code).toBe(0);
-    expect(write).toHaveBeenCalledOnce();
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenNthCalledWith(1, renderMcpHttpBanner(serverUrl));
+    expect(write).toHaveBeenNthCalledWith(2, USAGE_DATA_OFF_LINE);
     expect(writeError).not.toHaveBeenCalled();
 
     expect(statusCode).toBe(200);
