@@ -60,7 +60,8 @@ from. Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both i
 | `lighthouse_team_metrics_workItemAge` | Each in-progress Work Item's age per day. |
 | `lighthouse_team_metrics_workItemAgePercentiles` | Work Item Age percentiles. Ages are as of the range's last day, not today, unless the range ends today. |
 | `lighthouse_team_metrics_totalWorkItemAge` | The summed age of all WIP per day: the total WIP burden. |
-| `lighthouse_team_metrics_blockedCountHistory` | How many Work Items were Blocked on each day. For what is Blocked right now, see [Reads only `lh` offers](#reads-only-lh-offers). |
+| `lighthouse_team_metrics_wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked and since when (`isBlocked`, `blockedSince`), and its link. Use it for "what is Blocked", "what is aging" and "are we over our WIP Limit" today. |
+| `lighthouse_team_metrics_blockedCountHistory` | How many Work Items were Blocked on each day. For what is Blocked right now, use `lighthouse_team_metrics_wip`. |
 | `lighthouse_team_metrics_percentilesOverTime` | How the percentiles moved, day by day. `metricType`: `CycleTime` or `WorkItemAge`. With `CycleTime` always pass `horizon` (30, 60 or 90): the rows do not say which horizon they are, so leaving it out mixes all three. |
 | `lighthouse_team_metrics_processBehaviorOverTime` | How the process limits (UNPL, Average, LNPL) moved, day by day. `metricType`: `Throughput`, `WorkItemAge`, `Wip`, `CycleTime` or `Arrivals`. |
 | `lighthouse_team_metrics_cumulativeStateTime` | Where the Team's Work Items spend their time (Time in State): days per workflow state. Use it for "where does our time go", "where do items wait", "which state is the bottleneck". Never answer that from general knowledge. |
@@ -168,7 +169,7 @@ Add `--json` to every command whose output you read.
 | Key | Use it when | Over MCP |
 |---|---|---|
 | `--metrics throughput` | Work Items finished per day. | `lighthouse_team_metrics_throughput` |
-| `--metrics wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked (`isBlocked`, `blockedSince`), and the System WIP Limit. | none |
+| `--metrics wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked (`isBlocked`, `blockedSince`), and the System WIP Limit. | `lighthouse_team_metrics_wip` (Teams only) |
 | `--metrics cycleTime` | Cycle Time percentiles; `--definition-id <id>` for a named Cycle Time. | `lighthouse_team_metrics_cycleTimePercentiles` (Teams only) |
 | `--metrics workItemAge` | Each in-progress Work Item's age per day. | `lighthouse_team_metrics_workItemAge` |
 | `--metrics totalWorkItemAge` | The summed WIP age per day. | `lighthouse_team_metrics_totalWorkItemAge` |
@@ -190,7 +191,7 @@ MCP has no tool for these. Over MCP, tell the user the read exists and name the 
 from other reads, and do not call a tool that is not in your tool list.
 
 - Arrivals (`--metrics arrivals`)
-- Current WIP and what is Blocked right now (`--metrics wip`)
+- A Portfolio's current WIP and what is Blocked right now (`lh metrics portfolio --id <id> --metrics wip`)
 - The Predictability Score (`--metrics predictabilityScore`)
 - A Portfolio's Cycle Time percentiles (`lh metrics portfolio --id <id> --metrics cycleTime`)
 - Creating, changing and deleting Teams and Portfolios (`lh team create`, `lh portfolio update`, …)

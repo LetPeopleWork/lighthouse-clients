@@ -55,8 +55,7 @@ afterEach(() => {
 
 describe("an assistant reads what is in progress right now through MCP", () => {
   // @walking_skeleton @driving_port @contract-shape:bounded-change
-  // Pending until the clients offer this read over MCP; today only lh can.
-  it.skip("receives each Work Item with its age, state, whether it is Blocked and since when, and its link", async () => {
+  it("receives each Work Item with its age, state, whether it is Blocked and since when, and its link", async () => {
     const assistant = anAssistantOn({
       getTeam: ok(gravityBeforeTheDaily()),
       getTeamWip: ok(twoBlocked()),
@@ -75,8 +74,7 @@ describe("an assistant reads what is in progress right now through MCP", () => {
   });
 
   // @driving_port @contract-shape:bounded-change
-  // Pending until the clients offer this read over MCP.
-  it.skip("reads the Team's Work Items in progress as of today", async () => {
+  it("reads the Team's Work Items in progress as of today", async () => {
     const assistant = anAssistantOn({
       getTeam: ok(gravityBeforeTheDaily()),
       getTeamWip: (...args) =>
@@ -150,8 +148,7 @@ describe("what the summary says when there is less to say", () => {
 
 describe("when Lighthouse cannot answer", () => {
   // @error @contract-shape:bounded-change
-  // Pending until the clients offer this read over MCP.
-  it.skip("passes a refused read on as the error it is, with no summary", async () => {
+  it("passes a refused read on as the error it is, with no summary", async () => {
     const result = await anAssistantOn({
       getTeam: ok(gravityBeforeTheDaily()),
       getTeamWip: refused("forbidden", "No access"),
@@ -165,8 +162,7 @@ describe("when Lighthouse cannot answer", () => {
 
   // @error @contract-shape:bounded-change
   // The summary's own reads only word the answer; they never cost the assistant the facts.
-  // Pending until the clients offer this read over MCP.
-  it.skip("still returns the Work Items when the Team or the Terminology cannot be read", async () => {
+  it("still returns the Work Items when the Team or the Terminology cannot be read", async () => {
     const result = await anAssistantOn({
       getTerminology: refused("dependency-failure", "Terminology timed out"),
       getTeam: refused("dependency-failure", "Team timed out"),
@@ -180,8 +176,7 @@ describe("when Lighthouse cannot answer", () => {
 
 describe("the tools that count Blocked Work Items per day point to this read", () => {
   // @contract-shape:pure-function
-  // Pending until the clients offer this read over MCP; the descriptions name it from then on.
-  it.skip("names the Team read and, for a Portfolio, the lh command", () => {
+  it("names the Team read and, for a Portfolio, the lh command", () => {
     const tools = anAssistantOn({}).runtime.listTools();
     const description = (name: string) =>
       tools.find((tool) => tool.name === name)?.description ?? "";

@@ -196,7 +196,7 @@ Teams only. A Work Item's SLE Risk answers one question: "of every item that was
 - A thin history "reads as a cliff rather than a curve": 0% up to the SLE, 100% the day after. Where few finished Work Items reached that age, one more finishing moves the share a lot. Say how many it rests on when the read tells you.
 
 ### Blocked
-The Blocked Overview counts the Work Items that were Blocked on the last day of the selected range; "the target is always zero blocked items". Blocked Over Time plots how many were Blocked on each recorded day; its history begins when the instance started recording, not before. Read the history with `lighthouse_team_metrics_blockedCountHistory` or `lighthouse_portfolio_metrics_blockedCountHistory`, and what is Blocked right now with `lh metrics team --id <id> --metrics wip`.
+The Blocked Overview counts the Work Items that were Blocked on the last day of the selected range; "the target is always zero blocked items". Blocked Over Time plots how many were Blocked on each recorded day; its history begins when the instance started recording, not before. Read the history with `lighthouse_team_metrics_blockedCountHistory` or `lighthouse_portfolio_metrics_blockedCountHistory`, and what is Blocked right now with `lighthouse_team_metrics_wip` for a Team, or `lh metrics portfolio --id <id> --metrics wip` for a Portfolio.
 
 ### Stale
 The Stale Items Overview counts the Work Items in progress that "had been sitting in their current state longer than the configured staleness threshold — items that may be silently stuck even though no one flagged them". The threshold is days, set in the Team or Portfolio settings. A Blocked Work Item is never also counted as Stale. The target is zero.

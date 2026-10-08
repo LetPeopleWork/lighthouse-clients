@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   gravity,
   oceanExplorer,
@@ -171,6 +171,25 @@ describe("every per-metric tool, under its own label and its owner's heading", (
     expect(result.isError).toBe(false);
     expect(factsBlockOf(result).startsWith(label)).toBe(true);
     expect(summaryOf(result, label)).toBe(summary);
+  });
+
+  // This one reads as of today, so the day is fixed rather than taken from a range.
+  it("lighthouse_team_metrics_wip", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-06T09:00:00Z"));
+    try {
+      const result = await anAssistant().call("lighthouse_team_metrics_wip", {
+        id: 3,
+      });
+
+      expect(result.isError).toBe(false);
+      expect(factsBlockOf(result).startsWith("team wip: ")).toBe(true);
+      expect(summaryOf(result, "team wip: ")).toBe(
+        "Gravity · as of Tue 6 Oct 2026\nWork Items in Progress: 9 (System WIP Limit: 10 Work Items)\nBlocked Work Items: 2",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("names a Portfolio it cannot read by its term and id", async () => {

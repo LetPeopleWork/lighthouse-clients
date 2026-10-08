@@ -8,12 +8,14 @@ import {
   describeBlackoutRuleCount,
   describeBlackoutRuleWriteConfirmation,
   describeBlockedDays,
+  describeBlockedNow,
   describeConnectionSummary,
   describeCycleTimeDays,
   describeDeliveryCount,
   describeDeliveryMetricsHeading,
   describeFeatureListCount,
   describeFeatureWorkItemsHeading,
+  describeInProgressNow,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
   describeMetricSummary,
@@ -33,8 +35,11 @@ import {
   describeWorkItemAgePercentiles,
   describeWorkTrackingSystemCount,
   getDefaultMetricsDateRange,
+  type InProgressNowView,
+  isMetricRefusal,
   LIGHTHOUSE_IS_REACHABLE,
   type MetricDayView,
+  type MetricLine,
   type MetricsDateRange,
   type MetricsScope,
   type OwnerKind,
@@ -55,11 +60,13 @@ import {
   readPortfolio,
   readProcessBehaviorOverTime,
   readRunChart,
+  readSystemWipLimit,
   readTeam,
   readTerms,
   readTimeInStateBar,
   readTimeInStateContributors,
   readTotalWorkItemAge,
+  readWip,
   readWorkItemAge,
   readWorkItemAgePercentiles,
   readWorkTrackingConnections,
@@ -138,6 +145,7 @@ export type McpToolDefinition = {
     | "lighthouse_portfolio_metrics_totalWorkItemAge"
     | "lighthouse_team_metrics_blockedCountHistory"
     | "lighthouse_portfolio_metrics_blockedCountHistory"
+    | "lighthouse_team_metrics_wip"
     | "lighthouse_team_metrics_percentilesOverTime"
     | "lighthouse_portfolio_metrics_percentilesOverTime"
     | "lighthouse_team_metrics_processBehaviorOverTime"
@@ -494,6 +502,16 @@ type McpRuntimeClient = {
   readonly getTeamBlockedCountHistory: (
     id: number,
     range?: { readonly startDate: string; readonly endDate: string },
+  ) => Promise<
+    | { readonly ok: true; readonly value: readonly unknown[] }
+    | {
+        readonly ok: false;
+        readonly error: { readonly category: string; readonly reason: string };
+      }
+  >;
+  readonly getTeamWip: (
+    id: number,
+    asOfDate: string,
   ) => Promise<
     | { readonly ok: true; readonly value: readonly unknown[] }
     | {
@@ -950,7 +968,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_blockedCountHistory",
     description:
-      "Get the blocked-items-over-time trend for a team by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the team's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
+      "Get the blocked-items-over-time trend for a team by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, call lighthouse_team_metrics_wip — each item carries isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -964,7 +982,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_blockedCountHistory",
     description:
-      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. To see what is blocked right now and for how long, read the portfolio's current WIP — each item carries isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
+      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. No tool reads what is blocked right now for a portfolio: name the command `lh metrics portfolio --metrics wip --id <id>`, whose items each carry isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1349,6 +1367,12 @@ const toolDefinitions: readonly McpToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "lighthouse_team_metrics_wip",
+    description:
+      "Get what a team has in progress right now by ID: each work item in progress today with its age (workItemAge), state, whether it is blocked (isBlocked) and since when (blockedSince), and its link (url). Use it for what is blocked or aging today; for how many were blocked on past days use lighthouse_team_metrics_blockedCountHistory. A second text block, `summary: …`, states the answer as lh does, in the instance's terminology: the heading, how many are in progress against the System WIP Limit, and how many are blocked; the first block is the facts, unchanged.",
+    inputSchema: idInputSchema,
+  },
 ];
 
 const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
@@ -1677,6 +1701,67 @@ const summariseTotalWorkItemAge =
         );
   };
 
+// The server answers with the bare list; the wording reads it in the shape lh's wip section carries it in.
+const readInProgressToday = (
+  items: unknown,
+  asOfDate: string,
+): InProgressNowView | null => {
+  const wip = readWip({
+    current: {
+      asOfDate,
+      count: Array.isArray(items) ? items.length : 0,
+      items,
+    },
+    overTime: { startDate: asOfDate, endDate: asOfDate, daily: [] },
+  });
+  return wip === null || isMetricRefusal(wip.current) ? null : wip.current;
+};
+
+const sentenceOf = (line: MetricLine): string =>
+  line.detail === ""
+    ? `${line.label}: ${line.value}`
+    : `${line.label}: ${line.value} (${line.detail})`;
+
+const summariseCurrentWip =
+  (today: string) =>
+  (
+    facts: unknown,
+    known: {
+      readonly wording: AnswerWording;
+      readonly systemWipLimit: number | undefined;
+    },
+  ): string | null => {
+    const now = readInProgressToday(facts, today);
+    if (now === null) {
+      return null;
+    }
+    const { terms } = known.wording;
+    const blocked = describeBlockedNow(now, "team", terms);
+    return linesOf(
+      describeAsOfHeading({ endDate: today }, known.wording),
+      sentenceOf(
+        describeInProgressNow(now, "team", terms, known.systemWipLimit),
+      ),
+      blocked === null ? null : sentenceOf(blocked),
+    );
+  };
+
+// One Team read serves both the heading's name and the System WIP Limit.
+const readCurrentWipContext = async (
+  client: McpRuntimeClient,
+  teamId: number,
+) => {
+  const team = client.getTeam(teamId);
+  const [wording, teamRead] = await Promise.all([
+    readAnswerWording(client, { term: "team", id: teamId, read: () => team }),
+    readForSummary(() => team),
+  ]);
+  return {
+    wording,
+    systemWipLimit: readSystemWipLimit(answeredValue(teamRead)),
+  };
+};
+
 // Only lh reads the Work Items Time in State can be narrowed to, so the bar is told without their count.
 const summariseTimeInState =
   (scope: MetricsScope, range: MetricsDateRange) =>
@@ -1966,6 +2051,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
   }),
+  lighthouse_team_metrics_wip: z.object({ id: z.number().int() }),
   lighthouse_team_metrics_percentilesOverTime: z.object({
     id: z.number().int(),
     startDate: isoDateStringSchema.optional(),
@@ -2366,6 +2452,20 @@ const answerToolCall =
         client.getPortfolioBlockedCountHistory(id, range),
         readMetricsWording(client, "portfolio", id),
         summariseBlocked("portfolio", summaryRange),
+      );
+    }
+
+    if (name === "lighthouse_team_metrics_wip") {
+      const id = getNumericId(argumentsPayload);
+      if (id === null) {
+        return getErrorToolResult("team metrics: invalid id");
+      }
+      const today = getDefaultMetricsDateRange().endDate;
+      return answerMetric(
+        metricLabels("team", "wip"),
+        client.getTeamWip(id, today),
+        readCurrentWipContext(client, id),
+        summariseCurrentWip(today),
       );
     }
 
