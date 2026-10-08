@@ -23,6 +23,23 @@ describe("resolveTerms", () => {
     },
   );
 
+  it.each([
+    { value: 7, defaultValue: "Story", says: "Story" },
+    { value: {}, defaultValue: "Story", says: "Story" },
+    { value: null, defaultValue: "Story", says: "Story" },
+    { value: 7, defaultValue: 7, says: "Work Item" },
+    { value: ["Ticket"], defaultValue: {}, says: "Work Item" },
+  ])(
+    "says '$says' when the instance value $value is not a word, over a default $defaultValue",
+    ({ value, defaultValue, says }) => {
+      const terms = resolveTerms([
+        entry("workItem", value as never, defaultValue as never),
+      ]);
+
+      expect(terms).toEqual({ ...SEEDED_TERMS, workItem: says });
+    },
+  );
+
   it("keeps every seeded word when there is no terminology to read", () => {
     expect(resolveTerms(null)).toEqual(SEEDED_TERMS);
     expect(Object.keys(SEEDED_TERMS)).toHaveLength(23);

@@ -213,6 +213,19 @@ export const isOutputFormatFlag = (
  */
 export type PrettyRenderer<TValue> = (value: TValue) => string | null;
 
+// A readable view is a convenience on top of the answer: when it cannot cope with what Lighthouse sent, the
+// command shows the answer in the generic view rather than failing.
+const renderedOrGeneric = <TValue>(
+  value: TValue,
+  renderPretty: PrettyRenderer<TValue> | undefined,
+): string => {
+  try {
+    return renderPretty?.(value) ?? formatPretty(value);
+  } catch {
+    return formatPretty(value);
+  }
+};
+
 export const formatPayload = <TValue>(
   value: TValue,
   outputFormat: OutputFormat,
@@ -228,7 +241,7 @@ export const formatPayload = <TValue>(
   }
 
   if (outputFormat === "pretty") {
-    return { ok: true, value: renderPretty?.(value) ?? formatPretty(value) };
+    return { ok: true, value: renderedOrGeneric(value, renderPretty) };
   }
 
   try {

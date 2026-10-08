@@ -331,3 +331,15 @@ describe("every converted lh form has a view of its own", () => {
     expect(pretty.stdout).not.toBe("success");
   });
 });
+
+describe("a pretty view that fails", () => {
+  it("falls back to the generic view instead of failing the command", () => {
+    const answer = { name: "Gravity", remainingItems: 25 };
+
+    const shown = formatPayload(answer, "pretty", () => {
+      throw new TypeError("cell.padEnd is not a function");
+    });
+
+    expect(shown).toEqual(formatPayload(answer, "pretty"));
+  });
+});

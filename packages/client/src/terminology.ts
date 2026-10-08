@@ -58,13 +58,23 @@ export const SEEDED_TERMS: Terms = {
 
 const TERMINOLOGY_KEYS = Object.keys(SEEDED_TERMS) as TerminologyKey[];
 
-/** The instance's words, a blank or missing one falling back to its entry's default, then the seeded word, as on the web. */
+const isWord = (value: unknown): value is string =>
+  typeof value === "string" && value.length > 0;
+
+/**
+ * The instance's words, a blank or missing one falling back to its entry's default, then the seeded word, as on
+ * the web. A value that is not text at all falls back the same way, so a view never prints a number or an object
+ * where a word belongs.
+ */
 export const resolveTerms = (
   entries: readonly TerminologyEntry[] | null,
 ): Terms => {
   const wordFor = (key: TerminologyKey): string => {
     const entry = entries?.find((candidate) => candidate.key === key);
-    return entry?.value || entry?.defaultValue || SEEDED_TERMS[key];
+    if (isWord(entry?.value)) {
+      return entry.value;
+    }
+    return isWord(entry?.defaultValue) ? entry.defaultValue : SEEDED_TERMS[key];
   };
   return Object.fromEntries(
     TERMINOLOGY_KEYS.map((key) => [key, wordFor(key)]),

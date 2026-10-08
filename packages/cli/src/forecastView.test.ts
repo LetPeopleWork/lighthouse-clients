@@ -320,6 +320,24 @@ describe("lh forecast manual --pretty", () => {
     );
   });
 
+  it("falls back to the seeded word when the instance's term is not a word", async () => {
+    const lighthouse = gravitysLighthouse({
+      getTerminology: ok(
+        terminology().map((entry) =>
+          entry.key === "workItems" ? { ...entry, value: 7 } : entry,
+        ),
+      ),
+    });
+
+    const result = await lighthouse.run(forTwentyFiveByEndOfOctober);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(shownLines(result.stdout)).toContain(
+      "When will 25 Work Items be done?",
+    );
+  });
+
   // A heading is never worth an error
   it("heads the forecast with the Team's id when its name cannot be read", async () => {
     const lighthouse = gravitysLighthouse({

@@ -5,6 +5,7 @@ import {
   oe002sWorkItems,
   ok,
   refused,
+  terminology,
   threeOceanExplorerFeatures,
 } from "../../../test-support/lighthouseAnswers";
 import {
@@ -31,6 +32,21 @@ describe("the Feature tools' summary", () => {
     });
 
     expect(result.isError).toBe(false);
+    expect(factsBlockOf(result)).toBe(
+      `features: ${encode(threeOceanExplorerFeatures() as never)}`,
+    );
+    expect(summaryBlockOf(result)).toBe("summary: 3 Features");
+  });
+
+  it("counts in the seeded word when the instance's term is not a word", async () => {
+    const result = await marcosAssistant({
+      getTerminology: ok(
+        terminology().map((entry) =>
+          entry.key === "features" ? { ...entry, value: {} } : entry,
+        ),
+      ),
+    }).call("lighthouse_feature_get", { refs: ["OE-001", "OE-002", "OE-007"] });
+
     expect(factsBlockOf(result)).toBe(
       `features: ${encode(threeOceanExplorerFeatures() as never)}`,
     );
