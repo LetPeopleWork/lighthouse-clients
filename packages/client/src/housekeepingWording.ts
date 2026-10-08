@@ -1,8 +1,6 @@
 import type { CliConnection, DayOfWeek, RecurringBlackoutRule } from "./index";
 import type { Terms } from "./terminology";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+import { isRecord } from "./wireFacts";
 
 const isStringList = (value: unknown): value is readonly string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === "string");

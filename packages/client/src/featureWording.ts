@@ -1,7 +1,7 @@
-import { formatCalendarDay } from "./calendarDates";
 import { CANNOT_FORECAST_SHORT } from "./forecastDisplayRules";
 import { NOT_SENT } from "./ownerWording";
 import type { Terms } from "./terminology";
+import { dayOf, expectedDateAt, isRecord, textOf } from "./wireFacts";
 
 /** When work on a Feature begins, as the server decided it: observed, forecast, or not known. */
 export type FeatureStart = {
@@ -24,12 +24,6 @@ export type FeatureListItem = {
 // The one chance of the four the list has room for, named in its heading.
 const LISTED_CHANCE = 85;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const textOf = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
-
 // The work arrives per Team; the Feature's own work is the sum. Null when any Team's share is not a number.
 const workOf = (value: unknown): number | null => {
   if (!isRecord(value)) {
@@ -42,16 +36,6 @@ const workOf = (value: unknown): number | null => {
   return (shares as number[]).reduce((sum, share) => sum + share, 0);
 };
 
-const listedDateOf = (chances: unknown): string | undefined => {
-  if (!Array.isArray(chances)) {
-    return undefined;
-  }
-  const listed = chances.find(
-    (entry) => isRecord(entry) && entry.probability === LISTED_CHANCE,
-  );
-  return isRecord(listed) ? textOf(listed.expectedDate) : undefined;
-};
-
 const startOf = (value: unknown): FeatureStart => {
   if (!isRecord(value)) {
     return { observedOn: undefined, likelyBy: undefined };
@@ -59,7 +43,7 @@ const startOf = (value: unknown): FeatureStart => {
   return {
     observedOn:
       value.source === "Observed" ? textOf(value.observedDate) : undefined,
-    likelyBy: listedDateOf(value.percentiles),
+    likelyBy: expectedDateAt(value.percentiles, LISTED_CHANCE),
   };
 };
 
@@ -91,7 +75,7 @@ const readFeatureListItem = (value: unknown): FeatureListItem | null => {
       Array.isArray(value.teamsWithoutForecast) &&
       value.teamsWithoutForecast.length > 0,
     start: startOf(value.startForecast),
-    likelyBy: listedDateOf(value.forecasts),
+    likelyBy: expectedDateAt(value.forecasts, LISTED_CHANCE),
   };
 };
 
@@ -127,8 +111,6 @@ export const describeFeatureListHeadings = (terms: Terms): string[] => [
   `Forecasted Completion (${LISTED_CHANCE}%)`,
   "State",
 ];
-
-const dayOf = (wire: string): string => formatCalendarDay(wire) ?? wire;
 
 const countOfWorkItems = (count: number, terms: Terms): string =>
   `${count} ${count === 1 ? terms.workItem : terms.workItems}`;

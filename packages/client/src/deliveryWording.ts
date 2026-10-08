@@ -1,4 +1,3 @@
-import { formatCalendarDay } from "./calendarDates";
 import {
   deliveryLikelihoodAnswer,
   formatLikelihood,
@@ -12,6 +11,7 @@ import type {
 } from "./index";
 import { describeOwnerName, NOT_SENT } from "./ownerWording";
 import type { Terms } from "./terminology";
+import { dayOf, expectedDateAt, isRecord, textOf } from "./wireFacts";
 
 /** One Delivery as its card's header states it. Facts an older Lighthouse may not send stay undefined. */
 export type DeliveryListItem = {
@@ -37,24 +37,8 @@ export type DeliveryListOwner = {
 // The one chance of the four the list has room for, named in its heading.
 const LISTED_CHANCE = 85;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const textOf = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
-
 const flagOf = (value: unknown): boolean | undefined =>
   typeof value === "boolean" ? value : undefined;
-
-const likelyByOf = (completionDates: unknown): string | undefined => {
-  if (!Array.isArray(completionDates)) {
-    return undefined;
-  }
-  const listed = completionDates.find(
-    (entry) => isRecord(entry) && entry.probability === LISTED_CHANCE,
-  );
-  return isRecord(listed) ? textOf(listed.expectedDate) : undefined;
-};
 
 const readDeliveryListItem = (value: unknown): DeliveryListItem | null => {
   if (
@@ -88,7 +72,7 @@ const readDeliveryListItem = (value: unknown): DeliveryListItem | null => {
       value.teamsWithoutForecast.length > 0,
     hasSufficientData: flagOf(value.hasSufficientData),
     isOverdue: flagOf(value.isOverdue),
-    likelyBy: likelyByOf(value.completionDates),
+    likelyBy: expectedDateAt(value.completionDates, LISTED_CHANCE),
   };
 };
 
@@ -137,8 +121,6 @@ export const describeDeliveryListHeadings = (terms: Terms): string[] => [
   "Likelihood",
   `Forecast ${LISTED_CHANCE}%`,
 ];
-
-const dayOf = (wire: string): string => formatCalendarDay(wire) ?? wire;
 
 /** How much of the Delivery's work is done: "34 of 55 Work Items". */
 export const describeDeliveryDone = (

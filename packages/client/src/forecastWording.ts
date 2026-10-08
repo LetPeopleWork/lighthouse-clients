@@ -1,9 +1,10 @@
 import type { AnswerWording } from "./answerWording";
-import { formatCalendarDay } from "./calendarDates";
 import {
+  INSUFFICIENT_FORECAST_DATA_SENTENCE,
   INSUFFICIENT_FORECAST_DATA_SHORT,
   likelihoodAnswer,
 } from "./forecastDisplayRules";
+import { dayOf, isDay, isNumber, isRecord } from "./wireFacts";
 
 /** One row of the When table: the chance of being done by a calendar day. */
 export type ForecastChanceByDay = {
@@ -29,20 +30,6 @@ export type ManualForecastView = {
   readonly hasSufficientData: boolean | undefined;
 };
 
-export const INSUFFICIENT_FORECAST_DATA_SENTENCE =
-  "Not enough data yet — need at least 5 days with completed items to forecast.";
-
-type Facts = Readonly<Record<string, unknown>>;
-
-const isFacts = (value: unknown): value is Facts =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const isNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-
-const isDay = (value: unknown): value is string =>
-  typeof value === "string" && formatCalendarDay(value) !== null;
-
 const optionalBoolean = (value: unknown): boolean | undefined | null => {
   if (value === undefined || typeof value === "boolean") {
     return value;
@@ -51,12 +38,12 @@ const optionalBoolean = (value: unknown): boolean | undefined | null => {
 };
 
 const readChanceByDay = (value: unknown): ForecastChanceByDay | null =>
-  isFacts(value) && isNumber(value.probability) && isDay(value.expectedDate)
+  isRecord(value) && isNumber(value.probability) && isDay(value.expectedDate)
     ? { probability: value.probability, expectedDate: value.expectedDate }
     : null;
 
 const readChanceOfCount = (value: unknown): ForecastChanceOfCount | null =>
-  isFacts(value) && isNumber(value.probability) && isNumber(value.value)
+  isRecord(value) && isNumber(value.probability) && isNumber(value.value)
     ? { probability: value.probability, value: value.value }
     : null;
 
@@ -75,7 +62,7 @@ const readEvery = <T>(
 export const readManualForecast = (
   value: unknown,
 ): ManualForecastView | null => {
-  if (!isFacts(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const { remainingItems, targetDate, likelihood } = value;
@@ -104,8 +91,6 @@ export const readManualForecast = (
     hasSufficientData,
   };
 };
-
-const dayOf = (wire: string): string => formatCalendarDay(wire) ?? wire;
 
 const countOf = (forecast: ManualForecastView, wording: AnswerWording) =>
   `${forecast.remainingItems} ${wording.terms.workItems}`;
@@ -183,7 +168,7 @@ export type BacktestView = {
 
 /** The backtest's facts, or null when one it cannot be stated without is missing or mistyped. */
 export const readBacktest = (value: unknown): BacktestView | null => {
-  if (!isFacts(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const { startDate, endDate, historicalStartDate, historicalEndDate } = value;

@@ -9,6 +9,9 @@ export const CANNOT_FORECAST_SHORT = "Cannot forecast";
 
 export const INSUFFICIENT_FORECAST_DATA_SHORT = "Not enough data";
 
+export const INSUFFICIENT_FORECAST_DATA_SENTENCE =
+  "Not enough data yet — need at least 5 days with completed items to forecast.";
+
 const RISKY_UP_TO = 50;
 const REALISTIC_UP_TO = 70;
 const CONFIDENT_UP_TO = 85;

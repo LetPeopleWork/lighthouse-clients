@@ -1,4 +1,5 @@
 import { isCalendarDay } from "./calendarDates";
+import { INSUFFICIENT_FORECAST_DATA_SENTENCE } from "./forecastDisplayRules";
 import type {
   LighthouseClient,
   RefinementNeed,
@@ -20,9 +21,6 @@ export type RefinementWording = {
   readonly teamName: string;
   readonly terms: RefinementTerms;
 };
-
-const NOT_ENOUGH_DATA =
-  "Not enough data yet — need at least 5 days with completed items to forecast.";
 
 const toRefinementTerms = (terms: Terms): RefinementTerms => ({
   workItem: terms.workItem,
@@ -222,7 +220,7 @@ const describeWhyNoNumber = (
     return `A ${terms.team} admin needs to choose ${terms.refinement.toLowerCase()} states first`;
   }
   if (refinement.need.unavailableReason === "InsufficientData") {
-    return NOT_ENOUGH_DATA;
+    return INSUFFICIENT_FORECAST_DATA_SENTENCE;
   }
   if (
     refinement.need.unavailableReason === "NoCadence" ||

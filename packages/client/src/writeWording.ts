@@ -1,6 +1,7 @@
 import type { RecurringBlackoutRule } from "./index";
 import type { OwnerKind } from "./ownerWording";
 import type { Terms } from "./terminology";
+import { isRecord, textOf } from "./wireFacts";
 
 /** What a write did, as its confirmation opens: "Created:", "Updated:" or "Deleted:". */
 export type WriteVerb = "Created" | "Updated" | "Deleted";
@@ -14,12 +15,6 @@ export type WrittenOwner = {
 /** The recurring blackout rule a write is confirmed for, with Lighthouse's own wording of its schedule. */
 export type WrittenBlackoutRule = Pick<RecurringBlackoutRule, "id"> &
   Partial<Pick<RecurringBlackoutRule, "summary" | "description">>;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const textOf = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
 
 /** The id and name a Team or Portfolio write answered with, or null when the answer does not say which it is. */
 export const readWrittenOwner = (value: unknown): WrittenOwner | null => {

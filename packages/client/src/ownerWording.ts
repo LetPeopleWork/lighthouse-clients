@@ -1,5 +1,6 @@
-import { formatCalendarDay, formatTimestamp } from "./calendarDates";
+import { formatTimestamp } from "./calendarDates";
 import type { Terms } from "./terminology";
+import { dayOf, isRecord, textOf } from "./wireFacts";
 
 /** What owns Features in Lighthouse: a Team or a Portfolio. */
 export type OwnerKind = "team" | "portfolio";
@@ -15,12 +16,6 @@ export type OwnerListItem = {
 
 /** A mark for a cell Lighthouse sent nothing for. */
 export const NOT_SENT = "—";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const textOf = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
 
 const tagsOf = (value: unknown): string[] =>
   Array.isArray(value)
@@ -211,13 +206,11 @@ const describeLimit = (
   many: string,
 ): string => (limit === undefined ? NOT_SET : countOf(limit, one, many));
 
-const describeDay = (wire: string): string => formatCalendarDay(wire) ?? wire;
-
 const describeThroughput = (dates: ThroughputDates | undefined): string => {
   if (dates === undefined) {
     return NOT_SENT;
   }
-  const span = `${describeDay(dates.start)} to ${describeDay(dates.end)}`;
+  const span = `${dayOf(dates.start)} to ${dayOf(dates.end)}`;
   if (dates.fixed === undefined) {
     return span;
   }

@@ -1,5 +1,4 @@
 import type { AnswerWording } from "./answerWording";
-import { formatCalendarDay } from "./calendarDates";
 import type {
   BlockedCountSnapshot,
   CumulativeStateTimeCandidateRow,
@@ -19,19 +18,9 @@ import type {
   WorkItemAgeOverTimeResult,
 } from "./index";
 import type { Terms } from "./terminology";
+import { dayOf, isDay, isNumber, isRecord, isText } from "./wireFacts";
 
 type Facts = Readonly<Record<string, unknown>>;
-
-const isFacts = (value: unknown): value is Facts =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const isNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-
-const isText = (value: unknown): value is string => typeof value === "string";
-
-const isDay = (value: unknown): value is string =>
-  isText(value) && formatCalendarDay(value) !== null;
 
 const readEvery = <T>(
   value: unknown,
@@ -51,11 +40,11 @@ export type MetricRefusal = { readonly refused: string };
 export type MetricAnswer<T> = T | MetricRefusal;
 
 export const isMetricRefusal = (value: unknown): value is MetricRefusal =>
-  isFacts(value) && isText(value.refused);
+  isRecord(value) && isText(value.refused);
 
 // The metrics command marks a refused or skipped read in place of its facts.
 const readRefusal = (value: unknown): MetricRefusal | null => {
-  if (!isFacts(value) || !isText(value.status) || !isText(value.reason)) {
+  if (!isRecord(value) || !isText(value.status) || !isText(value.reason)) {
     return null;
   }
   return {
@@ -84,10 +73,10 @@ export type MetricsSubject = {
 
 export const readMetricsSubject = (value: unknown): MetricsSubject | null => {
   if (
-    !isFacts(value) ||
+    !isRecord(value) ||
     !(value.scope === "team" || value.scope === "portfolio") ||
     !isNumber(value.id) ||
-    !isFacts(value.dateRange) ||
+    !isRecord(value.dateRange) ||
     !isDay(value.dateRange.startDate) ||
     !isDay(value.dateRange.endDate)
   ) {
@@ -113,14 +102,14 @@ export type DailyCountChartView = {
 };
 
 const readDailyCount = (value: unknown): DailyCount | null =>
-  isFacts(value) && isDay(value.date) && isNumber(value.count)
+  isRecord(value) && isDay(value.date) && isNumber(value.count)
     ? { date: value.date, count: value.count }
     : null;
 
 type DailyCountsView = Omit<DailyCountChartView, "total">;
 
 const readDailyCounts = (value: unknown): DailyCountsView | null => {
-  if (!isFacts(value) || !isDay(value.startDate) || !isDay(value.endDate)) {
+  if (!isRecord(value) || !isDay(value.startDate) || !isDay(value.endDate)) {
     return null;
   }
   const daily = readEvery(value.daily, readDailyCount);
@@ -131,7 +120,7 @@ const readDailyCounts = (value: unknown): DailyCountsView | null => {
 
 const readDailyCountChart = (value: unknown): DailyCountChartView | null => {
   const counts = readDailyCounts(value);
-  return counts === null || !isFacts(value) || !isNumber(value.total)
+  return counts === null || !isRecord(value) || !isNumber(value.total)
     ? null
     : { ...counts, total: value.total };
 };
@@ -159,7 +148,7 @@ export const readRunChart = (
   value: unknown,
   range: MetricsDateRange,
 ): DailyCountChartView | null => {
-  if (!isFacts(value) || !isFacts(value.workItemsPerUnitOfTime)) {
+  if (!isRecord(value) || !isRecord(value.workItemsPerUnitOfTime)) {
     return null;
   }
   const daily = readEvery(Object.entries(value.workItemsPerUnitOfTime), (day) =>
@@ -212,7 +201,7 @@ export type WipView = {
 };
 
 const readInProgressItem = (value: unknown): InProgressItem | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   (value.isBlocked === undefined || typeof value.isBlocked === "boolean")
     ? {
         isBlocked: value.isBlocked,
@@ -225,7 +214,7 @@ const readInProgressItem = (value: unknown): InProgressItem | null =>
     : null;
 
 const readInProgressNow = (value: unknown): InProgressNowView | null => {
-  if (!isFacts(value) || !isDay(value.asOfDate) || !isNumber(value.count)) {
+  if (!isRecord(value) || !isDay(value.asOfDate) || !isNumber(value.count)) {
     return null;
   }
   const items = readEvery(value.items, readInProgressItem);
@@ -235,7 +224,7 @@ const readInProgressNow = (value: unknown): InProgressNowView | null => {
 };
 
 export const readWip = (value: unknown): WipView | null => {
-  if (!isFacts(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const current = readMetricAnswer(value.current, readInProgressNow);
@@ -249,14 +238,14 @@ export type PercentileValue = {
 };
 
 const readPercentileValue = (value: unknown): PercentileValue | null =>
-  isFacts(value) && isNumber(value.percentile) && isNumber(value.value)
+  isRecord(value) && isNumber(value.percentile) && isNumber(value.value)
     ? { percentile: value.percentile, value: value.value }
     : null;
 
 const readPercentileValues = (
   value: unknown,
 ): readonly PercentileValue[] | null =>
-  isFacts(value) ? readEvery(value.values, readPercentileValue) : null;
+  isRecord(value) ? readEvery(value.values, readPercentileValue) : null;
 
 export type ClosedItem = {
   readonly id: number;
@@ -272,7 +261,7 @@ export type CycleTimeView = {
 };
 
 const readClosedItem = (value: unknown): ClosedItem | null =>
-  isFacts(value) && isNumber(value.id) && isText(value.name)
+  isRecord(value) && isNumber(value.id) && isText(value.name)
     ? {
         id: value.id,
         name: value.name,
@@ -283,10 +272,10 @@ const readClosedItem = (value: unknown): ClosedItem | null =>
     : null;
 
 const readClosedItems = (value: unknown): readonly ClosedItem[] | null =>
-  isFacts(value) ? readEvery(value.items, readClosedItem) : null;
+  isRecord(value) ? readEvery(value.items, readClosedItem) : null;
 
 export const readCycleTime = (value: unknown): CycleTimeView | null => {
-  if (!isFacts(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const percentiles = readMetricAnswer(value.percentiles, readPercentileValues);
@@ -301,7 +290,7 @@ export const readWorkItemAgePercentiles = readPercentileValues;
 export const readCycleTimePercentiles = readPercentileValues;
 
 const readWorkItemAgeEntry = (value: unknown): WorkItemAgeEntry | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isNumber(value.id) &&
   isText(value.name) &&
   isText(value.referenceId) &&
@@ -315,7 +304,7 @@ const readWorkItemAgeEntry = (value: unknown): WorkItemAgeEntry | null =>
     : null;
 
 const readDailyWorkItemAge = (value: unknown): DailyWorkItemAge | null => {
-  if (!isFacts(value) || !isDay(value.date)) {
+  if (!isRecord(value) || !isDay(value.date)) {
     return null;
   }
   const items = readEvery(value.items, readWorkItemAgeEntry);
@@ -325,7 +314,7 @@ const readDailyWorkItemAge = (value: unknown): DailyWorkItemAge | null => {
 const readDailyTotalWorkItemAge = (
   value: unknown,
 ): DailyTotalWorkItemAge | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isDay(value.date) &&
   isNumber(value.totalAge) &&
   isNumber(value.itemCount)
@@ -340,7 +329,7 @@ const readDailySeries = <T>(
   readonly endDate: string;
   readonly daily: readonly T[];
 } | null => {
-  if (!isFacts(value) || !isDay(value.startDate) || !isDay(value.endDate)) {
+  if (!isRecord(value) || !isDay(value.startDate) || !isDay(value.endDate)) {
     return null;
   }
   const daily = readEvery(value.daily, readDay);
@@ -365,7 +354,7 @@ export type PredictabilityScoreView = { readonly score: number | undefined };
 export const readPredictabilityScore = (
   value: unknown,
 ): PredictabilityScoreView | null => {
-  if (!isFacts(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   if (value.score === undefined || value.score === null) {
@@ -385,7 +374,7 @@ const readHistory = <T>(
   value: unknown,
   readEntry: (entry: unknown) => T | null,
 ): MetricHistoryView<T> | null => {
-  if (!isFacts(value) || !isDay(value.startDate) || !isDay(value.endDate)) {
+  if (!isRecord(value) || !isDay(value.startDate) || !isDay(value.endDate)) {
     return null;
   }
   const history = readEvery(value.history, readEntry);
@@ -395,7 +384,7 @@ const readHistory = <T>(
 };
 
 const readBlockedCount = (value: unknown): BlockedCountSnapshot | null =>
-  isFacts(value) && isDay(value.recordedAt) && isNumber(value.blockedCount)
+  isRecord(value) && isDay(value.recordedAt) && isNumber(value.blockedCount)
     ? { recordedAt: value.recordedAt, blockedCount: value.blockedCount }
     : null;
 
@@ -407,7 +396,7 @@ const isPercentilesMetricType = (
 const readPercentilesSnapshot = (
   value: unknown,
 ): PercentilesOverTimeSnapshot | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isDay(value.recordedAt) &&
   isPercentilesMetricType(value.metricType) &&
   isNumber(value.p50) &&
@@ -427,7 +416,7 @@ const readPercentilesSnapshot = (
 const readProcessBehaviorSnapshot = (
   value: unknown,
 ): ProcessBehaviorSnapshot | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isDay(value.recordedAt) &&
   isNumber(value.unpl) &&
   isNumber(value.average) &&
@@ -455,7 +444,7 @@ export const readPercentilesOverTime = (
   value: unknown,
 ): PercentilesOverTimeView | null => {
   const view = readHistory(value, readPercentilesSnapshot);
-  return view === null || !isFacts(value)
+  return view === null || !isRecord(value)
     ? null
     : { ...view, horizon: isNumber(value.horizon) ? value.horizon : undefined };
 };
@@ -477,7 +466,7 @@ const STATE_ROW_COUNTS = [
 ] as const;
 
 const readStateRow = (value: unknown): CumulativeStateTimeStateRow | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isText(value.state) &&
   STATE_ROW_COUNTS.every((field) => isNumber(value[field])) &&
   (value.medianDays === null || isNumber(value.medianDays))
@@ -487,7 +476,7 @@ const readStateRow = (value: unknown): CumulativeStateTimeStateRow | null =>
 const readCandidateRow = (
   value: unknown,
 ): CumulativeStateTimeCandidateRow | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isNumber(value.workItemId) &&
   isText(value.referenceId) &&
   isText(value.title) &&
@@ -498,7 +487,7 @@ const readCandidateRow = (
 const readContributorRow = (
   value: unknown,
 ): CumulativeStateTimeItemRow | null =>
-  isFacts(value) &&
+  isRecord(value) &&
   isNumber(value.workItemId) &&
   isText(value.referenceId) &&
   isText(value.title) &&
@@ -511,14 +500,14 @@ const readContributorRow = (
     : null;
 
 const readStates = (value: unknown): CumulativeStateTimeResult | null => {
-  const states = isFacts(value) ? readEvery(value.states, readStateRow) : null;
+  const states = isRecord(value) ? readEvery(value.states, readStateRow) : null;
   return states === null ? null : { states };
 };
 
 const readCandidates = (
   value: unknown,
 ): CumulativeStateTimeCandidatesResult | null => {
-  const items = isFacts(value)
+  const items = isRecord(value)
     ? readEvery(value.items, readCandidateRow)
     : null;
   return items === null ? null : { items };
@@ -527,7 +516,7 @@ const readCandidates = (
 const readContributors = (
   value: unknown,
 ): CumulativeStateTimeItemsResult | null => {
-  if (!isFacts(value) || !isText(value.state)) {
+  if (!isRecord(value) || !isText(value.state)) {
     return null;
   }
   const items = readEvery(value.items, readContributorRow);
@@ -550,7 +539,7 @@ export type CumulativeStateTimeView = {
 export const readCumulativeStateTime = (
   value: unknown,
 ): CumulativeStateTimeView | null => {
-  if (!isFacts(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const bar = readMetricAnswer(value.bar, readStates);
@@ -566,7 +555,7 @@ export const readCumulativeStateTime = (
 
 /** The Team's or Portfolio's System WIP Limit; absent when none is set, as the web leaves it out. */
 export const readSystemWipLimit = (value: unknown): number | undefined =>
-  isFacts(value) && isNumber(value.systemWIPLimit) && value.systemWIPLimit >= 1
+  isRecord(value) && isNumber(value.systemWIPLimit) && value.systemWIPLimit >= 1
     ? value.systemWIPLimit
     : undefined;
 
@@ -576,14 +565,14 @@ export const readCycleTimeDefinitionName = (
   definitionId: number,
 ): string | undefined => {
   const definitions =
-    isFacts(settings) && Array.isArray(settings.cycleTimeDefinitions)
+    isRecord(settings) && Array.isArray(settings.cycleTimeDefinitions)
       ? settings.cycleTimeDefinitions
       : [];
   const named: unknown = definitions.find(
     (definition: unknown) =>
-      isFacts(definition) && definition.id === definitionId,
+      isRecord(definition) && definition.id === definitionId,
   );
-  return isFacts(named) &&
+  return isRecord(named) &&
     typeof named.name === "string" &&
     named.name.trim() !== ""
     ? named.name
@@ -675,8 +664,6 @@ export const describeUnknownMetric = (label: string): MetricLine => ({
   value: "",
   detail: UNKNOWN_SHAPE_NOTE,
 });
-
-const dayOf = (wire: string): string => formatCalendarDay(wire) ?? wire;
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
