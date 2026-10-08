@@ -323,6 +323,8 @@ Users ask naturally ("tell me about the Mars Colonization Feature"). Claude hand
 
 `references/tools-and-commands.md` says when to use each of these and what their parameters mean.
 
+**Explaining what Lighthouse shows.** Explain it in Lighthouse's words, from the numbers the read returns. Whenever the user asks what something on the Refinement tab means (the need band, Below, In or Above range, why there is no number, the yardstick, readiness), read the Refinement section of `references/lighthouse-mechanics.md`; for a Delivery's history or filled-in past days, read the same file. Whenever they ask about a signal type (Large Change, Moderate Change, Moderate Shift, Small Shift), a baseline, the over-time charts, SLE Risk, Blocked, Stale, Flow Efficiency, Time in State, Features Worked On, Load Balance or named Cycle Times, read `references/flow-metrics.md`.
+
 ### Refinement votes — ask first, ask the name
 
 A vote or comment is the **user's own** judgement, recorded under their name. Never vote or comment on your own initiative or on someone else's behalf. Show the user the Work Item, the answer (`Yes`, `YesBut` for "Yes, if…", or `No`) and any comment you intend to send, and call only after they explicitly confirm. A `YesBut` needs its condition in `comment`. Without sign-in Lighthouse needs the user's name: **ask the user for it** and pass it as `voterName`; never infer it from the system, an account or earlier messages. Quote the tool's `summary`. Without sign-in a take-back only removes a vote cast from the same machine; when there is none it says so.
@@ -330,6 +332,8 @@ A vote or comment is the **user's own** judgement, recorded under their name. Ne
 ### Usage data — the user's choice, never yours
 
 **Never run `lh config usage-data on` or `lh config usage-data off` unless the user asked for exactly that.** Whether usage data is sent is the user's own decision. `lh config usage-data` on its own only shows the answer and is safe to run. Never set or unset `DO_NOT_TRACK` on the user's behalf either, nor `LIGHTHOUSE_USAGE_DATA`: that one switches a shared MCP server on for everyone it serves, and only whoever runs that server decides it. The local MCP server may put the same question to the user once, through the assistant's own prompt; that answer is theirs, so never answer it or suggest one.
+
+When the user asks whether to say yes, inform and link, and leave the answer to them. Say what is sent: which parts of Lighthouse and `lh` get used (for example that a forecast was run by hand), and the instance's version, how it is deployed and its licence tier. Say what is never sent: no Work Item titles, identifiers or descriptions; no Team, Portfolio or Delivery names or identifiers; no user names, email addresses or account identifiers; no free text or anything typed; no IP address and no location. Link https://docs.lighthouse.letpeople.work/settings/usagedata.html for the full account. Recommend neither answer.
 
 ### `lighthouse_feature_get` — correct usage
 

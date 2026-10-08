@@ -11,6 +11,9 @@ How Lighthouse works under the hood — forecasting model, widget details, and s
 6. [Blackout Periods](#blackout-periods)
 7. [Widget Reference](#widget-reference)
 8. [Data Requirements and FAQ](#data-requirements)
+9. [Refinement](#refinement): the need band, the verdict, why there is no number, the yardstick, readiness
+10. [Delivery History](#delivery-history)
+11. [Filling in Past Days (Preview)](#filling-in-past-days-preview)
 
 ---
 
@@ -165,6 +168,11 @@ Quick reference for each Lighthouse metric widget. To read one through the clien
 | Simplified CFD | CT, WIP, Throughput | Teams, Portfolios | Is our flow balanced? |
 | Total Work Item Age | Work Item Age, WIP | Teams, Portfolios | What's our total WIP burden? |
 | Time in State | Cycle Time, Work Item Age | Teams, Portfolios | In which workflow state do Work Items spend their time? |
+| SLE Risk | Work Item Age | Teams | Which Work Items in progress are likely to go past the SLE? |
+| Stale Items | Work Item Age | Teams, Portfolios | Which Work Items sit still without anyone flagging them? |
+| Flow Efficiency | Cycle Time, Work Item Age | Teams, Portfolios | How much of the time is waiting? |
+| Features Worked On | WIP | Teams | How many Features have a Work Item in progress? |
+| Load Balance Matrix | WIP, Total Work Item Age | Teams, Portfolios | Should we start more, or finish first? |
 | Blocked Over Time | WIP | Teams, Portfolios | How many Work Items were Blocked, day by day? |
 | Percentiles and Process Limits Over Time | Cycle Time, Work Item Age, Throughput, WIP | Teams, Portfolios | Has our Cycle Time or our process shifted, and when? |
 | Feature Size | CT, Age, Throughput | Portfolios | How big are our features and how long do they take? |
@@ -182,3 +190,54 @@ Quick reference for each Lighthouse metric widget. To read one through the clien
 **Story Points:** Not supported. By design. Throughput (count of items) with Monte Carlo produces more reliable forecasts than point-based estimation. The evidence for this is extensive — see Daniel Vacanti's work and the ProKanban.org resources.
 
 **Feature-level forecasting:** Lighthouse measures throughput in days. Most teams don't close features every day, so feature-level throughput has too many zero days for reliable MCS. Always forecast at the work item level.
+
+---
+
+## Refinement
+
+The Refinement tab lists the Work Items in the Team's refinement states and answers one question before the next Refinement: are enough of them ready? Read it with `lighthouse_team_refinement_get` (or `lh refinement get --team-id <id> --json`), quote its `summary`, and explain it from the fields below. Never work a number out yourself.
+
+**The need band.** `need.low` to `need.high` is the range of Work Items the Team is likely to pull until the Refinement after the next one (on a Refinement day, until the next one). It is the manual How Many forecast over the Team's Throughput, read at `need.lowPercentile` (50% unless a Team admin changed it) and `need.highPercentile` (85% unless changed): above the high end there is only a 15% chance the Team pulls that many.
+
+**The verdict** compares the ready count (`readyCount`) with the band:
+- **Below**: fewer ready than `need.low`. "Refine 2 to 5 more" is `need.low` and `need.high` minus the ready count.
+- **In**: between `need.low` and `need.high`, both included. "Nothing more needs refining by then."
+- **Above**: more ready than `need.high`. "Stop refining: nothing more is needed by then." Explain it with the Team's numbers: more Work Items are ready (for example 11) than the Team is likely to pull before the Refinement after the next one (6 to 9), so the extra ready Work Items will wait. Above range is not an achievement. Never call it a success, being ahead, or a job well done; Lighthouse says "stop" as plainly as "refine more".
+
+**No number, and its fix.** When `need.unavailableReason` is set there is no band and no verdict. Say why and name the fix; state no number of your own and never estimate one from Throughput:
+- `NoRefinementStates`: the Team has no refinement states. "A Team admin needs to choose refinement states first", in the Team's settings under Refinement.
+- `NoCadence`: the Team has no Refinement cadence. "A Team admin can set a Refinement cadence to see how many Work Items are needed", in the Team's settings.
+- `InsufficientData`: "Not enough data yet — need at least 5 days with completed items to forecast."
+
+**The yardstick** is what votes are cast against, in `yardstick.source`:
+- `Sle`: the Team's SLE. The vote asks "Doable within 7 days?" with the SLE's days.
+- `CycleTimeFallback`: the Team has no SLE, so Lighthouse uses the 85th percentile of the Team's default Cycle Time over its Throughput history: "No SLE set, based off 85% of historical cycle time". Setting an SLE gives the better yardstick.
+- `Unavailable`: neither is there, and there is no number to vote against.
+
+**Readiness.** `readySource` says what the ready count follows: `Votes`, or `Stages` once the Team sets a stage rule. A Work Item's stage is Waiting, Being refined or Ready. A stage rule that matches decides the stage and the readiness, and votes cannot lift or sink it. Otherwise a Work Item is Ready by votes when enough voters said Yes or "Yes, if…". Each row's `readiness`, as the tab words it:
+- `Ready`: "Ready".
+- `MoreYesNeeded`: "2 more Yes needed", with the count from `missingVotes`.
+- `MoreVotersNeeded`: "2 more voters needed", with the count from `missingVotes`.
+- `NeedsDiscussion`: "Needs discussion": too many No answers, or No and "Yes, if…" answers together.
+
+`signalsDisagree` marks a row whose stage and votes tell a different story. Tallies are counts: never say who voted what.
+
+---
+
+## Delivery History
+
+A Delivery's Metrics tab answers "how has the picture changed, and is it getting better or worse?". It builds forward from the day the Delivery was created, one snapshot a day, so a new Delivery has little to show for a day or two. Read it with `lighthouse_delivery_metrics`.
+- **Burnup**: total scope against what is done. A dashed Estimated line means some Features are not broken down yet.
+- **Predictability**: *How Likely?* is the chance of hitting the target date on each day; *When?* is the 50th, 70th, 85th and 95th percentile dates against the target. A moved target date steps the target line on the day it changed; it never rewrites the past.
+- **Fever Chart**: each Feature on a schedule-against-confidence plot, and the trail of how it moved.
+- **Features over Time**: which Feature grew, and when. A hatched band is still the Portfolio's default estimate rather than counted Work Items.
+
+---
+
+## Filling in Past Days (Preview)
+
+Percentiles Over Time and PBC Over Time record one point a day. "Fill in past days on over-time charts" lets Lighthouse work the missing days out from the Work Items it already stores. It is a Preview, on by default, and only a System Admin can switch it.
+- It runs in the background when a chart is opened; the filled days appear the next time the chart is opened, up to 90 days per visit, oldest first.
+- It fills missing days only, and only where the stored history reaches.
+- A filled day is worked out against today's configuration, so it may differ from what would have been recorded on that day.
+- Switching it off stops further filling, but the days already filled stay: they cannot be told apart from recorded ones.

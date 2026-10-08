@@ -6,9 +6,11 @@ This reference covers the foundational flow metrics as defined in the Kanban Gui
 1. [The Four Flow Metrics](#the-four-flow-metrics)
 2. [Service Level Expectations (SLE)](#service-level-expectations)
 3. [Process Behaviour Charts (PBCs)](#process-behaviour-charts)
-4. [Predictability and What Drives It](#predictability)
-5. [Little's Law](#littles-law)
-6. [Arrival Rate and Started vs. Closed](#arrival-rate)
+4. [Percentiles and PBC Over Time](#percentiles-and-pbc-over-time)
+5. [Predictability and What Drives It](#predictability)
+6. [Little's Law](#littles-law)
+7. [Arrival Rate and Started vs. Closed](#arrival-rate)
+8. [Newer Widgets](#newer-widgets): SLE Risk, Blocked, Stale, Flow Efficiency, Time in State, Features Worked On, Load Balance, named Cycle Times
 
 ---
 
@@ -98,22 +100,42 @@ Look at your cycle time percentiles. Pick a percentile and time that reflects a 
 PBCs help distinguish normal variation from special causes — signals that something has fundamentally changed in your system.
 
 **How they work:**
-- A baseline period establishes the average and Natural Process Limits (UNPL/LNPL)
-- Data points outside the limits, or patterns within them, indicate special causes
-- Lighthouse provides PBCs for: Cycle Time, Throughput, Total Work Item Age, WIP, and Feature Size
+- A baseline period establishes the average and the Natural Process Limits (UNPL/LNPL)
+- Lighthouse provides PBCs for Cycle Time, Throughput, Total Work Item Age, WIP, Arrivals and, on a Portfolio, Feature Size
 
-**Special cause rules (chips in Lighthouse):**
-- **Large Change:** A data point beyond the Natural Process Limits
-- **Trends and runs:** Extended sequences above or below the average
+**The four signal types.** Lighthouse marks special causes with four chips. Use exactly these names and never invent others:
+- **Large Change**: "A single point outside the natural process limits indicates an assignable cause with a dominant effect."
+- **Moderate Change**: "Two out of three successive values beyond one of the two sigma lines (on the same side of the average) signal a moderate process change."
+- **Moderate Shift**: "Four out of five successive values beyond one of the one sigma lines (on the same side of the average) signal a moderate, sustained shift."
+- **Small Shift**: "Eight successive values on the same side of the average signal a small, sustained shift in the process."
+
+A signal shows that something moved, not what moved it. Ask what changed around that time; never name a cause the data does not show.
+
+**Status:** Act when no baseline is configured or a Large Change is detected; Observe on a Moderate Change (and no Large Change); Sustain when a baseline is configured and no special cause is detected.
+
+**The baseline matters.** "These charts need a baseline to work." It is set in the Team or Portfolio settings. Without one, Lighthouse uses the selected date range as the baseline, so the limits move whenever the range does. Limits mean little without a baseline: say so whenever you read a signal off a chart that has none.
 
 **How to use them:**
 - If all data is within limits with no patterns → your process is stable (predictable)
 - If there are special causes → investigate. Something changed. Was it intentional?
 - Don't react to normal variation. The whole point of PBCs is to stop overreacting to noise.
 
-**Baseline matters:** Lighthouse lets you set a baseline period in team/portfolio settings. Without a baseline, it uses the currently selected date range. Setting an explicit baseline is strongly recommended for meaningful PBC analysis.
-
 **Reference:** Deming Alliance resources, Daniel Vacanti's "Actionable Agile Metrics for Predictability Volume II"
+
+---
+
+## Percentiles and PBC Over Time
+
+**Percentiles Over Time.** "The percentile widgets tell you where you stand *today*. This chart tells you which way you are moving": Lighthouse records the 50th, 70th, 85th and 95th percentile once per day. Its toggle shows Work Item Age, or Cycle Time over the trailing 30 (the default), 60 or 90 days. "If the short horizon moves and the long one does not, you are looking at something recent." A day with nothing to measure draws no point, not a zero. It has no status indicator: it shows a direction of travel. Read it with `lighthouse_team_metrics_percentilesOverTime` or `lighthouse_portfolio_metrics_percentilesOverTime`.
+
+**PBC Over Time.** It "tells you whether your system's idea of 'normal' is itself moving": Lighthouse records the average and both natural process limits once per day, for Throughput, Work Item Age, WIP, Cycle Time, Arrivals and, on a Portfolio, Feature Size.
+- The band widens: variability is growing, and forecasts built on it get less useful.
+- The band narrows: variability is shrinking and the process is becoming more predictable.
+- The whole band shifts up or down: the average level moved. With the signals on the point-in-time chart, this is how to tell whether a change stuck.
+
+Without a fixed baseline the limits move as a rolling window slides, "for reasons that have nothing to do with your process". On a fixed baseline, movement in this chart is a real signal. Read it with `lighthouse_team_metrics_processBehaviorOverTime` or `lighthouse_portfolio_metrics_processBehaviorOverTime`.
+
+Both charts can show past days Lighthouse worked out afterwards; see "Filling in past days (Preview)" in `lighthouse-mechanics.md`.
 
 ---
 
@@ -161,3 +183,37 @@ Practical implications:
 - Started < Closed → WIP is decreasing → draining the system
 
 **Practical advice:** Use the daily average from this widget to calibrate how much work to pull into your system. If you close 1.1 items per day on average, prepare roughly 5-6 items per week — not 15.
+
+---
+
+## Newer Widgets
+
+Explain these as Lighthouse defines them, in the words each tool's `summary` uses. The quoted sentences are Lighthouse's own.
+
+### SLE Risk
+Teams only. A Work Item's SLE Risk answers one question: "of every item that was still open at this age, what share went on to take longer than the target?" Say it that way, with the SLE's days from `lighthouse_team_get`. For example, on a Team whose SLE is 7 days, an SLE Risk of 78% on a Work Item means that 78% of the Team's finished Work Items that were still open at that Work Item's age went on past 7 days.
+- A Work Item counts as at risk from 70%. That line is fixed and the same for every Team. The SLE Risk widget counts the Work Items at risk; its status comes from the SLE's probability: an 85% SLE accepts that 15% will miss.
+- A Work Item older than the SLE reads 100%: the miss has already happened.
+- It rests on the Team's finished history, not on the date range, and uses the SLE's days only, not its probability.
+- A thin history "reads as a cliff rather than a curve": 0% up to the SLE, 100% the day after. Where few finished Work Items reached that age, one more finishing moves the share a lot. Say how many it rests on when the read tells you.
+
+### Blocked
+The Blocked Overview counts the Work Items that were Blocked on the last day of the selected range; "the target is always zero blocked items". Blocked Over Time plots how many were Blocked on each recorded day; its history begins when the instance started recording, not before. Read the history with `lighthouse_team_metrics_blockedCountHistory` or `lighthouse_portfolio_metrics_blockedCountHistory`, and what is Blocked right now with `lh metrics team --id <id> --metrics wip`.
+
+### Stale
+The Stale Items Overview counts the Work Items in progress that "had been sitting in their current state longer than the configured staleness threshold — items that may be silently stuck even though no one flagged them". The threshold is days, set in the Team or Portfolio settings. A Blocked Work Item is never also counted as Stale. The target is zero.
+
+### Flow Efficiency
+"The share of time your work spends actively progressing versus waiting." Time in a wait state counts as waiting, all other Doing time as active, so it reads *Not configured* until the Team or Portfolio marks at least one wait state. Higher is better: below 40% is Act, 40% to 60% Observe, 60% or more Sustain.
+
+### Time in State
+Cumulative Time per State shows "how much total time your work spends in each workflow state". Each bar is a Doing state, split into time from Work Items that have left it and time still accumulating. One state holding more than 60% of the time is Act, 40% to 60% Observe. Read it with `lighthouse_team_metrics_cumulativeStateTime` or `lighthouse_portfolio_metrics_cumulativeStateTime`.
+
+### Features Worked On
+Teams only: "how many parent features currently have at least one child item in progress", against the Team's Feature WIP. More Features worked on than the Feature WIP is Act.
+
+### Load Balance
+The Load Balance Matrix shows "current load and short-term inventory risk in a single view": Total Work Item Age across, WIP up, divided by the baseline averages of the WIP and Total Work Item Age PBCs. One point is the selected end date; five more project the next days, with WIP held and Total Work Item Age growing by the WIP each day. It "intentionally favors a slightly higher-than-average WIP while keeping Total Work Item Age below average". Act when the baseline is missing or Total Work Item Age is above its baseline average: close work before starting new things.
+
+### Named Cycle Times (Premium)
+The default Cycle Time runs from the first Doing state to Done. A named Cycle Time is another window the Team or Portfolio defines, for example from the backlog onward. On a named Cycle Time the percentiles recompute over that window and the status goes neutral, because the SLE targets the default Cycle Time. Never judge a named Cycle Time against the SLE.
