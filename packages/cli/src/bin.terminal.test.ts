@@ -178,6 +178,17 @@ describe("lh at a full terminal", () => {
     expect(await theStoredAnswerFor(lena, lighthouse.url)).toBeUndefined();
   });
 
+  it("takes the end of input at the question as no answer, and keeps nothing", async () => {
+    const lighthouse = await aFakeLighthouse();
+    const lena = await connectedTo(aMachine(), lighthouse.url);
+    aPersonWho((reader) => reader.close());
+
+    const run = await lhInATerminal(lena);
+
+    expect(run.exitCode).toBe(0);
+    expect(await theStoredAnswerFor(lena, lighthouse.url)).toBeUndefined();
+  });
+
   it.each(STREAMS)(
     "does not ask when %s is not a terminal",
     async (notATerminal) => {

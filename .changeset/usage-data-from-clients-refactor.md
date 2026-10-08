@@ -10,3 +10,4 @@ The reporter test drops a token check that could not fail; lh's own tests check 
 lh's tests pin its config file, terminal question, credentials and certificate checks.
 The client's tests pin its usage data calls, answers file and reporter outcomes.
 The MCP servers' tests pin how they resolve their Lighthouse and settle usage data.
+lh's tests count a scripted forecast and take end of input at the question as no answer.

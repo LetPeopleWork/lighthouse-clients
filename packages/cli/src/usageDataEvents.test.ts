@@ -105,6 +105,30 @@ describe("each mapped command reports its web event once, after it succeeded", (
     expect(lighthouse.handedIn()[0]?.token).toBe(LENAS_TOKEN);
   });
 
+  // Scripts read the forecast as --json or --toon; it counts the same as the forecast a person reads.
+  it.each(["--json", "--toon"])(
+    "lh forecast manual %s reports TeamManualForecastRun from the command line",
+    async (format) => {
+      const lighthouse = await aFakeLighthouse();
+      const lena = await lenaWhoSaidYes(lighthouse);
+
+      const run = await lhAt(lena).run([
+        "forecast",
+        "manual",
+        "--team-id",
+        "3",
+        "--remaining",
+        "25",
+        format,
+      ]);
+
+      expect(run.exitCode).toBe(0);
+      expect(reported(lighthouse)).toEqual([
+        aBatchOf("Cli", { name: "TeamManualForecastRun" }),
+      ]);
+    },
+  );
+
   // @US-04 @driving_port @real-io @adapter-integration @kpi @contract-shape:bounded-change
   // The cross-repository contract, consumer side: lh sends exactly the body Lighthouse's own test posts.
   it("reports a Refinement-day vote that made GR-061 Ready as exactly the batch Lighthouse's own test takes in", async () => {
