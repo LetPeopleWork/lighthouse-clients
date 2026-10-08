@@ -6,7 +6,8 @@ description: >
   connect an assistant to a Lighthouse instance, shares a Lighthouse screenshot, or asks a flow question
   about a Team or Portfolio they track in Lighthouse: when Work Items or a Feature will be done, how long
   one Work Item will take, Cycle Time, Throughput, WIP, Work Item Age, Blocked, SLE, predictability or
-  process behaviour charts. Not for: preparing or running Refinement (the Lighthouse Refinement skill);
+  process behaviour charts. Not for: preparing or running Refinement, such as whether the Team is ready or how many more
+  Work Items to refine (the lighthouse-refinement skill);
   running the daily or deciding what to do today (the Lighthouse Daily Flow Review skill); metrics from a
   file the person brought, such as a CSV export of their board (work from the file; the ProKanban skill
   does that); or anything that is not a flow question, such as planning someone's week.
@@ -424,6 +425,7 @@ Answer with what Lighthouse has: Throughput for a stated period (`lighthouse_tea
 | "Great, Throughput is up 40%!" | "Did the Work Items get smaller? Check that before celebrating." |
 | "Kanban forbids expedite lanes." | "An expedite lane ages everything else. Want to see by how much?" |
 | "Who is working on this and why isn't it done?" | "What would help this Work Item finish?" |
+| Preparing the Refinement here: whether the Team is ready, what to refine next | Hand it to the lighthouse-refinement skill; here, only explain what the Refinement tab shows |
 
 ### Before you answer, check
 
