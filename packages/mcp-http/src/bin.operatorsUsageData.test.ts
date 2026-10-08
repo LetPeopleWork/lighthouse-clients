@@ -67,4 +67,47 @@ describe("operatorsUsageDataPort", () => {
     ]);
     expect(ask).not.toHaveBeenCalled();
   });
+
+  it.each<[string, number, number]>([
+    ["a minute short of an hour", 59, 1],
+    ["a full hour", 60, 2],
+  ])(
+    "after a refusal, reads the state again only once %s has passed",
+    async (_after, minutesLater, readsExpected) => {
+      let reads = 0;
+      const vetoed: UsageDataLighthouse = {
+        getUsageDataState: async () => {
+          reads += 1;
+          return {
+            ok: true,
+            value: {
+              decision: null,
+              mayAsk: true,
+              administratorDisabled: true,
+              acceptedSources: ["Browser", "Cli", "Mcp"],
+            },
+          };
+        },
+        grantUsageData: async () => ({ ok: true, value: "never-minted" }),
+        handInUsageData: async () => ({ ok: true, value: undefined }),
+      };
+      let clock = new Date("2026-10-08T09:00:00Z");
+      const port = operatorsUsageDataPort({
+        lighthouse: vetoed,
+        env: {},
+        now: () => clock,
+      });
+      const aRefresh = {
+        reached: true,
+        occurrences: [{ name: "TeamRefreshTriggered" }],
+      } as const;
+
+      await port(aRefresh);
+      clock = new Date(clock.getTime() + minutesLater * 60_000);
+      await port(aRefresh);
+      await aMoment(20);
+
+      expect(reads).toBe(readsExpected);
+    },
+  );
 });

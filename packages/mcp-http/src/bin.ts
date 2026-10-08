@@ -12,8 +12,8 @@ import {
   type StoredUsageDataAnswer,
   settleUsageDataStep,
   switchUsageDataOn,
+  type UsageDataLighthouse,
   type UsageDataReporterDependencies,
-  type UsageDataStep,
 } from "@letpeoplework/lighthouse-client";
 import {
   type McpUsageDataPort,
@@ -341,10 +341,63 @@ export type OperatorsUsageDataDependencies = Pick<
   "lighthouse" | "env" | "now"
 >;
 
+// Without a grant, Lighthouse's state is looked at no more than once an hour, so a lifted veto still takes
+// effect without a restart and a vetoing Lighthouse is not asked on every tool call.
+const STATE_REREAD_INTERVAL_MS = 60 * 60 * 1000;
+
+type SwitchingOn = {
+  /** Settles once the state read has decided: when a grant is requested, or when the attempt ends. */
+  readonly decided: Promise<void>;
+  readonly on: Promise<boolean>;
+};
+
+const NOT_DUE: SwitchingOn = {
+  decided: Promise.resolve(),
+  on: Promise.resolve(false),
+};
+
+/**
+ * One attempt to switch on, telling the state read a caller waits for apart from the grant it never waits
+ * for. A refusal is handed to `whenRefused` before anyone waiting hears the attempt has decided.
+ */
+const attemptToSwitchOn = (
+  reporter: UsageDataReporterDependencies,
+  whenRefused: () => void,
+): SwitchingOn => {
+  let markDecided = (): void => undefined;
+  const decided = new Promise<void>((resolve) => {
+    markDecided = resolve;
+  });
+  const { lighthouse } = reporter;
+  const watched: UsageDataLighthouse = {
+    getUsageDataState: (options) => lighthouse.getUsageDataState(options),
+    grantUsageData: (options) => {
+      markDecided();
+      return lighthouse.grantUsageData(options);
+    },
+    handInUsageData: (batch, options) =>
+      lighthouse.handInUsageData(batch, options),
+  };
+  const on = switchUsageDataOn({ ...reporter, lighthouse: watched })
+    .then(
+      (outcome) => outcome === "on",
+      () => false,
+    )
+    .then((switchedOn) => {
+      if (!switchedOn) {
+        whenRefused();
+      }
+      return switchedOn;
+    })
+    .finally(markDecided);
+  return { decided, on };
+};
+
 /**
  * Usage data as the operator switched it on for everyone the shared server serves: nobody is asked, and one
  * grant is requested for the whole process on the first thing worth counting, however many callers arrive
- * together. A grant that could not be had is requested again on the next one. Callers never wait on it.
+ * together. Until a grant is had, Lighthouse's state is read at most once an hour. A caller waits only for
+ * that state read, bounded like every usage data call, never for the grant or the send.
  */
 export const operatorsUsageDataPort = (
   dependencies: OperatorsUsageDataDependencies,
@@ -354,28 +407,34 @@ export const operatorsUsageDataPort = (
     store: inMemoryUsageDataStore(),
     source: "Mcp",
   };
-  let switchingOn: Promise<boolean> | undefined;
-  const switchedOn = async (): Promise<boolean> => {
-    switchingOn ??= switchUsageDataOn(reporter).then(
-      (outcome) => outcome === "on",
-      () => false,
-    );
-    const on = await switchingOn;
-    if (!on) {
-      switchingOn = undefined;
+  let switching: SwitchingOn | undefined;
+  let lastLookedAt: number | undefined;
+  const switchOnIfDue = (): SwitchingOn => {
+    if (switching !== undefined) {
+      return switching;
     }
-    return on;
-  };
-  const report = async (step: UsageDataStep): Promise<void> => {
-    if (!step.reached || step.occurrences.length === 0) {
-      return;
+    const now = dependencies.now().getTime();
+    if (
+      lastLookedAt !== undefined &&
+      now - lastLookedAt < STATE_REREAD_INTERVAL_MS
+    ) {
+      return NOT_DUE;
     }
-    if (await switchedOn()) {
-      await settleUsageDataStep(reporter, step);
-    }
+    lastLookedAt = now;
+    switching = attemptToSwitchOn(reporter, () => {
+      switching = undefined;
+    });
+    return switching;
   };
   return async ({ reached, occurrences }) => {
-    void report({ reached, occurrences });
+    if (!reached || occurrences.length === 0) {
+      return;
+    }
+    const attempt = switchOnIfDue();
+    void attempt.on.then((on) =>
+      on ? settleUsageDataStep(reporter, { reached, occurrences }) : undefined,
+    );
+    await attempt.decided;
   };
 };
 

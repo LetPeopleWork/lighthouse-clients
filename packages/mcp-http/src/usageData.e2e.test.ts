@@ -347,7 +347,7 @@ describe("switched on, the shared server reports for its callers without asking 
 
 describe("what the shared server never does", () => {
   // @US-06 @driving_port @real-io @error @version-skew @kpi @contract-shape:unbounded-preservation
-  it.skip.each<[string, UsageDataSide]>([
+  it.each<[string, UsageDataSide]>([
     [
       "Northwind's administrator has stopped usage data",
       { administratorDisabled: true },
@@ -375,7 +375,7 @@ describe("what the shared server never does", () => {
 
   // @US-06 @driving_port @real-io @error @contract-shape:bounded-change
   // A veto lifted takes effect without a restart, and the server asks at most once an hour.
-  it.skip("asks a vetoed Lighthouse again only after an hour, and reports once the veto is lifted", async () => {
+  it("asks a vetoed Lighthouse again only after an hour, and reports once the veto is lifted", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-08T09:00:00Z"));
     const lighthouse = await aFakeLighthouse({
@@ -408,7 +408,7 @@ describe("what the shared server never does", () => {
 
   // @US-06 @driving_port @real-io @security @contract-shape:unbounded-preservation
   // Usage data is never bound to an account: neither the operator's key nor a caller's credential travels.
-  it.skip("sends no API key and no bearer token on any usage data call", async () => {
+  it("sends no API key and no bearer token on any usage data call", async () => {
     const lighthouse = await aFakeLighthouse();
     const shared = await tomasStarts(lighthouse, {
       LIGHTHOUSE_USAGE_DATA: "on",
@@ -433,7 +433,7 @@ describe("what the shared server never does", () => {
 
   // @US-06 @driving_port @real-io @adapter-integration @security @contract-shape:unbounded-preservation
   // The grant lives in the process's memory; a container's home stays as it started.
-  it.skip("writes nothing under its home directory", async () => {
+  it("writes nothing under its home directory", async () => {
     const lighthouse = await aFakeLighthouse();
     const home = aTempDirectory("lighthouse-mcp-http-home-");
     const homeBefore = process.env.HOME;
