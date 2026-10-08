@@ -32,9 +32,9 @@ Every number in the answer comes from the read. Never work one out yourself, nev
 Give it in this shape, with the Team's own numbers and words:
 
 ```text
-Team Gravity — next Refinement Wednesday 15 Oct (in 2 days)
+Team Gravity — next Refinement Thursday 15 Oct (in 2 days)
 4 Work Items ready by Votes; Gravity is likely to pull 6 to 9 before the one after. Below range.
-Refine 2 to 5 more before Wednesday.
+Refine 2 to 5 more before Thursday.
 Worth the session's time:
   GR-051 Export Fleet Report to PDF — 1 Yes, 2 No            <link>
   GR-057 Sonar alert routing — open question, 1 Yes, if…     <link>

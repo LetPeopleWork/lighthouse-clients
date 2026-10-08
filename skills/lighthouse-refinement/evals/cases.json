@@ -6,7 +6,7 @@
     "guardrail": false,
     "surface": "mcp",
     "fixture": "gravity-below",
-    "prompt": "Are we ready for Wednesday's Refinement? I'm the Product Owner of Team Gravity.",
+    "prompt": "Are we ready for Thursday's Refinement? I'm the Product Owner of Team Gravity.",
     "tools": {
       "required": ["lighthouse_team_refinement_get"],
       "forbidden": [
@@ -110,7 +110,7 @@
     "guardrail": false,
     "surface": "mcp",
     "fixture": "gravity-ready-by-stage",
-    "prompt": "Are we ready for Wednesday's Refinement? I'm the Product Owner of Team Gravity.",
+    "prompt": "Are we ready for Thursday's Refinement? I'm the Product Owner of Team Gravity.",
     "tools": { "required": ["lighthouse_team_refinement_get"] },
     "answer": {
       "mustNotContain": ["ready by Votes"],
@@ -309,7 +309,7 @@
     "surface": "mcp",
     "fixture": "gravity-below",
     "environment": "with-stale-general-skill",
-    "prompt": "Are we ready for Wednesday's Refinement? I'm the Product Owner of Team Gravity.",
+    "prompt": "Are we ready for Thursday's Refinement? I'm the Product Owner of Team Gravity.",
     "tools": { "required": ["lighthouse_team_refinement_get"] },
     "answer": {
       "mustContain": ["Refine 2 to 5 more"],
