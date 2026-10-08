@@ -196,6 +196,21 @@ describe("when there is no SLE Risk to show", () => {
   });
 
   // @error @real-io @contract-shape:bounded-change
+  // A Team that could not be read may well have an SLE, so its absence is not claimed.
+  it("says nothing about the SLE when the Team cannot be read", async () => {
+    const lighthouse = await gravitysLighthouse({
+      "GET /teams/3": { status: 500 },
+      "GET /teams/3/metrics/sleRisk": { status: 200, body: [] },
+    });
+
+    const run = await priyaRuns(lighthouse, sleRiskOfGravity());
+
+    expect(run.exitCode).toBe(0);
+    expect(lines(run.stdout)).toContain("SLE Risk");
+    expect(prose(run.stdout)).not.toContain("has no SLE");
+  });
+
+  // @error @real-io @contract-shape:bounded-change
   it("says SLE Risk is for Teams when asked for a Portfolio, without asking Lighthouse for it", async () => {
     const lighthouse = await aFakeLighthouse();
 

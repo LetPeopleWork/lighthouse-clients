@@ -74,6 +74,30 @@ describe("lh says what an assistant is told when there is less to say about WIP"
   });
 
   // @error @real-io @contract-shape:bounded-change
+  // A Team that could not be read may well have a limit, so its absence is not claimed.
+  it("says nothing about the System WIP Limit when the Team cannot be read", async () => {
+    const lighthouse = await aFakeLighthouse({
+      replies: {
+        "GET /teams/3": { status: 500 },
+        "GET /teams/3/metrics/wip": {
+          status: 200,
+          body: gravitysWorkInProgressToday(),
+        },
+        "GET /teams/3/metrics/wipOverTime": {
+          status: 200,
+          body: wipOverTime(),
+        },
+      },
+    });
+
+    const run = await wipOf(lighthouse, 3);
+
+    expect(run.exitCode).toBe(0);
+    expect(prose(run.stdout)).toContain("Work Items in Progress: 8");
+    expect(prose(run.stdout)).not.toContain(NO_WIP_LIMIT);
+  });
+
+  // @error @real-io @contract-shape:bounded-change
   it("says Lighthouse does not tell which Work Items are Blocked, rather than showing none Blocked", async () => {
     const run = await wipOf(
       await aTeamsLighthouse(

@@ -275,10 +275,10 @@ export const renderMetricsHeadline = (
 type DayFacts = {
   readonly subject: MetricsSubject;
   readonly wording: AnswerWording;
-  readonly systemWipLimit: number | undefined;
+  readonly systemWipLimit: number | undefined | null;
   readonly cycleTimeDefinitionName: string | undefined;
   readonly pickedItemCount: number | undefined;
-  readonly serviceLevelExpectation: ServiceLevelExpectation | undefined;
+  readonly serviceLevelExpectation: ServiceLevelExpectation | undefined | null;
   readonly inProgress: readonly InProgressItem[] | undefined;
 };
 
@@ -332,7 +332,7 @@ const wipDays: DayView = {
       wip.overTime,
       subject.scope,
       wording.terms,
-      systemWipLimit,
+      systemWipLimit ?? undefined,
     );
     const unsaid = describeWhatWipLeavesUnsaid(
       wip.current,
@@ -419,7 +419,7 @@ const sleRiskDays: DayView = {
       inProgress,
     );
     const body = [
-      view.sentence,
+      ...(view.sentence === null ? [] : [view.sentence]),
       ...(view.rows.length === 0 ? [] : toTableLines(view.rows)),
     ];
     return {
@@ -550,10 +550,10 @@ export const renderMetricDays = (
   wording: AnswerWording,
   names: readonly string[],
   owner: {
-    readonly systemWipLimit?: number;
+    readonly systemWipLimit?: number | null;
     readonly cycleTimeDefinitionName?: string;
     readonly pickedItemCount?: number;
-    readonly serviceLevelExpectation?: ServiceLevelExpectation;
+    readonly serviceLevelExpectation?: ServiceLevelExpectation | null;
     readonly inProgress?: readonly InProgressItem[];
   } = {},
 ): string | null => {

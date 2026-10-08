@@ -2346,8 +2346,13 @@ const runMetricsGroup = async (
         range.endDate,
       ),
     ]);
-  const ownerValue = ownerRead.ok ? ownerRead.value : null;
-  const systemWipLimit = readSystemWipLimit(ownerValue);
+  // A Team or Portfolio that could not be read may well have a limit and an SLE, so neither is called missing.
+  const systemWipLimit = ownerRead.ok
+    ? readSystemWipLimit(ownerRead.value)
+    : null;
+  const serviceLevelExpectation = ownerRead.ok
+    ? readServiceLevelExpectation(ownerRead.value)
+    : null;
   return mapApiResultToCliResult(
     { ok: true, value: payload },
     outputFormat,
@@ -2356,14 +2361,14 @@ const runMetricsGroup = async (
         ? renderMetricsHeadline(
             facts,
             wording,
-            systemWipLimit,
+            systemWipLimit ?? undefined,
             itemIdsOrError?.length,
           )
         : renderMetricDays(facts, wording, asked, {
             systemWipLimit,
             cycleTimeDefinitionName,
             pickedItemCount: itemIdsOrError?.length,
-            serviceLevelExpectation: readServiceLevelExpectation(ownerValue),
+            serviceLevelExpectation,
             inProgress,
           }),
   );
