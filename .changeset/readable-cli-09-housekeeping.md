@@ -17,3 +17,12 @@ prints `Lighthouse v26.10.3.6`, as the footer shows it; and `lh health check` sa
 https://… is reachable.` or `The standalone Lighthouse is reachable.` instead of `success`. Under `--json`
 and `--toon` nothing changes: the health check still prints `success`, and a failed one still reports
 `unreachable: connection refused` with exit code 1.
+
+The client package also gains `readWorkTrackingConnections` and `readWorkTrackingConnection`, which label
+each option as the connection editor does (from the connection's authentication method, the key when the
+method does not name it) and keep a secret's value out of what they return, decided by the secret flag
+alone. Under `--pretty`, `lh worktracking list` lists the Work Tracking Systems as the Overview does, with
+a Name and a Type column, titled in the instance's own word for them; `lh worktracking get` prints the
+connection's name and id, `Type: Jira` and an Option · Value table, where every secret reads
+`(secret, not shown)`, even if Lighthouse sends its value. Under `--json` and `--toon` a connection is
+still handed over exactly as Lighthouse sent it.

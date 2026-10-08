@@ -98,7 +98,7 @@ describe("lh blackout list --pretty", () => {
 
 describe("lh worktracking --pretty", () => {
   // @driving_port @US-09 @contract-shape:pure-function — OverviewDashboard.tsx connectionColumns
-  it.skip("shows Sofia the Work Tracking Systems as the Overview lists them", async () => {
+  it("shows Sofia the Work Tracking Systems as the Overview lists them", async () => {
     const lighthouse = sofiasLighthouse();
 
     const result = await lighthouse.run(["worktracking", "list"]);
@@ -114,7 +114,7 @@ describe("lh worktracking --pretty", () => {
   });
 
   // @driving_port @US-09 @contract-shape:pure-function — EditConnection.tsx, field names as the editor labels them
-  it.skip("shows Sofia one connection with its options as the editor labels them", async () => {
+  it("shows Sofia one connection with its options as the editor labels them", async () => {
     const lighthouse = sofiasLighthouse();
 
     const result = await lighthouse.run(["worktracking", "get", "--id", "1"]);
@@ -131,7 +131,7 @@ describe("lh worktracking --pretty", () => {
   });
 
   // @error @security @US-09 @contract-shape:unbounded-preservation — AC-09.2, the slice's risk carrier
-  it.skip("never prints a secret's value, even when Lighthouse wrongly sends it", async () => {
+  it("never prints a secret's value, even when Lighthouse wrongly sends it", async () => {
     const lighthouse = sofiasLighthouse({
       getWorkTrackingConnection: ok(aLeakyConnection()),
     });
@@ -150,7 +150,7 @@ describe("lh worktracking --pretty", () => {
   });
 
   // @error @version-skew @US-09 — an option the editor has no label for
-  it.skip("labels an option by its key when the connection's method does not name it", async () => {
+  it("labels an option by its key when the connection's method does not name it", async () => {
     const lighthouse = sofiasLighthouse({
       getWorkTrackingConnection: ok(
         aConnection({ availableAuthenticationMethods: [] }),
@@ -168,7 +168,7 @@ describe("lh worktracking --pretty", () => {
   });
 
   // @US-09 @kpi — KPI-5
-  it.skip("titles the list in the word an instance has renamed Work Tracking Systems to", async () => {
+  it("titles the list in the word an instance has renamed Work Tracking Systems to", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: ok(terminology(EVERY_TERM_RENAMED)),
     });
@@ -180,7 +180,7 @@ describe("lh worktracking --pretty", () => {
   });
 
   // @error @infrastructure-failure @US-09 — D4: the view survives a failed terminology read
-  it.skip("titles the list in the seeded words when the instance's terms cannot be read", async () => {
+  it("titles the list in the seeded words when the instance's terms cannot be read", async () => {
     const lighthouse = sofiasLighthouse({
       getTerminology: refused("unexpected", "Terminology is unavailable"),
     });
@@ -193,7 +193,7 @@ describe("lh worktracking --pretty", () => {
   });
 
   // @error @version-skew @US-09 — D5 + M1
-  it.skip("shows a connection as it came when it arrives without its options", async () => {
+  it("shows a connection as it came when it arrives without its options", async () => {
     const recognised = await sofiasLighthouse().run([
       "worktracking",
       "get",

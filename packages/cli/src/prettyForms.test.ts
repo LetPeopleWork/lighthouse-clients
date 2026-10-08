@@ -29,8 +29,8 @@ import { formatPayload } from "./output";
 
 // Story 6218, KPI-1 (DSN-10): every `lh` form that answers a question or confirms a change has its own view,
 // and every form is accounted for. The list below is the contract: 42 forms change, 10 stay as they are on
-// purpose, each with its reason. The first describe is a guard, green today: a new subcommand or metric that
-// nobody placed on either list fails it. The second is pending until the slice that converts each form.
+// purpose, each with its reason. The first describe is a guard: a new subcommand or metric that nobody placed on
+// either list fails it.
 
 const METRICS = (metric: string) => [
   "metrics",
@@ -283,7 +283,6 @@ describe("every lh form is accounted for", () => {
   });
 });
 
-// Later slices move their forms into the delivered set as they ship.
 const DELIVERED_SLICES: ReadonlySet<string> = new Set([
   "01",
   "02",
@@ -293,20 +292,11 @@ const DELIVERED_SLICES: ReadonlySet<string> = new Set([
   "06",
   "07",
   "08",
+  "09",
 ]);
-// Forms of a slice still in delivery, moved over one by one as they ship.
-const DELIVERED_EARLY: ReadonlySet<string> = new Set([
-  "blackout list",
-  "version get",
-  "health check",
-]);
-const isDelivered = (form: {
-  readonly slice: string;
-  readonly args: readonly string[];
-}) =>
-  DELIVERED_SLICES.has(form.slice) || DELIVERED_EARLY.has(formOf(form.args));
-const DELIVERED_FORMS = CHANGING_FORMS.filter(isDelivered);
-const PENDING_FORMS = CHANGING_FORMS.filter((form) => !isDelivered(form));
+const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
+  DELIVERED_SLICES.has(form.slice),
+);
 
 describe("every converted lh form has a view of its own", () => {
   // @driving_port @US-01..@US-09 @kpi — KPI-1: 0 forms left on the generic view
@@ -327,11 +317,6 @@ describe("every converted lh form has a view of its own", () => {
   };
 
   it.each(DELIVERED_FORMS)(
-    "slice $slice: `lh $args` no longer prints the generic view",
-    noLongerTheGenericView,
-  );
-
-  it.skip.each(PENDING_FORMS)(
     "slice $slice: `lh $args` no longer prints the generic view",
     noLongerTheGenericView,
   );

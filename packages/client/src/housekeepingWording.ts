@@ -79,3 +79,144 @@ export const describeReachable = (connection: CliConnection): string =>
   connection.mode === "server"
     ? `Lighthouse at ${connection.endpointUrl} is reachable.`
     : "The standalone Lighthouse is reachable.";
+
+/** One Work Tracking System connection as the Overview lists it. */
+export type WorkTrackingConnectionListItem = {
+  readonly id: number;
+  readonly name: string;
+  readonly workTrackingSystem: string;
+};
+
+/** One option of a connection, labelled as the editor labels it; a secret carries no value at all. */
+export type WorkTrackingConnectionOption =
+  | { readonly label: string; readonly isSecret: true }
+  | {
+      readonly label: string;
+      readonly isSecret: false;
+      readonly value: string;
+    };
+
+export type WorkTrackingConnectionDetails = WorkTrackingConnectionListItem & {
+  readonly options: readonly WorkTrackingConnectionOption[];
+};
+
+const readConnectionListItem = (
+  value: unknown,
+): WorkTrackingConnectionListItem | null =>
+  isRecord(value) &&
+  typeof value.id === "number" &&
+  typeof value.name === "string" &&
+  typeof value.workTrackingSystem === "string"
+    ? {
+        id: value.id,
+        name: value.name,
+        workTrackingSystem: value.workTrackingSystem,
+      }
+    : null;
+
+/** Every connection in the list, or null when the answer is not a list or any one of them lacks its name or type. */
+export const readWorkTrackingConnections = (
+  value: unknown,
+): WorkTrackingConnectionListItem[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const connections = value.map(readConnectionListItem);
+  return connections.every((connection) => connection !== null)
+    ? connections
+    : null;
+};
+
+// The options the connection's own authentication method declares, which is where the editor finds its labels.
+const declaredOptionsOf = (
+  connection: Record<string, unknown>,
+): Record<string, unknown>[] => {
+  const methods = Array.isArray(connection.availableAuthenticationMethods)
+    ? connection.availableAuthenticationMethods
+    : [];
+  const method = methods.find(
+    (candidate) =>
+      isRecord(candidate) &&
+      candidate.key === connection.authenticationMethodKey,
+  );
+  return isRecord(method) && Array.isArray(method.options)
+    ? method.options.filter(isRecord)
+    : [];
+};
+
+const readConnectionOption = (
+  value: unknown,
+  declared: readonly Record<string, unknown>[],
+): WorkTrackingConnectionOption | null => {
+  if (
+    !isRecord(value) ||
+    typeof value.key !== "string" ||
+    typeof value.isSecret !== "boolean"
+  ) {
+    return null;
+  }
+  const declaration = declared.find((option) => option.key === value.key);
+  const label =
+    typeof declaration?.displayName === "string"
+      ? declaration.displayName
+      : value.key;
+  // Only the flags decide: a secret stays hidden even when Lighthouse wrongly sends its value along.
+  if (value.isSecret || declaration?.isSecret === true) {
+    return { label, isSecret: true };
+  }
+  if (value.value !== null && typeof value.value !== "string") {
+    return null;
+  }
+  return { label, isSecret: false, value: value.value ?? "" };
+};
+
+/**
+ * One connection with its options labelled as the editor labels them, or null when it arrives without its
+ * options or any option lacks its key or its secret flag.
+ */
+export const readWorkTrackingConnection = (
+  value: unknown,
+): WorkTrackingConnectionDetails | null => {
+  const connection = readConnectionListItem(value);
+  if (
+    connection === null ||
+    !isRecord(value) ||
+    !Array.isArray(value.options)
+  ) {
+    return null;
+  }
+  const declared = declaredOptionsOf(value);
+  const options = value.options.map((option) =>
+    readConnectionOption(option, declared),
+  );
+  return options.every((option) => option !== null)
+    ? { ...connection, options }
+    : null;
+};
+
+/** The list's column headings, as the Overview heads them. */
+export const WORK_TRACKING_CONNECTION_LIST_HEADINGS = ["Name", "Type"] as const;
+
+/** The option table's column headings. */
+export const WORK_TRACKING_OPTION_HEADINGS = ["Option", "Value"] as const;
+
+/** What stands in for a secret's value, which is never shown. */
+export const SECRET_NOT_SHOWN = "(secret, not shown)";
+
+/** A connection by name with its id beside it: "Letpeoplework Jira [id: 1]". */
+export const describeConnectionName = ({
+  id,
+  name,
+}: Pick<WorkTrackingConnectionListItem, "id" | "name">): string =>
+  `${name} [id: ${id}]`;
+
+/** "Type: Jira". */
+export const describeConnectionType = ({
+  workTrackingSystem,
+}: Pick<WorkTrackingConnectionListItem, "workTrackingSystem">): string =>
+  `Type: ${workTrackingSystem}`;
+
+/** An option's value cell; a secret's reads the same whatever Lighthouse sent. */
+export const describeOptionValue = (
+  option: WorkTrackingConnectionOption,
+): string => (option.isSecret ? SECRET_NOT_SHOWN : option.value);

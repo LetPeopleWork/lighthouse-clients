@@ -3,9 +3,12 @@ import {
   describeBlackoutRuleCount,
   describeBlackoutRuleSchedule,
   describeNoBlackoutRules,
+  describeOptionValue,
   describeReachable,
   describeVersion,
   readBlackoutRules,
+  readWorkTrackingConnection,
+  readWorkTrackingConnections,
 } from "./housekeepingWording";
 
 const focusFriday = {
@@ -97,4 +100,91 @@ describe("describeReachable", () => {
       describeReachable({ mode: "standalone", authMode: "disabled" }),
     ).toBe("The standalone Lighthouse is reachable.");
   });
+});
+
+const jiraConnection = (options: readonly Record<string, unknown>[]) => ({
+  id: 1,
+  name: "Letpeoplework Jira",
+  workTrackingSystem: "Jira",
+  authenticationMethodKey: "jira.cloud",
+  availableAuthenticationMethods: [
+    {
+      key: "jira.cloud",
+      options: [
+        { key: "Jira Url", displayName: "Jira URL", isSecret: false },
+        { key: "Api Token", displayName: "API Token", isSecret: true },
+      ],
+    },
+  ],
+  options,
+});
+
+describe("readWorkTrackingConnection", () => {
+  it("hides a secret that arrives with its value", () => {
+    const connection = readWorkTrackingConnection(
+      jiraConnection([{ key: "Api Token", value: "leaked", isSecret: true }]),
+    );
+
+    expect(connection?.options).toEqual([
+      { label: "API Token", isSecret: true },
+    ]);
+    expect(JSON.stringify(connection)).not.toContain("leaked");
+    expect(connection?.options.map(describeOptionValue)).toEqual([
+      "(secret, not shown)",
+    ]);
+  });
+
+  it("shows a non-secret that arrives without a value as empty, never as a secret", () => {
+    const connection = readWorkTrackingConnection(
+      jiraConnection([
+        { key: "Jira Url", value: "", isSecret: false },
+        { key: "Custom", value: null, isSecret: false },
+      ]),
+    );
+
+    expect(connection?.options).toEqual([
+      { label: "Jira URL", isSecret: false, value: "" },
+      { label: "Custom", isSecret: false, value: "" },
+    ]);
+  });
+
+  it("hides an option the connection's method declares secret, even when the option itself says otherwise", () => {
+    const connection = readWorkTrackingConnection(
+      jiraConnection([{ key: "Api Token", value: "leaked", isSecret: false }]),
+    );
+
+    expect(connection?.options).toEqual([
+      { label: "API Token", isSecret: true },
+    ]);
+  });
+
+  it.each([
+    null,
+    jiraConnection([{ key: "Api Token", value: "leaked" }]),
+    jiraConnection([{ value: "x", isSecret: false }]),
+    jiraConnection([{ key: "Jira Url", value: 3, isSecret: false }]),
+    { ...jiraConnection([]), options: undefined },
+    { ...jiraConnection([]), name: undefined },
+  ])("reads %j as unrecognised", (value) => {
+    expect(readWorkTrackingConnection(value)).toBeNull();
+  });
+});
+
+describe("readWorkTrackingConnections", () => {
+  it("reads each connection's name and type, never its options", () => {
+    expect(
+      readWorkTrackingConnections([
+        jiraConnection([{ key: "Api Token", value: "leaked", isSecret: true }]),
+      ]),
+    ).toEqual([
+      { id: 1, name: "Letpeoplework Jira", workTrackingSystem: "Jira" },
+    ]);
+  });
+
+  it.each([null, {}, [{ id: 1, name: "Jira" }]])(
+    "reads %j as unrecognised",
+    (value) => {
+      expect(readWorkTrackingConnections(value)).toBeNull();
+    },
+  );
 });

@@ -31,7 +31,11 @@ import {
 import { renderDeliveryList, renderDeliveryMetrics } from "./deliveryOutput";
 import { renderFeatureList, renderFeatureWorkItems } from "./featureOutput";
 import { renderBacktest, renderManualForecast } from "./forecastOutput";
-import { renderBlackoutRuleList } from "./housekeepingOutput";
+import {
+  renderBlackoutRuleList,
+  renderWorkTrackingConnection,
+  renderWorkTrackingConnectionList,
+} from "./housekeepingOutput";
 import { renderMetricDays, renderMetricsHeadline } from "./metricsOutput";
 import {
   DEFAULT_OUTPUT_FORMAT,
@@ -2231,9 +2235,18 @@ const runWorktrackingGroup = async (
   const client = dependencies.createClient(connectionOrError);
 
   if (action === "list") {
-    return mapApiResultToCliResult(
-      await client.listWorkTrackingConnections(),
-      outputFormat,
+    if (outputFormat !== "pretty") {
+      return mapApiResultToCliResult(
+        await client.listWorkTrackingConnections(),
+        outputFormat,
+      );
+    }
+    const [connections, terms] = await Promise.all([
+      client.listWorkTrackingConnections(),
+      readTerms(client),
+    ]);
+    return mapApiResultToCliResult(connections, outputFormat, (facts) =>
+      renderWorkTrackingConnectionList(facts, terms),
     );
   }
 
@@ -2246,6 +2259,7 @@ const runWorktrackingGroup = async (
     return mapApiResultToCliResult(
       await client.getWorkTrackingConnection(connectionId),
       outputFormat,
+      renderWorkTrackingConnection,
     );
   }
 
