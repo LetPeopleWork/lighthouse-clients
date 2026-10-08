@@ -1666,12 +1666,15 @@ export type ProcessBehaviorChartWording = {
   readonly sentence: string;
 };
 
+// Cycle Time and Feature Size plot one point per finished Work Item, so several points can share a day.
+const eachDayOnce = (days: readonly ProcessBehaviorChartDay[]): string[] => [
+  ...new Set(days.map((day) => shortDayOf(day.day))),
+];
+
 const signalsSaid = (days: readonly ProcessBehaviorChartDay[]): string => {
   const fired = SIGNALS.map(([wire, name]) => ({
     name,
-    days: days
-      .filter((day) => day.signals.includes(wire))
-      .map((day) => shortDayOf(day.day)),
+    days: eachDayOnce(days.filter((day) => day.signals.includes(wire))),
   })).filter((signal) => signal.days.length > 0);
   return fired.length === 0
     ? "No signals"
@@ -1687,9 +1690,7 @@ const limitsSaid = (chart: ProcessBehaviorChartView): string =>
     : signalsSaid(chart.days.filter((day) => !day.blackout));
 
 const blackoutDaysSaid = (chart: ProcessBehaviorChartView): string[] => {
-  const blackout = chart.days
-    .filter((day) => day.blackout)
-    .map((day) => shortDayOf(day.day));
+  const blackout = eachDayOnce(chart.days.filter((day) => day.blackout));
   if (blackout.length === 0) {
     return [];
   }

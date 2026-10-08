@@ -1990,6 +1990,33 @@ describe("a Process Behaviour Chart, read and said", () => {
     });
   });
 
+  // Cycle Time and Feature Size plot one point per finished Work Item, so several points can share a day.
+  it("names a day once however many points on it carry the signal", () => {
+    const chart = readProcessBehaviorChart(
+      chartOf(
+        day("2026-10-05T09:00:00Z", ["SmallShift"]),
+        day("2026-10-05T15:30:00Z", ["SmallShift"]),
+        day("2026-10-06T11:00:00Z", ["SmallShift"]),
+      ),
+    );
+
+    expect(
+      chart &&
+        describeProcessBehaviorChart(chart, "CycleTime", SEEDED_TERMS).sentence,
+    ).toBe("Small Shift on Mon 5 Oct, Tue 6 Oct");
+  });
+
+  it("lists a blackout day once however many points fall on it", () => {
+    expect(
+      sentenceOf(
+        chartOf(
+          { ...day("2026-10-03T09:00:00Z", ["None"]), isBlackout: true },
+          { ...day("2026-10-03T16:00:00Z", ["None"]), isBlackout: true },
+        ),
+      ),
+    ).toBe("No signals; Blackout day Sat 3 Oct");
+  });
+
   it("says there are no signals when no day carries one", () => {
     const chart = readProcessBehaviorChart(
       chartOf(day("2026-10-08", ["None"])),

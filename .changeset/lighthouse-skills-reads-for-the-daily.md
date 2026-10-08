@@ -32,7 +32,8 @@ An assistant can read one Process Behaviour Chart of a Team or Portfolio with
 `lighthouse_team_metrics_processBehaviorChart` and `lighthouse_portfolio_metrics_processBehaviorChart`,
 naming the chart with `metricType` (Feature Size for Portfolios only). Lighthouse's chart comes back unchanged,
 beside a summary that names each signal Lighthouse found with the days it fired ("Large Change on Wed 7 Oct,
-Thu 8 Oct"), or says there are no signals.
+Thu 8 Oct"), or says there are no signals. A day is named once, even on the Cycle Time and Feature Size charts,
+where each finished Work Item or Feature is a point of its own and several can share a day.
 
 A chart whose limits mean little names no signal: a chart without a baseline says no baseline is set and that
 its limits come from the range shown, and a chart Lighthouse could not compute says why, in Lighthouse's own
