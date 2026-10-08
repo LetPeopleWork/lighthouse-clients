@@ -210,11 +210,16 @@ lh metrics portfolio --id <portfolio-id> [--start-date <date>] [--end-date <date
 						  portfolio defaults to 90 days. If only one date is
 						  provided, it is used for both start and end.
 						  Use --metrics to select one or more specific metrics;
-						  omit to get all. Allowed values:
+						  omit to get all but sleRisk and
+						  processBehaviorChart, which are read only when
+						  named. Allowed values:
 						  throughput, wip, cycleTime, workItemAge,
 						  totalWorkItemAge, arrivals, predictabilityScore,
 						  cumulativeStateTime, blocked,
-						  percentilesOverTime, processBehaviorOverTime
+						  percentilesOverTime, processBehaviorOverTime,
+						  sleRisk (Teams only; Lighthouse newer than
+						  v26.9.19.10), processBehaviorChart (also pbc,
+						  processbehaviorchart, processbehaviourchart)
 lh feature get --ids <id1,id2,...>           Get features by IDs
 lh feature get --refs <ref1,ref2,...>        Get features by references
 lh feature workitems --id <feature-id>       Get work items for a feature
@@ -241,6 +246,8 @@ lh forecast backtest --team-id <team-id> --start-date <date> --end-date <date> -
 Global payload output override flags: `--pretty`, `--json`, `--toon`
 
 **Refinement votes.** On a Lighthouse with sign-in, a vote or comment is your account's and needs no name. Without sign-in it carries the name you give with `--as`, or the one stored with `lh config voter set --name`; `lh` never guesses it. The first vote also mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the config file (mode `0600`), so the vote can be taken back from this machine later. The local MCP server keeps its key in the same file, so you are one voter whether you vote from `lh` or through your assistant. In the Votes column a `*` marks a Work Item you have voted on.
+
+**What is in progress, SLE Risk and Process Behaviour Charts.** `lh metrics team --metrics wip --pretty` says, in the same words as the assistant's WIP summary, when no System WIP Limit is set, when Lighthouse does not say which Work Items are Blocked (an older server, never read as none Blocked), or when nothing is in progress. `--metrics sleRisk` reads which Work Items in progress are likely to miss the Team's SLE; it needs a Lighthouse newer than v26.9.19.10, and a Portfolio is told SLE Risk is for Teams. With `--pretty` it says how many Work Items are at risk of missing the SLE, counting from the same 70% the web's SLE Risk widget uses, then lists every Work Item highest risk first with its age, its risk and the finished Work Items behind it ("6 of 11 finished Work Items that reached this age went past 7 days"), or that it is already past the SLE. Lighthouse only computes SLE Risk for today, so `--end-date` does not move it. `--metrics processBehaviorChart` (or `pbc`) reads every Process Behaviour Chart of the Team, and of a Portfolio also Feature Size; with `--pretty` it prints one line per chart, titled as the web titles it, naming each signal with the days it fired, "No signals", that no baseline is set, or why Lighthouse could not compute the chart. A chart that cannot be read says so on its own line and leaves the others in place. `--json` and `--toon` hand over Lighthouse's SLE Risk and charts unchanged, the charts keyed by chart type. Both are read only when named, so `lh metrics team` without `--metrics` makes the same reads as before.
 
 **Usage data.** After a command that reached your Lighthouse, `lh` may ask once, on stderr, whether to send anonymous usage data to that Lighthouse; nothing is sent until you say yes. Only `y` or `yes` counts as a yes; Enter or anything else is a No that is kept for that Lighthouse and never sent. It asks only when stdin, stdout and stderr are all a terminal (never in scripts, pipes or CI), and only a Lighthouse that takes usage data from `lh`. Answers are kept in `usage-data.json` beside `voter-keys.json` (mode `0600`). `lh config usage-data` shows your answer and what your Lighthouse allows, `lh config usage-data on` says yes without a question (also on a build agent), and `lh config usage-data off` withdraws a yes at your Lighthouse and keeps a No. `DO_NOT_TRACK` set to anything but `0`, `false` or empty always wins: `lh` neither asks nor sends. After a yes, only these count, each under the name the web counts the same action by and only once Lighthouse accepted it: `lh forecast manual`, `lh team` / `lh portfolio` create, delete and refresh, `lh refinement vote`, and `lh refinement get` on a Team's Refinement day. Every other command counts nothing. Usage data never changes what `lh` prints or its exit code, and asks Lighthouse for nothing beyond the usage data itself. What is sent: <https://docs.lighthouse.letpeople.work/settings/usagedata.html>.
 
