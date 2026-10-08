@@ -367,6 +367,14 @@ jobs:
           echo "lh metrics team --pretty prints $(lh metrics team --id "$ZENITH" | wc -l) lines (one screen is 30; advisory)"
           expect_pretty "Last Updated" facts team list
           expect_pretty "Deliveries per Portfolio:" facts portfolio list
+          echo "Waiting for Project Orion to take in its Features..."
+          deadline=$((SECONDS + 120))
+          until ORION_FEATURE=$(lh portfolio list --json 2>/dev/null \
+              | jq -er '.[] | select(.name == "Project Orion") | .features[0].id'); do
+            [ "$SECONDS" -lt "$deadline" ] || { echo "FAIL: Project Orion has no Feature in lh portfolio list --json"; exit 1; }
+            sleep 3
+          done
+          expect_pretty "Forecasted Start" facts feature get --ids "$ORION_FEATURE"
 
           # Scenario 0 replaces scenario 2, so these lines stay last; later checks go above them.
           curl --fail --silent --insecure -X POST https://127.0.0.1:8443/api/v1/demo/scenarios/0/load
