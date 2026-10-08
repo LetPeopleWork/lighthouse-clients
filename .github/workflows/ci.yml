@@ -272,6 +272,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
+    env:
+      # The smoke container is a published release, which would send usage data to the real
+      # analytics project. Nothing from CI may ever land there.
+      DO_NOT_TRACK: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -291,6 +295,7 @@ jobs:
             -p 8443:443 \
             -e Database__Provider=sqlite \
             -e "Database__ConnectionString=Data Source=lighthouse.db" \
+            -e UsageData__CollectorBaseUrl=http://127.0.0.1:9 \
             ghcr.io/letpeoplework/lighthouse:latest
 
       - name: Wait for Lighthouse to become ready
