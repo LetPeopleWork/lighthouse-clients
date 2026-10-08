@@ -101,6 +101,7 @@ const regrantAndSend = async (
   const kept = await dependencies.store.renew(
     formerToken,
     yesGivenNow(dependencies, granted.value),
+    signal,
   );
   if (!kept) {
     // The yes was turned off while this grant was minted: it must neither carry events nor stay live.
@@ -167,6 +168,7 @@ const execute = async (
         await dependencies.store.renew(
           plan.token,
           yesGivenNow(dependencies, plan.token),
+          signal,
         );
       }
       return send(dependencies, plan.token, plan.batch, signal);

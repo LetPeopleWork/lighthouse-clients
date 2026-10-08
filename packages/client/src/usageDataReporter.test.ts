@@ -1,4 +1,7 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { aTempDirectory } from "../../../test-support/tempDirectories";
 import {
   type ConnectivityFetchResponse,
   createLighthouseClient,
@@ -12,9 +15,11 @@ import {
   type UsageDataSwitchOn,
   withdrawUsageData,
 } from "./usageDataReporter";
-import type {
-  LighthouseUsageDataStore,
-  UsageDataStoreReading,
+import {
+  createFileUsageDataStore,
+  type LighthouseUsageDataStore,
+  type UsageDataStoreReading,
+  usageDataStoreFor,
 } from "./usageDataStore";
 
 const NOW = new Date("2026-10-08T09:00:00Z");
@@ -192,6 +197,37 @@ describe("settling usage data against a Lighthouse that never answers", () => {
     expect(lighthouse.seen).toHaveLength(1);
     expect(kept()).toEqual(aYesConfirmed(agoMs));
   });
+});
+
+describe("settling usage data while another lh holds the answers file", () => {
+  it.each([
+    ["a day-old yes Lighthouse still grants", aStateRecognising(KEPT_TOKEN)],
+    ["a yes Lighthouse no longer recognises", aStateRecognising(MINTED_TOKEN)],
+  ])(
+    "ends within a second for %s, sending nothing",
+    async (_, stateFor) => {
+      const filePath = join(
+        aTempDirectory("lighthouse-usage-data-"),
+        "usage-data.json",
+      );
+      const store = usageDataStoreFor(
+        createFileUsageDataStore(filePath),
+        "https://lh.example",
+      );
+      await store.replace(aYesConfirmed(25 * HOUR));
+      await writeFile(`${filePath}.lock`, "");
+      const lighthouse = aLighthouse({ stateFor });
+      const started = performance.now();
+
+      const outcome = await settle(lighthouse, store);
+
+      expect(performance.now() - started).toBeLessThan(1_500);
+      expect(outcome).toBe("nothing");
+      expect(lighthouse.seen.map(({ route }) => route)).not.toContain("events");
+      expect(await store.read()).toEqual(aYesConfirmed(25 * HOUR));
+    },
+    10_000,
+  );
 });
 
 describe("a grant Lighthouse no longer recognises", () => {

@@ -12,3 +12,5 @@ A yes turned off with `lh config usage-data off` while another `lh` was renewing
 A yes Lighthouse granted but your machine could not keep (another answer was kept first, or the answers file could not be written) is withdrawn at Lighthouse rather than left granted with nobody holding it.
 
 A yes whose confirmation date lies in the future, as after a clock set wrong, is checked with Lighthouse again like a day-old one instead of counting as confirmed forever.
+
+While another `lh` or the MCP server holds the answers file, renewing a yes after a command waits no longer than the one-second usage data budget; when the budget runs out, nothing is sent for that command.

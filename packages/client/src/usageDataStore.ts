@@ -32,11 +32,15 @@ export type UsageDataStore = {
     lighthouse: string,
     answer: StoredUsageDataAnswer,
   ) => Promise<void>;
-  /** Replaces a yes only while it still holds `token`. True when it was replaced. */
+  /**
+   * Replaces a yes only while it still holds `token`. True when it was replaced. Waiting for another writer
+   * stops, throwing, once `signal` aborts.
+   */
   readonly renew: (
     lighthouse: string,
     token: string,
     answer: StoredUsageDataAnswer,
+    signal?: AbortSignal,
   ) => Promise<boolean>;
 };
 
@@ -48,6 +52,7 @@ export type LighthouseUsageDataStore = {
   readonly renew: (
     token: string,
     answer: StoredUsageDataAnswer,
+    signal?: AbortSignal,
   ) => Promise<boolean>;
 };
 
@@ -58,7 +63,8 @@ export const usageDataStoreFor = (
   read: () => store.read(lighthouse),
   answer: (answer) => store.answer(lighthouse, answer),
   replace: (answer) => store.replace(lighthouse, answer),
-  renew: (token, answer) => store.renew(lighthouse, token, answer),
+  renew: (token, answer, signal) =>
+    store.renew(lighthouse, token, answer, signal),
 });
 
 const USAGE_DATA_FILE_NAME = "usage-data.json";
@@ -117,14 +123,14 @@ export const createFileUsageDataStore = (filePath: string): UsageDataStore => {
         [getVoterKeyScope(lighthouse)]: answer,
       }));
     },
-    renew: (lighthouse, token, answer) => {
+    renew: (lighthouse, token, answer, signal) => {
       const scope = getVoterKeyScope(lighthouse);
       return file.updateIfChanged((kept) => {
         const current = kept[scope];
         return current?.answer === "yes" && current.token === token
           ? { ...kept, [scope]: answer }
           : kept;
-      });
+      }, signal);
     },
   };
 };

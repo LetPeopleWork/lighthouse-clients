@@ -34,10 +34,12 @@ export type OwnerOnlyJsonFile<Content> = {
   readonly update: (change: (kept: Content) => Content) => Promise<void>;
   /**
    * As `update`, but a change that hands back the kept content itself writes nothing, so a writer can keep
-   * what is there; true when something was written.
+   * what is there; true when something was written. Waiting for another writer stops, throwing, once
+   * `signal` aborts.
    */
   readonly updateIfChanged: (
     change: (kept: Content) => Content,
+    signal?: AbortSignal,
   ) => Promise<boolean>;
 };
 
@@ -84,6 +86,7 @@ const withLock = async (
   filePath: string,
   name: string,
   work: () => Promise<void>,
+  signal: AbortSignal | undefined,
 ): Promise<void> => {
   const lockPath = `${filePath}.lock`;
   const giveUpAt = Date.now() + LOCK_WAIT_LIMIT_MS;
@@ -93,6 +96,7 @@ const withLock = async (
       await rm(lockPath, { force: true });
       continue;
     }
+    signal?.throwIfAborted();
     if (Date.now() > giveUpAt) {
       throw new Error(
         `The ${name} ${filePath} is in use by another lh or MCP server; try again.`,
@@ -154,26 +158,32 @@ const updateContent = async <Content>(
   filePath: string,
   format: OwnerOnlyJsonFileFormat<Content>,
   change: (kept: Content) => Content,
+  signal?: AbortSignal,
 ): Promise<boolean> => {
   let written = false;
   await mkdir(dirname(filePath), {
     recursive: true,
     mode: OWNER_ONLY_DIRECTORY,
   });
-  await withLock(filePath, format.name, async () => {
-    const kept = await readContent(filePath, format);
-    if (kept === null) {
-      throw new Error(
-        `The ${format.name} ${filePath} cannot be read; fix or remove it.`,
-      );
-    }
-    const changed = change(kept);
-    if (changed === kept) {
-      return;
-    }
-    await writeAtomically(filePath, format.serialize(changed));
-    written = true;
-  });
+  await withLock(
+    filePath,
+    format.name,
+    async () => {
+      const kept = await readContent(filePath, format);
+      if (kept === null) {
+        throw new Error(
+          `The ${format.name} ${filePath} cannot be read; fix or remove it.`,
+        );
+      }
+      const changed = change(kept);
+      if (changed === kept) {
+        return;
+      }
+      await writeAtomically(filePath, format.serialize(changed));
+      written = true;
+    },
+    signal,
+  );
   return written;
 };
 
@@ -185,5 +195,6 @@ export const ownerOnlyJsonFile = <Content>(
   update: async (change) => {
     await updateContent(filePath, format, change);
   },
-  updateIfChanged: (change) => updateContent(filePath, format, change),
+  updateIfChanged: (change, signal) =>
+    updateContent(filePath, format, change, signal),
 });
