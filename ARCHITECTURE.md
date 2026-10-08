@@ -120,7 +120,7 @@ Take a new Lighthouse endpoint you want available both in `lh` and as an MCP too
 2. **`cli`.** Add the method name to the `CliDomainClientLike` pick, then handle the subcommand in the right `run<Group>Group` (or add a group to `runCliCommand` and to the top-level usage text) and update its help text. Cover it in `cli/src/commands.test.ts`, and document it in `packages/cli/README.md`.
 3. **`mcp-core`.** Add the name to the `McpToolDefinition["name"]` union, a definition (description and JSON schema) to `toolDefinitions`, a zod schema to `toolInputSchemas` (the `Record` type makes a missing one a compile error), the method to the `McpRuntimeClient` structural type, and a branch in `callTool`. Pick the verb with section 7 in mind. Cover it in `mcp-core/src/runtime.test.ts`.
 4. **Transports.** Normally nothing to do: both pick the new tool up through `registerMcpTools`.
-5. **`skills/lighthouse/`.** Name the new tool, subcommand or `--metrics` key in the general skill (`SKILL.md` or a file in its `references/`), with when to use it. The drift test (section 11) fails until you do.
+5. **`skills/lighthouse/`.** Name the new tool, subcommand or `--metrics` key in the general skill (`SKILL.md` or a file in its `references/`), with when to use it. If `lighthouse-refinement` or `lighthouse-daily-flow-review` should use it too, name it there as well. The drift test (section 11) fails until the general skill names it, and fails for any skill that names one that does not exist.
 6. **Changesets.** Run `pnpm changeset` and name every package you touched (section 10).
 
 ## 9. Tests

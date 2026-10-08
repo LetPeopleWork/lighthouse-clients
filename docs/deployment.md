@@ -59,7 +59,7 @@ To cut a release:
 
 The approved job then:
 - publishes every package whose version is not on npm yet (`pnpm release:publish`, with provenance);
-- builds the CLI binaries, the `mcp-stdio` MCPB bundle and the skill zip, and creates the GitHub Release with them and the install/uninstall scripts;
+- builds the CLI binaries, the `mcp-stdio` MCPB bundle and one zip per folder under `skills/` (`lighthouse-skill.zip`, `lighthouse-refinement-skill.zip` and `lighthouse-daily-flow-review-skill.zip`, packed by `scripts/pack-skills.sh` before anything is published), and creates the GitHub Release with them and the install/uninstall scripts;
 - builds and pushes the `mcp-http` container if its version has no image yet.
 
 After it, `smoke-platform` installs the published CLI from npm on Linux, macOS and Windows, and `smoke-integration` runs it against a Lighthouse container with demo data.

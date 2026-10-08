@@ -132,4 +132,4 @@ Everything runs in one GitHub workflow, `Client CI` (`.github/workflows/ci.yml`)
 1. Run `pnpm release:version` on `main` and commit and push the version bumps and changelogs it writes. The job publishes only versions that are not on npm yet.
 2. Approve the `Release` environment on that push's CI run.
 
-The job publishes the npm packages, creates a GitHub Release with the CLI binaries, install/uninstall scripts, MCPB bundle and skill zip, and pushes the `mcp-http` image to GHCR when its version is new. See `docs/deployment.md` for details.
+The job publishes the npm packages, creates a GitHub Release with the CLI binaries, install/uninstall scripts, MCPB bundle and one zip per agent skill (`lighthouse-skill.zip`, `lighthouse-refinement-skill.zip` and `lighthouse-daily-flow-review-skill.zip`, packed by `scripts/pack-skills.sh`; see `skills/README.md`), and pushes the `mcp-http` image to GHCR when its version is new. See `docs/deployment.md` for details.
