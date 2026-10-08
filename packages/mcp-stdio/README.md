@@ -173,6 +173,12 @@ MCP clients that display raw tool results will see TOON-encoded output.
 
 A tool that carries a `summary` states its answer there as the web does, in the instance's terminology. An object answer carries it as a `summary` field beside the facts. A list answer keeps its facts block exactly as before and carries the summary in a second text block, `summary: …`. Every other field is the facts, unchanged; when the tool does not recognise the answer's shape it adds no summary.
 
+### Usage data
+
+The first tool call that succeeds against a Lighthouse nobody on this machine has answered for asks you once, through your assistant, whether Lighthouse may receive usage data, when your assistant supports questions from an MCP server (elicitation). Your tool result reaches you unchanged either way. The answer is shared with `lh` for that Lighthouse, so answering in either place stops both asking. If your assistant cannot ask, nothing is asked or sent until you answer with `lh config usage-data on` (or `off`).
+
+With a yes, a manual forecast, a Team refresh, a Portfolio refresh, a Refinement vote and the Refinement read on a Refinement day are reported to your Lighthouse with the source `Mcp`, after the result is returned, never with names, ids, URLs or anything you typed. `DO_NOT_TRACK` is honoured. Details: [Usage data](https://docs.lighthouse.letpeople.work/settings/usagedata.html).
+
 ### TLS certificate validation
 
 All outbound HTTPS requests to Lighthouse skip TLS certificate validation.

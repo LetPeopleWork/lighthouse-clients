@@ -335,7 +335,7 @@ A vote or comment is the **user's own** judgement, recorded under their name. Ne
 
 ### Usage data — the user's choice, never yours
 
-**Never run `lh config usage-data on` or `lh config usage-data off` unless the user asked for exactly that.** Whether usage data is sent is the user's own decision. `lh config usage-data` on its own only shows the answer and is safe to run. Never set or unset `DO_NOT_TRACK` on the user's behalf either.
+**Never run `lh config usage-data on` or `lh config usage-data off` unless the user asked for exactly that.** Whether usage data is sent is the user's own decision. `lh config usage-data` on its own only shows the answer and is safe to run. Never set or unset `DO_NOT_TRACK` on the user's behalf either. The local MCP server may put the same question to the user once, through the assistant's own prompt; that answer is theirs, so never answer it or suggest one.
 
 ### `lighthouse_feature_get` — correct usage
 
