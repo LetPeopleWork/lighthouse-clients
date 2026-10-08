@@ -116,6 +116,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how the packages fit together, the co
 - Install dependencies: `pnpm install`
 - Run tests: `pnpm test`
 - Type-check all packages: `pnpm typecheck`
+- Type-check the test files: `pnpm typecheck:tests` (the package builds leave them out, and vitest does not check types)
 - Build all packages: `pnpm build`
 - Lint workspace: `pnpm lint`
 

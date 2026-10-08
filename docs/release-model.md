@@ -37,6 +37,7 @@ Business/domain behavior must be implemented in shared packages (`@letpeoplework
 Before publishing, run:
 - `pnpm test`
 - `pnpm typecheck`
+- `pnpm typecheck:tests`
 - `pnpm build`
 - `pnpm lint`
 
