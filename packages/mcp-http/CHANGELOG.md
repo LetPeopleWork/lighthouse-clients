@@ -1,5 +1,110 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 1.4.0
+
+### Minor Changes
+
+- [`4dc896a`](https://github.com/LetPeopleWork/lighthouse-clients/commit/4dc896accfc148665c8d3e6fd26f5d5b26b70d98) Thanks [@huserben](https://github.com/huserben)! - See how the refinement votes stand, and vote, from the terminal and from an assistant
+  
+  Saying whether a Work Item is ready, and seeing whether the Team agrees, happened only on a Team's
+  Refinement tab in the browser. Now `lh` and the MCP tools show how the votes stand on every Work Item in
+  refinement, and let a person cast a vote, add a comment and take their vote back, under the same identity
+  rules as the web page and in its words. Needs a Lighthouse newer than v26.10.3.6; an older server is told to
+  upgrade and is never asked.
+  
+  - `lh refinement get` lists three more columns: **Votes** (the split, such as `1 Yes · 1 Yes, if…`, with a
+    `*` where you have voted, or `No votes`), **Readiness** (`Ready`, `2 more Yes needed`, `Needs discussion`,
+    as the web says it) and **Warnings** (`open question`, `stage disagrees`).
+  - `lh refinement vote --team-id <id> --work-item <ref> --answer yes|yes-but|no [--comment <text>] [--as <name>]`,
+    `lh refinement comment … --text <text>` and `lh refinement take-back …` answer in one line, such as
+    `Recorded: Ana Lima — Yes on GR-073. That made GR-073 Ready.` A "Yes, if…" needs its condition. Lighthouse's
+    refusals of a vote come back in plain words; any other refusal (a Team that is not there, a role that may
+    not vote) reads `<category>: <reason>`, as in every other `lh` command. `--json` and `--toon` return the Work Item as the vote left it. A
+    take-back names the answer it saw, so a vote changed since from somewhere else stays, and says whose vote it
+    took back by the name that vote was cast under ("your vote" with sign-in, or when the log cannot say).
+  - With sign-in, a vote is the signed-in account's; `lh` goes by what Lighthouse says, not by what was answered
+    when the connection was saved. Without it, a vote carries the name given with `--as` or
+    stored once with `lh config voter set --name <name>` (`lh config voter` shows it); `lh` never guesses a name.
+    The first vote mints a random voter key for that Lighthouse and keeps it in `voter-keys.json` beside the CLI
+    config, so the vote can be taken back from that machine. The file is its owner's alone (on Linux and
+    macOS); `lh` and a local MCP server saving at the same moment both keep their keys, and a file that cannot
+    be read is refused with a message naming it, never written over.
+  - The MCP tools `lighthouse_team_refinement_vote` (`{ id, workItem, answer, comment?, voterName? }`, answer
+    `Yes`, `YesBut` or `No`), `lighthouse_team_refinement_comment` and `lighthouse_team_refinement_voteTakeBack`
+    are registered as writes. Their descriptions tell the assistant to confirm with the user first and to ask
+    for the user's name rather than infer it. Each result carries a `summary` in the same words as `lh`.
+    `lighthouse_team_refinement_get` marks the user's own vote. Like `lh`, the tools go by what Lighthouse says
+    about sign-in: with it they send no name and keep no key, and a signed-in vote can be taken back; without
+    it a vote or comment without `voterName` is refused before anything is sent or kept.
+  - mcp-stdio keeps its voter key in the same file as `lh`, so a person is one voter whichever they use, and
+    however each was given the URL (`HTTPS://Lighthouse.example:443/` and `https://lighthouse.example/api` are
+    one Lighthouse).
+    mcp-http, shared by many people, refuses votes on a Lighthouse without sign-in and points to the web page,
+    `lh` or a local MCP server. With sign-in it votes only with the caller's own API key or token; a request
+    that would fall back to the server's `LIGHTHOUSE_API_KEY` is refused, so nobody votes as the operator.
+  - The client gains `castRefinementVote`, `addRefinementComment`, `takeBackRefinementVote` (with the `answer` it saw),
+    `getRefinementLog` (a Work Item's sizing log, the caller's own entries marked `isMine`), a `voterKey` option
+    on `getTeamRefinement`, `mintVoterKey`, `createFileVoterKeyStore` and the shared vote wording. A refusal's
+    `LighthouseApiError` now also carries the `problemCode` and `problemTitle` Lighthouse sent.
+
+- [`08b8de2`](https://github.com/LetPeopleWork/lighthouse-clients/commit/08b8de2377ad269f0ad5b3b836d14c073f8b70b8) Thanks [@huserben](https://github.com/huserben)! - The shared MCP server's operator decides whether it sends usage data, and it is off unless they say on
+  
+  `LIGHTHOUSE_USAGE_DATA=on` (any case) switches usage data on for everyone the server serves; nobody is
+  asked. Unset, empty or `off` keeps it off. Any other value keeps it off too, and the server still starts
+  with one warning naming `on` and `off` as the values it takes. At start-up the server says which it is:
+  `Usage data: on (LIGHTHOUSE_USAGE_DATA)` or `Usage data: off`.
+  
+  Switched on, the server reports what its callers do, as the web counts it: refreshing a Team, refreshing a
+  Portfolio and running a manual forecast, each labelled as coming from MCP. Nobody is asked, and no
+  caller waits for it or gets a different answer for it. The server requests one grant for the whole
+  process, on the first thing worth counting, and keeps it in memory only, never on disk: a restart
+  requests a fresh one.
+  `DO_NOT_TRACK` overrides `on`: the server says `Usage data: off` and sends nothing.
+  
+  It never sends a credential with usage data: neither `LIGHTHOUSE_API_KEY` nor a caller's own API key
+  or bearer token. Against a Lighthouse whose administrator switched usage data off, or one too old to
+  take it from MCP, it sends nothing and looks again at most once an hour, so switching it back on takes
+  effect without a restart.
+
+### Patch Changes
+
+- [`0f3d4af`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0f3d4afc80f1f17877b064e3de9e531eb48f9194) Thanks [@huserben](https://github.com/huserben)! - The MCP servers report their own package version to the assistant, instead of a fixed number that had fallen behind (0.2.5 for mcp-stdio, 0.1.0 for mcp-http).
+
+- [`c113a1e`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c113a1ee4b61cfc1501092a71a1a5b5ad277c94c) Thanks [@huserben](https://github.com/huserben)! - Ask how much to refine from the terminal and from an assistant
+  
+  "How many Work Items should we refine before the next Refinement?" was answered only on a Team's
+  Refinement tab in the browser. Now `lh` and the MCP tools answer it too, in exactly the words the
+  web page uses and in the instance's own terminology, so a renamed "Story" or "Grooming" reads the
+  same everywhere. A term left blank, or terminology that cannot be read, reads as the default word, and a Team
+  read without a name is called by the instance's word for a Team and its id ("Squad 3").
+  Needs a Lighthouse newer than v26.10.3.6; an older server is told to upgrade and is never asked.
+  
+  - `lh refinement get --team-id <id>` states the next Refinement, how many Work Items are ready
+    against the range the Team is likely to pull, and how many more to refine. It then lists the
+    Work Items in refinement with the needed ones numbered and the "enough for the next Refinement"
+    line where the web draws it. Without a number it says why: no Refinement cadence, not enough data
+    yet, or no refinement states. Like the web page, it states a verdict only with every fact it is
+    said with — the next Refinement, the cycle and its likelihoods — and otherwise gives no number,
+    no numbered Work Items and no line. With nothing in refinement it says only "No Work Items in
+    Refinement states right now", as the web page does. `--json` and `--toon` return the facts unchanged.
+  - The MCP tool `lighthouse_team_refinement_get` (input `{ id }`) returns the same facts plus a
+    `summary` holding the sentence the web page states. Its description explains the verdict, the
+    range and the cycle it covers, whether today is a Refinement day, how many days remain until the
+    next one, and whether the ready count comes from votes or from stages.
+  - The client gains `getTeamRefinement(teamId)`, `getTerminology()` and the shared wording both
+    surfaces use: `readRefinementWording` reads the Team's name and the instance's terms, and
+    `describeRefinementSummary` and friends state the need in them.
+  
+  This release also carries the runtime dependency updates held back since the last one:
+  `@modelcontextprotocol/sdk` 1.31.0, `undici` 8.11.2, `zod` 4 and `@toon-format/toon` 4. The TOON
+  update changes what `--toon` and the MCP tool results look like in two places, while decoding to the
+  same data: a list of records whose nested objects hold only plain values is now one table row per
+  record (for example `split{yes,yesBut,no}` in the header), and an empty list prints as `[]`. A
+  parser built on TOON 2 cannot read those tables; one built on TOON 4 reads them back exactly.
+- Updated dependencies [[`92dcba7`](https://github.com/LetPeopleWork/lighthouse-clients/commit/92dcba78798a43179e6b610da647d70df7d78642), [`d624b34`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d624b34c91cae9a7fd0d6fd5651d5662bbcccb69), [`8dbc106`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8dbc1062877fc9e3067623b000a94466717b3515), [`7641927`](https://github.com/LetPeopleWork/lighthouse-clients/commit/7641927e0101b9c66e1cbf776715c68f71ec53ea), [`45aa6be`](https://github.com/LetPeopleWork/lighthouse-clients/commit/45aa6be764d20c6773a596e5cb0eba531cf116bf), [`004f43f`](https://github.com/LetPeopleWork/lighthouse-clients/commit/004f43f8b9f28050b06876f8bf04468d4b88e581), [`a31f95f`](https://github.com/LetPeopleWork/lighthouse-clients/commit/a31f95fd24bfb8455a56c74362fd6a5cb9235192), [`6451f2e`](https://github.com/LetPeopleWork/lighthouse-clients/commit/6451f2ef9929f66f93fd8189020ca9014bbb286e), [`2f4a0c1`](https://github.com/LetPeopleWork/lighthouse-clients/commit/2f4a0c1898e51540962cf92b3e70a522db1c35c4), [`8f750d3`](https://github.com/LetPeopleWork/lighthouse-clients/commit/8f750d3debbea58b2eea130376f30117370f46f3), [`05dfd9a`](https://github.com/LetPeopleWork/lighthouse-clients/commit/05dfd9a500e5cc5ab2f0a5eef197ac982c893cfd), [`d10bd08`](https://github.com/LetPeopleWork/lighthouse-clients/commit/d10bd086de111130b84a80be0f965419288e9792), [`92d0743`](https://github.com/LetPeopleWork/lighthouse-clients/commit/92d0743a591e9669bc3adacbc40fd00d65c066ae), [`c113a1e`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c113a1ee4b61cfc1501092a71a1a5b5ad277c94c), [`4dc896a`](https://github.com/LetPeopleWork/lighthouse-clients/commit/4dc896accfc148665c8d3e6fd26f5d5b26b70d98), [`c4d52b9`](https://github.com/LetPeopleWork/lighthouse-clients/commit/c4d52b9f12120bb71418f5c333be35280feae160), [`25fc147`](https://github.com/LetPeopleWork/lighthouse-clients/commit/25fc14711eaf2af0f855a306d942c687cc20ed53), [`ce3d723`](https://github.com/LetPeopleWork/lighthouse-clients/commit/ce3d7234489fa2d1b01ab15171523eb1b9bfe86f)]:
+  - @letpeoplework/lighthouse-mcp-core@1.8.0
+  - @letpeoplework/lighthouse-client@1.9.0
+
 ## 1.3.6
 
 ### Patch Changes
