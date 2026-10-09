@@ -65,16 +65,48 @@ jobs:
             && echo "mcp-http smoke: PASS" \
             || (echo "mcp-http smoke: FAIL - unexpected output"; exit 1)
 
-  release:
+  # Only a commit that bumps a package version has anything to publish. Every other push to main would
+  # otherwise park at the Release gate forever, and the oldest parked run blocks every newer one.
+  unpublished:
     runs-on: ubuntu-latest
     needs:
       - verify
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    outputs:
+      any: ${{ steps.check.outputs.any }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Look for package versions not yet on npm
+        id: check
+        run: |
+          any=false
+          for manifest in packages/*/package.json; do
+            [ "$(jq -r '.private // false' "$manifest")" = "true" ] && continue
+            spec="$(jq -r '"\(.name)@\(.version)"' "$manifest")"
+            if npm view "$spec" version > /dev/null 2>&1; then
+              echo "$spec is already on npm"
+            else
+              echo "$spec is not on npm yet"
+              any=true
+            fi
+          done
+          echo "any=$any" >> "$GITHUB_OUTPUT"
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - verify
+      - unpublished
+    if: github.ref == 'refs/heads/main' && needs.unpublished.outputs.any == 'true'
     environment: Release
-    # A newer push to main supersedes a release still awaiting approval, so approving never ships a stale commit.
+    # A newer version bump supersedes a release still awaiting approval, so approving never ships a stale commit.
     concurrency:
       group: release
-      cancel-in-progress: false
+      cancel-in-progress: true
 
     outputs:
       cli_version: ${{ steps.get_versions.outputs.cli_version }}
