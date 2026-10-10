@@ -70,6 +70,8 @@ describe("lh delivery list --pretty", () => {
       "Harbour Trial [id: 9] Fri 28 Aug 2026 Wed 2 Sep 2026 18 of 20 Work Items >95%",
     ]);
     expect(result.stdout).toContain("—\n\nArchived Deliveries\n");
+    expect(result.stdout).toContain("Ocean Explorer · Deliveries\nName ");
+    expect(result.stdout).toContain("Archived Deliveries\nName ");
     expect(lighthouse.asked().sort()).toEqual([
       "getPortfolio",
       "getTerminology",

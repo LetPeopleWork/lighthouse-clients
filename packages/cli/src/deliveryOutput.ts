@@ -46,7 +46,6 @@ const archivedDeliveryLines = (
     : [
         "",
         describeArchivedDeliveriesTitle(terms),
-        "",
         ...toTableLines([
           describeArchivedDeliveryHeadings(terms),
           ...archived.map((delivery) =>
