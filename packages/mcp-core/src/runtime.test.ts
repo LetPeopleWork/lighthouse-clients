@@ -18,6 +18,8 @@ const emptyDeliveryHistory = {
   points: [],
 };
 
+const noDeliveries = { active: [], archived: [] };
+
 describe("createMcpCoreRuntime", () => {
   it("lists baseline Lighthouse tools", () => {
     const runtime = createMcpCoreRuntime({
@@ -275,10 +277,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -343,10 +342,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -403,10 +399,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -513,10 +506,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -695,7 +685,7 @@ describe("createMcpCoreRuntime", () => {
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({
             ok: true as const,
-            value: { active: [], archived: [] },
+            value: noDeliveries,
           }),
           getDeliveryMetricsHistory: async () => result,
           createDelivery: async () => ({ ok: true as const, value: {} }),
@@ -983,10 +973,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -1046,10 +1033,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -1114,10 +1098,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -1181,10 +1162,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -1245,10 +1223,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -1515,10 +1490,7 @@ describe("createMcpCoreRuntime", () => {
           getFeaturesByIds: async () => ({ ok: true, value: [] }),
           getFeaturesByReferences: async () => ({ ok: true, value: [] }),
           getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-          listDeliveries: async () => ({
-            ok: true,
-            value: { active: [], archived: [] },
-          }),
+          listDeliveries: async () => ({ ok: true, value: noDeliveries }),
           getDeliveryMetricsHistory: async () => ({
             ok: true,
             value: emptyDeliveryHistory,
@@ -1606,7 +1578,7 @@ describe("createMcpCoreRuntime", () => {
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({
             ok: true as const,
-            value: { active: [], archived: [] },
+            value: noDeliveries,
           }),
           getDeliveryMetricsHistory: async () => ({
             ok: true as const,
@@ -1690,7 +1662,7 @@ describe("createMcpCoreRuntime", () => {
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({
             ok: true as const,
-            value: { active: [], archived: [] },
+            value: noDeliveries,
           }),
           getDeliveryMetricsHistory: async () => ({
             ok: true as const,
@@ -1818,7 +1790,7 @@ describe("registerMcpTools", () => {
           getFeatureWorkItems: async () => ({ ok: true as const, value: [] }),
           listDeliveries: async () => ({
             ok: true as const,
-            value: { active: [], archived: [] },
+            value: noDeliveries,
           }),
           getDeliveryMetricsHistory: async () => ({
             ok: true as const,
