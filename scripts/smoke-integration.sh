@@ -201,7 +201,7 @@ case "$archive_status" in
       | jq -e --argjson id "$ARCHIVED" 'any(.archived[]; .id == $id) and all(.active[]; .id != $id)' >/dev/null \
       || { echo "FAIL: Delivery $ARCHIVED is not under .archived in lh delivery list --json"; exit 1; }
     echo "Archived Delivery: PASS" ;;
-  403) echo "::notice title=Archived check skipped::archiving needs a premium licence (set LIGHTHOUSE_SMOKE_LICENSE_FILE); archived check skipped." ;;
+  403) echo "::notice title=Archived check skipped::archiving needs a premium licence (in CI add the LIGHTHOUSE_SMOKE_LICENSE repo secret; locally set LIGHTHOUSE_SMOKE_LICENSE_FILE); archived check skipped." ;;
   404) echo "::notice title=Archived check skipped::this Lighthouse has no archive endpoint; archived check skipped." ;;
   *) echo "FAIL: archiving Delivery $ARCHIVED answered HTTP $archive_status"; exit 1 ;;
 esac

@@ -432,4 +432,11 @@ jobs:
           needs.release.outputs.cli_version }}
 
       - name: Run the integration smoke against ghcr.io/letpeoplework/lighthouse:latest
-        run: bash scripts/smoke-integration.sh ghcr.io/letpeoplework/lighthouse:latest
+        env:
+          SMOKE_LICENSE: ${{ secrets.LIGHTHOUSE_SMOKE_LICENSE }}
+        run: |
+          if [ -n "$SMOKE_LICENSE" ]; then
+            export LIGHTHOUSE_SMOKE_LICENSE_FILE="$RUNNER_TEMP/smoke-license.json"
+            printf '%s' "$SMOKE_LICENSE" > "$LIGHTHOUSE_SMOKE_LICENSE_FILE"
+          fi
+          bash scripts/smoke-integration.sh ghcr.io/letpeoplework/lighthouse:latest
