@@ -47,6 +47,19 @@ describe("the Delivery tools' summary", () => {
     },
   );
 
+  it("tells an assistant the delivery list holds the running Deliveries under `active`, the archived ones under `archived`, and `summary` as a field counting the running ones", () => {
+    const description =
+      anAssistantOn({})
+        .runtime.listTools()
+        .find((listed) => listed.name === "lighthouse_delivery_list")
+        ?.description ?? "";
+
+    expect(description).toContain("`active`");
+    expect(description).toContain("`archived`");
+    expect(description).toContain("a `summary` field counts the running ones");
+    expect(description).not.toContain("second text block");
+  });
+
   it("keeps the summarised recorded days as they are and adds their heading in a second block", async () => {
     const result = await deliveriesAssistant().call(
       "lighthouse_delivery_metrics",

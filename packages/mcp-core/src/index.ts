@@ -1239,7 +1239,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_delivery_list",
     description:
-      "List deliveries for a portfolio by portfolio ID. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
+      "List deliveries for a portfolio by portfolio ID. The answer holds the running deliveries under `active` and the archived ones under `archived`; a `summary` field counts the running ones in the instance's terminology.",
     inputSchema: idInputSchema,
   },
   {
