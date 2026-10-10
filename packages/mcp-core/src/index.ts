@@ -52,7 +52,6 @@ import {
   readBlocked,
   readCycleTimeDefinitionName,
   readCycleTimePercentiles,
-  readDeliveryList,
   readDeliveryMetricsHistory,
   readFeatureList,
   readFeatureWording,
@@ -62,6 +61,7 @@ import {
   readOwnerList,
   readPercentilesOverTime,
   readPortfolio,
+  readPortfolioDeliveries,
   readProcessBehaviorChart,
   readProcessBehaviorOverTime,
   readRunChart,
@@ -3071,8 +3071,10 @@ const answerToolCall =
       return withSummary(
         "deliveries",
         result.value,
-        countSummary(result.value, readDeliveryList, (count) =>
-          describeDeliveryCount(count, terms),
+        countSummary(
+          result.value,
+          (value) => readPortfolioDeliveries(value)?.active ?? null,
+          (count) => describeDeliveryCount(count, terms),
         ),
       );
     }

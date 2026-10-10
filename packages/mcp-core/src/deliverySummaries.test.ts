@@ -1,9 +1,8 @@
-import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import {
   aDelivery,
   oceanExplorer,
-  oceanExplorersDeliveries,
+  oceanExplorersPortfolioDeliveries,
   ok,
   q4ReleaseHistory,
 } from "../../../test-support/lighthouseAnswers";
@@ -19,7 +18,7 @@ import {
 const deliveriesAssistant = (reads = {}) =>
   anAssistantOn({
     getPortfolio: ok(oceanExplorer()),
-    listDeliveries: ok(oceanExplorersDeliveries()),
+    listDeliveries: ok(oceanExplorersPortfolioDeliveries()),
     getDeliveryMetricsHistory: ok(q4ReleaseHistory()),
     ...reads,
   });
@@ -29,10 +28,10 @@ const Q4_HEADING =
 
 describe("the Delivery tools' summary", () => {
   it.each([
-    { deliveries: oceanExplorersDeliveries(), says: "summary: 4 Deliveries" },
-    { deliveries: [aDelivery()], says: "summary: 1 Delivery" },
+    { deliveries: oceanExplorersPortfolioDeliveries(), says: "4 Deliveries" },
+    { deliveries: { active: [aDelivery()], archived: [] }, says: "1 Delivery" },
   ])(
-    "keeps the Delivery list's facts as they are and adds '$says'",
+    "the delivery list summary counts the active Deliveries when the server answers {active, archived}: '$says'",
     async ({ deliveries, says }) => {
       const assistant = deliveriesAssistant({ listDeliveries: ok(deliveries) });
 
@@ -41,10 +40,10 @@ describe("the Delivery tools' summary", () => {
       });
 
       expect(result.isError).toBe(false);
-      expect(factsBlockOf(result)).toBe(
-        `deliveries: ${encode(deliveries as never)}`,
-      );
-      expect(summaryBlockOf(result)).toBe(says);
+      expect(result.content).toHaveLength(1);
+      const { summary, ...facts } = answerOf(result, "deliveries: ");
+      expect(facts).toEqual(deliveries);
+      expect(summary).toBe(says);
     },
   );
 
