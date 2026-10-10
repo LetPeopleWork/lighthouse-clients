@@ -45,6 +45,7 @@ import {
   type MetricsDateRange,
   type MetricsScope,
   type OwnerKind,
+  type PortfolioDeliveries,
   readAnswerWording,
   readBacktest,
   readBlackoutRules,
@@ -756,7 +757,7 @@ type McpRuntimeClient = {
       }
   >;
   readonly listDeliveries: (portfolioId: number) => Promise<
-    | { readonly ok: true; readonly value: readonly unknown[] }
+    | { readonly ok: true; readonly value: PortfolioDeliveries }
     | {
         readonly ok: false;
         readonly error: { readonly category: string; readonly reason: string };

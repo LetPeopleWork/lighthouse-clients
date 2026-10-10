@@ -88,6 +88,81 @@ export const readDeliveryList = (value: unknown): DeliveryListItem[] | null => {
   return items.every((item) => item !== null) ? items : null;
 };
 
+/** One archived Delivery as the archived table states it: the numbers written down the day it closed. */
+export type ArchivedDeliveryItem = {
+  readonly id: number;
+  readonly name: string;
+  readonly date: string;
+  readonly archivedOn: string;
+  readonly totalWork: number;
+  readonly doneWork: number;
+  readonly likelihood: number | null;
+};
+
+const doneWorkOf = (value: Record<string, unknown>): number | undefined => {
+  if (typeof value.doneWork === "number") {
+    return value.doneWork;
+  }
+  return typeof value.totalWork === "number" &&
+    typeof value.remainingWork === "number"
+    ? value.totalWork - value.remainingWork
+    : undefined;
+};
+
+/** One archived Delivery, or null when it comes without its id, name, dates or work. */
+export const readArchivedDeliveryItem = (
+  value: unknown,
+): ArchivedDeliveryItem | null => {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "number" ||
+    typeof value.totalWork !== "number"
+  ) {
+    return null;
+  }
+  const name = textOf(value.name);
+  const date = textOf(value.date);
+  const archivedOn = textOf(value.archivedOn);
+  const doneWork = doneWorkOf(value);
+  if (
+    name === undefined ||
+    date === undefined ||
+    archivedOn === undefined ||
+    doneWork === undefined
+  ) {
+    return null;
+  }
+  return {
+    id: value.id,
+    name,
+    date,
+    archivedOn,
+    totalWork: value.totalWork,
+    doneWork,
+    likelihood:
+      typeof value.likelihoodPercentage === "number"
+        ? value.likelihoodPercentage
+        : null,
+  };
+};
+
+/** A Portfolio's active and archived Deliveries, or null when either list or any row in it cannot be read. */
+export const readPortfolioDeliveries = (
+  value: unknown,
+): {
+  active: DeliveryListItem[];
+  archived: ArchivedDeliveryItem[];
+} | null => {
+  if (!isRecord(value) || !Array.isArray(value.archived)) {
+    return null;
+  }
+  const active = readDeliveryList(value.active);
+  const archived = value.archived.map(readArchivedDeliveryItem);
+  return active !== null && archived.every((item) => item !== null)
+    ? { active, archived }
+    : null;
+};
+
 /** "Ocean Explorer · Deliveries", or the Portfolio by its id when its name could not be read. */
 export const describeDeliveryListTitle = (
   owner: DeliveryListOwner,

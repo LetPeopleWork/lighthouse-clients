@@ -1542,8 +1542,7 @@ describe("createLighthouseClient", () => {
     );
   });
 
-  it("lists deliveries for a portfolio", async () => {
-    const deliveries = [{ id: 1, name: "Release 1" }];
+  const listDeliveriesAnswering = async (answer: unknown) => {
     const fetchMock = getFetchSequenceMock([
       {
         ok: true,
@@ -1554,11 +1553,10 @@ describe("createLighthouseClient", () => {
       {
         ok: true,
         status: 200,
-        text: async () => JSON.stringify(deliveries),
-        json: async () => deliveries,
+        text: async () => JSON.stringify(answer),
+        json: async () => answer,
       },
     ]);
-
     const client = createLighthouseClient(
       {
         connection: {
@@ -1568,14 +1566,52 @@ describe("createLighthouseClient", () => {
       },
       { fetch: fetchMock.fetch },
     );
-
     const result = await client.listDeliveries(4);
+    return { result, url: fetchMock.calls[1]?.url };
+  };
 
-    expect(result).toEqual({ ok: true, value: deliveries });
-    expect(fetchMock.calls[1]?.url).toBe(
-      "http://localhost:5000/api/v1/deliveries/portfolio/4",
-    );
+  it("listDeliveries passes {active, archived} through as the server sent it", async () => {
+    const answer = {
+      active: [{ id: 1, name: "Release 1" }],
+      archived: [{ id: 2, name: "Release 0", archivedOn: "2026-09-01" }],
+    };
+
+    const { result, url } = await listDeliveriesAnswering(answer);
+
+    expect(result).toEqual({ ok: true, value: answer });
+    expect(url).toBe("http://localhost:5000/api/v1/deliveries/portfolio/4");
   });
+
+  it("listDeliveries turns an older server's array into {active: <the array>, archived: []}", async () => {
+    const deliveries = [{ id: 1, name: "Release 1" }];
+
+    const { result } = await listDeliveriesAnswering(deliveries);
+
+    expect(result).toEqual({
+      ok: true,
+      value: { active: deliveries, archived: [] },
+    });
+  });
+
+  it.each([
+    ["null", null],
+    ["a number", 7],
+    ["{active: 'x'}", { active: "x" }],
+    ["{archived: []}", { archived: [] }],
+  ])(
+    "listDeliveries refuses an answer that is neither an array nor {active, archived}: %s",
+    async (_label, answer) => {
+      const { result } = await listDeliveriesAnswering(answer);
+
+      expect(result).toEqual({
+        ok: false,
+        error: {
+          category: "unexpected",
+          reason: "Lighthouse's list of Deliveries is not readable.",
+        },
+      });
+    },
+  );
 
   it("creates a delivery for a portfolio", async () => {
     const delivery = { id: 2, name: "Release 2" };

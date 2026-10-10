@@ -172,7 +172,10 @@ const getDefaultMockClient = (): MockClient => ({
   getFeaturesByIds: async () => ({ ok: true, value: [] }),
   getFeaturesByReferences: async () => ({ ok: true, value: [] }),
   getFeatureWorkItems: async () => ({ ok: true, value: [] }),
-  listDeliveries: async () => ({ ok: true, value: [] }),
+  listDeliveries: async () => ({
+    ok: true,
+    value: { active: [], archived: [] },
+  }),
   getDeliveryMetricsHistory: async () => ({
     ok: true,
     value: {
@@ -2033,7 +2036,10 @@ describe("runCliCommand", () => {
       },
       client: {
         ...getDefaultMockClient(),
-        listDeliveries: async () => ({ ok: true, value: deliveries }),
+        listDeliveries: async () => ({
+          ok: true,
+          value: { active: deliveries, archived: [] },
+        }),
       },
     });
 

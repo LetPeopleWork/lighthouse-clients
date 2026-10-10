@@ -356,6 +356,36 @@ export const oceanExplorersDeliveries = () => [
   }),
 ];
 
+// An archived Delivery as the server writes it down on closing: no Features to look up, no forecast to rerun.
+export const anArchivedDelivery = (facts: Record<string, unknown> = {}) => ({
+  id: 9,
+  name: "Harbour Trial",
+  date: "2026-08-28T00:00:00Z",
+  portfolioId: 2,
+  archivedOn: "2026-09-02T09:15:00Z",
+  progress: 90,
+  totalWork: 20,
+  doneWork: 18,
+  remainingWork: 2,
+  likelihoodPercentage: 97.5,
+  hasSufficientData: true,
+  teamsWithoutForecast: [],
+  featureBreakdown: breakdown(2),
+  whenDistribution: [],
+  selectionMode: "Manual",
+  rules: [],
+  mode: "And",
+  metricSnapshotCount: 30,
+  concurrencyToken: "6f1c2a9e-0000-4000-8000-000000000009",
+  ...facts,
+});
+
+// Ocean Explorer's Deliveries as a Lighthouse since v26.8.31.7 answers them: the four running, one archived.
+export const oceanExplorersPortfolioDeliveries = () => ({
+  active: oceanExplorersDeliveries(),
+  archived: [anArchivedDelivery()],
+});
+
 const breakdown = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
     referenceId: `OE-0${10 + index}`,

@@ -11,8 +11,10 @@ import {
   describeNoDeliveries,
   describeRecordedDayRow,
   latestRecordedDay,
+  readArchivedDeliveryItem,
   readDeliveryList,
   readDeliveryMetricsHistory,
+  readPortfolioDeliveries,
 } from "./deliveryWording";
 import { SEEDED_TERMS, type Terms } from "./terminology";
 
@@ -81,6 +83,109 @@ describe("readDeliveryList", () => {
 
   it("reads no list from an answer that is not one", () => {
     expect(readDeliveryList({ deliveries: [] })).toBeNull();
+  });
+});
+
+const pilotLaunch = {
+  id: 12,
+  name: "Pilot Launch",
+  date: "2026-08-30T00:00:00Z",
+  portfolioId: 2,
+  archivedOn: "2026-09-02T09:15:00Z",
+  progress: 90,
+  totalWork: 20,
+  doneWork: 18,
+  remainingWork: 2,
+  likelihoodPercentage: 97.5,
+  hasSufficientData: true,
+  teamsWithoutForecast: [],
+};
+
+describe("readArchivedDeliveryItem", () => {
+  it("picks the facts the archived table states", () => {
+    expect(readArchivedDeliveryItem(pilotLaunch)).toEqual({
+      id: 12,
+      name: "Pilot Launch",
+      date: "2026-08-30T00:00:00Z",
+      archivedOn: "2026-09-02T09:15:00Z",
+      totalWork: 20,
+      doneWork: 18,
+      likelihood: 97.5,
+    });
+  });
+
+  it("works the done work out of the remaining work when only that was sent, and leaves an unsent likelihood null", () => {
+    const {
+      doneWork: _done,
+      likelihoodPercentage: _likelihood,
+      ...older
+    } = pilotLaunch;
+
+    expect(readArchivedDeliveryItem(older)).toMatchObject({
+      doneWork: 18,
+      likelihood: null,
+    });
+  });
+
+  it.each(["id", "name", "date", "archivedOn", "totalWork"])(
+    "reads no row when the archived Delivery comes without its %s",
+    (fact) => {
+      const { [fact as keyof typeof pilotLaunch]: _notSent, ...partial } =
+        pilotLaunch;
+
+      expect(readArchivedDeliveryItem(partial)).toBeNull();
+    },
+  );
+
+  it("reads no row when neither its done nor its remaining work was sent", () => {
+    const { doneWork: _d, remainingWork: _r, ...partial } = pilotLaunch;
+
+    expect(readArchivedDeliveryItem(partial)).toBeNull();
+  });
+
+  it("reads no row from an answer that is not one", () => {
+    expect(readArchivedDeliveryItem("Pilot Launch")).toBeNull();
+  });
+});
+
+describe("readPortfolioDeliveries", () => {
+  it("reads the active Deliveries and the archived ones apart", () => {
+    expect(
+      readPortfolioDeliveries({
+        active: [lunarProbe],
+        archived: [pilotLaunch],
+      }),
+    ).toEqual({
+      active: readDeliveryList([lunarProbe]),
+      archived: [readArchivedDeliveryItem(pilotLaunch)],
+    });
+  });
+
+  it("reads nothing when one archived Delivery comes without a fact it needs", () => {
+    const { archivedOn: _notSent, ...partial } = pilotLaunch;
+
+    expect(
+      readPortfolioDeliveries({
+        active: [lunarProbe],
+        archived: [pilotLaunch, partial],
+      }),
+    ).toBeNull();
+  });
+
+  it("reads nothing when one active Delivery comes without a fact it needs", () => {
+    const { id: _notSent, ...partial } = lunarProbe;
+
+    expect(
+      readPortfolioDeliveries({ active: [partial], archived: [] }),
+    ).toBeNull();
+  });
+
+  it.each([
+    ["a list", [lunarProbe]],
+    ["null", null],
+    ["no archived list", { active: [lunarProbe] }],
+  ])("reads nothing from %s", (_label, answer) => {
+    expect(readPortfolioDeliveries(answer)).toBeNull();
   });
 });
 

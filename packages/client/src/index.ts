@@ -835,6 +835,24 @@ export type LighthouseApiResult<TValue> =
 
 export type LighthouseWritePayload = Readonly<Record<string, unknown>>;
 
+/** A Portfolio's Deliveries: the ones still running apart from the archived ones. */
+export type PortfolioDeliveries = {
+  readonly active: readonly unknown[];
+  readonly archived: readonly unknown[];
+};
+
+// A Lighthouse older than v26.8.31.7 answers a bare list, which holds no archived Delivery.
+const toPortfolioDeliveries = (value: unknown): PortfolioDeliveries | null => {
+  if (Array.isArray(value)) {
+    return { active: value, archived: [] };
+  }
+  return isObjectRecord(value) &&
+    Array.isArray(value.active) &&
+    Array.isArray(value.archived)
+    ? { active: value.active, archived: value.archived }
+    : null;
+};
+
 export type MetricsDateRange = {
   readonly startDate: string;
   readonly endDate: string;
@@ -1603,7 +1621,7 @@ export type LighthouseClient = {
   // Deliveries
   readonly listDeliveries: (
     portfolioId: number,
-  ) => Promise<LighthouseApiResult<readonly unknown[]>>;
+  ) => Promise<LighthouseApiResult<PortfolioDeliveries>>;
   readonly createDelivery: (
     portfolioId: number,
     payload: LighthouseWritePayload,
@@ -3099,13 +3117,24 @@ export const createLighthouseClient = (
         `/v1/features/${featureId}/workitems`,
         { method: "GET" },
       ),
-    listDeliveries: async (portfolioId: number) =>
-      requestJson<readonly unknown[]>(
+    listDeliveries: async (portfolioId: number) => {
+      const result = await requestJson<unknown>(
         configuration,
         dependencies,
         `/v1/deliveries/portfolio/${portfolioId}`,
         { method: "GET" },
-      ),
+      );
+      if (!result.ok) {
+        return result;
+      }
+      const deliveries = toPortfolioDeliveries(result.value);
+      return deliveries === null
+        ? getErrorResult({
+            category: "unexpected",
+            reason: "Lighthouse's list of Deliveries is not readable.",
+          })
+        : { ok: true, value: deliveries };
+    },
     createDelivery: async (
       portfolioId: number,
       payload: LighthouseWritePayload,
