@@ -9,7 +9,7 @@ import {
   gravity,
   gravitysForecast,
   oceanExplorer,
-  oceanExplorersDeliveries,
+  oceanExplorersPortfolioDeliveries,
   ok,
   q4ReleaseHistory,
 } from "../../../test-support/lighthouseAnswers";
@@ -485,7 +485,7 @@ describe("lh reads it needs only for its words", () => {
     "heads the Deliveries with the Portfolio's term and id when the Portfolio %s",
     async (_case, answer) => {
       const lighthouse = aLighthouse({
-        listDeliveries: ok(oceanExplorersDeliveries()),
+        listDeliveries: ok(oceanExplorersPortfolioDeliveries()),
         getPortfolio: answer,
       });
 

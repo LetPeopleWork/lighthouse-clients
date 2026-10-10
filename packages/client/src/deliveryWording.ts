@@ -234,6 +234,42 @@ export const describeDeliveryRow = (
   delivery.likelyBy === undefined ? NOT_SENT : dayOf(delivery.likelyBy),
 ];
 
+/** What heads the archived Deliveries, below the active ones: "Archived Deliveries". */
+export const describeArchivedDeliveriesTitle = (terms: Terms): string =>
+  `Archived ${terms.deliveries}`;
+
+/** The archived table's column headings: when it was due, when it closed, and what it reached. */
+export const describeArchivedDeliveryHeadings = (terms: Terms): string[] => [
+  "Name",
+  `${terms.delivery} Date`,
+  "Archived On",
+  "Done",
+  "Likelihood",
+];
+
+/** One archived Delivery as a row of its table, in the order of its headings. */
+export const describeArchivedDeliveryRow = (
+  delivery: ArchivedDeliveryItem,
+  terms: Terms,
+): string[] => {
+  const remainingWork = delivery.totalWork - delivery.doneWork;
+  return [
+    describeOwnerName(delivery),
+    dayOf(delivery.date),
+    dayOf(delivery.archivedOn),
+    describeDeliveryDone(
+      { totalWork: delivery.totalWork, remainingWork },
+      terms,
+    ),
+    likelihoodAnswer({
+      likelihood: delivery.likelihood,
+      cannotBeForecast: false,
+      hasRemainingWork: remainingWork > 0,
+      precision: "round",
+    }),
+  ];
+};
+
 const isNullableNumber = (value: unknown): value is number | null =>
   value === null || typeof value === "number";
 

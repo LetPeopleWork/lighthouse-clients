@@ -1,6 +1,11 @@
 import {
+  type ArchivedDeliveryItem,
+  type DeliveryListItem,
   type DeliveryListOwner,
   type DeliveryMetricsHistoryPoint,
+  describeArchivedDeliveriesTitle,
+  describeArchivedDeliveryHeadings,
+  describeArchivedDeliveryRow,
   describeDeliveryChanceHeadings,
   describeDeliveryChanceRow,
   describeDeliveryFeatureHeadings,
@@ -15,32 +20,58 @@ import {
   describeRecordedDayTitle,
   latestRecordedDay,
   NO_DATA_YET,
-  readDeliveryList,
   readDeliveryMetricsHistory,
+  readPortfolioDeliveries,
   type Terms,
 } from "@letpeoplework/lighthouse-client";
 import { toTableLines } from "./table";
 
-/** A Portfolio's Deliveries, one row per card, or null when the answer is not in a shape it knows. */
+const activeDeliveryLines = (
+  active: readonly DeliveryListItem[],
+  terms: Terms,
+): string[] =>
+  active.length === 0
+    ? [describeNoDeliveries(terms)]
+    : toTableLines([
+        describeDeliveryListHeadings(terms),
+        ...active.map((delivery) => describeDeliveryRow(delivery, terms)),
+      ]);
+
+const archivedDeliveryLines = (
+  archived: readonly ArchivedDeliveryItem[],
+  terms: Terms,
+): string[] =>
+  archived.length === 0
+    ? []
+    : [
+        "",
+        describeArchivedDeliveriesTitle(terms),
+        "",
+        ...toTableLines([
+          describeArchivedDeliveryHeadings(terms),
+          ...archived.map((delivery) =>
+            describeArchivedDeliveryRow(delivery, terms),
+          ),
+        ]),
+      ];
+
+/**
+ * A Portfolio's active Deliveries, one row per card, then the archived ones under their own heading;
+ * null when the answer is not in a shape it knows.
+ */
 export const renderDeliveryList = (
   value: unknown,
   owner: DeliveryListOwner,
   terms: Terms,
 ): string | null => {
-  const deliveries = readDeliveryList(value);
+  const deliveries = readPortfolioDeliveries(value);
   if (deliveries === null) {
     return null;
   }
-  const title = describeDeliveryListTitle(owner, terms);
-  if (deliveries.length === 0) {
-    return [title, describeNoDeliveries(terms)].join("\n");
-  }
   return [
-    title,
-    ...toTableLines([
-      describeDeliveryListHeadings(terms),
-      ...deliveries.map((delivery) => describeDeliveryRow(delivery, terms)),
-    ]),
+    describeDeliveryListTitle(owner, terms),
+    ...activeDeliveryLines(deliveries.active, terms),
+    ...archivedDeliveryLines(deliveries.archived, terms),
   ].join("\n");
 };
 

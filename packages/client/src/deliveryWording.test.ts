@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeArchivedDeliveriesTitle,
+  describeArchivedDeliveryHeadings,
+  describeArchivedDeliveryRow,
   describeDeliveryCount,
   describeDeliveryDone,
   describeDeliveryFeatureHeadings,
@@ -146,6 +149,63 @@ describe("readArchivedDeliveryItem", () => {
   it("reads no row from an answer that is not one", () => {
     expect(readArchivedDeliveryItem("Pilot Launch")).toBeNull();
   });
+});
+
+describe("the archived Deliveries table", () => {
+  const archived = (facts: Record<string, unknown> = {}) => {
+    const item = readArchivedDeliveryItem({ ...pilotLaunch, ...facts });
+    if (item === null) {
+      throw new Error("the archived Delivery should read");
+    }
+    return item;
+  };
+
+  it("heads it and its columns in the instance's words", () => {
+    const terms: Terms = {
+      ...SEEDED_TERMS,
+      delivery: "Release",
+      deliveries: "Releases",
+    };
+
+    expect(describeArchivedDeliveriesTitle(terms)).toBe("Archived Releases");
+    expect(describeArchivedDeliveryHeadings(terms)).toEqual([
+      "Name",
+      "Release Date",
+      "Archived On",
+      "Done",
+      "Likelihood",
+    ]);
+  });
+
+  it("states what the Delivery had reached the day it was archived", () => {
+    expect(describeArchivedDeliveryRow(archived(), SEEDED_TERMS)).toEqual([
+      "Pilot Launch [id: 12]",
+      "Sun 30 Aug 2026",
+      "Wed 2 Sep 2026",
+      "18 of 20 Work Items",
+      ">95%",
+    ]);
+  });
+
+  it.each([
+    {
+      why: "it finished all its work",
+      facts: { doneWork: 20, likelihoodPercentage: 100 },
+      likelihood: "100%",
+    },
+    {
+      why: "Lighthouse gave it no likelihood",
+      facts: { likelihoodPercentage: null },
+      likelihood: "Cannot forecast",
+    },
+  ])(
+    "reads its likelihood as '$likelihood' when $why",
+    ({ facts, likelihood }) => {
+      expect(
+        describeArchivedDeliveryRow(archived(facts), SEEDED_TERMS)[4],
+      ).toBe(likelihood);
+    },
+  );
 });
 
 describe("readPortfolioDeliveries", () => {

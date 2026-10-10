@@ -2,9 +2,11 @@ import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import {
   aDelivery,
+  anArchivedDelivery,
   EVERY_TERM_RENAMED,
   oceanExplorer,
   oceanExplorersDeliveries,
+  oceanExplorersPortfolioDeliveries,
   ok,
   q4ReleaseHistory,
   refused,
@@ -26,14 +28,26 @@ const daysOfTheQ4Release = ["delivery", "metrics", "--delivery-id", "11"];
 const oceanExplorersLighthouse = (reads = {}) =>
   aLighthouse({
     getPortfolio: ok(oceanExplorer()),
-    listDeliveries: ok(oceanExplorersDeliveries()),
+    listDeliveries: ok(oceanExplorersPortfolioDeliveries()),
     getDeliveryMetricsHistory: ok(q4ReleaseHistory()),
     ...reads,
   });
 
+const activeOnly = (active: unknown[]) => ({ active, archived: [] });
+
+const ACTIVE_TABLE = [
+  "Name Delivery Date Features Done Likelihood Forecast 85%",
+  "Q4 Release [id: 11] Tue 15 Dec 2026 5 34 of 55 Work Items 78% Wed 16 Dec 2026",
+  "Pilot Launch [id: 12] Fri 30 Oct 2026 2 18 of 20 Work Items >95% Tue 27 Oct 2026",
+  "Beta Drop [id: 14] Fri 2 Oct 2026 3 9 of 14 Work Items Overdue Thu 15 Oct 2026",
+  "Spring Rollout [id: 15] Tue 9 Mar 2027 4 0 of 31 Work Items Not enough data —",
+];
+
+const ARCHIVED_HEADINGS = "Name Delivery Date Archived On Done Likelihood";
+
 const likelihoodCellOf = async (delivery: Record<string, unknown>) => {
   const lighthouse = oceanExplorersLighthouse({
-    listDeliveries: ok([aDelivery(delivery)]),
+    listDeliveries: ok(activeOnly([aDelivery(delivery)])),
   });
   const lines = shownLines(
     (await lighthouse.run(deliveriesOfOceanExplorer)).stdout,
@@ -42,7 +56,7 @@ const likelihoodCellOf = async (delivery: Record<string, unknown>) => {
 };
 
 describe("lh delivery list --pretty", () => {
-  it("shows Lena every Delivery of Ocean Explorer in one table, each with the card's answer", async () => {
+  it("shows Lena the active Deliveries of Ocean Explorer in the Delivery table, the archived ones under their own heading", async () => {
     const lighthouse = oceanExplorersLighthouse();
 
     const result = await lighthouse.run(deliveriesOfOceanExplorer);
@@ -50,16 +64,90 @@ describe("lh delivery list --pretty", () => {
     expect(result.exitCode).toBe(0);
     expect(shownLines(result.stdout)).toEqual([
       "Ocean Explorer · Deliveries",
-      "Name Delivery Date Features Done Likelihood Forecast 85%",
-      "Q4 Release [id: 11] Tue 15 Dec 2026 5 34 of 55 Work Items 78% Wed 16 Dec 2026",
-      "Pilot Launch [id: 12] Fri 30 Oct 2026 2 18 of 20 Work Items >95% Tue 27 Oct 2026",
-      "Beta Drop [id: 14] Fri 2 Oct 2026 3 9 of 14 Work Items Overdue Thu 15 Oct 2026",
-      "Spring Rollout [id: 15] Tue 9 Mar 2027 4 0 of 31 Work Items Not enough data —",
+      ...ACTIVE_TABLE,
+      "Archived Deliveries",
+      ARCHIVED_HEADINGS,
+      "Harbour Trial [id: 9] Fri 28 Aug 2026 Wed 2 Sep 2026 18 of 20 Work Items >95%",
     ]);
+    expect(result.stdout).toContain("—\n\nArchived Deliveries\n");
     expect(lighthouse.asked().sort()).toEqual([
       "getPortfolio",
       "getTerminology",
       "listDeliveries",
+    ]);
+  });
+
+  it("lists the archived Deliveries in the order Lighthouse sends them, with what they reached when they closed", async () => {
+    const lighthouse = oceanExplorersLighthouse({
+      listDeliveries: ok({
+        active: oceanExplorersDeliveries(),
+        archived: [
+          anArchivedDelivery({
+            id: 21,
+            name: "Summer Release",
+            date: "2026-07-31T00:00:00Z",
+            archivedOn: "2026-08-03T16:40:00Z",
+            totalWork: 38,
+            doneWork: 38,
+            remainingWork: 0,
+            likelihoodPercentage: 100,
+          }),
+          anArchivedDelivery({
+            id: 7,
+            name: "Spring Trial",
+            date: "2026-04-30T00:00:00Z",
+            archivedOn: "2026-05-04T08:00:00Z",
+            totalWork: 1,
+            doneWork: 0,
+            remainingWork: 1,
+            likelihoodPercentage: null,
+          }),
+        ],
+      }),
+    });
+
+    const result = await lighthouse.run(deliveriesOfOceanExplorer);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout).slice(ACTIVE_TABLE.length + 1)).toEqual([
+      "Archived Deliveries",
+      ARCHIVED_HEADINGS,
+      "Summer Release [id: 21] Fri 31 Jul 2026 Mon 3 Aug 2026 38 of 38 Work Items 100%",
+      "Spring Trial [id: 7] Thu 30 Apr 2026 Mon 4 May 2026 0 of 1 Work Item Cannot forecast",
+    ]);
+  });
+
+  it("prints no Archived section when no Delivery is archived", async () => {
+    const lighthouse = oceanExplorersLighthouse({
+      listDeliveries: ok(activeOnly(oceanExplorersDeliveries())),
+    });
+
+    const result = await lighthouse.run(deliveriesOfOceanExplorer);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)).toEqual([
+      "Ocean Explorer · Deliveries",
+      ...ACTIVE_TABLE,
+    ]);
+    expect(result.stdout).not.toContain("Archived");
+    expect(result.stdout.trimEnd().endsWith("—")).toBe(true);
+    expect(result.stdout).not.toMatch(/\n\n\s*$/u);
+  });
+
+  it("says Ocean Explorer has no Deliveries running and still lists the archived ones", async () => {
+    const lighthouse = oceanExplorersLighthouse({
+      listDeliveries: ok({ active: [], archived: [anArchivedDelivery()] }),
+    });
+
+    const result = await lighthouse.run(deliveriesOfOceanExplorer);
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)).toEqual([
+      "Ocean Explorer · Deliveries",
+      "No Deliveries",
+      "Archived Deliveries",
+      ARCHIVED_HEADINGS,
+      "Harbour Trial [id: 9] Fri 28 Aug 2026 Wed 2 Sep 2026 18 of 20 Work Items >95%",
     ]);
   });
 
@@ -99,7 +187,7 @@ describe("lh delivery list --pretty", () => {
       likelihoodPercentage: 12,
     });
     const lighthouse = oceanExplorersLighthouse({
-      listDeliveries: ok([older]),
+      listDeliveries: ok(activeOnly([older])),
     });
 
     const result = await lighthouse.run(deliveriesOfOceanExplorer);
@@ -127,7 +215,9 @@ describe("lh delivery list --pretty", () => {
 
   // The web's own words for a Portfolio without Deliveries
   it("says Ocean Explorer has no Deliveries when the list is empty", async () => {
-    const lighthouse = oceanExplorersLighthouse({ listDeliveries: ok([]) });
+    const lighthouse = oceanExplorersLighthouse({
+      listDeliveries: ok(activeOnly([])),
+    });
 
     const result = await lighthouse.run(deliveriesOfOceanExplorer);
 
@@ -163,6 +253,11 @@ describe("lh delivery list --pretty", () => {
       "Name Release Date Outcomes Done Likelihood Forecast 85%",
     );
     expect(lines[2]).toContain("34 of 55 Tickets");
+    expect(lines.slice(-3, -1)).toEqual([
+      "Archived Releases",
+      "Name Release Date Archived On Done Likelihood",
+    ]);
+    expect(lines.at(-1)).toContain("18 of 20 Tickets");
     expect(seededWordsIn(result.stdout)).toEqual([]);
   });
 
@@ -190,7 +285,7 @@ describe("lh delivery list --pretty", () => {
     );
     const { date: _notSent, ...undated } = aDelivery();
     const lighthouse = oceanExplorersLighthouse({
-      listDeliveries: ok([undated]),
+      listDeliveries: ok(activeOnly([undated])),
     });
 
     const result = await lighthouse.run(deliveriesOfOceanExplorer);
@@ -282,8 +377,12 @@ describe("lh delivery keeps the facts formats as they are", () => {
     const json = await lighthouse.run([...deliveriesOfOceanExplorer, "--json"]);
     const toon = await lighthouse.run([...deliveriesOfOceanExplorer, "--toon"]);
 
-    expect(json.stdout).toBe(JSON.stringify(oceanExplorersDeliveries()));
-    expect(toon.stdout).toBe(encode(oceanExplorersDeliveries() as never));
+    expect(json.stdout).toBe(
+      JSON.stringify(oceanExplorersPortfolioDeliveries()),
+    );
+    expect(toon.stdout).toBe(
+      encode(oceanExplorersPortfolioDeliveries() as never),
+    );
     expect(lighthouse.asked()).toEqual(["listDeliveries", "listDeliveries"]);
   });
 
