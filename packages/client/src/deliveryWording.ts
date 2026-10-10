@@ -40,6 +40,10 @@ const LISTED_CHANCE = 85;
 const flagOf = (value: unknown): boolean | undefined =>
   typeof value === "boolean" ? value : undefined;
 
+const teamsWithoutForecastIn = (value: Record<string, unknown>): boolean =>
+  Array.isArray(value.teamsWithoutForecast) &&
+  value.teamsWithoutForecast.length > 0;
+
 const readDeliveryListItem = (value: unknown): DeliveryListItem | null => {
   if (
     !isRecord(value) ||
@@ -67,9 +71,7 @@ const readDeliveryListItem = (value: unknown): DeliveryListItem | null => {
       typeof value.likelihoodPercentage === "number"
         ? value.likelihoodPercentage
         : null,
-    cannotBeForecast:
-      Array.isArray(value.teamsWithoutForecast) &&
-      value.teamsWithoutForecast.length > 0,
+    cannotBeForecast: teamsWithoutForecastIn(value),
     hasSufficientData: flagOf(value.hasSufficientData),
     isOverdue: flagOf(value.isOverdue),
     likelyBy: expectedDateAt(value.completionDates, LISTED_CHANCE),
@@ -97,6 +99,8 @@ export type ArchivedDeliveryItem = {
   readonly totalWork: number;
   readonly doneWork: number;
   readonly likelihood: number | null;
+  readonly cannotBeForecast: boolean;
+  readonly hasSufficientData: boolean | undefined;
 };
 
 const doneWorkOf = (value: Record<string, unknown>): number | undefined => {
@@ -143,6 +147,8 @@ export const readArchivedDeliveryItem = (
       typeof value.likelihoodPercentage === "number"
         ? value.likelihoodPercentage
         : null,
+    cannotBeForecast: teamsWithoutForecastIn(value),
+    hasSufficientData: flagOf(value.hasSufficientData),
   };
 };
 
@@ -263,8 +269,9 @@ export const describeArchivedDeliveryRow = (
     ),
     likelihoodAnswer({
       likelihood: delivery.likelihood,
-      cannotBeForecast: false,
+      cannotBeForecast: delivery.cannotBeForecast,
       hasRemainingWork: remainingWork > 0,
+      hasSufficientData: delivery.hasSufficientData,
       precision: "round",
     }),
   ];

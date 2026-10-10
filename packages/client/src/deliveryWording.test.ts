@@ -114,6 +114,8 @@ describe("readArchivedDeliveryItem", () => {
       totalWork: 20,
       doneWork: 18,
       likelihood: 97.5,
+      cannotBeForecast: false,
+      hasSufficientData: true,
     });
   });
 
@@ -198,6 +200,30 @@ describe("the archived Deliveries table", () => {
       facts: { likelihoodPercentage: null },
       likelihood: "Cannot forecast",
     },
+    {
+      why: "a team in it could not be forecast",
+      facts: { teamsWithoutForecast: [7] },
+      likelihood: "Cannot forecast",
+    },
+    {
+      why: "work remained and the history was too thin",
+      facts: { hasSufficientData: false, likelihoodPercentage: 40 },
+      likelihood: "Not enough data",
+    },
+    {
+      why: "work remained and the history was enough",
+      facts: { hasSufficientData: true, likelihoodPercentage: 40 },
+      likelihood: "40%",
+    },
+    {
+      why: "the history was thin but no work remained",
+      facts: {
+        hasSufficientData: false,
+        doneWork: 20,
+        likelihoodPercentage: 100,
+      },
+      likelihood: "100%",
+    },
   ])(
     "reads its likelihood as '$likelihood' when $why",
     ({ facts, likelihood }) => {
@@ -216,8 +242,34 @@ describe("readPortfolioDeliveries", () => {
         archived: [pilotLaunch],
       }),
     ).toEqual({
-      active: readDeliveryList([lunarProbe]),
-      archived: [readArchivedDeliveryItem(pilotLaunch)],
+      active: [
+        {
+          id: 31,
+          name: "Lunar Probe",
+          date: "2027-01-12T00:00:00Z",
+          featureCount: 2,
+          totalWork: 40,
+          remainingWork: 10,
+          likelihood: 64.4,
+          cannotBeForecast: false,
+          hasSufficientData: true,
+          isOverdue: false,
+          likelyBy: "2027-01-19T00:00:00Z",
+        },
+      ],
+      archived: [
+        {
+          id: 12,
+          name: "Pilot Launch",
+          date: "2026-08-30T00:00:00Z",
+          archivedOn: "2026-09-02T09:15:00Z",
+          totalWork: 20,
+          doneWork: 18,
+          likelihood: 97.5,
+          cannotBeForecast: false,
+          hasSufficientData: true,
+        },
+      ],
     });
   });
 
