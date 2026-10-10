@@ -1613,6 +1613,39 @@ describe("createLighthouseClient", () => {
     },
   );
 
+  it("listDeliveries keeps the server's own failure rather than calling its answer unreadable", async () => {
+    const fetchMock = getFetchSequenceMock([
+      {
+        ok: true,
+        status: 200,
+        text: async () => "v1.0.0",
+        json: async () => "v1.0.0",
+      },
+      {
+        ok: false,
+        status: 404,
+        text: async () => "Not found",
+        json: async () => ({ message: "Not found" }),
+      },
+    ]);
+    const client = createLighthouseClient(
+      {
+        connection: {
+          kind: "explicit",
+          lighthouseUrl: "http://localhost:5000",
+        },
+      },
+      { fetch: fetchMock.fetch },
+    );
+
+    const result = await client.listDeliveries(4);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { category: "misconfigured", statusCode: 404 },
+    });
+  });
+
   it("creates a delivery for a portfolio", async () => {
     const delivery = { id: 2, name: "Release 2" };
     const fetchMock = getFetchSequenceMock([
