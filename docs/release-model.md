@@ -33,6 +33,14 @@ Business/domain behavior must be implemented in shared packages (`@letpeoplework
 3. Approve the `Release` environment on that push's CI run; the `release` job in `.github/workflows/ci.yml` publishes with:
   - `pnpm release:publish`
 
+## Integration Smoke
+`scripts/smoke-integration.sh <lighthouse-image>` starts a Lighthouse container with demo data and checks the `lh` found on `PATH` against it. CI runs it three ways:
+- **Before the Release gate**, with the packages built and packed from the pushed commit, against two server images: `ghcr.io/letpeoplework/lighthouse:latest`, the released server, and `:dev-latest`, the next one. The `Release` environment is only requested once the `latest` run passes. A failing `dev-latest` run does not block the release, because that server is not out yet and may carry changes a client release cannot fix; it shows as a warning on the run instead.
+- **Nightly** (and on manual dispatch), the same two runs without asking for a release, so a change in the next server shows up before anyone cuts one.
+- **After publishing**, against `latest` with the CLI installed from npm, to check what actually landed there.
+
+Run it locally the same way: build and pack `client` and `cli`, install both tarballs into one prefix, put its `node_modules/.bin` first on `PATH`, and pass the image. It writes the CLI's configuration under `$HOME`, so point `HOME` at a scratch directory.
+
 ## Build/Test Quality Gates
 Before publishing, run:
 - `pnpm test`

@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+  # Nightly, so a change in the next Lighthouse image (dev-latest) shows up before anyone cuts a release.
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -65,13 +69,82 @@ jobs:
             && echo "mcp-http smoke: PASS" \
             || (echo "mcp-http smoke: FAIL - unexpected output"; exit 1)
 
+  # The integration smoke with the packages built from this commit, before anything is published.
+  # The latest leg gates the release: it is the server users run today. The dev-latest leg carries server
+  # changes not yet released, so it may fail for reasons this commit cannot fix; it warns but does not block.
+  smoke-prerelease:
+    name: Integration smoke (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    needs:
+      - verify
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    continue-on-error: ${{ !matrix.gates_release }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ghcr.io/letpeoplework/lighthouse:latest
+            gates_release: true
+          - image: ghcr.io/letpeoplework/lighthouse:dev-latest
+            gates_release: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # One install of both tarballs, so the CLI's client dependency (pinned to the same version by pack)
+      # resolves to the client packed here rather than the one already on npm.
+      - name: Install the CLI packed from this commit
+        run: |
+          packs="$RUNNER_TEMP/packs"
+          prefix="$RUNNER_TEMP/lh"
+          for pkg in client cli; do
+            (cd "packages/$pkg" && pnpm pack --pack-destination "$packs")
+          done
+          npm install --prefix "$prefix" --no-fund --no-audit "$packs"/*.tgz
+          echo "$prefix/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Run the integration smoke against ${{ matrix.image }}
+        run: bash scripts/smoke-integration.sh "${{ matrix.image }}"
+
+      - name: Report a failure against ${{ matrix.image }}
+        if: failure()
+        env:
+          IMAGE: ${{ matrix.image }}
+          GATES_RELEASE: ${{ matrix.gates_release }}
+        run: |
+          if [ "$GATES_RELEASE" = "true" ]; then
+            echo "::error title=Integration smoke failed::against $IMAGE; the Release gate stays closed."
+            echo "### Integration smoke FAILED against \`$IMAGE\`; the Release gate stays closed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Integration smoke failed::against $IMAGE, the next Lighthouse release. Not blocking this release; check before that server ships."
+            echo "### Integration smoke FAILED (warning only) against \`$IMAGE\` (next Lighthouse release). Not blocking this release." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   # Only a commit that bumps a package version has anything to publish. Every other push to main would
   # otherwise park at the Release gate forever, and the oldest parked run blocks every newer one.
   unpublished:
     runs-on: ubuntu-latest
     needs:
       - verify
-    if: github.ref == 'refs/heads/main'
+      - smoke-prerelease
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
     outputs:
@@ -100,8 +173,10 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - verify
+      - smoke-prerelease
       - unpublished
-    if: github.ref == 'refs/heads/main' && needs.unpublished.outputs.any == 'true'
+    # Only a push may ask for the Release environment; a nightly or manual run never parks at the gate.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.unpublished.outputs.any == 'true'
     environment: Release
     # A newer version bump supersedes a release still awaiting approval, so approving never ships a stale commit.
     concurrency:
@@ -308,16 +383,13 @@ jobs:
             || (echo "FAIL: FixtureTeam not found in team list"; exit 1)
           echo "Team list assertion: PASS"
 
+  # The same smoke as smoke-prerelease, but with the CLI as it actually landed on npm.
   smoke-integration:
     runs-on: ubuntu-latest
     needs: release
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
-    env:
-      # The smoke container is a published release, which would send usage data to the real
-      # analytics project. Nothing from CI may ever land there.
-      DO_NOT_TRACK: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -331,158 +403,5 @@ jobs:
         run: npm install -g @letpeoplework/lighthouse-cli@${{
           needs.release.outputs.cli_version }}
 
-      - name: Start Lighthouse (SQLite mode)
-        run: |
-          docker run -d --name lighthouse-smoke \
-            -p 8443:443 \
-            -e Database__Provider=sqlite \
-            -e "Database__ConnectionString=Data Source=lighthouse.db" \
-            -e UsageData__CollectorBaseUrl=http://127.0.0.1:9 \
-            ghcr.io/letpeoplework/lighthouse:latest
-
-      - name: Wait for Lighthouse to become ready
-        run: |
-          echo "Waiting for Lighthouse health endpoint..."
-          timeout 90 bash -c \
-            'until curl --silent --fail --insecure https://127.0.0.1:8443/api/v1/version/current; do sleep 2; done'
-          echo ""
-          echo "Lighthouse is ready."
-
-      - name: Seed demo scenario 2
-        run: |
-          curl --fail --insecure -X POST \
-            https://127.0.0.1:8443/api/v1/demo/scenarios/2/load
-          echo "Demo data seeded."
-
-      - name: Connect CLI to Lighthouse
-        run: |
-          lh connection connect \
-            --mode server \
-            --url https://127.0.0.1:8443 \
-            --insecure
-
-      - name: Wait for demo data to be processed
-        run: |
-          echo "Waiting for teams to appear in API..."
-          timeout 60 bash -c \
-            'until lh team list --json 2>/dev/null | grep -q "Team Zenith"; do sleep 2; done'
-          echo "Teams are ready."
-
-      - name: Verify teams (Team Zenith and Team Voyager)
-        run: |
-          TEAMS=$(lh team list --json)
-          echo "$TEAMS"
-          echo "$TEAMS" | grep -q "Team Zenith" \
-            || (echo "FAIL: Team Zenith not found in team list"; exit 1)
-          echo "$TEAMS" | grep -q "Team Voyager" \
-            || (echo "FAIL: Team Voyager not found in team list"; exit 1)
-          echo "Teams assertion: PASS"
-
-      - name: Verify portfolios (Project Orion)
-        run: |
-          PORTFOLIOS=$(lh portfolio list --json)
-          echo "$PORTFOLIOS"
-          echo "$PORTFOLIOS" | grep -q "Project Orion" \
-            || (echo "FAIL: Project Orion not found in portfolio list"; exit 1)
-          echo "Portfolio assertion: PASS"
-
-      # Reads the DO_NOT_TRACK refusal under the job's DO_NOT_TRACK, then lifts DO_NOT_TRACK for one lh call
-      # at a time. The container's collector is a dead address, and no command that reports an event runs
-      # while the answer is on. "allows usage data" holds only on a Lighthouse image that lists the sources it
-      # labels, so that Lighthouse release must be out before the clients release that carries this step.
-      - name: Verify usage-data status (never sends)
-        shell: bash
-        run: |
-          all=""
-          expect_line() {   # expect_line <fixed text> <command…>; prints, checks the exit code and the text
-            local expected="$1"; shift
-            local out status=0
-            out=$("$@" 2>&1) || status=$?
-            printf '%s\n' "$out"; all+="$out"$'\n'
-            [ "$status" -eq 0 ] || { echo "FAIL: exit $status from: $*"; exit 1; }
-            grep -qF -- "$expected" <<<"$out" || { echo "FAIL: '$expected' not in: $*"; exit 1; }
-          }
-          answer="Usage data from lh to https://127.0.0.1:8443:"
-          dnt="DO_NOT_TRACK is set, so lh sends no usage data whatever is stored."
-          expect_line "$dnt" lh config usage-data
-          expect_line "$dnt" lh config usage-data on
-          expect_line "$answer not asked yet (off)" env -u DO_NOT_TRACK lh config usage-data
-          expect_line "This Lighthouse allows usage data." env -u DO_NOT_TRACK lh config usage-data
-          expect_line "$answer on." env -u DO_NOT_TRACK lh config usage-data on
-          token=$(jq -r '.answers[] | .token // empty' ~/.config/lighthouse-clients/usage-data.json) \
-            || { echo "FAIL: the usage data file is missing or not JSON"; exit 1; }
-          [ -n "$token" ] || { echo "FAIL: on stored no token"; exit 1; }
-          expect_line "$answer off. Nothing more is sent." env -u DO_NOT_TRACK lh config usage-data off
-          expect_line "$answer off" env -u DO_NOT_TRACK lh config usage-data
-          ! grep -qF -- "$token" <<<"$all" || { echo "FAIL: the consent token was printed"; exit 1; }
-          echo "Usage-data status: PASS"
-
-      # Each line checks that --pretty prints words only the readable view prints (the generic view prints
-      # wire names), and that --json is still the facts, without those words.
-      - name: Verify --pretty views
-        shell: bash
-        run: |
-          expect_pretty() {   # expect_pretty <anchor> <json-mode: facts|"exact:<line>"> <lh args…>
-            anchor="$1"; mode="$2"; shift 2
-            pretty=$(lh "$@");        printf '%s\n' "$pretty"
-            grep -qF -- "$anchor" <<<"$pretty" || { echo "FAIL: '$anchor' not in: lh $* (generic view?)"; exit 1; }
-            json=$(lh "$@" --json)
-            case "$mode" in
-              exact:*) [ "$json" = "${mode#exact:}" ] || { echo "FAIL: lh $* --json changed: $json"; exit 1; } ;;
-              *) jq -e . >/dev/null <<<"$json" || { echo "FAIL: lh $* --json is not JSON"; exit 1; }
-                 ! grep -qF -- "$anchor" <<<"$json" || { echo "FAIL: pretty wording leaked into lh $* --json"; exit 1; } ;;
-            esac
-          }
-          ZENITH=$(lh team list --json | jq -r '.[] | select(.name == "Team Zenith") | .id')
-          [ -n "$ZENITH" ] || { echo "FAIL: Team Zenith has no id in lh team list --json"; exit 1; }
-
-          echo "Waiting for Team Zenith's forecast to answer..."
-          deadline=$((SECONDS + 120))
-          until lh forecast manual --team-id "$ZENITH" --remaining 10 --json 2>/dev/null \
-              | jq -e '.whenForecasts | length > 0' >/dev/null 2>&1; do
-            [ "$SECONDS" -lt "$deadline" ] || { echo "FAIL: Team Zenith's forecast never answered"; exit 1; }
-            sleep 3
-          done
-          expect_pretty "When will 10 Work Items be done?" facts forecast manual --team-id "$ZENITH" --remaining 10
-          expect_pretty "Predictability Score" facts metrics team --id "$ZENITH"
-          echo "lh metrics team --pretty prints $(lh metrics team --id "$ZENITH" | wc -l) lines (one screen is 30; advisory)"
-          expect_pretty "SLE Risk" facts metrics team --id "$ZENITH" --metrics sleRisk
-          expect_pretty "Throughput Process Behaviour Chart" facts metrics team --id "$ZENITH" --metrics processBehaviorChart
-          expect_pretty "Last Updated" facts team list
-          expect_pretty "Deliveries per Portfolio:" facts portfolio list
-          echo "Waiting for Project Orion to take in its Features..."
-          deadline=$((SECONDS + 120))
-          until ORION_FEATURE=$(lh portfolio list --json 2>/dev/null \
-              | jq -er '.[] | select(.name == "Project Orion") | .features[0].id'); do
-            [ "$SECONDS" -lt "$deadline" ] || { echo "FAIL: Project Orion has no Feature in lh portfolio list --json"; exit 1; }
-            sleep 3
-          done
-          expect_pretty "Forecasted Start" facts feature get --ids "$ORION_FEATURE"
-          expect_pretty "Refresh queued:" "exact:Team refreshed: $ZENITH" team refresh --id "$ZENITH"
-          expect_pretty "Work Tracking Systems" facts worktracking list
-          expect_pretty "Lighthouse v" facts version get
-          expect_pretty "is reachable." "exact:success" health check
-
-          # Scenario 0 replaces scenario 2, so these lines stay last; later checks go above them.
-          curl --fail --silent --insecure -X POST https://127.0.0.1:8443/api/v1/demo/scenarios/0/load
-          APOLLO=$(lh portfolio list --json | jq -r '.[] | select(.name == "Project Apollo") | .id')
-          [ -n "$APOLLO" ] || { echo "FAIL: Project Apollo has no id in lh portfolio list --json"; exit 1; }
-          echo "Waiting for Project Apollo's Delivery to take in its Features..."
-          deadline=$((SECONDS + 120))
-          until lh delivery list --portfolio-id "$APOLLO" --json 2>/dev/null \
-              | jq -e 'any(.[]; (.features | length) > 0)' >/dev/null 2>&1; do
-            [ "$SECONDS" -lt "$deadline" ] || { echo "FAIL: Project Apollo's Delivery never took in its Features"; exit 1; }
-            sleep 3
-          done
-          expect_pretty "Delivery Date" facts delivery list --portfolio-id "$APOLLO"
-          echo "--pretty views: PASS"
-
-      - name: Show Lighthouse container logs on failure
-        if: failure()
-        run: docker logs lighthouse-smoke || true
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker stop lighthouse-smoke || true
-          docker rm lighthouse-smoke || true
+      - name: Run the integration smoke against ghcr.io/letpeoplework/lighthouse:latest
+        run: bash scripts/smoke-integration.sh ghcr.io/letpeoplework/lighthouse:latest

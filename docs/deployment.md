@@ -50,7 +50,7 @@ When running inside GitHub Actions (i.e. `GITHUB_OUTPUT` is set), the installer 
 - Published by the release job, tagged with the `mcp-http` package version and `latest`, only when no image with that version exists yet.
 
 ## Release Workflow
-There is one workflow, `Client CI` (`.github/workflows/ci.yml`). Its `release` job runs after `verify` on every push to `main` and waits at the `Release` environment for the maintainer's approval. A newer push to `main` replaces a release still waiting for approval.
+There is one workflow, `Client CI` (`.github/workflows/ci.yml`). Its `release` job runs after `verify` and the integration smoke on every push to `main` and waits at the `Release` environment for the maintainer's approval. A newer push to `main` replaces a release still waiting for approval.
 
 To cut a release:
 1. On `main`, run `pnpm release:version` (with `GITHUB_TOKEN_CHANGESET` set to a GitHub token; the changelog entries link to commits and authors). It consumes the pending `.changeset/*.md` files, bumps the package versions and writes the changelogs.
@@ -62,7 +62,9 @@ The approved job then:
 - builds the CLI binaries, the `mcp-stdio` MCPB bundle and one zip per folder under `skills/` (`lighthouse-skill.zip`, `lighthouse-refinement-skill.zip` and `lighthouse-daily-flow-review-skill.zip`, packed by `scripts/pack-skills.sh` before anything is published), and creates the GitHub Release with them and the install/uninstall scripts;
 - builds and pushes the `mcp-http` container if its version has no image yet.
 
-After it, `smoke-platform` installs the published CLI from npm on Linux, macOS and Windows, and `smoke-integration` runs it against a Lighthouse container with demo data.
+Before it, `smoke-prerelease` runs `scripts/smoke-integration.sh` with the CLI packed from the pushed commit against a Lighthouse container with demo data, once on the released server image (`lighthouse:latest`) and once on the next one (`lighthouse:dev-latest`). The release waits for the `latest` run to pass; a failing `dev-latest` run is a warning only, since that server is not released yet. The workflow also runs nightly and on manual dispatch, which runs `verify` and both smoke runs but never asks for the `Release` environment.
+
+After it, `smoke-platform` installs the published CLI from npm on Linux, macOS and Windows, and `smoke-integration` runs the same script with it against `lighthouse:latest`.
 
 Approving a run without a version bump publishes nothing to npm or GHCR, but still creates a GitHub Release.
 
