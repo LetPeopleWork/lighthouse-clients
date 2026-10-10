@@ -3,17 +3,38 @@
 #   scripts/smoke-integration.sh ghcr.io/letpeoplework/lighthouse:latest
 # It starts the image as a container on https://127.0.0.1:8443, seeds the demo data, checks the CLI
 # against it and removes the container again, pass or fail.
-set -eo pipefail
+#   LIGHTHOUSE_SMOKE_CONTAINER  the container's name (default lighthouse-smoke)
+#   LIGHTHOUSE_SMOKE_PORT       the host port it listens on (default 8443)
+#   LIGHTHOUSE_SMOKE_LICENSE_FILE  a premium licence to import, so the archived Deliveries can be checked;
+#                                  without one that check is skipped
+set -euo pipefail
 
 image="${1:?usage: $0 <lighthouse-image>}"
-container=lighthouse-smoke
-url=https://127.0.0.1:8443
+container="${LIGHTHOUSE_SMOKE_CONTAINER:-lighthouse-smoke}"
+port="${LIGHTHOUSE_SMOKE_PORT:-8443}"
+license_file="${LIGHTHOUSE_SMOKE_LICENSE_FILE:-}"
+url="https://127.0.0.1:$port"
 
 # The smoke container is a published release, which would send usage data to the real analytics
 # project. Nothing from a smoke run may ever land there.
 export DO_NOT_TRACK=1
 
 step() { printf '\n== %s ==\n' "$*"; }
+
+# Loading a scenario while Lighthouse is still updating the data it replaces answers 409; the update
+# finishes within seconds, so a conflict is retried. Any other failure fails the smoke at once.
+load_scenario() {   # load_scenario <scenario id>
+  local status attempt
+  for attempt in 1 2 3 4 5 6; do
+    status=$(curl --silent --insecure -o /dev/null -w '%{http_code}' -X POST "$url/api/v1/demo/scenarios/$1/load")
+    case "$status" in
+      2??) return 0 ;;
+      409) echo "Scenario $1 load conflicted with an update in progress (attempt $attempt); retrying."; sleep 5 ;;
+      *) echo "FAIL: loading demo scenario $1 answered HTTP $status"; exit 1 ;;
+    esac
+  done
+  echo "FAIL: loading demo scenario $1 still conflicted after $attempt attempts"; exit 1
+}
 
 cleanup() {
   local status=$?
@@ -32,7 +53,7 @@ step "lh under test: $(command -v lh)"
 step "Start Lighthouse (SQLite mode) from $image"
 docker rm -f "$container" >/dev/null 2>&1 || true
 docker run -d --name "$container" \
-  -p 8443:443 \
+  -p "$port:443" \
   -e Database__Provider=sqlite \
   -e "Database__ConnectionString=Data Source=lighthouse.db" \
   -e UsageData__CollectorBaseUrl=http://127.0.0.1:9 \
@@ -46,7 +67,7 @@ echo ""
 echo "Lighthouse is ready."
 
 step "Seed demo scenario 2"
-curl --fail --insecure -X POST "$url/api/v1/demo/scenarios/2/load"
+load_scenario 2
 echo "Demo data seeded."
 
 step "Connect CLI to Lighthouse"
@@ -147,7 +168,7 @@ expect_pretty "Lighthouse v" facts version get
 expect_pretty "is reachable." "exact:success" health check
 
 # Scenario 0 replaces scenario 2, so these lines stay last; later checks go above them.
-curl --fail --silent --insecure -X POST "$url/api/v1/demo/scenarios/0/load"
+load_scenario 0
 APOLLO=$(lh portfolio list --json | jq -r '.[] | select(.name == "Project Apollo") | .id')
 [ -n "$APOLLO" ] || { echo "FAIL: Project Apollo has no id in lh portfolio list --json"; exit 1; }
 echo "Waiting for Project Apollo's Delivery to take in its Features..."
@@ -159,5 +180,30 @@ until lh delivery list --portfolio-id "$APOLLO" --json 2>/dev/null \
 done
 expect_pretty "Delivery Date" facts delivery list --portfolio-id "$APOLLO"
 echo "--pretty views: PASS"
+
+# Demo data seeds no archived Delivery, so Apollo's is archived once every check on it is done. Archiving
+# is a premium feature, and a Lighthouse older than archiving has no such endpoint; either way the check
+# is skipped with a notice rather than failed.
+step "Verify an archived Delivery"
+if [ -n "$license_file" ]; then
+  curl --fail --silent --show-error --insecure -o /dev/null \
+    -F "file=@$license_file;type=application/json" "$url/api/v1/license/import"
+  echo "Premium licence imported."
+fi
+ARCHIVED=$(lh delivery list --portfolio-id "$APOLLO" --json | jq -er '.active[0].id') \
+  || { echo "FAIL: Project Apollo has no active Delivery to archive"; exit 1; }
+archive_status=$(curl --silent --insecure -o /dev/null -w '%{http_code}' -X POST \
+  -H 'Content-Type: application/json' -d '{}' "$url/api/v1/deliveries/$ARCHIVED/archive")
+case "$archive_status" in
+  2??)
+    expect_pretty "Archived Deliveries" facts delivery list --portfolio-id "$APOLLO"
+    lh delivery list --portfolio-id "$APOLLO" --json \
+      | jq -e --argjson id "$ARCHIVED" 'any(.archived[]; .id == $id) and all(.active[]; .id != $id)' >/dev/null \
+      || { echo "FAIL: Delivery $ARCHIVED is not under .archived in lh delivery list --json"; exit 1; }
+    echo "Archived Delivery: PASS" ;;
+  403) echo "::notice title=Archived check skipped::archiving needs a premium licence (set LIGHTHOUSE_SMOKE_LICENSE_FILE); archived check skipped." ;;
+  404) echo "::notice title=Archived check skipped::this Lighthouse has no archive endpoint; archived check skipped." ;;
+  *) echo "FAIL: archiving Delivery $ARCHIVED answered HTTP $archive_status"; exit 1 ;;
+esac
 
 step "Integration smoke against $image: PASS"

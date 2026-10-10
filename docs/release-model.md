@@ -35,7 +35,7 @@ Business/domain behavior must be implemented in shared packages (`@letpeoplework
 
 ## Integration Smoke
 `scripts/smoke-integration.sh <lighthouse-image>` starts a Lighthouse container with demo data and checks the `lh` found on `PATH` against it. CI runs it three ways:
-- **Before the Release gate**, with the packages built and packed from the pushed commit, against two server images: `ghcr.io/letpeoplework/lighthouse:latest`, the released server, and `:dev-latest`, the next one. The `Release` environment is only requested once the `latest` run passes. A failing `dev-latest` run does not block the release, because that server is not out yet and may carry changes a client release cannot fix; it shows as a warning on the run instead.
+- **Before the Release gate**, with the packages built and packed from the pushed commit, against two server images: `ghcr.io/letpeoplework/lighthouse:latest`, the released server, and `:dev-latest`, the next one. The `Release` environment is only requested once the `latest` run passes. A failing `dev-latest` run never blocks the release, because that server is not out yet and may carry changes a client release cannot fix: on a push to `main` it is a warning only. The nightly and manual runs go red on it, so the failure is noticed before that server ships.
 - **Nightly** (and on manual dispatch), the same two runs without asking for a release, so a change in the next server shows up before anyone cuts one.
 - **After publishing**, against `latest` with the CLI installed from npm, to check what actually landed there.
 

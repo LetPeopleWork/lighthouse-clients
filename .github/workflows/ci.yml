@@ -71,7 +71,8 @@ jobs:
 
   # The integration smoke with the packages built from this commit, before anything is published.
   # The latest leg gates the release: it is the server users run today. The dev-latest leg carries server
-  # changes not yet released, so it may fail for reasons this commit cannot fix; it warns but does not block.
+  # changes not yet released, so it may fail for reasons this commit cannot fix. On a push to main it only
+  # warns, so it never blocks a release; the nightly and manual runs go red, so the failure gets noticed.
   smoke-prerelease:
     name: Integration smoke (${{ matrix.image }})
     runs-on: ubuntu-latest
@@ -80,7 +81,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
-    continue-on-error: ${{ !matrix.gates_release }}
+    continue-on-error: ${{ !matrix.gates_release && github.event_name == 'push' }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,22 +120,49 @@ jobs:
           done
           npm install --prefix "$prefix" --no-fund --no-audit "$packs"/*.tgz
           echo "$prefix/node_modules/.bin" >> "$GITHUB_PATH"
+          echo "LH_PREFIX=$prefix" >> "$GITHUB_ENV"
 
+      # A client copy nested under the CLI, or one resolved from the registry, means the smoke would test
+      # the client already on npm instead of the one packed from this commit.
+      - name: Check the CLI uses the client packed from this commit
+        run: |
+          nested="$LH_PREFIX/node_modules/@letpeoplework/lighthouse-cli/node_modules/@letpeoplework/lighthouse-client"
+          test ! -d "$nested" || { echo "::error::the CLI carries its own client from npm: $nested"; exit 1; }
+          resolved="$(jq -r '.packages["node_modules/@letpeoplework/lighthouse-client"].resolved // ""' "$LH_PREFIX/package-lock.json")"
+          echo "client resolved from: $resolved"
+          case "$resolved" in
+            file:*) ;;
+            *) echo "::error::the client did not come from the packed tarball: '$resolved'"; exit 1 ;;
+          esac
+
+      # Archiving a Delivery is a premium feature, so the archived check needs a licence. Without the secret
+      # (a fork, or before it is configured) the smoke skips that one check and says so.
       - name: Run the integration smoke against ${{ matrix.image }}
-        run: bash scripts/smoke-integration.sh "${{ matrix.image }}"
+        env:
+          SMOKE_LICENSE: ${{ secrets.LIGHTHOUSE_SMOKE_LICENSE }}
+        run: |
+          if [ -n "$SMOKE_LICENSE" ]; then
+            export LIGHTHOUSE_SMOKE_LICENSE_FILE="$RUNNER_TEMP/smoke-license.json"
+            printf '%s' "$SMOKE_LICENSE" > "$LIGHTHOUSE_SMOKE_LICENSE_FILE"
+          fi
+          bash scripts/smoke-integration.sh "${{ matrix.image }}"
 
       - name: Report a failure against ${{ matrix.image }}
         if: failure()
         env:
           IMAGE: ${{ matrix.image }}
           GATES_RELEASE: ${{ matrix.gates_release }}
+          EVENT: ${{ github.event_name }}
         run: |
           if [ "$GATES_RELEASE" = "true" ]; then
             echo "::error title=Integration smoke failed::against $IMAGE; the Release gate stays closed."
             echo "### Integration smoke FAILED against \`$IMAGE\`; the Release gate stays closed." >> "$GITHUB_STEP_SUMMARY"
-          else
+          elif [ "$EVENT" = "push" ]; then
             echo "::warning title=Integration smoke failed::against $IMAGE, the next Lighthouse release. Not blocking this release; check before that server ships."
             echo "### Integration smoke FAILED (warning only) against \`$IMAGE\` (next Lighthouse release). Not blocking this release." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=Integration smoke failed::against $IMAGE, the next Lighthouse release. Check before that server ships."
+            echo "### Integration smoke FAILED against \`$IMAGE\` (next Lighthouse release). Check before that server ships." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # Only a commit that bumps a package version has anything to publish. Every other push to main would
