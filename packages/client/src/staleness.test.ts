@@ -147,7 +147,7 @@ describe("what the WIP answer leaves unsaid about staleness", () => {
 describe("the version gate for staleness", () => {
   // @us-03 @AC-5 @contract-shape:pure-function
   // The fields first ship after this release; an older server is still read, as one that does not say.
-  it.skip("names the last Lighthouse release without the staleness fields", () => {
+  it("names the last Lighthouse release without the staleness fields", () => {
     expect(FEATURE_REQUIRES_SERVER_NEWER_THAN).toMatchObject({
       staleness: "v26.10.16.6",
     });

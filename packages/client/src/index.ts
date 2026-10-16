@@ -2183,6 +2183,9 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   sleRisk: "v26.9.19.10",
   teamRefinement: "v26.10.3.6",
   refinementVotes: "v26.10.3.6",
+  // Which Work Items are stale rides on the WIP read as two extra fields. Nothing refuses on this entry: an
+  // older server answers the read without them, and the clients say it does not tell which are stale.
+  staleness: "v26.10.16.6",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
