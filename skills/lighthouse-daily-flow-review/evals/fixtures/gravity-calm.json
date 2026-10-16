@@ -513,7 +513,9 @@
         "startedDate": "2026-09-23T07:00:00Z",
         "closedDate": null,
         "currentStateEnteredAt": "2026-09-23T07:00:00Z",
-        "approximate": false
+        "approximate": false,
+        "isStale": false,
+        "staleReasons": []
       },
       {
         "name": "Dive log filters",
@@ -532,7 +534,9 @@
         "startedDate": "2026-09-23T07:00:00Z",
         "closedDate": null,
         "currentStateEnteredAt": "2026-09-23T07:00:00Z",
-        "approximate": false
+        "approximate": false,
+        "isStale": false,
+        "staleReasons": []
       },
       {
         "name": "Crew roster import",
@@ -551,7 +555,9 @@
         "startedDate": "2026-09-23T07:00:00Z",
         "closedDate": null,
         "currentStateEnteredAt": "2026-09-23T07:00:00Z",
-        "approximate": false
+        "approximate": false,
+        "isStale": false,
+        "staleReasons": []
       },
       {
         "name": "Hull telemetry labels",
@@ -570,7 +576,9 @@
         "startedDate": "2026-09-23T07:00:00Z",
         "closedDate": null,
         "currentStateEnteredAt": "2026-09-23T07:00:00Z",
-        "approximate": false
+        "approximate": false,
+        "isStale": false,
+        "staleReasons": []
       },
       {
         "name": "Pressure alarm sound",
@@ -589,7 +597,9 @@
         "startedDate": "2026-09-23T07:00:00Z",
         "closedDate": null,
         "currentStateEnteredAt": "2026-09-23T07:00:00Z",
-        "approximate": false
+        "approximate": false,
+        "isStale": false,
+        "staleReasons": []
       }
     ],
     "GET /api/v1/teams/3/metrics/sleRisk": [

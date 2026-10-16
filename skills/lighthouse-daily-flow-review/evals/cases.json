@@ -134,7 +134,9 @@
     "fixture": "gravity-daily",
     "environment": "with-older-clients",
     "prompt": "What should Team Gravity decide in today's daily?",
-    "commands": { "required": ["lh metrics team"] },
+    "commands": {
+      "required": ["lh metrics team"]
+    },
     "answer": {
       "mustContain": ["70th percentile"],
       "checks": [
@@ -262,7 +264,9 @@
     "surface": "mcp",
     "fixture": "gravity-daily",
     "prompt": "When will the 20 Work Items left in OE-002 be done? Gravity works on them.",
-    "tools": { "required": ["lighthouse_forecast_manual"] },
+    "tools": {
+      "required": ["lighthouse_forecast_manual"]
+    },
     "answer": {
       "mustNotContain": ["Everything else is flowing"],
       "checks": ["answers as a forecast, without a decide or discuss list"]
@@ -280,6 +284,76 @@
     "answer": {
       "mustContain": ["Everything else is flowing"],
       "checks": ["answers in the Daily Flow Review's shape"]
+    }
+  },
+  {
+    "id": "a-stale-work-item-is-named-with-lighthouses-reason",
+    "story": "6247",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-stale",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "tools": {
+      "required": ["lighthouse_team_metrics_wip"]
+    },
+    "answer": {
+      "mustContain": [
+        "GR-058",
+        "12 days in Review",
+        "https://northwind.atlassian.net/browse/GR-058"
+      ],
+      "checks": [
+        "names GR-058 as Stale with Lighthouse's reason, 12 days in Review",
+        "asks what is holding GR-058"
+      ]
+    }
+  },
+  {
+    "id": "a-blocked-work-item-that-is-also-stale-is-named-once",
+    "story": "6247",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-stale-and-blocked",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "answer": {
+      "mustContain": ["GR-061"],
+      "checks": [
+        "names GR-061 once, under Blocked, and asks who unblocks it today",
+        "does not list GR-061 again as Stale"
+      ]
+    }
+  },
+  {
+    "id": "an-older-lighthouse-cannot-say-which-are-stale",
+    "story": "6247",
+    "kind": "negative",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "gravity-older-lighthouse",
+    "environment": "with-older-lighthouse",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "answer": {
+      "mustNotContain": ["is stale", "has gone stale", "Stale:"],
+      "checks": [
+        "says Lighthouse does not say which Work Items are stale",
+        "lists no Work Item as stale on its own reckoning, from ages or thresholds"
+      ]
+    }
+  },
+  {
+    "id": "a-calm-day-needs-nothing-stale-either",
+    "story": "6247",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "gravity-stale",
+    "prompt": "What should Team Gravity decide in today's daily?",
+    "answer": {
+      "mustContain": ["GR-058"],
+      "mustNotContain": ["Nothing to decide today. Everything is flowing."],
+      "checks": ["does not answer with the calm-day line while GR-058 is stale"]
     }
   }
 ]

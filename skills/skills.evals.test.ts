@@ -35,7 +35,7 @@ const ENVIRONMENTS = new Set([
   "with-older-lighthouse",
 ]);
 
-const STORIES = new Set(["6245", "6217", "6246"]);
+const STORIES = new Set(["6245", "6217", "6246", "6247"]);
 const KINDS = new Set(["positive", "neighbour", "negative"]);
 const SURFACES = new Set(["mcp", "lh"]);
 
@@ -128,7 +128,10 @@ const problemsOf = (file: CaseFile, entry: EvalCase): string[] => {
     }
   };
   check(isText(entry.id), "no id");
-  check(STORIES.has(String(entry.story)), "story is not 6245, 6217 or 6246");
+  check(
+    STORIES.has(String(entry.story)),
+    "story is not 6245, 6217, 6246 or 6247",
+  );
   check(
     KINDS.has(String(entry.kind)),
     "kind is not positive, neighbour or negative",

@@ -2,8 +2,8 @@
 name: lighthouse-daily-flow-review
 description: >
   Lighthouse Daily Flow Review by LetPeopleWork: opens a Team's daily with what the Team should decide
-  and discuss today, from the Team's work tracked in Lighthouse: the Work Items that are Blocked, past the
-  SLE or at risk of missing it, WIP over its limit, then what is just under the line and what the charts
+  and discuss today, from the Team's work tracked in Lighthouse: the Work Items that are Blocked, Stale, past
+  the SLE or at risk of missing it, WIP over its limit, then what is just under the line and what the charts
   signal. Each comes as a question for the Team, never a task for a person. Use when a facilitator, Scrum
   Master, flow coach or anyone running a daily asks "What should we decide in today's daily?", "What
   should Gravity discuss today?", "What needs a decision this morning?",
@@ -16,7 +16,7 @@ description: >
 
 # Lighthouse Daily Flow Review
 
-This skill opens a Team's daily with what the work needs decided and discussed today, so the daily starts from the board and not from a status round. Lighthouse knows what is in progress, what is Blocked and since when, and how likely each Work Item is to miss the SLE; you read that and turn it into a short list of decisions for the Team.
+This skill opens a Team's daily with what the work needs decided and discussed today, so the daily starts from the board and not from a status round. Lighthouse knows what is in progress, what is Blocked and since when, which Work Items are Stale and why, and how likely each Work Item is to miss the SLE; you read that and turn it into a short list of decisions for the Team.
 
 Its companion is the general `lighthouse` skill. If no Lighthouse MCP tools are connected and `lh` is not set up, use that skill to connect. For anything that is not today's daily (a forecast, a flow metric over time, a chart for its own sake), that skill answers, not this one.
 
@@ -24,13 +24,13 @@ Its companion is the general `lighthouse` skill. If no Lighthouse MCP tools are 
 
 1. Find the Team's id silently: `lighthouse_team_list` (or `lh team list --json`), matched by name. Never ask the user for an id.
 2. Read the Team: `lighthouse_team_get` with `{id: <team_id>}` (or `lh team get --id <id> --json`). Its SLE is `serviceLevelExpectationRange` days at `serviceLevelExpectationProbability`%, its System WIP Limit is `systemWIPLimit`. A value of 0 means it is not set.
-3. Read what is in progress: `lighthouse_team_metrics_wip` with `{id: <team_id>}`. Each Work Item has its `referenceId`, `name`, `url`, `workItemAge`, `isBlocked` and `blockedSince`.
+3. Read what is in progress: `lighthouse_team_metrics_wip` with `{id: <team_id>}`. Each Work Item has its `referenceId`, `name`, `url`, `workItemAge`, `isBlocked`, `blockedSince`, `isStale` and `staleReasons`.
 4. Read the SLE Risk: `lighthouse_team_metrics_sleRisk` with `{id: <team_id>}`. Each Work Item has its `risk` in percent; a `risk` of 100 with `finishedItemsThatWentOnToMiss` null means it is already past the SLE.
 5. Read the charts: `lighthouse_team_metrics_processBehaviorChart` with `{id: <team_id>, metricType: "WorkItemAge"}` and with `metricType: "Wip"`, and the Throughput, Cycle Time and Arrivals charts for the flow retro line. Before you read a chart, load `references/signals.md`: it says which signal becomes a question and how to word it.
 
 With `lh`, steps 3 to 5 are one read: `lh metrics team --id <id> --metrics wip,sleRisk,processBehaviorChart --json`.
 
-Use the words each tool's `summary` uses for Work Items, Teams, WIP, Blocked and SLE. Every number in the answer comes from the reads; never work out a risk yourself. You count only three things: how many days a Work Item has been Blocked, from `blockedSince` to today; how many working days in a row a chart's signal has fired up to today (`references/signals.md`); and, only where Lighthouse's SLE Risk cannot be read, which Work Items are older than the 50th or 70th percentile of the Team's Cycle Time.
+Use the words each tool's `summary` uses for Work Items, Teams, WIP, Blocked and SLE; Stale is always written "Stale". Every number in the answer comes from the reads; never work out a risk, or whether a Work Item is stale, yourself. You count only three things: how many days a Work Item has been Blocked, from `blockedSince` to today; how many working days in a row a chart's signal has fired up to today (`references/signals.md`); and, only where Lighthouse's SLE Risk cannot be read, which Work Items are older than the 50th or 70th percentile of the Team's Cycle Time.
 
 ## The answer to give
 
@@ -50,9 +50,10 @@ Everything else is flowing.
 
 1. **Find the decisions**, in this order, each Work Item once (under the first reason it meets):
    1. **Blocked**: `isBlocked` true, the longest Blocked first. Ask who unblocks it today.
-   2. **Past the SLE**: SLE Risk says it is past the SLE. Give its age and the SLE in days. Ask: swarm, split, or finish and accept the miss?
-   3. **SLE Risk of 70% or more**: give its age and its `risk`. Ask what would help it finish before the SLE: swarm or split?
-   4. **WIP over its limit**: the Work Items in progress against the System WIP Limit, as the `summary` states them. Ask: what will we not start today? Only when a limit is set and WIP is above it.
+   2. **Stale**: `isStale` true and not already listed as Blocked, the one with the longest reason first. Quote Lighthouse's reason from `staleReasons`, the longest first: `TimeInState` as "12 days in Review" (its `days` and `stateName`), `BlockedDuration` as "Blocked 6 days", `TimeInStateWhileBlocked` as "12 days in In Progress while Blocked". Ask what is holding it.
+   3. **Past the SLE**: SLE Risk says it is past the SLE. Give its age and the SLE in days. Ask: swarm, split, or finish and accept the miss?
+   4. **SLE Risk of 70% or more**: give its age and its `risk`. Ask what would help it finish before the SLE: swarm or split?
+   5. **WIP over its limit**: the Work Items in progress against the System WIP Limit, as the `summary` states them. Ask: what will we not start today? Only when a limit is set and WIP is above it.
 2. **Decide first** is the first decision found. Then **Also decide** with at most three more. When more qualify, add one line saying how many more Work Items are past the line, without listing them.
 3. **Then Discuss**, at most two prompts, each a question and never a decision:
    1. **Just under the line**: the Work Item with the highest SLE Risk from 50% to 69%. Give its age and its `risk`, say it is just under the line, and ask what would help it finish.
@@ -60,7 +61,7 @@ Everything else is flowing.
    When one kind has nothing, both prompts may come from the other: the next Work Item just under the line, or the other chart's signal. Nothing else is a discussion prompt.
 4. **Worth a flow retro**: a signal on the Throughput, Cycle Time or Arrivals chart, or a signal that has persisted 3 working days, goes on one line starting "Worth a flow retro:" (see `references/signals.md`), not into Discuss.
 5. **Close** with "Everything else is flowing." When nothing needs deciding but something is worth discussing, open with "Nothing to decide today." and give the Discuss part.
-6. **A calm day is one line.** When nothing is Blocked, nothing is past the SLE or at 50% or more, WIP is within its limit and no chart signals, say only: "Nothing to decide today. Everything is flowing." Say nothing about the charts.
+6. **A calm day is one line.** When nothing is Blocked, nothing is Stale, nothing is past the SLE or at 50% or more, WIP is within its limit and no chart signals, say only: "Nothing to decide today. Everything is flowing." Say nothing about the charts.
 
 Every Work Item in the answer carries its `url`. A Work Item is a link: the Team opens it to decide. Never fetch or summarise its content.
 
@@ -70,6 +71,7 @@ Every Work Item in the answer carries its `url`. A Work Item is a link: the Team
 - **Lighthouse too old for SLE Risk** (the read refuses and asks for a newer Lighthouse): say so in one line. Then list the Work Items older than the 70th percentile of the Team's Cycle Time as at risk, with that percentile in days, and say this is an estimate from age, not Lighthouse's SLE Risk. One older than the 50th percentile but not the 70th is just under the line, a discussion prompt. A Work Item older than the SLE is still past the SLE.
 - **Clients too old for these reads** (no `lighthouse_team_metrics_wip` or `lighthouse_team_metrics_sleRisk` tool, or `lh` rejects `sleRisk`): fall back to `lh metrics team --id <id> --metrics wip --json` for what is in progress, and compare each Work Item's age with the 70th percentile of the Team's Cycle Time. Say this is the fallback, an estimate from Work Item Age, and that updating the Lighthouse clients brings Lighthouse's own SLE Risk.
 - **Blocked unknown**: when the read does not say which Work Items are Blocked, say Lighthouse does not say which are Blocked. Never guess one.
+- **Stale unknown**: when no Work Item carries `isStale` (an older Lighthouse), say Lighthouse does not say which Work Items are Stale. Never work it out from ages, from the time in a state or from a threshold.
 - **Lighthouse unreachable**: say so and suggest `lighthouse_health_check` or `lh health check`. Never answer from memory.
 
 ## Guardrails
