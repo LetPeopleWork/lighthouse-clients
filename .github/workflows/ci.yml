@@ -345,6 +345,31 @@ jobs:
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:${{ env.MCP_VERSION }}
             ghcr.io/letpeoplework/lighthouse-clients/mcp-http:latest
 
+      # npm takes seconds to minutes before a fresh publish installs, and the smoke jobs below install by
+      # exact version, so without this they fail ETARGET against a release that went out fine.
+      - name: Wait until npm serves every published version
+        run: |
+          pending=""
+          for manifest in packages/*/package.json; do
+            [ "$(jq -r '.private // false' "$manifest")" = "true" ] && continue
+            pending="$pending $(jq -r '"\(.name)@\(.version)"' "$manifest")"
+          done
+          for _ in $(seq 1 40); do
+            still=""
+            for spec in $pending; do
+              [ "$(npm view "$spec" version 2>/dev/null)" = "${spec##*@}" ] || still="$still $spec"
+            done
+            if [ -z "$still" ]; then
+              echo "npm serves every published version"
+              exit 0
+            fi
+            echo "not on npm yet:$still"
+            pending="$still"
+            sleep 15
+          done
+          echo "::error::published, but npm still does not serve:$pending after 10 minutes"
+          exit 1
+
   smoke-platform:
     runs-on: ${{ matrix.os }}
     needs: release
