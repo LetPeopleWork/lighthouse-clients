@@ -94,6 +94,18 @@ describe("the client reads which Work Items Lighthouse marks stale", () => {
     ]);
   });
 
+  // @us-03 @AC-1 @error @contract-shape:pure-function
+  it("reads an isStale that is not a boolean as not saying, and keeps the Work Item", () => {
+    const [stale] = JSON.parse(WIP_READ_WITH_STALENESS) as Record<
+      string,
+      unknown
+    >[];
+    const now = readInProgressItems([{ ...stale, isStale: "yes" }], TODAY);
+
+    expect(now?.items).toHaveLength(1);
+    expect(now?.items[0]?.isStale).toBeUndefined();
+  });
+
   // @us-03 @AC-3 @error @contract-shape:pure-function
   it("reads an older Lighthouse that says nothing about staleness as saying nothing", () => {
     const now = withoutStaleness();
