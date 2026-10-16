@@ -19,6 +19,7 @@ import {
   describeProcessBehaviorOverTimeDays,
   describeRefusedMetric,
   describeSleRiskNow,
+  describeStaleNow,
   describeThroughputDays,
   describeTimeInState,
   describeTimeInStateDays,
@@ -125,7 +126,8 @@ const lineCells = (line: MetricLine): string[] => [
   line.detail,
 ];
 
-// The dashboard shows the blocked count after Arrivals, though it is counted from the wip section.
+// The dashboard shows the blocked and stale counts after Arrivals, though they are counted from the wip
+// section.
 const headlineLines = (
   walk: Walk,
   systemWipLimit: number | undefined,
@@ -133,11 +135,13 @@ const headlineLines = (
 ): MetricLine[] => {
   const { scope } = walk.subject;
   const { terms } = walk.wording;
-  let blockedNow: MetricLine[] = [];
+  let blockedAndStaleNow: MetricLine[] = [];
   const inProgress = walk.section("wip", "wip", readWip, (wip) =>
     nested(walk, "wip", wip.current, (now) => {
-      const blocked = describeBlockedNow(now, scope, terms);
-      blockedNow = blocked === null ? [] : [blocked];
+      blockedAndStaleNow = [
+        describeBlockedNow(now, scope, terms),
+        describeStaleNow(now, scope, terms),
+      ].filter((line) => line !== null);
       return [describeInProgressNow(now, scope, terms, systemWipLimit)];
     }),
   );
@@ -149,7 +153,7 @@ const headlineLines = (
     ...walk.section("arrivals", "arrivals", readArrivals, (chart) => [
       describeTotalArrivals(chart, scope, terms),
     ]),
-    ...blockedNow,
+    ...blockedAndStaleNow,
     ...walk.section(
       "totalWorkItemAge",
       "totalWorkItemAge",

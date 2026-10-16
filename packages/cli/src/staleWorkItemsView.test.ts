@@ -52,7 +52,7 @@ describe("lh passes on which Work Items Lighthouse marks stale", () => {
   // @driving_port @us-03 @AC-1 @contract-shape:bounded-change
   // The Blocked line, which the Stale line sits under, is the headline's: `--metrics wip` lists the Work
   // Items themselves.
-  it.skip("shows the stale count in the headline, below the Blocked line", async () => {
+  it("shows the stale count in the headline, below the Blocked line", async () => {
     const run = await (await lhAgainst(WIP_READ_WITH_STALENESS))("--pretty");
 
     expect(run.exitCode).toBe(0);
@@ -63,7 +63,7 @@ describe("lh passes on which Work Items Lighthouse marks stale", () => {
   });
 
   // @driving_port @us-03 @AC-1 @contract-shape:bounded-change
-  it.skip("passes the staleness fields through untouched in JSON", async () => {
+  it("passes the staleness fields through untouched in JSON", async () => {
     const run = await (await lhAgainst(WIP_READ_WITH_STALENESS))(
       "--metrics",
       "wip",
