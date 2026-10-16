@@ -1,5 +1,17 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 1.8.1
+
+### Patch Changes
+
+- [`649b9c5`](https://github.com/LetPeopleWork/lighthouse-clients/commit/649b9c555e1d58c25c2be23b2698427d053725d9) Thanks [@huserben](https://github.com/huserben)! - `lighthouse_delivery_list` carries its summary again, counting a Portfolio's running Deliveries, against a Lighthouse
+  that answers them apart from the archived ones (v26.8.31.7 and later).
+  
+  Its description says where the running and the archived Deliveries are in the answer, and that `summary` is a field
+  counting the running ones.
+- Updated dependencies [[`4e76513`](https://github.com/LetPeopleWork/lighthouse-clients/commit/4e7651341c64b10cce69b82e90e0b8595f74a22b)]:
+  - @letpeoplework/lighthouse-client@1.10.0
+
 ## 1.8.0
 
 ### Minor Changes

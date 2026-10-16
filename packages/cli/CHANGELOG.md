@@ -1,5 +1,15 @@
 # @letpeoplework/lighthouse-cli
 
+## 1.8.1
+
+### Patch Changes
+
+- [`0cb568d`](https://github.com/LetPeopleWork/lighthouse-clients/commit/0cb568d9c9b4ca49ac103e29425e332a66e721d6) Thanks [@huserben](https://github.com/huserben)! - `lh delivery list` shows the Delivery table again against a Lighthouse since v26.8.31.7, instead of the generic
+  view. The archived Deliveries follow under their own heading, with their Delivery Date, the day they were archived,
+  the work done and their likelihood.
+- Updated dependencies [[`4e76513`](https://github.com/LetPeopleWork/lighthouse-clients/commit/4e7651341c64b10cce69b82e90e0b8595f74a22b)]:
+  - @letpeoplework/lighthouse-client@1.10.0
+
 ## 1.8.0
 
 ### Minor Changes
