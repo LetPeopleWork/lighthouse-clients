@@ -771,44 +771,50 @@ export const describeInProgressNow = (
       : wipLimitOf(systemWipLimit, scope, terms),
 });
 
+type WorkItemFlag = (item: InProgressItem) => boolean | undefined;
+
+const blockedFlag: WorkItemFlag = (item) => item.isBlocked;
+const staleFlag: WorkItemFlag = (item) => item.isStale;
+
+// A Lighthouse that says nothing about a flag is not one where no Work Item has it.
+const saysWhichAre = (now: InProgressNowView, flag: WorkItemFlag): boolean =>
+  now.items.some((item) => flag(item) !== undefined);
+
+const countFlaggedNow = (
+  part: MetricsHeadlinePart,
+  flag: WorkItemFlag,
+  now: InProgressNowView,
+  scope: MetricsScope,
+  terms: Terms,
+): MetricLine | null =>
+  saysWhichAre(now, flag)
+    ? {
+        label: metricsHeadlineLabel(part, scope, terms),
+        value: String(now.items.filter((item) => flag(item) === true).length),
+        detail: "",
+      }
+    : null;
+
 /** "Blocked Work Items  2", or null when Lighthouse does not say which items are blocked. */
 export const describeBlockedNow = (
   now: InProgressNowView,
   scope: MetricsScope,
   terms: Terms,
-): MetricLine | null => {
-  if (!now.items.some((item) => item.isBlocked !== undefined)) {
-    return null;
-  }
-  const blocked = now.items.filter((item) => item.isBlocked === true).length;
-  return {
-    label: metricsHeadlineLabel("blocked", scope, terms),
-    value: String(blocked),
-    detail: "",
-  };
-};
+): MetricLine | null =>
+  countFlaggedNow("blocked", blockedFlag, now, scope, terms);
 
 /** "Stale Work Items  2", or null when Lighthouse does not say which items are stale. */
 export const describeStaleNow = (
   now: InProgressNowView,
   scope: MetricsScope,
   terms: Terms,
-): MetricLine | null => {
-  if (!now.items.some((item) => item.isStale !== undefined)) {
-    return null;
-  }
-  const stale = now.items.filter((item) => item.isStale === true).length;
-  return {
-    label: metricsHeadlineLabel("stale", scope, terms),
-    value: String(stale),
-    detail: "",
-  };
-};
+): MetricLine | null => countFlaggedNow("stale", staleFlag, now, scope, terms);
 
 /**
  * The sentences that stand in for what a WIP answer cannot show: no System WIP Limit, a Lighthouse that does
- * not say which Work Items are Blocked (which is not the same as none being Blocked), and nothing in progress.
- * A limit of null means the Team or Portfolio could not be read; it may well have one, so nothing is said.
+ * not say which Work Items are Blocked or Stale (which is not the same as none being so), and nothing in
+ * progress. A limit of null means the Team or Portfolio could not be read; it may well have one, so nothing
+ * is said.
  */
 export const describeWhatWipLeavesUnsaid = (
   now: InProgressNowView,
@@ -817,20 +823,16 @@ export const describeWhatWipLeavesUnsaid = (
   systemWipLimit: number | undefined | null,
 ): readonly string[] => {
   const counted = countedOf(scope, terms);
-  const blockedUnknown =
-    now.items.length > 0 &&
-    now.items.every((item) => item.isBlocked === undefined);
-  const staleUnknown =
-    now.items.length > 0 &&
-    now.items.every((item) => item.isStale === undefined);
+  const silentOn = (flag: WorkItemFlag) =>
+    now.items.length > 0 && !saysWhichAre(now, flag);
   return [
     ...(systemWipLimit === undefined
       ? [`No System ${terms.wip} Limit is set.`]
       : []),
-    ...(blockedUnknown
+    ...(silentOn(blockedFlag)
       ? [`Lighthouse does not say which ${counted.many} are ${terms.blocked}.`]
       : []),
-    ...(staleUnknown
+    ...(silentOn(staleFlag)
       ? [`Lighthouse does not say which ${counted.many} are Stale.`]
       : []),
     ...(now.items.length === 0 ? [`No ${counted.many} are in progress.`] : []),
