@@ -102,7 +102,7 @@ describe("an assistant reads which Work Items are stale over the local MCP serve
   // @us-03 @AC-1 @contract-shape:pure-function
   // No tool reads a Portfolio's Work Items in progress; the Portfolio's Blocked tool names the lh command
   // that does, so it names the fields that command carries.
-  it.skip.each([
+  it.each([
     "lighthouse_team_metrics_wip",
     "lighthouse_portfolio_metrics_blockedCountHistory",
   ])(

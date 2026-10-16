@@ -61,7 +61,7 @@ Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both inclusi
 | `lighthouse_team_metrics_workItemAge` | Each in-progress Work Item's age per day. |
 | `lighthouse_team_metrics_workItemAgePercentiles` | Work Item Age percentiles. Ages are as of the range's last day, not today, unless the range ends today. |
 | `lighthouse_team_metrics_totalWorkItemAge` | The summed age of all WIP per day: the total WIP burden. |
-| `lighthouse_team_metrics_wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked and since when (`isBlocked`, `blockedSince`), and its link. Use it for "what is Blocked", "what is aging" and "are we over our WIP Limit" today. |
+| `lighthouse_team_metrics_wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked and since when (`isBlocked`, `blockedSince`), whether Lighthouse marks it Stale and why (`isStale`, `staleReasons`; absent on an older Lighthouse), and its link. Use it for "what is Blocked", "what is aging" and "are we over our WIP Limit" today. |
 | `lighthouse_team_metrics_sleRisk` | Which Work Items in progress are likely to miss the Team's SLE today: Lighthouse's own risk per Work Item, with the finished Work Items behind it. At risk starts at 70%. Use it for "what will miss our SLE" and "what should we swarm on"; never work a risk out yourself. Needs a Lighthouse newer than v26.9.19.10. |
 | `lighthouse_team_metrics_blockedCountHistory` | How many Work Items were Blocked on each day. For what is Blocked right now, use `lighthouse_team_metrics_wip`. |
 | `lighthouse_team_metrics_percentilesOverTime` | How the percentiles moved, day by day. `metricType`: `CycleTime` or `WorkItemAge`. With `CycleTime` always pass `horizon` (30, 60 or 90): the rows do not say which horizon they are, so leaving it out mixes all three. |
@@ -174,7 +174,7 @@ which are read only when named.
 | Key | Use it when | Over MCP |
 |---|---|---|
 | `--metrics throughput` | Work Items finished per day. | `lighthouse_team_metrics_throughput` |
-| `--metrics wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked (`isBlocked`, `blockedSince`), and the System WIP Limit. | `lighthouse_team_metrics_wip` (Teams only) |
+| `--metrics wip` | What is in progress right now: each Work Item's age and state, whether it is Blocked (`isBlocked`, `blockedSince`) or Stale (`isStale`, `staleReasons`), and the System WIP Limit. | `lighthouse_team_metrics_wip` (Teams only) |
 | `--metrics cycleTime` | Cycle Time percentiles; `--definition-id <id>` for a named Cycle Time. | `lighthouse_team_metrics_cycleTimePercentiles` (Teams only) |
 | `--metrics workItemAge` | Each in-progress Work Item's age per day. | `lighthouse_team_metrics_workItemAge` |
 | `--metrics totalWorkItemAge` | The summed WIP age per day. | `lighthouse_team_metrics_totalWorkItemAge` |

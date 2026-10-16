@@ -1065,7 +1065,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_portfolio_metrics_blockedCountHistory",
     description:
-      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. No tool reads what is blocked right now for a portfolio: name the command `lh metrics portfolio --metrics wip --id <id>`, whose items each carry isBlocked and, when blocked, a blockedSince timestamp. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
+      "Get the blocked-items-over-time trend for a portfolio by ID: how many work items were blocked on each captured day, optionally filtered by start and end dates. No tool reads what is blocked right now for a portfolio: name the command `lh metrics portfolio --metrics wip --id <id>`, whose items each carry isBlocked and, when blocked, a blockedSince timestamp, and whether Lighthouse marks it stale (isStale) and why (staleReasons), both absent on an older Lighthouse. A second text block, `summary: …`, states the answer as the dashboard does, in the instance's terminology: the heading and its sentence; the first block is the facts, unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1453,7 +1453,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_metrics_wip",
     description:
-      "Get what a team has in progress right now by ID: each work item in progress today with its age (workItemAge), state, whether it is blocked (isBlocked) and since when (blockedSince), and its link (url). Use it for what is blocked or aging today; for how many were blocked on past days use lighthouse_team_metrics_blockedCountHistory. A second text block, `summary: …`, states the answer as lh does, in the instance's terminology: the heading, how many are in progress against the System WIP Limit, and how many are blocked; the first block is the facts, unchanged.",
+      "Get what a team has in progress right now by ID: each work item in progress today with its age (workItemAge), state, whether it is blocked (isBlocked) and since when (blockedSince), whether Lighthouse marks it stale (isStale) and why (staleReasons: each a kind, TimeInState, BlockedDuration or TimeInStateWhileBlocked, with its days, and the state's stateName on the two time-in-state kinds), and its link (url). isStale and staleReasons are absent on an older Lighthouse, which does not say which work items are stale; never work staleness out yourself. Use it for what is blocked, stale or aging today; for how many were blocked on past days use lighthouse_team_metrics_blockedCountHistory. A second text block, `summary: …`, states the answer as lh does, in the instance's terminology: the heading, how many are in progress against the System WIP Limit, how many are blocked and how many are stale; the first block is the facts, unchanged.",
     inputSchema: idInputSchema,
   },
   {
