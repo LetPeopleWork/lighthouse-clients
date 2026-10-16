@@ -77,7 +77,7 @@ const stalenessOf = (items: readonly Record<string, unknown>[]) =>
 
 describe("an assistant reads which Work Items are stale over the local MCP server", () => {
   // @walking_skeleton @driving_port @us-03 @AC-1 @contract-shape:bounded-change
-  it.skip("sees which Work Items Lighthouse marks stale and why, and a summary counting them", async () => {
+  it("sees which Work Items Lighthouse marks stale and why, and a summary counting them", async () => {
     const wip = await readWip(WIP_READ_WITH_STALENESS);
 
     expect(wip.isError).toBe(false);

@@ -95,7 +95,7 @@ describe("the client reads which Work Items Lighthouse marks stale", () => {
   });
 
   // @us-03 @AC-3 @error @contract-shape:pure-function
-  it.skip("reads an older Lighthouse that says nothing about staleness as saying nothing", () => {
+  it("reads an older Lighthouse that says nothing about staleness as saying nothing", () => {
     const now = withoutStaleness();
 
     expect(now.items).toHaveLength(3);
@@ -109,14 +109,14 @@ describe("the client reads which Work Items Lighthouse marks stale", () => {
 
 describe("the WIP headline counts the stale Work Items", () => {
   // @us-03 @AC-1 @contract-shape:pure-function
-  it.skip("carries the line 'Stale Work Items  2'", () => {
+  it("carries the line 'Stale Work Items  2'", () => {
     expect(
       lineOf(describeStaleNow(withStaleness(), "team", SEEDED_TERMS)),
     ).toBe("Stale Work Items  2");
   });
 
   // @us-03 @AC-3 @error @contract-shape:pure-function
-  it.skip("carries no Stale line against an older Lighthouse", () => {
+  it("carries no Stale line against an older Lighthouse", () => {
     expect(
       describeStaleNow(withoutStaleness(), "team", SEEDED_TERMS),
     ).toBeNull();

@@ -27,6 +27,7 @@ import {
   describeProcessBehaviorOverTimeDays,
   describeRefreshConfirmation,
   describeSleRiskNow,
+  describeStaleNow,
   describeTeamSummary,
   describeThroughputDays,
   describeTimeInStateContributorDays,
@@ -1821,6 +1822,7 @@ const summariseCurrentWip =
     }
     const { terms } = known.wording;
     const blocked = describeBlockedNow(now, "team", terms);
+    const stale = describeStaleNow(now, "team", terms);
     return linesOf(
       describeAsOfHeading({ endDate: today }, known.wording),
       sentenceOf(
@@ -1832,6 +1834,7 @@ const summariseCurrentWip =
         ),
       ),
       blocked === null ? null : sentenceOf(blocked),
+      stale === null ? null : sentenceOf(stale),
       ...describeWhatWipLeavesUnsaid(now, "team", terms, known.systemWipLimit),
     );
   };

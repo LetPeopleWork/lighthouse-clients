@@ -181,6 +181,9 @@ const optionalNumber = (value: unknown): number | undefined =>
 const optionalDay = (value: unknown): string | undefined =>
   isDay(value) ? value : undefined;
 
+const optionalBoolean = (value: unknown): boolean | undefined =>
+  typeof value === "boolean" ? value : undefined;
+
 /** Why Lighthouse marks a Work Item stale, in whole days on the instance's calendar. */
 export type StaleReason = {
   readonly kind: "TimeInState" | "BlockedDuration" | "TimeInStateWhileBlocked";
@@ -221,6 +224,7 @@ const readInProgressItem = (value: unknown): InProgressItem | null =>
         state: optionalText(value.state),
         workItemAge: optionalNumber(value.workItemAge),
         blockedSince: optionalDay(value.blockedSince),
+        isStale: optionalBoolean(value.isStale),
       }
     : null;
 
@@ -624,6 +628,7 @@ export type MetricsHeadlinePart =
   | "throughput"
   | "arrivals"
   | "blocked"
+  | "stale"
   | "totalWorkItemAge"
   | "predictabilityScore"
   | "cycleTimePercentiles"
@@ -660,6 +665,8 @@ export const metricsHeadlineLabel = (
     throughput: `Total ${terms.throughput}`,
     arrivals: "Total Arrivals",
     blocked: `${terms.blocked} ${counted.many}`,
+    // The dashboard writes Stale as it is: Terminology has no word for it.
+    stale: `Stale ${counted.many}`,
     totalWorkItemAge: `Total ${terms.workItemAge}`,
     predictabilityScore: "Predictability Score",
     cycleTimePercentiles: `${terms.cycleTime} percentiles`,
@@ -752,11 +759,19 @@ export const describeBlockedNow = (
 
 /** "Stale Work Items  2", or null when Lighthouse does not say which items are stale. */
 export const describeStaleNow = (
-  _now: InProgressNowView,
-  _scope: MetricsScope,
-  _terms: Terms,
+  now: InProgressNowView,
+  scope: MetricsScope,
+  terms: Terms,
 ): MetricLine | null => {
-  throw new Error("Not yet implemented");
+  if (!now.items.some((item) => item.isStale !== undefined)) {
+    return null;
+  }
+  const stale = now.items.filter((item) => item.isStale === true).length;
+  return {
+    label: metricsHeadlineLabel("stale", scope, terms),
+    value: String(stale),
+    detail: "",
+  };
 };
 
 /**
