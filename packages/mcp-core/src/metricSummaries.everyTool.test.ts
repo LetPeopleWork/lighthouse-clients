@@ -190,7 +190,7 @@ describe("every per-metric tool, under its own label and its owner's heading", (
       expect(result.isError).toBe(false);
       expect(factsBlockOf(result).startsWith("team wip: ")).toBe(true);
       expect(summaryOf(result, "team wip: ")).toBe(
-        "Gravity · as of Tue 6 Oct 2026\nWork Items in Progress: 9 (System WIP Limit: 10 Work Items)\nBlocked Work Items: 2",
+        "Gravity · as of Tue 6 Oct 2026\nWork Items in Progress: 9 (System WIP Limit: 10 Work Items)\nBlocked Work Items: 2\nLighthouse does not say which Work Items are Stale.",
       );
     } finally {
       vi.useRealTimers();

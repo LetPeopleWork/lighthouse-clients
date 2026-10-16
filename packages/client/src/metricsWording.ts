@@ -820,12 +820,18 @@ export const describeWhatWipLeavesUnsaid = (
   const blockedUnknown =
     now.items.length > 0 &&
     now.items.every((item) => item.isBlocked === undefined);
+  const staleUnknown =
+    now.items.length > 0 &&
+    now.items.every((item) => item.isStale === undefined);
   return [
     ...(systemWipLimit === undefined
       ? [`No System ${terms.wip} Limit is set.`]
       : []),
     ...(blockedUnknown
       ? [`Lighthouse does not say which ${counted.many} are ${terms.blocked}.`]
+      : []),
+    ...(staleUnknown
+      ? [`Lighthouse does not say which ${counted.many} are Stale.`]
       : []),
     ...(now.items.length === 0 ? [`No ${counted.many} are in progress.`] : []),
   ];

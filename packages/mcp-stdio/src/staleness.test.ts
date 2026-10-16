@@ -88,7 +88,7 @@ describe("an assistant reads which Work Items are stale over the local MCP serve
   });
 
   // @driving_port @us-03 @AC-3 @error @contract-shape:bounded-change
-  it.skip("is told an older Lighthouse does not say which Work Items are stale", async () => {
+  it("is told an older Lighthouse does not say which Work Items are stale", async () => {
     const wip = await readWip(WIP_READ_WITHOUT_STALENESS);
 
     expect(wip.isError).toBe(false);

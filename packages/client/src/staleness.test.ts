@@ -125,14 +125,14 @@ describe("the WIP headline counts the stale Work Items", () => {
 
 describe("what the WIP answer leaves unsaid about staleness", () => {
   // @us-03 @AC-3 @error @contract-shape:pure-function
-  it.skip("says an older Lighthouse does not say which Work Items are stale", () => {
+  it("says an older Lighthouse does not say which Work Items are stale", () => {
     expect(
       describeWhatWipLeavesUnsaid(withoutStaleness(), "team", SEEDED_TERMS, 6),
     ).toContain("Lighthouse does not say which Work Items are Stale.");
   });
 
   // @us-03 @AC-3 @contract-shape:pure-function
-  it.skip("does not call a Lighthouse that says silent", () => {
+  it("does not call a Lighthouse that says silent", () => {
     expect(
       describeWhatWipLeavesUnsaid(
         withStaleness(),

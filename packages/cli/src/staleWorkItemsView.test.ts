@@ -87,7 +87,7 @@ describe("lh passes on which Work Items Lighthouse marks stale", () => {
   });
 
   // @driving_port @us-03 @AC-3 @error @contract-shape:bounded-change
-  it.skip("says an older Lighthouse does not say which are stale, and shows no Stale count", async () => {
+  it("says an older Lighthouse does not say which are stale, and shows no Stale count", async () => {
     const run = await (await lhAgainst(WIP_READ_WITHOUT_STALENESS))(
       "--metrics",
       "wip",

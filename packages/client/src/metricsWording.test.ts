@@ -1624,10 +1624,11 @@ describe("the metrics wording at its edges", () => {
 });
 
 describe("what a WIP answer says when there is less to say", () => {
+  // A Lighthouse that says which Work Items are stale, so only the Blocked facts vary here.
   const now = (items: readonly { isBlocked: boolean | undefined }[]) => ({
     asOfDate: "2026-10-06",
     count: items.length,
-    items,
+    items: items.map((item) => ({ ...item, isStale: false })),
   });
   const known = [{ isBlocked: true }, { isBlocked: false }];
   const unknown = [{ isBlocked: undefined }, { isBlocked: undefined }];
