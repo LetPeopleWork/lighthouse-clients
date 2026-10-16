@@ -51,7 +51,7 @@ const lineOf = (line: MetricLine | null): string | null =>
 
 describe("the client reads which Work Items Lighthouse marks stale", () => {
   // @us-03 @AC-1 @contract-shape:pure-function
-  it.skip("keeps a stale Work Item's reasons on the way through", () => {
+  it("keeps a stale Work Item's reasons on the way through", () => {
     const now = withStaleness();
 
     expect(itemOf(now, "GR-058").isStale).toBe(true);
@@ -68,7 +68,7 @@ describe("the client reads which Work Items Lighthouse marks stale", () => {
   });
 
   // @us-03 @AC-1 @error @contract-shape:pure-function
-  it.skip("drops a reason of a kind it does not know and keeps the Work Item", () => {
+  it("drops a reason of a kind it does not know and keeps the Work Item", () => {
     const [stale] = JSON.parse(WIP_READ_WITH_STALENESS) as Record<
       string,
       unknown

@@ -184,12 +184,42 @@ const optionalDay = (value: unknown): string | undefined =>
 const optionalBoolean = (value: unknown): boolean | undefined =>
   typeof value === "boolean" ? value : undefined;
 
+const STALE_REASON_KINDS = [
+  "TimeInState",
+  "BlockedDuration",
+  "TimeInStateWhileBlocked",
+] as const;
+
+type StaleReasonKind = (typeof STALE_REASON_KINDS)[number];
+
+const isStaleReasonKind = (value: unknown): value is StaleReasonKind =>
+  STALE_REASON_KINDS.some((kind) => kind === value);
+
 /** Why Lighthouse marks a Work Item stale, in whole days on the instance's calendar. */
 export type StaleReason = {
-  readonly kind: "TimeInState" | "BlockedDuration" | "TimeInStateWhileBlocked";
+  readonly kind: StaleReasonKind;
   readonly days: number;
   readonly stateName?: string;
 };
+
+const readStaleReason = (value: unknown): StaleReason | null =>
+  isRecord(value) && isStaleReasonKind(value.kind) && isNumber(value.days)
+    ? {
+        kind: value.kind,
+        days: value.days,
+        stateName: optionalText(value.stateName),
+      }
+    : null;
+
+// A newer Lighthouse may give a reason this client cannot word; the Work Item is still stale for the rest.
+const optionalStaleReasons = (
+  value: unknown,
+): readonly StaleReason[] | undefined =>
+  Array.isArray(value)
+    ? value
+        .map(readStaleReason)
+        .filter((reason): reason is StaleReason => reason !== null)
+    : undefined;
 
 /** A Work Item in progress; an older Lighthouse does not say whether it is blocked, or stale. */
 export type InProgressItem = {
@@ -225,6 +255,7 @@ const readInProgressItem = (value: unknown): InProgressItem | null =>
         workItemAge: optionalNumber(value.workItemAge),
         blockedSince: optionalDay(value.blockedSince),
         isStale: optionalBoolean(value.isStale),
+        staleReasons: optionalStaleReasons(value.staleReasons),
       }
     : null;
 
