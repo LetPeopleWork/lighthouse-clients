@@ -181,7 +181,14 @@ const optionalNumber = (value: unknown): number | undefined =>
 const optionalDay = (value: unknown): string | undefined =>
   isDay(value) ? value : undefined;
 
-/** A Work Item in progress; an older Lighthouse does not say whether it is blocked. */
+/** Why Lighthouse marks a Work Item stale, in whole days on the instance's calendar. */
+export type StaleReason = {
+  readonly kind: "TimeInState" | "BlockedDuration" | "TimeInStateWhileBlocked";
+  readonly days: number;
+  readonly stateName?: string;
+};
+
+/** A Work Item in progress; an older Lighthouse does not say whether it is blocked, or stale. */
 export type InProgressItem = {
   readonly isBlocked: boolean | undefined;
   readonly referenceId?: string;
@@ -189,6 +196,8 @@ export type InProgressItem = {
   readonly state?: string;
   readonly workItemAge?: number;
   readonly blockedSince?: string;
+  readonly isStale?: boolean;
+  readonly staleReasons?: readonly StaleReason[];
 };
 
 export type InProgressNowView = {
@@ -739,6 +748,15 @@ export const describeBlockedNow = (
     value: String(blocked),
     detail: "",
   };
+};
+
+/** "Stale Work Items  2", or null when Lighthouse does not say which items are stale. */
+export const describeStaleNow = (
+  _now: InProgressNowView,
+  _scope: MetricsScope,
+  _terms: Terms,
+): MetricLine | null => {
+  throw new Error("Not yet implemented");
 };
 
 /**

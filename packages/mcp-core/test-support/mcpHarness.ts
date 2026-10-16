@@ -79,6 +79,14 @@ export const answerOf = (
   return decode(text.slice(label.length)) as Record<string, unknown>;
 };
 
+/** The facts a first text block carries after its label (`label: <TOON>`), whatever their shape. */
+export const decodeFacts = (text: string, label: string): unknown => {
+  if (!text.startsWith(label)) {
+    throw new Error(`Expected the answer to start with "${label}": ${text}`);
+  }
+  return decode(text.slice(label.length));
+};
+
 /** The second text block a list or scalar answer carries (`summary: …`), or null when there is none. */
 export const summaryBlockOf = (result: ToolResult): string | null =>
   result.content[1]?.text ?? null;

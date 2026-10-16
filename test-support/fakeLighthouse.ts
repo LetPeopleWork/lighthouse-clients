@@ -51,6 +51,24 @@ export const BATCH_LH_SENDS_FOR_A_VOTE_THAT_MADE_READY = readFileSync(
   "utf8",
 );
 
+/**
+ * A Team's WIP read as Lighthouse answers it once it marks stale Work Items itself (the backend's fixture,
+ * copied): GR-058 stale for its time in Review, GR-061 Blocked and stale for it, GR-063 not stale.
+ */
+export const WIP_READ_WITH_STALENESS = readFileSync(
+  new URL("./stalenessContract/wip-read-with-staleness.json", import.meta.url),
+  "utf8",
+);
+
+/** The same three Work Items as an older Lighthouse answers them: nothing said about staleness. */
+export const WIP_READ_WITHOUT_STALENESS = readFileSync(
+  new URL(
+    "./stalenessContract/wip-read-without-staleness.json",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 export const EVERY_SOURCE = ["Browser", "Cli", "Mcp"] as const;
 
 /** How this Lighthouse answers on its usage data endpoints. */
