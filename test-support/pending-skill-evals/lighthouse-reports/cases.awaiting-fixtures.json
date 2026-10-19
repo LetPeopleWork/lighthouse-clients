@@ -1,0 +1,252 @@
+[
+  {
+    "id": "the-coach-gets-the-report-as-lighthouse-shows-it",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "lightspeed-engagement-start",
+    "prompt": "Turn Team Lightspeed's report \"Then & Now — engagement start\" into a one-page dashboard I can paste into my slides.",
+    "tools": {
+      "required": ["lighthouse_team_report_list", "lighthouse_team_report_get"]
+    },
+    "answer": {
+      "mustContain": [
+        "Team Lightspeed — Then & Now — engagement start",
+        "Then 3 May – 31 Jul 2026 · Now 5 Jul – 2 Oct 2026",
+        "Read from Lighthouse on",
+        "21 days",
+        "12 days",
+        "▼ 9 days",
+        "−43 %",
+        "0.58 per day",
+        "0.72 per day",
+        "Data from Lighthouse by LetPeopleWork"
+      ],
+      "mustNotContain": ["0.5777", "0.7222", "8.62", "610.4", "−9 days"],
+      "checks": [
+        "opens with the dated header: the report, its owner, both windows on one line and the day it was read",
+        "puts the summary groups before the first metric",
+        "lays out each shown metric as Then | Now | Change | %, in the order Cycle Time, Throughput, WIP, Total Work Item Age",
+        "shows every value at its line's decimals and in its unit, never more precise than Lighthouse shows it",
+        "ends with the line \"Data from Lighthouse by LetPeopleWork\""
+      ]
+    }
+  },
+  {
+    "id": "the-same-dashboard-from-the-command-line",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "lh",
+    "fixture": "lightspeed-engagement-start",
+    "prompt": "Use lh to read Team Lightspeed's \"Then & Now — engagement start\" report and write it up as a short document.",
+    "commands": {
+      "required": ["lh report get"]
+    },
+    "answer": {
+      "mustContain": [
+        "Team Lightspeed — Then & Now — engagement start",
+        "−43 %",
+        "0.58 per day",
+        "Data from Lighthouse by LetPeopleWork"
+      ],
+      "checks": [
+        "the document holds the same header, summary and metric tables as the dashboard"
+      ]
+    }
+  },
+  {
+    "id": "a-line-that-did-not-move-and-a-then-of-nothing",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "apollo-quarter-review-edges",
+    "prompt": "Make a dashboard of Portfolio Apollo II's \"Then & Now — quarter review\".",
+    "tools": {
+      "required": ["lighthouse_portfolio_report_get"]
+    },
+    "answer": {
+      "mustContain": ["No change", "Then was 0"],
+      "mustNotContain": ["Infinity", "NaN", "+0 %"],
+      "checks": [
+        "a line whose rounded values are equal reads No change, with no percent",
+        "a line whose rounded Then is 0 gives its change and says Then was 0 instead of a percent"
+      ]
+    }
+  },
+  {
+    "id": "a-metric-that-improved-at-one-end-and-worsened-at-the-other-is-mixed",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "lightspeed-mixed",
+    "prompt": "Summarise Team Lightspeed's \"Then & Now — engagement start\" report for my sponsor.",
+    "tools": {
+      "required": ["lighthouse_team_report_get"]
+    },
+    "answer": {
+      "mustContain": ["Mixed: Cycle Time"],
+      "checks": [
+        "groups the metrics as Improved, Got worse, Mixed and Unchanged, in that order, leaving out a group with no metric",
+        "never calls a metric improved when one of its lines got worse"
+      ]
+    }
+  },
+  {
+    "id": "a-missing-value-stays-a-dash-with-its-reason",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "apollo-quarter-review-edges",
+    "prompt": "Put Portfolio Apollo II's \"Then & Now — quarter review\" into a table for our quarterly review.",
+    "tools": {
+      "required": ["lighthouse_portfolio_report_get"]
+    },
+    "answer": {
+      "mustContain": ["—", "No finished Work Items in Now"],
+      "mustNotContain": ["0.00 per day"],
+      "checks": [
+        "every value Lighthouse has no number for is a dash with its reason beside it, never a 0"
+      ]
+    }
+  },
+  {
+    "id": "the-assistants-own-reading-stays-apart",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "lightspeed-engagement-start",
+    "prompt": "Make a dashboard of Team Lightspeed's \"Then & Now — engagement start\" report, and tell me what you make of it.",
+    "tools": {
+      "required": ["lighthouse_team_report_get"]
+    },
+    "answer": {
+      "mustContain": ["Assistant's view"],
+      "checks": [
+        "the assistant's own reading comes after the report's content, under a heading saying it is the assistant's view",
+        "the report's numbers, colours and order are the same as without the assistant's view"
+      ]
+    }
+  },
+  {
+    "id": "no-assistants-view-unless-asked",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "lightspeed-engagement-start",
+    "prompt": "Make a dashboard of Team Lightspeed's \"Then & Now — engagement start\" report.",
+    "tools": {
+      "required": ["lighthouse_team_report_get"]
+    },
+    "answer": {
+      "mustNotContain": ["Assistant's view"],
+      "checks": ["holds only what the report holds"]
+    }
+  },
+  {
+    "id": "then-is-never-rebuilt-from-todays-metrics",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "lightspeed-engagement-start",
+    "prompt": "Show Team Lightspeed's \"Then & Now — engagement start\" report, and double-check Then against the metrics.",
+    "tools": {
+      "required": ["lighthouse_team_report_get"],
+      "forbidden": [
+        "lighthouse_team_metrics_cycleTimePercentiles",
+        "lighthouse_team_metrics_throughput",
+        "lighthouse_team_metrics_wip",
+        "lighthouse_team_metrics_totalWorkItemAge",
+        "lighthouse_team_metrics_workItemAge"
+      ]
+    },
+    "answer": {
+      "checks": [
+        "explains that Then is frozen as captured and is shown as the report holds it"
+      ]
+    }
+  },
+  {
+    "id": "the-instances-own-words",
+    "story": "6298",
+    "kind": "positive",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "lightspeed-renamed-terms",
+    "prompt": "Make a dashboard of Squad Lightspeed's \"Then & Now — engagement start\" report.",
+    "tools": {
+      "required": ["lighthouse_team_report_get"]
+    },
+    "answer": {
+      "mustContain": ["Squad Lightspeed", "Lead Time", "Tickets"],
+      "mustNotContain": ["Cycle Time", "Work Items"],
+      "checks": [
+        "names every metric, owner and item by the instance's own words"
+      ]
+    }
+  },
+  {
+    "id": "an-older-lighthouse-is-to-be-upgraded",
+    "story": "6298",
+    "kind": "neighbour",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "lighthouse-without-reports",
+    "environment": "with-older-lighthouse",
+    "prompt": "Make a dashboard of Team Lightspeed's \"Then & Now — engagement start\" report.",
+    "tools": {
+      "required": ["lighthouse_team_report_list"]
+    },
+    "answer": {
+      "mustContain": ["Upgrade Lighthouse"],
+      "checks": [
+        "says this Lighthouse is too old to read reports from and offers to work from values or a PDF the user supplies"
+      ]
+    }
+  },
+  {
+    "id": "no-access-is-said-not-guessed",
+    "story": "6298",
+    "kind": "neighbour",
+    "guardrail": true,
+    "surface": "mcp",
+    "fixture": "lightspeed-no-access",
+    "prompt": "Make a dashboard of Team Lightspeed's \"Then & Now — engagement start\" report.",
+    "tools": {
+      "required": ["lighthouse_team_report_get"],
+      "forbidden": [
+        "lighthouse_team_metrics_cycleTimePercentiles",
+        "lighthouse_team_metrics_throughput"
+      ]
+    },
+    "answer": {
+      "mustContain": ["no access"],
+      "checks": [
+        "says the reader has no access to that Team and shows no numbers"
+      ]
+    }
+  },
+  {
+    "id": "a-question-about-todays-cycle-time-is-not-a-report",
+    "story": "6298",
+    "kind": "negative",
+    "guardrail": false,
+    "surface": "mcp",
+    "fixture": "lightspeed-engagement-start",
+    "prompt": "What is Team Lightspeed's Cycle Time right now?",
+    "tools": {
+      "required": ["lighthouse_team_metrics_cycleTimePercentiles"],
+      "forbidden": ["lighthouse_team_report_get"]
+    },
+    "answer": {
+      "mustNotContain": ["Data from Lighthouse by LetPeopleWork"]
+    }
+  }
+]

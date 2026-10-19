@@ -1,0 +1,28 @@
+{
+  "id": 51,
+  "name": "Then & Now — quarter review",
+  "templateKey": "then-and-now",
+  "ownerKind": "Portfolio",
+  "ownerId": 6,
+  "createdOn": "2026-09-01",
+  "concurrencyToken": "0b9d8c7e-6f5a-4b3c-9d2e-1f0a9b8c7d6e",
+  "shownMetricKeys": ["throughput"],
+  "thenAndNow": {
+    "thenWindow": { "start": "2026-06-02", "end": "2026-07-01", "lengthDays": 30 },
+    "nowWindow": { "start": "2026-09-03", "end": "2026-10-02", "lengthDays": 30 },
+    "thenRebuildable": false,
+    "metrics": {
+      "throughput": {
+        "atThen": {
+          "total": { "value": 0, "sampleSize": 30, "absentReason": null },
+          "perDay": { "value": 0, "sampleSize": 30, "absentReason": null }
+        },
+        "atNow": {
+          "total": { "value": null, "sampleSize": null, "absentReason": "no-finished-items" },
+          "perDay": { "value": null, "sampleSize": null, "absentReason": "no-finished-items" }
+        }
+      }
+    },
+    "daysSinceThenEnded": 93
+  }
+}

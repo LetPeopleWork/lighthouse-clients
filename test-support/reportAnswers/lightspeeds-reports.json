@@ -1,0 +1,23 @@
+{
+  "reports": [
+    {
+      "id": 42,
+      "name": "Then & Now — engagement start",
+      "templateKey": "then-and-now",
+      "ownerKind": "Team",
+      "ownerId": 9,
+      "createdOn": "2026-08-01",
+      "thenAndNow": { "thenRebuildable": true }
+    },
+    {
+      "id": 44,
+      "name": "Signals — flow alerts",
+      "templateKey": "signals",
+      "ownerKind": "Team",
+      "ownerId": 9,
+      "createdOn": "2026-09-20"
+    }
+  ],
+  "creationBlockedByCap": false,
+  "communityCap": 1
+}

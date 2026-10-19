@@ -18,7 +18,8 @@
       "!**/dist-types",
       "!**/*.tsbuildinfo",
       "!**/package.json",
-      "!test-support/stalenessContract"
+      "!test-support/stalenessContract",
+      "!test-support/reportAnswers"
     ]
   }
 }
