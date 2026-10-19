@@ -1,5 +1,42 @@
 # @letpeoplework/lighthouse-mcp-core
 
+## 1.9.0
+
+### Minor Changes
+
+- [`5b8d2e1`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5b8d2e1c183721d63f5c03c86a9542bdbb2220db) Thanks [@huserben](https://github.com/huserben)! - Forecasts that reach beyond Lighthouse's five-year simulation horizon now read "More than 5 years" instead of a
+  date about five years out. The number comes from Lighthouse (`horizonYears`), never a fixed 5.
+  
+  - `lh forecast manual`'s When table, the Forecasted Start and Forecasted Completion (85%) columns of
+    `lh feature get`, the Forecast 85% column of `lh delivery list`, and a recorded day's chances in
+    `lh delivery metrics` say "More than 5 years" for a chance Lighthouse marks `beyondHorizon`. `--json` carries
+    the two fields unchanged.
+  - The forecast, Feature and Delivery MCP tools pass `beyondHorizon` and `horizonYears` on unchanged, and their
+    descriptions tell the assistant to say "More than <horizonYears> years" for such a chance and never quote its
+    stand-in date.
+  - The client reads the two fields when present (`describePercentileDate`, `yearsBeyondHorizon`,
+    `moreThanYearsText`). An older Lighthouse, which sends neither, keeps every date exactly as before.
+
+- [`88c3295`](https://github.com/LetPeopleWork/lighthouse-clients/commit/88c3295e1ef1afa1bdb83de558045cf6a4e31af0) Thanks [@huserben](https://github.com/huserben)! - The clients pass on which Work Items Lighthouse marks stale, and why, now that Lighthouse decides staleness itself
+  (the release after v26.10.16.6). The clients never work staleness out themselves.
+  
+  - Each Work Item in progress carries `isStale` and `staleReasons` unchanged: how many days it has sat in a state,
+    been Blocked, or sat in a state while Blocked, with the state's name where there is one. A reason of a kind the
+    client does not know yet is left out; the Work Item is still read.
+  - `lighthouse_team_metrics_wip`'s summary counts them under the Blocked count ("Stale Work Items: 2"), and its
+    description names the two fields. `lh metrics team` and `lh metrics portfolio` show a "Stale Work Items" line
+    under the Blocked line; `--json` carries the fields unchanged.
+  - Against an older Lighthouse, which does not say, `lh metrics team --metrics wip` and the tool's summary say
+    "Lighthouse does not say which Work Items are Stale." and show no count.
+  - The Daily Flow Review skill names stale Work Items not already listed as Blocked, quoting Lighthouse's reason,
+    and a calm day now also requires nothing to be stale.
+  - `FEATURE_REQUIRES_SERVER_NEWER_THAN.staleness` names v26.10.16.6. No read is refused on it.
+
+### Patch Changes
+
+- Updated dependencies [[`5b8d2e1`](https://github.com/LetPeopleWork/lighthouse-clients/commit/5b8d2e1c183721d63f5c03c86a9542bdbb2220db), [`88c3295`](https://github.com/LetPeopleWork/lighthouse-clients/commit/88c3295e1ef1afa1bdb83de558045cf6a4e31af0)]:
+  - @letpeoplework/lighthouse-client@1.11.0
+
 ## 1.8.1
 
 ### Patch Changes
