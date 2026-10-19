@@ -24,16 +24,16 @@ export const isDay = (value: unknown): value is string =>
 /** The calendar day as a person reads it, or the text exactly as sent when it is not one. */
 export const dayOf = (wire: string): string => formatCalendarDay(wire) ?? wire;
 
-/** The date a list of chances gives for one probability, or undefined when it holds none for it. */
-export const expectedDateAt = (
+/** The chance a list gives for one probability, or undefined when it holds none for it. */
+export const chanceAt = (
   chances: unknown,
   probability: number,
-): string | undefined => {
+): Readonly<Record<string, unknown>> | undefined => {
   if (!Array.isArray(chances)) {
     return undefined;
   }
-  const chance = chances.find(
+  const chance: unknown = chances.find(
     (entry) => isRecord(entry) && entry.probability === probability,
   );
-  return isRecord(chance) ? textOf(chance.expectedDate) : undefined;
+  return isRecord(chance) ? chance : undefined;
 };

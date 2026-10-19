@@ -1,0 +1,122 @@
+{
+  "manualForecast": {
+    "remainingItems": 400,
+    "targetDate": null,
+    "likelihood": null,
+    "whenForecasts": [
+      {
+        "probability": 50,
+        "expectedDate": "2030-03-04T00:00:00Z",
+        "filterApplied": false,
+        "excludedSummary": null
+      },
+      {
+        "probability": 70,
+        "expectedDate": "2031-02-10T00:00:00Z",
+        "filterApplied": false,
+        "excludedSummary": null
+      },
+      {
+        "probability": 85,
+        "expectedDate": "2031-10-19T00:00:00Z",
+        "filterApplied": false,
+        "excludedSummary": null
+      },
+      {
+        "probability": 95,
+        "expectedDate": "2031-10-19T00:00:00Z",
+        "filterApplied": false,
+        "excludedSummary": null
+      }
+    ],
+    "howManyForecasts": [],
+    "filterApplied": false,
+    "excludedSummary": null,
+    "hasSufficientData": true
+  },
+  "features": [
+    {
+      "id": 7,
+      "referenceId": "OE-007",
+      "name": "Sonar mapping",
+      "state": "To Do",
+      "totalWork": { "3": 400 },
+      "remainingWork": { "3": 400 },
+      "forecasts": [
+        {
+          "probability": 50,
+          "expectedDate": "2030-03-04T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 85,
+          "expectedDate": "2031-10-19T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        }
+      ],
+      "startForecast": {
+        "source": "Forecast",
+        "observedDate": null,
+        "percentiles": [
+          {
+            "probability": 85,
+            "expectedDate": "2031-10-19T00:00:00Z",
+            "filterApplied": false,
+            "excludedSummary": null
+          }
+        ]
+      },
+      "teamsWithoutForecast": []
+    }
+  ],
+  "deliveries": [
+    {
+      "id": 31,
+      "name": "Lunar Probe",
+      "date": "2027-01-12T00:00:00Z",
+      "features": [7],
+      "totalWork": 400,
+      "remainingWork": 400,
+      "likelihoodPercentage": 0,
+      "teamsWithoutForecast": [],
+      "hasSufficientData": true,
+      "isOverdue": false,
+      "completionDates": [
+        {
+          "probability": 50,
+          "expectedDate": "2030-03-04T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        },
+        {
+          "probability": 85,
+          "expectedDate": "2031-10-19T00:00:00Z",
+          "filterApplied": false,
+          "excludedSummary": null
+        }
+      ]
+    }
+  ],
+  "deliveryMetricsHistory": {
+    "deliveryDate": "2027-01-12T00:00:00Z",
+    "firstSnapshotDate": "2026-10-18T00:00:00Z",
+    "points": [
+      {
+        "date": "2026-10-18T00:00:00Z",
+        "targetDateAtSnapshot": "2027-01-12T00:00:00Z",
+        "totalWork": 400,
+        "doneWork": 0,
+        "remainingWork": 400,
+        "estimatedItemCount": null,
+        "likelihoodPercentage": 0,
+        "whenDistribution": [
+          { "probability": 50, "expectedDate": "2030-03-04T00:00:00Z" },
+          { "probability": 85, "expectedDate": "2031-10-18T00:00:00Z" }
+        ],
+        "featureBreakdown": []
+      }
+    ]
+  }
+}

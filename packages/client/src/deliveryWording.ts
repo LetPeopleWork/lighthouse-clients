@@ -3,6 +3,11 @@ import {
   formatLikelihood,
   likelihoodAnswer,
 } from "./forecastDisplayRules";
+import {
+  describePercentileDate,
+  describePercentileDay,
+  yearsBeyondHorizon,
+} from "./forecastPercentileText";
 import type {
   DeliveryFeatureMetric,
   DeliveryMetricsHistory,
@@ -11,7 +16,7 @@ import type {
 } from "./index";
 import { describeOwnerName, NOT_SENT } from "./ownerWording";
 import type { Terms } from "./terminology";
-import { dayOf, expectedDateAt, isRecord, textOf } from "./wireFacts";
+import { chanceAt, dayOf, isRecord, textOf } from "./wireFacts";
 
 /** One Delivery as its card's header states it. Facts an older Lighthouse may not send stay undefined. */
 export type DeliveryListItem = {
@@ -26,6 +31,8 @@ export type DeliveryListItem = {
   readonly hasSufficientData: boolean | undefined;
   readonly isOverdue: boolean | undefined;
   readonly likelyBy: string | undefined;
+  // Set when the chance lies beyond the simulation horizon: likelyBy is then only a stand-in.
+  readonly likelyByBeyondHorizonYears?: number;
 };
 
 /** The Portfolio whose Deliveries are listed; its name stays undefined when it could not be read. */
@@ -58,6 +65,7 @@ const readDeliveryListItem = (value: unknown): DeliveryListItem | null => {
   if (name === undefined || date === undefined) {
     return null;
   }
+  const likely = chanceAt(value.completionDates, LISTED_CHANCE);
   return {
     id: value.id,
     name,
@@ -74,7 +82,8 @@ const readDeliveryListItem = (value: unknown): DeliveryListItem | null => {
     cannotBeForecast: teamsWithoutForecastIn(value),
     hasSufficientData: flagOf(value.hasSufficientData),
     isOverdue: flagOf(value.isOverdue),
-    likelyBy: expectedDateAt(value.completionDates, LISTED_CHANCE),
+    likelyBy: textOf(likely?.expectedDate),
+    likelyByBeyondHorizonYears: yearsBeyondHorizon(likely),
   };
 };
 
@@ -237,7 +246,12 @@ export const describeDeliveryRow = (
     : String(delivery.featureCount),
   describeDeliveryDone(delivery, terms),
   describeDeliveryLikelihood(delivery),
-  delivery.likelyBy === undefined ? NOT_SENT : dayOf(delivery.likelyBy),
+  delivery.likelyBy === undefined
+    ? NOT_SENT
+    : describePercentileDay(
+        delivery.likelyBy,
+        delivery.likelyByBeyondHorizonYears,
+      ),
 ];
 
 /** What heads the archived Deliveries, below the active ones: "Archived Deliveries". */
@@ -427,7 +441,7 @@ export const describeDeliveryChanceHeadings = (): string[] => [
   "Done by",
 ];
 
-/** One chance of the day's forecast: "85%" and the day it is that likely to be done by. */
+/** One chance of the day's forecast: "85%" and the day it is that likely to be done by, or "More than 5 years". */
 export const describeDeliveryChanceRow = (
   chance: DeliveryWhenDistributionPoint,
-): string[] => [`${chance.probability}%`, dayOf(chance.expectedDate)];
+): string[] => [`${chance.probability}%`, describePercentileDate(chance)];

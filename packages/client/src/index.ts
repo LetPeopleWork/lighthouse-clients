@@ -972,6 +972,10 @@ export type DeliveryFeatureMetric = {
 export type DeliveryWhenDistributionPoint = {
   readonly probability: number;
   readonly expectedDate: string;
+  /** True when too few simulated runs reached this chance: `expectedDate` is then only a stand-in. Absent on an older Lighthouse. */
+  readonly beyondHorizon?: boolean;
+  /** The simulation horizon, in years, this chance was forecast with. Absent on an older Lighthouse and on days recorded before it. */
+  readonly horizonYears?: number | null;
 };
 
 /** A delivery as it stood on one recorded day. Dates are ISO strings. */
@@ -3339,6 +3343,7 @@ export * from "./calendarDates";
 export * from "./deliveryWording";
 export * from "./featureWording";
 export * from "./forecastDisplayRules";
+export * from "./forecastPercentileText";
 export * from "./forecastWording";
 export * from "./housekeepingWording";
 export * from "./metricsWording";

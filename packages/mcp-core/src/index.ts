@@ -918,6 +918,10 @@ const recurringBlackoutRuleProperties = {
   },
 } as const;
 
+// Every tool whose facts hold forecast percentiles says how to read one beyond the simulation horizon.
+const BEYOND_HORIZON_NOTE =
+  'A forecast percentile with beyondHorizon true lies beyond Lighthouse\'s simulation horizon of horizonYears years: its expectedDate is only a stand-in, not a forecast, so say "More than <horizonYears> years" and never that date. Both fields are absent on an older Lighthouse, whose dates stand as sent.';
+
 const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_health_check",
@@ -1209,7 +1213,9 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_feature_get",
     description:
-      "Get feature details by numeric IDs or external reference IDs. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged.",
+      "Get feature details by numeric IDs or external reference IDs. A second text block, `summary`, counts them in the instance's terminology; the first block is the facts, unchanged." +
+      " " +
+      BEYOND_HORIZON_NOTE,
     inputSchema: {
       type: "object",
       properties: {
@@ -1240,13 +1246,17 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_delivery_list",
     description:
-      "List deliveries for a portfolio by portfolio ID. The answer holds the running deliveries under `active` and the archived ones under `archived`; a `summary` field counts the running ones in the instance's terminology.",
+      "List deliveries for a portfolio by portfolio ID. The answer holds the running deliveries under `active` and the archived ones under `archived`; a `summary` field counts the running ones in the instance's terminology." +
+      " " +
+      BEYOND_HORIZON_NOTE,
     inputSchema: idInputSchema,
   },
   {
     name: "lighthouse_delivery_metrics",
     description:
-      "Get a delivery's recorded trend by delivery ID: one row per day with total, done and remaining work, the epic count and the likelihood. Set detail to \"epics\" for the per-epic breakdown and the forecast distribution, which are far larger. Forward-only, so it starts at the first recorded snapshot. `summary` states the delivery and its date as lh heads them, in the instance's terminology: a second text block beside the rows, a field of the detailed payload. Requires Lighthouse newer than v26.5.29.5.",
+      "Get a delivery's recorded trend by delivery ID: one row per day with total, done and remaining work, the epic count and the likelihood. Set detail to \"epics\" for the per-epic breakdown and the forecast distribution, which are far larger. Forward-only, so it starts at the first recorded snapshot. `summary` states the delivery and its date as lh heads them, in the instance's terminology: a second text block beside the rows, a field of the detailed payload. Requires Lighthouse newer than v26.5.29.5." +
+      " " +
+      BEYOND_HORIZON_NOTE,
     inputSchema: {
       type: "object",
       properties: {
@@ -1304,7 +1314,9 @@ const toolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_forecast_manual",
     description:
-      "Run a manual forecast for a team by ID with optional remaining items and target date. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied. `summary` states the answer as the web does, in the instance's terminology: the heading, then the likelihood sentence when both remaining items and a target date were given.",
+      "Run a manual forecast for a team by ID with optional remaining items and target date. Pass applyFilterOverride=true to apply the team's forecast filter, false to skip it, or omit to respect the team setting (Lighthouse v26.5.24.10+). The response includes filterApplied (boolean) and excludedSummary (string) when a filter was applied. `summary` states the answer as the web does, in the instance's terminology: the heading, then the likelihood sentence when both remaining items and a target date were given." +
+      " " +
+      BEYOND_HORIZON_NOTE,
     inputSchema: {
       type: "object",
       properties: {

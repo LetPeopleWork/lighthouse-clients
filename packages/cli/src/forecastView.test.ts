@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { encode } from "@toon-format/toon";
 import { describe, expect, it } from "vitest";
 import {
@@ -409,6 +410,64 @@ describe("lh forecast manual --pretty", () => {
       expect(lines).toContain("95% Certain Fri 13 Nov 2026");
     },
   );
+});
+
+// A Lighthouse that marks the forecast horizon, and an older one that does not, as recorded from the server's
+// WhenForecastDto.
+const recordedForecast = (name: string): unknown =>
+  (
+    JSON.parse(
+      readFileSync(
+        new URL(
+          `../../../test-support/forecastHorizonContract/${name}.json`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as { manualForecast: unknown }
+  ).manualForecast;
+
+describe("lh forecast manual --pretty beyond the simulation horizon", () => {
+  it("says More than 5 years for a chance beyond the horizon, not its stand-in date", async () => {
+    const lighthouse = gravitysLighthouse({
+      runManualForecast: ok(recordedForecast("forecasts-with-horizon")),
+    });
+
+    const result = await lighthouse.run(
+      forecastOfGravity("--remaining", "400"),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(shownLines(result.stdout)).toEqual([
+      "Gravity · 400 Work Items",
+      "When will 400 Work Items be done?",
+      "Chance Level Date",
+      "95% Certain More than 5 years",
+      "85% Confident More than 5 years",
+      "70% Realistic Mon 10 Feb 2031",
+      "50% Risky Mon 4 Mar 2030",
+    ]);
+  });
+
+  it("dates every chance as before when an older Lighthouse sends no horizon", async () => {
+    const lighthouse = gravitysLighthouse({
+      runManualForecast: ok(recordedForecast("forecasts-without-horizon")),
+    });
+
+    const result = await lighthouse.run(
+      forecastOfGravity("--remaining", "400"),
+    );
+
+    expect(shownLines(result.stdout)).toEqual([
+      "Gravity · 400 Work Items",
+      "When will 400 Work Items be done?",
+      "Chance Level Date",
+      "95% Certain Sun 19 Oct 2031",
+      "85% Confident Sun 19 Oct 2031",
+      "70% Realistic Mon 10 Feb 2031",
+      "50% Risky Mon 4 Mar 2030",
+    ]);
+  });
 });
 
 describe("lh forecast backtest --pretty", () => {

@@ -102,7 +102,7 @@ When multiple teams contribute to the same feature:
 ### When Forecast (Team Level)
 "When will X items be done?"
 - Input: Number of remaining items
-- Output: Dates at 50/70/85/95% confidence
+- Output: Dates at 50/70/85/95% confidence. A chance too few simulated runs reached within Lighthouse's simulation horizon reads "More than <horizonYears> years" (5 today) instead of a date: its percentile carries `beyondHorizon: true` and the horizon in `horizonYears`, and its `expectedDate` is only a stand-in, so never quote that date. An older Lighthouse sends neither field.
 - Uses: Sprint planning, release planning, feature delivery estimation
 
 ### How Many Forecast (Team Level)

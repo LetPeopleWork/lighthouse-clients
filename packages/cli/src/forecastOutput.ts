@@ -6,9 +6,9 @@ import {
   describeHowManyTitle,
   describeManualForecastLikelihood,
   describeManualForecastSummary,
+  describePercentileDate,
   describeWhenTitle,
   type ForecastChanceOfCount,
-  formatCalendarDay,
   levelOf,
   type ManualForecastView,
   placeActualAmongPercentiles,
@@ -41,7 +41,7 @@ const whenSection = (
     ["Chance", "Level", "Date"],
     ...highestChanceFirst(forecast.whenForecasts).map((row) => [
       ...chanceCells(row),
-      formatCalendarDay(row.expectedDate) ?? row.expectedDate,
+      describePercentileDate(row),
     ]),
   ]);
 

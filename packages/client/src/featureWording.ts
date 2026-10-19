@@ -1,12 +1,18 @@
 import { CANNOT_FORECAST_SHORT } from "./forecastDisplayRules";
+import {
+  describePercentileDay,
+  yearsBeyondHorizon,
+} from "./forecastPercentileText";
 import { NOT_SENT } from "./ownerWording";
 import type { Terms } from "./terminology";
-import { dayOf, expectedDateAt, isRecord, textOf } from "./wireFacts";
+import { chanceAt, dayOf, isRecord, textOf } from "./wireFacts";
 
 /** When work on a Feature begins, as the server decided it: observed, forecast, or not known. */
 export type FeatureStart = {
   readonly observedOn: string | undefined;
   readonly likelyBy: string | undefined;
+  // Set when the chance lies beyond the simulation horizon: likelyBy is then only a stand-in.
+  readonly likelyByBeyondHorizonYears?: number;
 };
 
 /** One Feature as a row of the Feature list states it. */
@@ -19,6 +25,7 @@ export type FeatureListItem = {
   readonly cannotBeForecast: boolean;
   readonly start: FeatureStart;
   readonly likelyBy: string | undefined;
+  readonly likelyByBeyondHorizonYears?: number;
 };
 
 // The one chance of the four the list has room for, named in its heading.
@@ -40,10 +47,12 @@ const startOf = (value: unknown): FeatureStart => {
   if (!isRecord(value)) {
     return { observedOn: undefined, likelyBy: undefined };
   }
+  const chance = chanceAt(value.percentiles, LISTED_CHANCE);
   return {
     observedOn:
       value.source === "Observed" ? textOf(value.observedDate) : undefined,
-    likelyBy: expectedDateAt(value.percentiles, LISTED_CHANCE),
+    likelyBy: textOf(chance?.expectedDate),
+    likelyByBeyondHorizonYears: yearsBeyondHorizon(chance),
   };
 };
 
@@ -56,6 +65,7 @@ const readFeatureListItem = (value: unknown): FeatureListItem | null => {
   const state = textOf(value.state);
   const totalWork = workOf(value.totalWork);
   const remainingWork = workOf(value.remainingWork);
+  const completion = chanceAt(value.forecasts, LISTED_CHANCE);
   if (
     referenceId === undefined ||
     name === undefined ||
@@ -75,7 +85,8 @@ const readFeatureListItem = (value: unknown): FeatureListItem | null => {
       Array.isArray(value.teamsWithoutForecast) &&
       value.teamsWithoutForecast.length > 0,
     start: startOf(value.startForecast),
-    likelyBy: expectedDateAt(value.forecasts, LISTED_CHANCE),
+    likelyBy: textOf(completion?.expectedDate),
+    likelyByBeyondHorizonYears: yearsBeyondHorizon(completion),
   };
 };
 
@@ -137,17 +148,31 @@ export const describeFeatureStart = (
   }
   return feature.start.likelyBy === undefined
     ? NOT_SENT
-    : dayOf(feature.start.likelyBy);
+    : describePercentileDay(
+        feature.start.likelyBy,
+        feature.start.likelyByBeyondHorizonYears,
+      );
 };
 
-/** The day the Feature is 85% likely to be done by, "Cannot forecast", or the mark when none was sent. */
+/**
+ * The day the Feature is 85% likely to be done by, "More than 5 years" when that lies beyond the simulation
+ * horizon, "Cannot forecast", or the mark when none was sent.
+ */
 export const describeFeatureCompletion = (
-  feature: Pick<FeatureListItem, "likelyBy" | "cannotBeForecast">,
+  feature: Pick<
+    FeatureListItem,
+    "likelyBy" | "likelyByBeyondHorizonYears" | "cannotBeForecast"
+  >,
 ): string => {
   if (feature.cannotBeForecast) {
     return CANNOT_FORECAST_SHORT;
   }
-  return feature.likelyBy === undefined ? NOT_SENT : dayOf(feature.likelyBy);
+  return feature.likelyBy === undefined
+    ? NOT_SENT
+    : describePercentileDay(
+        feature.likelyBy,
+        feature.likelyByBeyondHorizonYears,
+      );
 };
 
 /** One Feature as a row of the list, in the order of its headings. */

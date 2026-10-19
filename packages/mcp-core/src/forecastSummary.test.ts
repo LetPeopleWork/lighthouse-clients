@@ -172,6 +172,25 @@ describe("the forecast tools' summary", () => {
       expect(description).toContain("`summary`");
     },
   );
+
+  it.each([
+    MANUAL,
+    "lighthouse_feature_get",
+    "lighthouse_delivery_list",
+    "lighthouse_delivery_metrics",
+  ])(
+    "tells an assistant in %s's description to say More than horizonYears years for a percentile beyond the horizon",
+    (tool) => {
+      const assistant = gravitysAssistant();
+
+      const description =
+        assistant.runtime.listTools().find((listed) => listed.name === tool)
+          ?.description ?? "";
+
+      expect(description).toContain("beyondHorizon true");
+      expect(description).toContain('"More than <horizonYears> years"');
+    },
+  );
 });
 
 describe("the forecast tools keep their errors as they are", () => {

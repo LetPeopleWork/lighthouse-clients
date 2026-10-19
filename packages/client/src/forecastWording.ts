@@ -4,12 +4,12 @@ import {
   INSUFFICIENT_FORECAST_DATA_SHORT,
   likelihoodAnswer,
 } from "./forecastDisplayRules";
+import type { ForecastPercentileDate } from "./forecastPercentileText";
 import { dayOf, isDay, isNumber, isRecord } from "./wireFacts";
 
 /** One row of the When table: the chance of being done by a calendar day. */
-export type ForecastChanceByDay = {
+export type ForecastChanceByDay = ForecastPercentileDate & {
   readonly probability: number;
-  readonly expectedDate: string;
 };
 
 /** One row of the How Many table: the chance of getting this many done. */
@@ -37,10 +37,26 @@ const optionalBoolean = (value: unknown): boolean | undefined | null => {
   return null;
 };
 
-const readChanceByDay = (value: unknown): ForecastChanceByDay | null =>
-  isRecord(value) && isNumber(value.probability) && isDay(value.expectedDate)
-    ? { probability: value.probability, expectedDate: value.expectedDate }
-    : null;
+// The horizon facts are optional: an older Lighthouse does not send them, and one of another type says nothing.
+const readChanceByDay = (value: unknown): ForecastChanceByDay | null => {
+  if (
+    !isRecord(value) ||
+    !isNumber(value.probability) ||
+    !isDay(value.expectedDate)
+  ) {
+    return null;
+  }
+  return {
+    probability: value.probability,
+    expectedDate: value.expectedDate,
+    ...(typeof value.beyondHorizon === "boolean"
+      ? { beyondHorizon: value.beyondHorizon }
+      : {}),
+    ...(isNumber(value.horizonYears)
+      ? { horizonYears: value.horizonYears }
+      : {}),
+  };
+};
 
 const readChanceOfCount = (value: unknown): ForecastChanceOfCount | null =>
   isRecord(value) && isNumber(value.probability) && isNumber(value.value)
