@@ -74,6 +74,8 @@ Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both inclusi
 | `lighthouse_team_refinement_vote` | Only after the user confirmed their own vote; see "Refinement votes" in `SKILL.md`. |
 | `lighthouse_team_refinement_comment` | Only after the user confirmed their own comment or question. |
 | `lighthouse_team_refinement_voteTakeBack` | Only when the user asks to take back their vote. |
+| `lighthouse_team_report_list` | The Team's saved reports: each one's id, name, type (`templateKey`) and the day it was made. Needs a Lighthouse newer than v26.10.10.1. |
+| `lighthouse_team_report_get` | One saved report, with `{id, reportId}`: Lighthouse's raw values, unchanged. Lay it out with the lighthouse-reports skill, which says how Lighthouse rounds and shows them. |
 
 ### Portfolios, Features and Deliveries
 
@@ -95,6 +97,8 @@ Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both inclusi
 | `lighthouse_portfolio_metrics_cumulativeStateTimeCandidates` | The Features the user can narrow Time in State to. |
 | `lighthouse_feature_get` | A Feature's detail (state, size, dates). Needs `ids` or `refs`; never call it empty. |
 | `lighthouse_feature_workitems` | The Work Items of one Feature, each with its `workItemAge`. |
+| `lighthouse_portfolio_report_list` | The Portfolio's saved reports, as the Team tool. |
+| `lighthouse_portfolio_report_get` | One saved report of the Portfolio, with `{id, reportId}`, as the Team tool. |
 | `lighthouse_delivery_list` | A Portfolio's Deliveries, with `{id: <portfolio id>}`. |
 | `lighthouse_delivery_metrics` | How a Delivery's scope and likelihood moved, one row per recorded day. Add `detail: "epics"` only when the question is the per-Feature split or the forecast distribution: it is far larger. |
 
@@ -158,6 +162,8 @@ Add `--json` to every command whose output you read.
 | `lh refinement vote --team-id <id> --work-item <ref> --answer yes` | Only after the user confirmed; `yes-but` needs `--comment`. `--as <name>` carries their name without sign-in. |
 | `lh refinement comment --team-id <id> --work-item <ref> --text <text>` | Only after the user confirmed the comment. |
 | `lh refinement take-back --team-id <id> --work-item <ref>` | Only when the user asks to take back their vote. |
+| `lh report list --team-id <id>` | A Team's saved reports; `--portfolio-id <id>` for a Portfolio's. |
+| `lh report get --team-id <id> --id <report id>` | One saved report's raw values (`--portfolio-id` for a Portfolio's). Lay it out with the lighthouse-reports skill. |
 | `lh health check` | Whether Lighthouse is reachable. |
 | `lh version get` | Which Lighthouse version runs. |
 | `lh config output` | Shows the stored output format; `lh config output set --format json` stores one. |

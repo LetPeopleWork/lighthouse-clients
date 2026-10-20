@@ -7,7 +7,8 @@ description: >
   about a Team or Portfolio they track in Lighthouse: when Work Items or a Feature will be done, how long
   one Work Item will take, Cycle Time, Throughput, WIP, Work Item Age, Blocked, SLE, predictability or
   process behaviour charts. Not for: preparing or running Refinement, such as whether the Team is ready or how many more
-  Work Items to refine (the lighthouse-refinement skill);
+  Work Items to refine (the lighthouse-refinement skill); showing a saved Lighthouse report, such as a
+  Then & Now report, as a dashboard or document (the lighthouse-reports skill);
   running the daily or deciding what to do today (the Lighthouse Daily Flow Review skill); metrics from a
   file the person brought, such as a CSV export of their board (work from the file; the ProKanban skill
   does that); or anything that is not a flow question, such as planning someone's week.
@@ -316,8 +317,8 @@ Users ask naturally ("tell me about the Mars Colonization Feature"). Claude hand
 | A Team forecast | `lighthouse_team_list` | `lighthouse_forecast_manual`, `lighthouse_forecast_backtest` |
 | How much a Team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the Team sees on its Refinement tab |
 | Vote, comment or take back a vote on a Work Item in refinement | `lighthouse_team_refinement_get` → `referenceId` | `lighthouse_team_refinement_vote` / `lighthouse_team_refinement_comment` / `lighthouse_team_refinement_voteTakeBack`; see below |
-| A Team's reports | `lighthouse_team_list` | `lighthouse_team_report_list` with `{id: <team_id>}`; one report: `lighthouse_team_report_get` with `{id, reportId}` |
-| A Portfolio's reports | `lighthouse_portfolio_list` | `lighthouse_portfolio_report_list` with `{id: <portfolio_id>}`; one report: `lighthouse_portfolio_report_get` with `{id, reportId}` |
+| A Team's reports | `lighthouse_team_list` | `lighthouse_team_report_list` with `{id: <team_id>}`; one report: `lighthouse_team_report_get` with `{id, reportId}`; lay it out with the lighthouse-reports skill |
+| A Portfolio's reports | `lighthouse_portfolio_list` | `lighthouse_portfolio_report_list` with `{id: <portfolio_id>}`; one report: `lighthouse_portfolio_report_get` with `{id, reportId}`; lay it out with the lighthouse-reports skill |
 | A Portfolio's settings | `lighthouse_portfolio_list` | `lighthouse_portfolio_get`; `lighthouse_portfolio_refresh` only on request |
 | A Portfolio's flow metrics | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_throughput`, `lighthouse_portfolio_metrics_workItemAge`, `lighthouse_portfolio_metrics_workItemAgePercentiles`, `lighthouse_portfolio_metrics_totalWorkItemAge`, `lighthouse_portfolio_metrics_blockedCountHistory`, `lighthouse_portfolio_metrics_percentilesOverTime`, `lighthouse_portfolio_metrics_processBehaviorChart`, `lighthouse_portfolio_metrics_processBehaviorOverTime` |
 | Where a Portfolio's Features spend their time | `lighthouse_portfolio_list` | `lighthouse_portfolio_metrics_cumulativeStateTime`, `lighthouse_portfolio_metrics_cumulativeStateTimeItems`, `lighthouse_portfolio_metrics_cumulativeStateTimeCandidates` |
@@ -448,6 +449,7 @@ Answer with what Lighthouse has: Throughput for a stated period (`lighthouse_tea
 
 - **Preparing or running Refinement** (what to refine next, whether the Team is ready): that is the Lighthouse Refinement skill's job. Here, only read and explain what Lighthouse shows on the Refinement tab.
 - **Running the daily** ("How should we run our daily?", "What do we decide today?"): that is the Lighthouse Daily Flow Review skill's job. Do not produce a list of what to decide today; point to that skill.
+- **Showing a saved report** (a Then & Now report as a dashboard, a slide or a document): that is the lighthouse-reports skill's job. It reads the report with `lighthouse_team_report_get` / `lighthouse_portfolio_report_get` or `lh report get` and lays it out as Lighthouse shows it; never rebuild a report from the metric tools.
 - **A file the person brought** (a CSV export of their board, a spreadsheet): work from the file, not from Lighthouse, and make no Lighthouse call. The ProKanban skill is made for work from a file.
 - **Not a flow question** (planning a week, meetings, appointments): make no Lighthouse call.
 - Installing or configuring a Lighthouse server, Work Tracking System queries, and pricing or licensing: point to https://docs.lighthouse.letpeople.work/ and https://letpeople.work.

@@ -40,7 +40,7 @@ const THE_FOUR_TOOLS = [
 
 describe("the lighthouse-reports skill ships", () => {
   // @us-05 @slice-05 @driving_port @contract-shape:bounded-change
-  it.skip(`has a SKILL.md named lighthouse-reports and the Then & Now reference file (${pending})`, () => {
+  it("has a SKILL.md named lighthouse-reports and the Then & Now reference file", () => {
     const skill = read(join(SKILL, "SKILL.md"));
 
     expect(skill).toMatch(/^---\nname: lighthouse-reports\n/u);
@@ -49,7 +49,7 @@ describe("the lighthouse-reports skill ships", () => {
 
   // @us-05 @slice-05 @contract-shape:bounded-change
   // Every rule in the reference file is a copy, and a copy that does not say what it copies cannot be kept in step.
-  it.skip(`names every web source its presentation rules are copied from (${pending})`, () => {
+  it("names every web source its presentation rules are copied from", () => {
     const reference = read(join(SKILL, "references/then-and-now.md"));
 
     expect(reference.length).toBeGreaterThan(0);
@@ -62,7 +62,7 @@ describe("the lighthouse-reports skill ships", () => {
 
   // @us-05 @slice-05 @contract-shape:bounded-change
   // The order is the printed report's: dated header, the table, the assistant's own words set apart, then the credit.
-  it.skip(`lays a report out in the printed one's order, ending with where the data came from (${pending})`, () => {
+  it("lays a report out in the printed one's order, ending with where the data came from", () => {
     const reference = read(join(SKILL, "references/then-and-now.md"));
     const inOrder = [
       "Read from Lighthouse on",
@@ -119,7 +119,7 @@ describe("the lighthouse-reports skill ships", () => {
   });
 
   // @us-04 @slice-04 @contract-shape:bounded-change
-  it.skip(`is reached from the general skill, which names the four report tools and both lh commands (${pending})`, () => {
+  it("is reached from the general skill, which names the four report tools and both lh commands", () => {
     const general = read(join(REPOSITORY, "skills/lighthouse/SKILL.md"));
     const catalogue = read(
       join(REPOSITORY, "skills/lighthouse/references/tools-and-commands.md"),
