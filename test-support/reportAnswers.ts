@@ -2,27 +2,28 @@ import { readFileSync } from "node:fs";
 
 /**
  * Lighthouse's answers to the report reads, as text exactly as the server sends them, so a test can prove a
- * client passes every value on untouched. Team Lightspeed (9) holds the engagement-start report (42), whose
- * values are not rounded on the wire (0.5777… per day, an average WIP of 8.62), and a report of a type this
- * client does not know (44). Portfolio Apollo II (6) holds a quarter review (51) whose Now has no finished
- * Work Items, so its values are dashes with their reason.
+ * client passes every value on untouched. They were read from a Lighthouse running the demo data, with the
+ * dates moved back together so the reports read as if made on 2 Oct 2026. Team Lightspeed (2) holds the
+ * engagement-start report (1), whose values are not rounded on the wire (0.1777… per day), and a report of a
+ * type this client does not know (2). Portfolio Apollo II (1) holds a quarter review (3) whose Then has no
+ * finished Work Items, so its Cycle Time there is a dash with its reason.
  */
 
 const anAnswer = (file: string): string =>
   readFileSync(new URL(`./reportAnswers/${file}`, import.meta.url), "utf8");
 
-export const LIGHTSPEED = { id: 9, name: "Lightspeed" } as const;
-export const APOLLO = { id: 6, name: "Apollo II" } as const;
+export const LIGHTSPEED = { id: 2, name: "Lightspeed" } as const;
+export const APOLLO = { id: 1, name: "Apollo II" } as const;
 
 export const ENGAGEMENT_START = {
-  id: 42,
+  id: 1,
   name: "Then & Now — engagement start",
 } as const;
 export const QUARTER_REVIEW = {
-  id: 51,
+  id: 3,
   name: "Then & Now — quarter review",
 } as const;
-export const A_LATER_TYPE = { id: 44, name: "Signals — flow alerts" } as const;
+export const A_LATER_TYPE = { id: 2, name: "Signals — flow alerts" } as const;
 
 export const LIGHTSPEEDS_REPORTS = anAnswer("lightspeeds-reports.json");
 export const LIGHTSPEEDS_ENGAGEMENT_START = anAnswer(
@@ -39,7 +40,6 @@ export const A_SERVER_WITH_REPORTS = "v26.10.16.6";
 export const MADE_BY_A_NEWER_VERSION = {
   status: 422,
   body: {
-    type: "about:blank",
     title: "The report request was refused.",
     status: 422,
     code: "template-not-supported",
