@@ -146,6 +146,31 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
     expect(await response.json()).toEqual(forbidden);
   });
 
+  // @real-io @adapter-integration @contract-shape:bounded-change
+  // Only a value made of a status and a body names its own status; any other value is the body itself.
+  it.each<[string, unknown]>([
+    ["nothing", null],
+    ["a status beside other facts", { status: 403, title: "Forbidden" }],
+    ["a status that is not a whole number", { status: "403", body: {} }],
+  ])(
+    "answers a route whose value is %s with 200 and that value as JSON",
+    async (_what, value) => {
+      const lighthouse = await serving(
+        aFixture({
+          version: "v26.10.19.10",
+          routes: { "GET /api/v1/teams/5/reports": value },
+        }),
+      );
+      expect(lighthouse.url).not.toBeNull();
+
+      const response = await fetch(`${lighthouse.url}/api/v1/teams/5/reports`);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+      expect(await response.json()).toEqual(value);
+    },
+  );
+
   // @error @real-io @adapter-integration @contract-shape:bounded-change
   // The reports skill's no-access case, read by lh as an assistant would read it: the list first, as the skill
   // finds a report's id there, and the report itself.
