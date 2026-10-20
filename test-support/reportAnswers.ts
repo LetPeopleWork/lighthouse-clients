@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { aFakeLighthouse } from "./fakeLighthouse";
 import { aPortfolio, aTeam } from "./lighthouseAnswers";
 
 /**
@@ -70,3 +71,20 @@ export const theReportReads = () => ({
     text: APOLLOS_QUARTER_REVIEW,
   },
 });
+
+type FakeLighthouseOptions = NonNullable<Parameters<typeof aFakeLighthouse>[0]>;
+
+/** Routes a test answers on top of {@link theReportReads}, or in place of one of them. */
+export type ReportReplies = NonNullable<FakeLighthouseOptions["replies"]>;
+
+/** A fake Lighthouse new enough for reports that answers {@link theReportReads} and whatever a test adds. */
+export const aLighthouseWithReports = (options: FakeLighthouseOptions = {}) =>
+  aFakeLighthouse({
+    ...options,
+    replies: { ...theReportReads(), ...options.replies },
+    version: options.version ?? A_SERVER_WITH_REPORTS,
+  });
+
+/** The report reads among the requests a fake Lighthouse saw, a list's or a report's. */
+export const theReportReadsAmong = (operations: readonly string[]) =>
+  operations.filter((operation) => /\/reports(\/\d+)?$/u.test(operation));

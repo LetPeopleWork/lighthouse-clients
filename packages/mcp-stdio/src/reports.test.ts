@@ -3,22 +3,22 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   aBatchOf,
-  aFakeLighthouse,
   type FakeLighthouse,
 } from "../../../test-support/fakeLighthouse";
 import {
   A_LATER_TYPE,
-  A_SERVER_WITH_REPORTS,
   APOLLO,
   APOLLOS_QUARTER_REVIEW,
   APOLLOS_REPORTS,
+  aLighthouseWithReports,
   ENGAGEMENT_START,
   LAST_SERVER_WITHOUT_REPORTS,
   LIGHTSPEED,
   LIGHTSPEEDS_ENGAGEMENT_START,
   LIGHTSPEEDS_REPORTS,
   QUARTER_REVIEW,
-  theReportReads,
+  type ReportReplies,
+  theReportReadsAmong,
 } from "../../../test-support/reportAnswers";
 import {
   aMachine,
@@ -44,10 +44,6 @@ const THE_FOUR_TOOLS = [
 
 const A_YES_KEPT_AN_HOUR_AGO = "priyas-yes-to-usage-data";
 
-type Replies = NonNullable<
-  NonNullable<Parameters<typeof aFakeLighthouse>[0]>["replies"]
->;
-
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const close of closers.splice(0)) {
@@ -57,14 +53,14 @@ afterEach(async () => {
 
 const anAssistantReading = async (
   options: {
-    readonly replies?: Replies;
+    readonly replies?: ReportReplies;
     readonly version?: string;
     readonly saidYes?: boolean;
   } = {},
 ) => {
-  const lighthouse = await aFakeLighthouse({
-    replies: { ...theReportReads(), ...options.replies },
-    version: options.version ?? A_SERVER_WITH_REPORTS,
+  const lighthouse = await aLighthouseWithReports({
+    replies: options.replies,
+    version: options.version,
   });
   const laptop = await connectedTo(aMachine(), lighthouse.url);
   if (options.saidYes === true) {
@@ -115,11 +111,6 @@ const calling = async (
     summary: (blocks[1]?.text ?? "").replace(/^summary: /u, ""),
   };
 };
-
-const reportReads = (lighthouse: FakeLighthouse) =>
-  lighthouse
-    .operations()
-    .filter((operation) => /\/reports(\/\d+)?$/u.test(operation));
 
 const reported = (lighthouse: FakeLighthouse) =>
   lighthouse.handedIn().map(({ batch }) => batch);
@@ -202,7 +193,7 @@ describe("an assistant reads reports over the local MCP server", () => {
 
 describe("an assistant is told why a report cannot be read", () => {
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.each<[string, Replies, number, RegExp]>([
+  it.each<[string, ReportReplies, number, RegExp]>([
     [
       "the reader has no access to that Team",
       {
@@ -249,7 +240,7 @@ describe("an assistant is told why a report cannot be read", () => {
 
     expect(read.isError).toBe(true);
     expect(read.said).toContain("Upgrade Lighthouse");
-    expect(reportReads(lighthouse)).toEqual([]);
+    expect(theReportReadsAmong(lighthouse.operations())).toEqual([]);
   });
 });
 
@@ -275,7 +266,6 @@ describe("reading a report through the MCP server counts as the report being ope
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:unbounded-preservation
-  // Holds today and must keep holding once the report reads are built.
   it("reports nothing for a list, or a report of a type it cannot name", async () => {
     const { client, lighthouse } = await anAssistantReading({ saidYes: true });
 

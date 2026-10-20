@@ -1,19 +1,19 @@
 import { FEATURE_REQUIRES_SERVER_NEWER_THAN } from "@letpeoplework/lighthouse-client";
 import { describe, expect, it } from "vitest";
-import { aFakeLighthouse } from "../../../test-support/fakeLighthouse";
 import {
   A_LATER_TYPE,
-  A_SERVER_WITH_REPORTS,
   APOLLO,
   APOLLOS_QUARTER_REVIEW,
   APOLLOS_REPORTS,
+  aLighthouseWithReports,
   ENGAGEMENT_START,
   LAST_SERVER_WITHOUT_REPORTS,
   LIGHTSPEED,
   LIGHTSPEEDS_ENGAGEMENT_START,
   LIGHTSPEEDS_REPORTS,
   QUARTER_REVIEW,
-  theReportReads,
+  type ReportReplies,
+  theReportReadsAmong,
 } from "../../../test-support/reportAnswers";
 import {
   aMachine,
@@ -26,18 +26,8 @@ import {
 // that answers with the server's own words. lh passes every value on as Lighthouse sent it - it rounds, compares
 // and judges nothing - and its summary names the report, its owner and its two windows. It only ever reads.
 
-type Replies = NonNullable<
-  NonNullable<Parameters<typeof aFakeLighthouse>[0]>["replies"]
->;
-
-const lhAgainst = async (
-  replies: Replies = {},
-  version: string = A_SERVER_WITH_REPORTS,
-) => {
-  const lighthouse = await aFakeLighthouse({
-    replies: { ...theReportReads(), ...replies },
-    version,
-  });
+const lhAgainst = async (replies: ReportReplies = {}, version?: string) => {
+  const lighthouse = await aLighthouseWithReports({ replies, version });
   const lh = lhOn(await connectedTo(aMachine(), lighthouse.url), {
     terminal: NO_TERMINAL,
     env: { DO_NOT_TRACK: "1" },
@@ -47,9 +37,6 @@ const lhAgainst = async (
 
 const ofLightspeed = ["--team-id", String(LIGHTSPEED.id)];
 const ofApollo = ["--portfolio-id", String(APOLLO.id)];
-
-const reportReads = (operations: readonly string[]) =>
-  operations.filter((operation) => /\/reports(\/\d+)?$/u.test(operation));
 
 /** Whether Lighthouse's answer sits somewhere in what lh printed, every value as it was sent. */
 const holdsUnchanged = (printed: unknown, answer: unknown): boolean => {
@@ -186,7 +173,7 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
       "--json",
     );
 
-    expect(reportReads(lighthouse.operations())).toHaveLength(2);
+    expect(theReportReadsAmong(lighthouse.operations())).toHaveLength(2);
     expect(
       lighthouse
         .operations()
@@ -262,12 +249,11 @@ describe("lh says why a report cannot be read", () => {
 
       expect(read.exitCode).not.toBe(0);
       expect(`${read.stdout}\n${read.stderr}`).toContain("Upgrade Lighthouse");
-      expect(reportReads(lighthouse.operations())).toEqual([]);
+      expect(theReportReadsAmong(lighthouse.operations())).toEqual([]);
     },
   );
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  // Holds today and must keep holding once the report reads are built.
   it.each([
     ["no owner", ["report", "get", "--id", "42"]],
     [
@@ -283,7 +269,7 @@ describe("lh says why a report cannot be read", () => {
       const read = await run(...args);
 
       expect(read.exitCode).not.toBe(0);
-      expect(reportReads(lighthouse.operations())).toEqual([]);
+      expect(theReportReadsAmong(lighthouse.operations())).toEqual([]);
     },
   );
 

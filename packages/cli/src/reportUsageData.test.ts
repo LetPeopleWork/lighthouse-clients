@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   aBatchOf,
-  aFakeLighthouse,
   type FakeLighthouse,
 } from "../../../test-support/fakeLighthouse";
 import {
   A_LATER_TYPE,
-  A_SERVER_WITH_REPORTS,
   APOLLO,
+  aLighthouseWithReports,
   ENGAGEMENT_START,
   LAST_SERVER_WITHOUT_REPORTS,
   LIGHTSPEED,
   QUARTER_REVIEW,
-  theReportReads,
 } from "../../../test-support/reportAnswers";
 import {
   aMachine,
@@ -32,16 +30,6 @@ import {
 // owner or its numbers ever travels.
 
 const A_YES_KEPT_AN_HOUR_AGO = "lenas-yes-to-usage-data";
-
-const lighthouseWithReports = (
-  replies: Parameters<typeof aFakeLighthouse>[0] = {},
-  version = A_SERVER_WITH_REPORTS,
-) =>
-  aFakeLighthouse({
-    ...replies,
-    replies: { ...theReportReads(), ...replies?.replies },
-    version,
-  });
 
 const lenaWhoSaidYes = async (lighthouse: FakeLighthouse): Promise<Machine> => {
   const lena = await connectedTo(aMachine(), lighthouse.url);
@@ -86,7 +74,7 @@ describe("lh report get counts as the report being opened", () => {
   ])(
     `reports ReportOpened with the report's type when lh reads %s report`,
     async (_owner, args) => {
-      const lighthouse = await lighthouseWithReports();
+      const lighthouse = await aLighthouseWithReports();
       const lena = await lenaWhoSaidYes(lighthouse);
 
       const run = await lhAt(lena).run(args);
@@ -102,7 +90,7 @@ describe("lh report get counts as the report being opened", () => {
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
   // Scripts read the report as --json; it counts the same, and what lh prints is the same with usage data on.
   it(`reports the same opening for a read as JSON, and prints the same as with usage data off`, async () => {
-    const lighthouse = await lighthouseWithReports();
+    const lighthouse = await aLighthouseWithReports();
     const lena = await lenaWhoSaidYes(lighthouse);
 
     const counted = await lhAt(lena).run([...getEngagementStart, "--json"]);
@@ -120,8 +108,9 @@ describe("lh report get counts as the report being opened", () => {
 
 describe("lh reports nothing for a read that opened no report", () => {
   // @driving_port @real-io @us-04 @slice-04 @error @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:unbounded-preservation
-  // Holds today and must keep holding once the report reads are built.
-  it.each<[string, readonly string[], Parameters<typeof aFakeLighthouse>[0]]>([
+  it.each<
+    [string, readonly string[], Parameters<typeof aLighthouseWithReports>[0]]
+  >([
     [
       "a list of reports",
       ["report", "list", "--team-id", String(LIGHTSPEED.id)],
@@ -160,7 +149,7 @@ describe("lh reports nothing for a read that opened no report", () => {
       },
     ],
   ])("reports nothing for %s", async (_what, args, replies) => {
-    const lighthouse = await lighthouseWithReports(replies);
+    const lighthouse = await aLighthouseWithReports(replies);
     const lena = await lenaWhoSaidYes(lighthouse);
 
     await lhAt(lena).run(args);
@@ -169,12 +158,10 @@ describe("lh reports nothing for a read that opened no report", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  // Holds today and must keep holding once the report reads are built.
   it("reports nothing when Lighthouse is too old to have reports", async () => {
-    const lighthouse = await lighthouseWithReports(
-      {},
-      LAST_SERVER_WITHOUT_REPORTS,
-    );
+    const lighthouse = await aLighthouseWithReports({
+      version: LAST_SERVER_WITHOUT_REPORTS,
+    });
     const lena = await lenaWhoSaidYes(lighthouse);
 
     await lhAt(lena).run(getEngagementStart);
@@ -183,7 +170,6 @@ describe("lh reports nothing for a read that opened no report", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  // Holds today and must keep holding once the report reads are built.
   it.each<
     [
       string,
@@ -211,7 +197,7 @@ describe("lh reports nothing for a read that opened no report", () => {
       { DO_NOT_TRACK: "1" },
     ],
   ])("reports nothing for %s", async (_reader, theReader, env) => {
-    const lighthouse = await lighthouseWithReports();
+    const lighthouse = await aLighthouseWithReports();
     const reader = await theReader(lighthouse);
 
     await lhAt(reader, env).run(getEngagementStart);

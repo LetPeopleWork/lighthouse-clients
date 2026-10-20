@@ -1,13 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, describe, expect, it } from "vitest";
-import { aFakeLighthouse } from "../../../test-support/fakeLighthouse";
 import {
-  A_SERVER_WITH_REPORTS,
+  aLighthouseWithReports,
   ENGAGEMENT_START,
   LIGHTSPEED,
   LIGHTSPEEDS_ENGAGEMENT_START,
-  theReportReads,
 } from "../../../test-support/reportAnswers";
 import { decodeFacts } from "../../mcp-core/test-support/mcpHarness";
 import { type McpHttpServerHandle, startMcpHttpServer } from "./bin";
@@ -25,10 +23,7 @@ describe("an assistant reads a report over the shared MCP server", () => {
 
   // @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
   it("hands over a Team's report exactly as Lighthouse sent it, with its summary", async () => {
-    const lighthouse = await aFakeLighthouse({
-      replies: theReportReads(),
-      version: A_SERVER_WITH_REPORTS,
-    });
+    const lighthouse = await aLighthouseWithReports();
     mcp = await startMcpHttpServer({
       lighthouseUrl: lighthouse.url,
       host: "127.0.0.1",
