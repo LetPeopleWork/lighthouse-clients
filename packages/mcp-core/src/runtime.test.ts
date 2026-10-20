@@ -90,6 +90,10 @@ describe("createMcpCoreRuntime", () => {
       "lighthouse_team_metrics_sleRisk",
       "lighthouse_team_metrics_processBehaviorChart",
       "lighthouse_portfolio_metrics_processBehaviorChart",
+      "lighthouse_team_report_list",
+      "lighthouse_team_report_get",
+      "lighthouse_portfolio_report_list",
+      "lighthouse_portfolio_report_get",
     ]);
   });
 
@@ -1807,7 +1811,7 @@ describe("registerMcpTools", () => {
         }) as never,
     });
 
-    expect(registered).toHaveLength(49);
+    expect(registered).toHaveLength(53);
 
     const healthTool = registered.find(
       (tool) => tool.name === "lighthouse_health_check",

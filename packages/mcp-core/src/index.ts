@@ -94,6 +94,12 @@ import {
   refinementWriteToolDefinitions,
 } from "./refinementTools";
 import {
+  findReportTool,
+  type ReportToolClient,
+  reportInputSchemas,
+  reportToolDefinitions,
+} from "./reportTools";
+import {
   encodePayload,
   getErrorToolResult,
   getNumericId,
@@ -177,7 +183,11 @@ export type McpToolDefinition = {
     | "lighthouse_blackout_update"
     | "lighthouse_blackout_delete"
     | "lighthouse_forecast_manual"
-    | "lighthouse_forecast_backtest";
+    | "lighthouse_forecast_backtest"
+    | "lighthouse_team_report_list"
+    | "lighthouse_team_report_get"
+    | "lighthouse_portfolio_report_list"
+    | "lighthouse_portfolio_report_get";
   readonly description: string;
   readonly inputSchema: {
     readonly type: "object";
@@ -861,7 +871,8 @@ type McpRuntimeClient = {
         readonly error: { readonly category: string; readonly reason: string };
       }
   >;
-} & Omit<RefinementToolClient, "getTeam">;
+} & Omit<RefinementToolClient, "getTeam"> &
+  Omit<ReportToolClient, "getTeam" | "getPortfolio">;
 
 export type McpCoreRuntimeDependencies = {
   readonly createClient: () => McpRuntimeClient;
@@ -1486,6 +1497,7 @@ const toolDefinitions: readonly McpToolDefinition[] = [
       'Get one Process Behaviour Chart of a portfolio by ID, as Lighthouse computes it: its status (and statusReason when it is not Ready), the average and natural process limits, whether a baseline is configured, and every point (xValue, yValue) with the signals Lighthouse found on it (specialCauses: LargeChange, ModerateChange, ModerateShift, SmallShift; None means no signal) and whether it falls on a blackout day (isBlackout). metricType picks the chart: Throughput, Arrivals, Wip, WorkItemAge (the Total Work Item Age chart), CycleTime or FeatureSize. A point is a day, except on CycleTime, which has one point per finished work item, and FeatureSize, which has one per finished feature, each dated when it finished, so several can share a day. Use it for "is something unusual going on" and "did our process change"; never work a signal out yourself. Optionally filtered by start and end dates. A second text block, `summary: …`, states the answer as lh does, in the instance\'s terminology: the heading, the chart\'s title, and each signal with the days it fired, or that there are no signals; the facts are unchanged.',
     inputSchema: chartInputSchema(processBehaviorMetricTypes),
   },
+  ...reportToolDefinitions,
 ];
 
 const getDefinitionId = (argumentsPayload: unknown): number | undefined => {
@@ -2197,6 +2209,7 @@ const toolInputSchemas: Record<McpToolDefinition["name"], z.ZodTypeAny> = {
   lighthouse_team_refresh: z.object({ id: z.number().int() }),
   lighthouse_team_refinement_get: z.object({ id: z.number().int() }),
   ...refinementWriteInputSchemas,
+  ...reportInputSchemas,
   lighthouse_portfolio_list: z.object({}),
   lighthouse_portfolio_get: z.object({ id: z.number().int() }),
   lighthouse_portfolio_refresh: z.object({ id: z.number().int() }),
@@ -2507,6 +2520,11 @@ const answerToolCall =
     const refinementTool = findRefinementTool(name);
     if (refinementTool !== undefined) {
       return refinementTool(argumentsPayload, client, dependencies);
+    }
+
+    const reportTool = findReportTool(name);
+    if (reportTool !== undefined) {
+      return reportTool(argumentsPayload, client);
     }
 
     if (name === "lighthouse_portfolio_list") {

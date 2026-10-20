@@ -134,7 +134,7 @@ const pastTheSendBudget = () =>
 
 describe("an assistant reads reports over the local MCP server", () => {
   // @driving_port @us-04 @slice-04 @contract-shape:pure-function
-  it.skip(`offers the four report tools, each marked as only reading (${pending})`, async () => {
+  it("offers the four report tools, each marked as only reading", async () => {
     const { client } = await anAssistantReading();
 
     const { tools } = await client.listTools();
@@ -151,7 +151,7 @@ describe("an assistant reads reports over the local MCP server", () => {
   });
 
   // @walking_skeleton @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip(`hands the assistant a Team's report exactly as Lighthouse sent it, and a summary naming it, its owner and its windows (${pending})`, async () => {
+  it("hands the assistant a Team's report exactly as Lighthouse sent it, and a summary naming it, its owner and its windows", async () => {
     const { client } = await anAssistantReading();
 
     const read = await calling(client, "lighthouse_team_report_get", {
