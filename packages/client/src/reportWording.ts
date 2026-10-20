@@ -14,6 +14,12 @@ import { dayOf, isDay, isRecord, textOf } from "./wireFacts";
 /** Who a report belongs to: a Team or a Portfolio. */
 export type ReportOwnerKind = "team" | "portfolio";
 
+/** The Team or Portfolio whose reports are read, by its id. */
+export type ReportOwner = {
+  readonly kind: ReportOwnerKind;
+  readonly id: number;
+};
+
 /** A window of days as Lighthouse sends it: its first and its last day. */
 export type ReportWindow = {
   readonly start: string;
@@ -138,6 +144,19 @@ export const describeReportListSummary = (
     `${owner} · ${describeReportCount(reports.length)}`,
     ...reports.map(describeReportListItem),
   ].join("\n");
+
+/** A summary of Lighthouse's answer, said of its owner; null when the answer is not one the summary can read. */
+export type ReportSummariser = (value: unknown, owner: string) => string | null;
+
+export const summariseReport: ReportSummariser = (value, owner) => {
+  const report = readReport(value);
+  return report === null ? null : describeReportSummary(report, owner);
+};
+
+export const summariseReportList: ReportSummariser = (value, owner) => {
+  const reports = readReportList(value);
+  return reports === null ? null : describeReportListSummary(reports, owner);
+};
 
 const FORBIDDEN = 403;
 const NOT_FOUND = 404;

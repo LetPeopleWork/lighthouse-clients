@@ -1,15 +1,17 @@
 import {
-  describeReportListSummary,
-  describeReportOwner,
-  describeReportSummary,
   type LighthouseApiResult,
-  type LighthouseClient,
+  type ReportOwner,
   type ReportOwnerKind,
-  readReport,
-  readReportList,
+  type ReportOwnerSource,
+  type ReportReads,
+  type ReportSummariser,
+  readOwnersReport,
+  readOwnersReports,
+  readReportOwner,
   readReportRefusal,
-  readTerms,
   reportOpenedOccurrencesOf,
+  summariseReport,
+  summariseReportList,
 } from "@letpeoplework/lighthouse-client";
 import { z } from "zod";
 import {
@@ -24,25 +26,7 @@ import { type CountedToolResult, countedToolResult } from "./usageDataPort";
 // A report's values are Lighthouse's answer handed over whole, so the summary sits in a second block rather than
 // inside the report: an assistant reading the first block reads exactly what the server sent.
 
-type OwnerRead = (id: number) => Promise<
-  | { readonly ok: true; readonly value: unknown }
-  | {
-      readonly ok: false;
-      readonly error: { readonly category: string; readonly reason: string };
-    }
->;
-
-export type ReportToolClient = Pick<
-  LighthouseClient,
-  | "getTeamReports"
-  | "getTeamReport"
-  | "getPortfolioReports"
-  | "getPortfolioReport"
-  | "getTerminology"
-> & {
-  readonly getTeam: OwnerRead;
-  readonly getPortfolio: OwnerRead;
-};
+export type ReportToolClient = ReportReads & ReportOwnerSource;
 
 type ReportTool = (
   argumentsPayload: unknown,
@@ -140,52 +124,22 @@ const getReportId = (argumentsPayload: unknown): number | null => {
     : null;
 };
 
-// The owner's name is only for the summary, so an owner that cannot be read is named by its id instead.
-const readOwnerName = async (
-  client: ReportToolClient,
-  kind: ReportOwnerKind,
-  id: number,
-): Promise<string> => {
-  const read = kind === "team" ? client.getTeam(id) : client.getPortfolio(id);
-  const [terms, owner] = await Promise.all([
-    readTerms(client),
-    read.then(
-      (named) => (named.ok ? named.value : undefined),
-      () => undefined,
-    ),
-  ]);
-  return describeReportOwner(kind, id, owner, terms);
-};
-
-type Summarise = (facts: unknown, owner: string) => string | null;
-
-const summariseReport: Summarise = (facts, owner) => {
-  const report = readReport(facts);
-  return report === null ? null : describeReportSummary(report, owner);
-};
-
-const summariseReportList: Summarise = (facts, owner) => {
-  const reports = readReportList(facts);
-  return reports === null ? null : describeReportListSummary(reports, owner);
-};
-
 // The owner is read only once the report was, so a refused read asks Lighthouse for nothing more.
 const answerReportRead = async (
   client: ReportToolClient,
-  kind: ReportOwnerKind,
-  id: number,
+  owner: ReportOwner,
   result: LighthouseApiResult<unknown>,
-  answer: { readonly label: string; readonly summarise: Summarise },
+  answer: { readonly label: string; readonly summarise: ReportSummariser },
 ): Promise<McpToolResult> => {
   if (!result.ok) {
     return getErrorToolResult(
-      `${answer.label}: ${await readReportRefusal(client, result.error, kind)}`,
+      `${answer.label}: ${await readReportRefusal(client, result.error, owner.kind)}`,
     );
   }
-  const owner = await readOwnerName(client, kind, id);
+  const ownerName = await readReportOwner(client, owner);
   return withSummaryBlock(
     `${answer.label}: ${encodePayload(result.value)}`,
-    answer.summarise(result.value, owner),
+    answer.summarise(result.value, ownerName),
   );
 };
 
@@ -199,14 +153,16 @@ const reportList =
     if (id === null) {
       return invalid(LIST_LABEL, "id");
     }
-    const read =
-      kind === "team"
-        ? client.getTeamReports(id)
-        : client.getPortfolioReports(id);
-    return answerReportRead(client, kind, id, await read, {
-      label: LIST_LABEL,
-      summarise: summariseReportList,
-    });
+    const owner = { kind, id };
+    return answerReportRead(
+      client,
+      owner,
+      await readOwnersReports(client, owner),
+      {
+        label: LIST_LABEL,
+        summarise: summariseReportList,
+      },
+    );
   };
 
 const reportGet =
@@ -220,12 +176,9 @@ const reportGet =
     if (reportId === null) {
       return invalid(GET_LABEL, "reportId");
     }
-    const read =
-      kind === "team"
-        ? client.getTeamReport(id, reportId)
-        : client.getPortfolioReport(id, reportId);
-    const result = await read;
-    const answered = await answerReportRead(client, kind, id, result, {
+    const owner = { kind, id };
+    const result = await readOwnersReport(client, owner, reportId);
+    const answered = await answerReportRead(client, owner, result, {
       label: GET_LABEL,
       summarise: summariseReport,
     });

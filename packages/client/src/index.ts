@@ -3382,6 +3382,7 @@ export { isProcessBehaviorMetricType } from "./processBehaviorChartTypes";
 export * from "./refinementVoteWording";
 export * from "./refinementVoting";
 export * from "./refinementWording";
+export * from "./reportReads";
 export * from "./reportWording";
 export * from "./terminology";
 export * from "./usageData";

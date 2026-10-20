@@ -1,12 +1,16 @@
 import {
   type CliConnection,
-  describeReportOwner,
   type LighthouseApiResult,
   type LighthouseClient,
-  type ReportOwnerKind,
+  type ReportOwner,
+  type ReportSummariser,
+  readOwnersReport,
+  readOwnersReports,
+  readReportOwner,
   readReportRefusal,
-  readTerms,
   reportOpenedOccurrencesOf,
+  summariseReport,
+  summariseReportList,
 } from "@letpeoplework/lighthouse-client";
 import {
   type CliCommandResult,
@@ -17,11 +21,6 @@ import {
   withUsage,
 } from "./commandResult";
 import type { OutputFormat } from "./output";
-import {
-  type ReportRenderer,
-  renderReport,
-  renderReportList,
-} from "./reportOutput";
 
 type ReportClient = Pick<
   LighthouseClient,
@@ -44,11 +43,6 @@ type ReportCommand = (
   connection: CliConnection,
   dependencies: ReportCommandDependencies,
 ) => Promise<CliCommandResult>;
-
-type ReportOwner = {
-  readonly kind: ReportOwnerKind;
-  readonly id: number;
-};
 
 const parseNumericOption = (
   args: readonly string[],
@@ -95,29 +89,6 @@ const parseOwner = (
   );
 };
 
-const UNREAD = { ok: false as const, error: null };
-
-// The owner's name is only for the heading, so an owner that cannot be read is named by its id instead.
-const readOwnerName = async (
-  client: ReportClient,
-  owner: ReportOwner,
-): Promise<string> => {
-  const read =
-    owner.kind === "team"
-      ? client.getTeam(owner.id)
-      : client.getPortfolio(owner.id);
-  const [terms, named] = await Promise.all([
-    readTerms(client),
-    read.catch(() => UNREAD),
-  ]);
-  return describeReportOwner(
-    owner.kind,
-    owner.id,
-    named.ok ? named.value : undefined,
-    terms,
-  );
-};
-
 // The owner is named only once the report was read and only for the pretty view, so a refused read, --json and
 // --toon ask Lighthouse for nothing beyond the reports.
 const printReportRead = async (
@@ -125,7 +96,7 @@ const printReportRead = async (
   owner: ReportOwner,
   result: LighthouseApiResult<unknown>,
   outputFormat: OutputFormat,
-  render: ReportRenderer,
+  summarise: ReportSummariser,
 ): Promise<CliCommandResult> => {
   if (!result.ok) {
     return getErrorResult(
@@ -135,9 +106,9 @@ const printReportRead = async (
   if (outputFormat !== "pretty") {
     return mapApiResultToCliResult(result, outputFormat);
   }
-  const ownerName = await readOwnerName(client, owner);
+  const ownerName = await readReportOwner(client, owner);
   return mapApiResultToCliResult(result, outputFormat, (value) =>
-    render(value, ownerName),
+    summarise(value, ownerName),
   );
 };
 
@@ -153,16 +124,12 @@ const runReportList: ReportCommand = async (
   }
 
   const client = dependencies.createClient(connection);
-  const read =
-    owner.kind === "team"
-      ? client.getTeamReports(owner.id)
-      : client.getPortfolioReports(owner.id);
   return printReportRead(
     client,
     owner,
-    await read,
+    await readOwnersReports(client, owner),
     outputFormat,
-    renderReportList,
+    summariseReportList,
   );
 };
 
@@ -185,15 +152,13 @@ const runReportGet: ReportCommand = async (
   }
 
   const client = dependencies.createClient(connection);
-  const answered = await (owner.kind === "team"
-    ? client.getTeamReport(owner.id, reportId)
-    : client.getPortfolioReport(owner.id, reportId));
+  const answered = await readOwnersReport(client, owner, reportId);
   const printed = await printReportRead(
     client,
     owner,
     answered,
     outputFormat,
-    renderReport,
+    summariseReport,
   );
   return withUsage(printed, answered, reportOpenedOccurrencesOf(answered));
 };
