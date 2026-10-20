@@ -1,0 +1,937 @@
+{
+  "version": "v26.10.19.10",
+  "routes": {
+    "GET /api/v1/auth/mode": {
+      "mode": "Disabled",
+      "misconfigurationMessage": null
+    },
+    "GET /api/v1/portfolios": [
+      {
+        "features": [
+          {
+            "id": 71,
+            "name": "Crew Capsule Thermal Protection System"
+          },
+          {
+            "id": 72,
+            "name": "Long-Duration Life Support System"
+          },
+          {
+            "id": 73,
+            "name": "Interplanetary Propulsion Testbed"
+          },
+          {
+            "id": 74,
+            "name": "Space Debris Mitigation Protocols"
+          },
+          {
+            "id": 75,
+            "name": "Planetary Lander Prototype"
+          },
+          {
+            "id": 76,
+            "name": "AI-Based Trajectory Optimization"
+          },
+          {
+            "id": 77,
+            "name": "Deep Space Signal Relay Station"
+          },
+          {
+            "id": 78,
+            "name": "Mars Surface Habitat Testing"
+          },
+          {
+            "id": 80,
+            "name": "Next-Gen EVA Suits"
+          },
+          {
+            "id": 81,
+            "name": "AI Mission Control Assistant"
+          },
+          {
+            "id": 82,
+            "name": "Autonomous Docking Algorithms"
+          },
+          {
+            "id": 83,
+            "name": "Lunar Surface Habitation Blueprint"
+          },
+          {
+            "id": 84,
+            "name": "High-Efficiency Solar Arrays"
+          },
+          {
+            "id": 85,
+            "name": "Deep Space Navigation Enhancements"
+          },
+          {
+            "id": 86,
+            "name": "Radiation Shielding Materials Research"
+          },
+          {
+            "id": 87,
+            "name": "Quantum Communication Prototype"
+          },
+          {
+            "id": 88,
+            "name": "Solar Flare Early Warning Network"
+          },
+          {
+            "id": 89,
+            "name": "Cryogenic Fuel Storage Design"
+          },
+          {
+            "id": 90,
+            "name": "Zero-Gravity Manufacturing Platform"
+          },
+          {
+            "id": 79,
+            "name": "Orbital Debris Tracking System"
+          }
+        ],
+        "involvedTeams": [
+          {
+            "id": 14,
+            "name": "Voyager"
+          }
+        ],
+        "featureSizeTargetProbability": 0,
+        "featureSizeTargetRange": 0,
+        "name": "Apollo II",
+        "id": 9,
+        "lastUpdated": "2026-10-20T16:02:13.9811443Z",
+        "serviceLevelExpectationProbability": 0,
+        "serviceLevelExpectationRange": 0,
+        "systemWIPLimit": 0
+      },
+      {
+        "features": [
+          {
+            "id": 91,
+            "name": "Crew Capsule Thermal Protection System"
+          },
+          {
+            "id": 92,
+            "name": "Long-Duration Life Support System"
+          },
+          {
+            "id": 93,
+            "name": "Interplanetary Propulsion Testbed"
+          },
+          {
+            "id": 94,
+            "name": "Space Debris Mitigation Protocols"
+          },
+          {
+            "id": 95,
+            "name": "Planetary Lander Prototype"
+          },
+          {
+            "id": 96,
+            "name": "AI-Based Trajectory Optimization"
+          },
+          {
+            "id": 97,
+            "name": "Deep Space Signal Relay Station"
+          },
+          {
+            "id": 98,
+            "name": "Next-Gen EVA Suits"
+          },
+          {
+            "id": 99,
+            "name": "Mars Surface Habitat Testing"
+          },
+          {
+            "id": 100,
+            "name": "High-Efficiency Solar Arrays"
+          },
+          {
+            "id": 101,
+            "name": "Orbital Debris Tracking System"
+          },
+          {
+            "id": 102,
+            "name": "Autonomous Docking Algorithms"
+          },
+          {
+            "id": 103,
+            "name": "Lunar Surface Habitation Blueprint"
+          },
+          {
+            "id": 104,
+            "name": "Deep Space Navigation Enhancements"
+          },
+          {
+            "id": 105,
+            "name": "Radiation Shielding Materials Research"
+          },
+          {
+            "id": 106,
+            "name": "Quantum Communication Prototype"
+          },
+          {
+            "id": 107,
+            "name": "AI Mission Control Assistant"
+          },
+          {
+            "id": 108,
+            "name": "Solar Flare Early Warning Network"
+          },
+          {
+            "id": 109,
+            "name": "Cryogenic Fuel Storage Design"
+          },
+          {
+            "id": 110,
+            "name": "Zero-Gravity Manufacturing Platform"
+          },
+          {
+            "id": 111,
+            "name": "Spacecraft Telemetry Dashboard"
+          },
+          {
+            "id": 112,
+            "name": "Emergency Escape Pod Certification"
+          },
+          {
+            "id": 113,
+            "name": "Satellite Network Redundancy Protocol"
+          },
+          {
+            "id": 114,
+            "name": "Orbital Mechanics Simulation Suite"
+          },
+          {
+            "id": 115,
+            "name": "Crew Medical Monitoring System"
+          },
+          {
+            "id": 116,
+            "name": "Launch Pad Safety Automation"
+          },
+          {
+            "id": 117,
+            "name": "Atmospheric Entry Heat Analysis"
+          },
+          {
+            "id": 118,
+            "name": "Mission Control Communication Hub"
+          },
+          {
+            "id": 119,
+            "name": "Rocket Stage Separation Testing"
+          },
+          {
+            "id": 120,
+            "name": "Spacecraft Power Distribution Grid"
+          },
+          {
+            "id": 79,
+            "name": "Orbital Debris Tracking System"
+          }
+        ],
+        "involvedTeams": [
+          {
+            "id": 14,
+            "name": "Voyager"
+          }
+        ],
+        "featureSizeTargetProbability": 0,
+        "featureSizeTargetRange": 0,
+        "name": "Altobelli",
+        "id": 10,
+        "lastUpdated": "2026-10-20T16:02:14.1082179Z",
+        "serviceLevelExpectationProbability": 0,
+        "serviceLevelExpectationRange": 0,
+        "systemWIPLimit": 0
+      }
+    ],
+    "GET /api/v1/portfolios/9": {
+      "features": [
+        {
+          "id": 71,
+          "name": "Crew Capsule Thermal Protection System"
+        },
+        {
+          "id": 72,
+          "name": "Long-Duration Life Support System"
+        },
+        {
+          "id": 73,
+          "name": "Interplanetary Propulsion Testbed"
+        },
+        {
+          "id": 74,
+          "name": "Space Debris Mitigation Protocols"
+        },
+        {
+          "id": 75,
+          "name": "Planetary Lander Prototype"
+        },
+        {
+          "id": 76,
+          "name": "AI-Based Trajectory Optimization"
+        },
+        {
+          "id": 77,
+          "name": "Deep Space Signal Relay Station"
+        },
+        {
+          "id": 78,
+          "name": "Mars Surface Habitat Testing"
+        },
+        {
+          "id": 80,
+          "name": "Next-Gen EVA Suits"
+        },
+        {
+          "id": 81,
+          "name": "AI Mission Control Assistant"
+        },
+        {
+          "id": 82,
+          "name": "Autonomous Docking Algorithms"
+        },
+        {
+          "id": 83,
+          "name": "Lunar Surface Habitation Blueprint"
+        },
+        {
+          "id": 84,
+          "name": "High-Efficiency Solar Arrays"
+        },
+        {
+          "id": 85,
+          "name": "Deep Space Navigation Enhancements"
+        },
+        {
+          "id": 86,
+          "name": "Radiation Shielding Materials Research"
+        },
+        {
+          "id": 87,
+          "name": "Quantum Communication Prototype"
+        },
+        {
+          "id": 88,
+          "name": "Solar Flare Early Warning Network"
+        },
+        {
+          "id": 89,
+          "name": "Cryogenic Fuel Storage Design"
+        },
+        {
+          "id": 90,
+          "name": "Zero-Gravity Manufacturing Platform"
+        },
+        {
+          "id": 79,
+          "name": "Orbital Debris Tracking System"
+        }
+      ],
+      "involvedTeams": [
+        {
+          "id": 14,
+          "name": "Voyager"
+        }
+      ],
+      "featureSizeTargetProbability": 0,
+      "featureSizeTargetRange": 0,
+      "name": "Apollo II",
+      "id": 9,
+      "lastUpdated": "2026-10-20T16:02:13.9811443Z",
+      "serviceLevelExpectationProbability": 0,
+      "serviceLevelExpectationRange": 0,
+      "systemWIPLimit": 0
+    },
+    "GET /api/v1/portfolios/9/reports": {
+      "reports": [
+        {
+          "id": 61,
+          "name": "Then & Now — quarter review",
+          "templateKey": "then-and-now",
+          "ownerKind": "Portfolio",
+          "ownerId": 9,
+          "createdOn": "2026-10-20",
+          "thenAndNow": {
+            "thenRebuildable": true
+          }
+        }
+      ],
+      "creationBlockedByCap": false,
+      "communityCap": 1
+    },
+    "GET /api/v1/portfolios/9/reports/61": {
+      "id": 61,
+      "name": "Then & Now — quarter review",
+      "templateKey": "then-and-now",
+      "ownerKind": "Portfolio",
+      "ownerId": 9,
+      "createdOn": "2026-10-20",
+      "concurrencyToken": "1ec17dd4-3518-46d2-bdec-88dd0ced4db0",
+      "shownMetricKeys": ["cycle-time", "throughput", "wip", "work-item-age"],
+      "thenAndNow": {
+        "thenWindow": {
+          "start": "2026-07-03",
+          "end": "2026-09-30",
+          "lengthDays": 90
+        },
+        "nowWindow": {
+          "start": "2026-10-07",
+          "end": "2026-10-20",
+          "lengthDays": 14
+        },
+        "thenRebuildable": true,
+        "metrics": {
+          "cycle-time": {
+            "atThen": {
+              "p95": {
+                "value": 34,
+                "sampleSize": 6,
+                "absentReason": null
+              },
+              "p85": {
+                "value": 34,
+                "sampleSize": 6,
+                "absentReason": null
+              },
+              "p70": {
+                "value": 26,
+                "sampleSize": 6,
+                "absentReason": null
+              },
+              "p50": {
+                "value": 19,
+                "sampleSize": 6,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "p95": {
+                "value": null,
+                "sampleSize": null,
+                "absentReason": "no-finished-items"
+              },
+              "p85": {
+                "value": null,
+                "sampleSize": null,
+                "absentReason": "no-finished-items"
+              },
+              "p70": {
+                "value": null,
+                "sampleSize": null,
+                "absentReason": "no-finished-items"
+              },
+              "p50": {
+                "value": null,
+                "sampleSize": null,
+                "absentReason": "no-finished-items"
+              }
+            }
+          },
+          "throughput": {
+            "atThen": {
+              "total": {
+                "value": 6,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "perDay": {
+                "value": 0.06666666666666667,
+                "sampleSize": 90,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "total": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "perDay": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            }
+          },
+          "wip": {
+            "atThen": {
+              "average": {
+                "value": 1.9777777777777779,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "median": {
+                "value": 2,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "min": {
+                "value": 0,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "max": {
+                "value": 4,
+                "sampleSize": 90,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "average": {
+                "value": 2.7857142857142856,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "median": {
+                "value": 3,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "min": {
+                "value": 2,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "max": {
+                "value": 3,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            }
+          },
+          "work-item-age": {
+            "atThen": {
+              "average": {
+                "value": 28.533333333333335,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "median": {
+                "value": 31,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "min": {
+                "value": 0,
+                "sampleSize": 90,
+                "absentReason": null
+              },
+              "max": {
+                "value": 76,
+                "sampleSize": 90,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "average": {
+                "value": 28.714285714285715,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "median": {
+                "value": 27,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "min": {
+                "value": 11,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "max": {
+                "value": 48,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            }
+          }
+        },
+        "daysSinceThenEnded": 20
+      }
+    },
+    "GET /api/v1/teams": [
+      {
+        "featureWip": 0,
+        "features": [
+          {
+            "id": 71,
+            "name": "Crew Capsule Thermal Protection System"
+          },
+          {
+            "id": 72,
+            "name": "Long-Duration Life Support System"
+          },
+          {
+            "id": 73,
+            "name": "Interplanetary Propulsion Testbed"
+          },
+          {
+            "id": 74,
+            "name": "Space Debris Mitigation Protocols"
+          },
+          {
+            "id": 75,
+            "name": "Planetary Lander Prototype"
+          },
+          {
+            "id": 76,
+            "name": "AI-Based Trajectory Optimization"
+          },
+          {
+            "id": 77,
+            "name": "Deep Space Signal Relay Station"
+          },
+          {
+            "id": 78,
+            "name": "Mars Surface Habitat Testing"
+          },
+          {
+            "id": 79,
+            "name": "Orbital Debris Tracking System"
+          },
+          {
+            "id": 80,
+            "name": "Next-Gen EVA Suits"
+          },
+          {
+            "id": 81,
+            "name": "AI Mission Control Assistant"
+          },
+          {
+            "id": 82,
+            "name": "Autonomous Docking Algorithms"
+          },
+          {
+            "id": 83,
+            "name": "Lunar Surface Habitation Blueprint"
+          },
+          {
+            "id": 84,
+            "name": "High-Efficiency Solar Arrays"
+          },
+          {
+            "id": 85,
+            "name": "Deep Space Navigation Enhancements"
+          },
+          {
+            "id": 86,
+            "name": "Radiation Shielding Materials Research"
+          },
+          {
+            "id": 87,
+            "name": "Quantum Communication Prototype"
+          },
+          {
+            "id": 88,
+            "name": "Solar Flare Early Warning Network"
+          },
+          {
+            "id": 89,
+            "name": "Cryogenic Fuel Storage Design"
+          },
+          {
+            "id": 90,
+            "name": "Zero-Gravity Manufacturing Platform"
+          },
+          {
+            "id": 79,
+            "name": "Orbital Debris Tracking System"
+          },
+          {
+            "id": 91,
+            "name": "Crew Capsule Thermal Protection System"
+          },
+          {
+            "id": 92,
+            "name": "Long-Duration Life Support System"
+          },
+          {
+            "id": 93,
+            "name": "Interplanetary Propulsion Testbed"
+          },
+          {
+            "id": 94,
+            "name": "Space Debris Mitigation Protocols"
+          },
+          {
+            "id": 95,
+            "name": "Planetary Lander Prototype"
+          },
+          {
+            "id": 96,
+            "name": "AI-Based Trajectory Optimization"
+          },
+          {
+            "id": 97,
+            "name": "Deep Space Signal Relay Station"
+          },
+          {
+            "id": 98,
+            "name": "Next-Gen EVA Suits"
+          },
+          {
+            "id": 99,
+            "name": "Mars Surface Habitat Testing"
+          },
+          {
+            "id": 100,
+            "name": "High-Efficiency Solar Arrays"
+          },
+          {
+            "id": 101,
+            "name": "Orbital Debris Tracking System"
+          },
+          {
+            "id": 102,
+            "name": "Autonomous Docking Algorithms"
+          },
+          {
+            "id": 103,
+            "name": "Lunar Surface Habitation Blueprint"
+          },
+          {
+            "id": 104,
+            "name": "Deep Space Navigation Enhancements"
+          },
+          {
+            "id": 105,
+            "name": "Radiation Shielding Materials Research"
+          },
+          {
+            "id": 106,
+            "name": "Quantum Communication Prototype"
+          },
+          {
+            "id": 107,
+            "name": "AI Mission Control Assistant"
+          },
+          {
+            "id": 108,
+            "name": "Solar Flare Early Warning Network"
+          },
+          {
+            "id": 109,
+            "name": "Cryogenic Fuel Storage Design"
+          },
+          {
+            "id": 110,
+            "name": "Zero-Gravity Manufacturing Platform"
+          }
+        ],
+        "portfolios": [
+          {
+            "id": 9,
+            "name": "Apollo II"
+          },
+          {
+            "id": 10,
+            "name": "Altobelli"
+          }
+        ],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-07-23T00:00:00Z",
+        "throughputEndDate": "2026-10-20T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": false,
+        "name": "Voyager",
+        "id": 14,
+        "lastUpdated": "2026-10-20T16:02:13.9012341Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 0
+      }
+    ],
+    "GET /api/v1/terminology/all": [
+      {
+        "id": 1,
+        "key": "workItem",
+        "description": "Units of Value that move through your system and that your teams work on. Alternatives may be 'Story' or 'Issue'",
+        "defaultValue": "Work Item",
+        "value": ""
+      },
+      {
+        "id": 2,
+        "key": "workItems",
+        "description": "Plural form of 'Work Item'",
+        "defaultValue": "Work Items",
+        "value": ""
+      },
+      {
+        "id": 3,
+        "key": "feature",
+        "description": "Larger unit of work that contains multiple Work Items. Alternatives may be 'Epic' or 'Theme'",
+        "defaultValue": "Feature",
+        "value": ""
+      },
+      {
+        "id": 4,
+        "key": "features",
+        "description": "Plural form of 'Feature'",
+        "defaultValue": "Features",
+        "value": ""
+      },
+      {
+        "id": 5,
+        "key": "cycleTime",
+        "description": "The elapsed time between when a work item started and when a work item finished. Alternatives may be 'Lead Time' or 'Flow Time'",
+        "defaultValue": "Cycle Time",
+        "value": ""
+      },
+      {
+        "id": 6,
+        "key": "throughput",
+        "description": "The number of work items finished per unit of time. Alternatives may be 'Delivery Rate' or 'Flow Velocity'",
+        "defaultValue": "Throughput",
+        "value": ""
+      },
+      {
+        "id": 7,
+        "key": "workInProgress",
+        "description": "The number of work items started but not finished. Alternatives may be 'Flow Load' or 'Ongoing Stuff'",
+        "defaultValue": "Work In Progress",
+        "value": ""
+      },
+      {
+        "id": 8,
+        "key": "wip",
+        "description": "Abbreviation of 'Work In Progress'.",
+        "defaultValue": "WIP",
+        "value": ""
+      },
+      {
+        "id": 9,
+        "key": "workItemAge",
+        "description": "The elapsed time between when a work item started and the current date. Alternatives may be 'Age' or 'In Progress Time'",
+        "defaultValue": "Work Item Age",
+        "value": ""
+      },
+      {
+        "id": 10,
+        "key": "tag",
+        "description": "A user defined indication on your 'Work Items'. Alternatives may be 'Label' or 'Category'",
+        "defaultValue": "Tag",
+        "value": ""
+      },
+      {
+        "id": 11,
+        "key": "workTrackingSystem",
+        "description": "Generic name of the source of your data. Alternatives may be 'Jira Instance' or 'Azure DevOps Organization'",
+        "defaultValue": "Work Tracking System",
+        "value": ""
+      },
+      {
+        "id": 12,
+        "key": "workTrackingSystems",
+        "description": "Plural form of 'Work Tracking System'",
+        "defaultValue": "Work Tracking Systems",
+        "value": ""
+      },
+      {
+        "id": 13,
+        "key": "blocked",
+        "description": "Indication for 'Work Items' that don't progress anymore. Alternatives may be 'On Hold' or 'Stopped'",
+        "defaultValue": "Blocked",
+        "value": ""
+      },
+      {
+        "id": 14,
+        "key": "serviceLevelExpectation",
+        "description": "A forecast of how long it should take a work item to flow from started to finished. Alternatives may be 'Target' or 'Goal'",
+        "defaultValue": "Service Level Expectation",
+        "value": ""
+      },
+      {
+        "id": 15,
+        "key": "sle",
+        "description": "Abbreviation of 'Service Level Expectation'",
+        "defaultValue": "SLE",
+        "value": ""
+      },
+      {
+        "id": 16,
+        "key": "team",
+        "description": "The smallest groups in the organization that deliver 'Work Items'. Alternatives may be 'Squad' or 'Crew'",
+        "defaultValue": "Team",
+        "value": ""
+      },
+      {
+        "id": 17,
+        "key": "teams",
+        "description": "Plural form of 'Team'",
+        "defaultValue": "Teams",
+        "value": ""
+      },
+      {
+        "id": 18,
+        "key": "portfolio",
+        "description": "Collection of work items that belong together and are managed as a unit. Alternatives may be 'Project' or 'Initiative'",
+        "defaultValue": "Portfolio",
+        "value": ""
+      },
+      {
+        "id": 19,
+        "key": "portfolios",
+        "description": "Plural form of 'Portfolio'",
+        "defaultValue": "Portfolios",
+        "value": ""
+      },
+      {
+        "id": 20,
+        "key": "delivery",
+        "description": "A delivery marks a specific point in time where a defined list of Features should be done. Alternative names may be Milestone, Checkpoint, etc.",
+        "defaultValue": "Delivery",
+        "value": ""
+      },
+      {
+        "id": 21,
+        "key": "deliveries",
+        "description": "Plural form of 'Delivery'",
+        "defaultValue": "Deliveries",
+        "value": ""
+      },
+      {
+        "id": 22,
+        "key": "refinement",
+        "description": "The stage where 'Work Items' are clarified and prepared before work on them starts. Alternatives may be 'Grooming' or 'Preparation'",
+        "defaultValue": "Refinement",
+        "value": ""
+      },
+      {
+        "id": 23,
+        "key": "refinements",
+        "description": "Plural form of 'Refinement'",
+        "defaultValue": "Refinements",
+        "value": ""
+      }
+    ]
+  },
+  "reportsTab": {
+    "Then & Now — quarter review": [
+      "Then 3 Jul – 30 Sep 2026 · Now 7 Oct – 20 Oct 2026",
+      "Summary Then: 3 Jul – 30 Sep 2026 · 90 days · 6 Work Items closed",
+      "Summary Now: 7 Oct – 20 Oct 2026 · 14 days · 0 Work Items closed",
+      "Summary Change: ✘ Got worse: Throughput",
+      "Summary Change: ± Mixed: WIP, Total Work Item Age",
+      "Cycle Time 95th: Then 34 days · Now — · —",
+      "Cycle Time 85th: Then 34 days · Now — · —",
+      "Cycle Time 70th: Then 26 days · Now — · —",
+      "Cycle Time 50th: Then 19 days · Now — · —",
+      "Cycle Time Now: — No finished Work Items in Now",
+      "Throughput Total: Then 6 Work Items · Now 0 Work Items",
+      "Throughput Per day: Then 0.07 per day · Now 0.00 per day · ▼ 0.07 per day (−100 %)",
+      "WIP Average: Then 2 · Now 3 · ▲ 1 (+50 %)",
+      "WIP Median: Then 2 · Now 3 · ▲ 1 (+50 %)",
+      "WIP Min: Then 0 · Now 2 · ▲ 2 (Then was 0)",
+      "WIP Max: Then 4 · Now 3 · ▼ 1 (−25 %)",
+      "Total Work Item Age Average: Then 29 days · Now 29 days · No change",
+      "Total Work Item Age Median: Then 31 days · Now 27 days · ▼ 4 days (−13 %)",
+      "Total Work Item Age Min: Then 0 days · Now 11 days · ▲ 11 days (Then was 0)",
+      "Total Work Item Age Max: Then 76 days · Now 48 days · ▼ 28 days (−37 %)"
+    ]
+  }
+}

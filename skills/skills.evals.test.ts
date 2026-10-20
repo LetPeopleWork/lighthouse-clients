@@ -35,7 +35,7 @@ const ENVIRONMENTS = new Set([
   "with-older-lighthouse",
 ]);
 
-const STORIES = new Set(["6245", "6217", "6246", "6247"]);
+const STORIES = new Set(["6245", "6217", "6246", "6247", "6298"]);
 const KINDS = new Set(["positive", "neighbour", "negative"]);
 const SURFACES = new Set(["mcp", "lh"]);
 
@@ -130,7 +130,7 @@ const problemsOf = (file: CaseFile, entry: EvalCase): string[] => {
   check(isText(entry.id), "no id");
   check(
     STORIES.has(String(entry.story)),
-    "story is not 6245, 6217, 6246 or 6247",
+    "story is not 6245, 6217, 6246, 6247 or 6298",
   );
   check(
     KINDS.has(String(entry.kind)),
@@ -242,7 +242,7 @@ const toolsThatExist = (): Set<string> =>
 describe("every skill's eval cases can be run as written", () => {
   // @contract-shape:pure-function
   // An empty set of files would make every check below pass while checking nothing.
-  it("finds the cases of all three skills", () => {
+  it("finds the cases of all four skills", () => {
     expect(
       caseFiles()
         .map((file) => file.skill)
@@ -251,6 +251,7 @@ describe("every skill's eval cases can be run as written", () => {
       "lighthouse",
       "lighthouse-daily-flow-review",
       "lighthouse-refinement",
+      "lighthouse-reports",
     ]);
   });
 

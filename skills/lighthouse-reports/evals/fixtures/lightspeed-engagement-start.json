@@ -1,0 +1,477 @@
+{
+  "version": "v26.10.19.10",
+  "routes": {
+    "GET /api/v1/auth/mode": {
+      "mode": "Disabled",
+      "misconfigurationMessage": null
+    },
+    "GET /api/v1/portfolios": [],
+    "GET /api/v1/teams": [
+      {
+        "featureWip": 0,
+        "features": [],
+        "portfolios": [],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-07-23T00:00:00Z",
+        "throughputEndDate": "2026-10-20T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": true,
+        "name": "Gravity",
+        "id": 4,
+        "lastUpdated": "2026-10-20T15:58:06.9176676Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 0
+      },
+      {
+        "featureWip": 0,
+        "features": [],
+        "portfolios": [],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-07-23T00:00:00Z",
+        "throughputEndDate": "2026-10-20T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": false,
+        "name": "Lightspeed",
+        "id": 5,
+        "lastUpdated": "2026-10-20T15:58:07.3128492Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 0
+      }
+    ],
+    "GET /api/v1/teams/5": {
+      "featureWip": 0,
+      "features": [],
+      "portfolios": [],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-07-23T00:00:00Z",
+      "throughputEndDate": "2026-10-20T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": false,
+      "name": "Lightspeed",
+      "id": 5,
+      "lastUpdated": "2026-10-20T15:58:07.3128492Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 7,
+      "systemWIPLimit": 0
+    },
+    "GET /api/v1/teams/5/metrics/cycleTimePercentiles": [
+      {
+        "percentile": 50,
+        "value": 1
+      },
+      {
+        "percentile": 70,
+        "value": 1
+      },
+      {
+        "percentile": 85,
+        "value": 2
+      },
+      {
+        "percentile": 95,
+        "value": 4
+      }
+    ],
+    "GET /api/v1/teams/5/reports": {
+      "reports": [
+        {
+          "id": 11,
+          "name": "Then & Now — engagement start",
+          "templateKey": "then-and-now",
+          "ownerKind": "Team",
+          "ownerId": 5,
+          "createdOn": "2026-10-20",
+          "thenAndNow": {
+            "thenRebuildable": true
+          }
+        }
+      ],
+      "creationBlockedByCap": false,
+      "communityCap": 1
+    },
+    "GET /api/v1/teams/5/reports/11": {
+      "id": 11,
+      "name": "Then & Now — engagement start",
+      "templateKey": "then-and-now",
+      "ownerKind": "Team",
+      "ownerId": 5,
+      "createdOn": "2026-10-20",
+      "concurrencyToken": "fc0fa15d-e67e-4024-ab3f-40084fc34592",
+      "shownMetricKeys": ["cycle-time", "throughput", "wip", "work-item-age"],
+      "thenAndNow": {
+        "thenWindow": {
+          "start": "2026-08-31",
+          "end": "2026-09-13",
+          "lengthDays": 14
+        },
+        "nowWindow": {
+          "start": "2026-10-07",
+          "end": "2026-10-20",
+          "lengthDays": 14
+        },
+        "thenRebuildable": true,
+        "metrics": {
+          "cycle-time": {
+            "atThen": {
+              "p95": {
+                "value": 2,
+                "sampleSize": 23,
+                "absentReason": null
+              },
+              "p85": {
+                "value": 2,
+                "sampleSize": 23,
+                "absentReason": null
+              },
+              "p70": {
+                "value": 1,
+                "sampleSize": 23,
+                "absentReason": null
+              },
+              "p50": {
+                "value": 1,
+                "sampleSize": 23,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "p95": {
+                "value": 4,
+                "sampleSize": 18,
+                "absentReason": null
+              },
+              "p85": {
+                "value": 2,
+                "sampleSize": 18,
+                "absentReason": null
+              },
+              "p70": {
+                "value": 1,
+                "sampleSize": 18,
+                "absentReason": null
+              },
+              "p50": {
+                "value": 1,
+                "sampleSize": 18,
+                "absentReason": null
+              }
+            }
+          },
+          "throughput": {
+            "atThen": {
+              "total": {
+                "value": 23,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "perDay": {
+                "value": 1.6428571428571428,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "total": {
+                "value": 18,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "perDay": {
+                "value": 1.2857142857142858,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            }
+          },
+          "wip": {
+            "atThen": {
+              "average": {
+                "value": 0.6428571428571429,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "median": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "min": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "max": {
+                "value": 3,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "average": {
+                "value": 0.35714285714285715,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "median": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "min": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "max": {
+                "value": 1,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            }
+          },
+          "work-item-age": {
+            "atThen": {
+              "average": {
+                "value": 1.0714285714285714,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "median": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "min": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "max": {
+                "value": 4,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            },
+            "atNow": {
+              "average": {
+                "value": 0.5714285714285714,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "median": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "min": {
+                "value": 0,
+                "sampleSize": 14,
+                "absentReason": null
+              },
+              "max": {
+                "value": 3,
+                "sampleSize": 14,
+                "absentReason": null
+              }
+            }
+          }
+        },
+        "daysSinceThenEnded": 37
+      }
+    },
+    "GET /api/v1/terminology/all": [
+      {
+        "id": 1,
+        "key": "workItem",
+        "description": "Units of Value that move through your system and that your teams work on. Alternatives may be 'Story' or 'Issue'",
+        "defaultValue": "Work Item",
+        "value": ""
+      },
+      {
+        "id": 2,
+        "key": "workItems",
+        "description": "Plural form of 'Work Item'",
+        "defaultValue": "Work Items",
+        "value": ""
+      },
+      {
+        "id": 3,
+        "key": "feature",
+        "description": "Larger unit of work that contains multiple Work Items. Alternatives may be 'Epic' or 'Theme'",
+        "defaultValue": "Feature",
+        "value": ""
+      },
+      {
+        "id": 4,
+        "key": "features",
+        "description": "Plural form of 'Feature'",
+        "defaultValue": "Features",
+        "value": ""
+      },
+      {
+        "id": 5,
+        "key": "cycleTime",
+        "description": "The elapsed time between when a work item started and when a work item finished. Alternatives may be 'Lead Time' or 'Flow Time'",
+        "defaultValue": "Cycle Time",
+        "value": ""
+      },
+      {
+        "id": 6,
+        "key": "throughput",
+        "description": "The number of work items finished per unit of time. Alternatives may be 'Delivery Rate' or 'Flow Velocity'",
+        "defaultValue": "Throughput",
+        "value": ""
+      },
+      {
+        "id": 7,
+        "key": "workInProgress",
+        "description": "The number of work items started but not finished. Alternatives may be 'Flow Load' or 'Ongoing Stuff'",
+        "defaultValue": "Work In Progress",
+        "value": ""
+      },
+      {
+        "id": 8,
+        "key": "wip",
+        "description": "Abbreviation of 'Work In Progress'.",
+        "defaultValue": "WIP",
+        "value": ""
+      },
+      {
+        "id": 9,
+        "key": "workItemAge",
+        "description": "The elapsed time between when a work item started and the current date. Alternatives may be 'Age' or 'In Progress Time'",
+        "defaultValue": "Work Item Age",
+        "value": ""
+      },
+      {
+        "id": 10,
+        "key": "tag",
+        "description": "A user defined indication on your 'Work Items'. Alternatives may be 'Label' or 'Category'",
+        "defaultValue": "Tag",
+        "value": ""
+      },
+      {
+        "id": 11,
+        "key": "workTrackingSystem",
+        "description": "Generic name of the source of your data. Alternatives may be 'Jira Instance' or 'Azure DevOps Organization'",
+        "defaultValue": "Work Tracking System",
+        "value": ""
+      },
+      {
+        "id": 12,
+        "key": "workTrackingSystems",
+        "description": "Plural form of 'Work Tracking System'",
+        "defaultValue": "Work Tracking Systems",
+        "value": ""
+      },
+      {
+        "id": 13,
+        "key": "blocked",
+        "description": "Indication for 'Work Items' that don't progress anymore. Alternatives may be 'On Hold' or 'Stopped'",
+        "defaultValue": "Blocked",
+        "value": ""
+      },
+      {
+        "id": 14,
+        "key": "serviceLevelExpectation",
+        "description": "A forecast of how long it should take a work item to flow from started to finished. Alternatives may be 'Target' or 'Goal'",
+        "defaultValue": "Service Level Expectation",
+        "value": ""
+      },
+      {
+        "id": 15,
+        "key": "sle",
+        "description": "Abbreviation of 'Service Level Expectation'",
+        "defaultValue": "SLE",
+        "value": ""
+      },
+      {
+        "id": 16,
+        "key": "team",
+        "description": "The smallest groups in the organization that deliver 'Work Items'. Alternatives may be 'Squad' or 'Crew'",
+        "defaultValue": "Team",
+        "value": ""
+      },
+      {
+        "id": 17,
+        "key": "teams",
+        "description": "Plural form of 'Team'",
+        "defaultValue": "Teams",
+        "value": ""
+      },
+      {
+        "id": 18,
+        "key": "portfolio",
+        "description": "Collection of work items that belong together and are managed as a unit. Alternatives may be 'Project' or 'Initiative'",
+        "defaultValue": "Portfolio",
+        "value": ""
+      },
+      {
+        "id": 19,
+        "key": "portfolios",
+        "description": "Plural form of 'Portfolio'",
+        "defaultValue": "Portfolios",
+        "value": ""
+      },
+      {
+        "id": 20,
+        "key": "delivery",
+        "description": "A delivery marks a specific point in time where a defined list of Features should be done. Alternative names may be Milestone, Checkpoint, etc.",
+        "defaultValue": "Delivery",
+        "value": ""
+      },
+      {
+        "id": 21,
+        "key": "deliveries",
+        "description": "Plural form of 'Delivery'",
+        "defaultValue": "Deliveries",
+        "value": ""
+      },
+      {
+        "id": 22,
+        "key": "refinement",
+        "description": "The stage where 'Work Items' are clarified and prepared before work on them starts. Alternatives may be 'Grooming' or 'Preparation'",
+        "defaultValue": "Refinement",
+        "value": ""
+      },
+      {
+        "id": 23,
+        "key": "refinements",
+        "description": "Plural form of 'Refinement'",
+        "defaultValue": "Refinements",
+        "value": ""
+      }
+    ]
+  },
+  "reportsTab": {
+    "Then & Now — engagement start": [
+      "Then 31 Aug – 13 Sep 2026 · Now 7 Oct – 20 Oct 2026",
+      "Summary Then: 31 Aug – 13 Sep 2026 · 14 days · 23 Work Items closed",
+      "Summary Now: 7 Oct – 20 Oct 2026 · 14 days · 18 Work Items closed",
+      "Summary Change: ✔ Improved: WIP, Total Work Item Age",
+      "Summary Change: ✘ Got worse: Cycle Time, Throughput",
+      "Cycle Time 95th: Then 2 days · Now 4 days · ▲ 2 days (+100 %)",
+      "Cycle Time 85th: Then 2 days · Now 2 days · No change",
+      "Cycle Time 70th: Then 1 day · Now 1 day · No change",
+      "Cycle Time 50th: Then 1 day · Now 1 day · No change",
+      "Throughput Total: Then 23 Work Items · Now 18 Work Items",
+      "Throughput Per day: Then 1.64 per day · Now 1.29 per day · ▼ 0.35 per day (−21 %)",
+      "WIP Average: Then 1 · Now 0 · ▼ 1 (−100 %)",
+      "WIP Median: Then 0 · Now 0 · No change",
+      "WIP Min: Then 0 · Now 0 · No change",
+      "WIP Max: Then 3 · Now 1 · ▼ 2 (−67 %)",
+      "Total Work Item Age Average: Then 1 day · Now 1 day · No change",
+      "Total Work Item Age Median: Then 0 days · Now 0 days · No change",
+      "Total Work Item Age Min: Then 0 days · Now 0 days · No change",
+      "Total Work Item Age Max: Then 4 days · Now 3 days · ▼ 1 day (−25 %)"
+    ]
+  }
+}

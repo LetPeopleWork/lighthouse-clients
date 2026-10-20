@@ -13,17 +13,27 @@
     "answer": {
       "mustContain": [
         "Team Lightspeed — Then & Now — engagement start",
-        "Then 3 May – 31 Jul 2026 · Now 5 Jul – 2 Oct 2026",
+        "Then 31 Aug – 13 Sep 2026 · Now 7 Oct – 20 Oct 2026",
         "Read from Lighthouse on",
-        "21 days",
-        "12 days",
-        "▼ 9 days",
-        "−43 %",
-        "0.58 per day",
-        "0.72 per day",
+        "4 days",
+        "1.64 per day",
+        "1.29 per day",
+        "▼ 0.35 per day",
+        "−21 %",
+        "▼ 2",
+        "−67 %",
         "Data from Lighthouse by LetPeopleWork"
       ],
-      "mustNotContain": ["0.5777", "0.7222", "8.62", "610.4", "−9 days"],
+      "mustNotContain": [
+        "1.6428",
+        "1.2857",
+        "0.64",
+        "0.36",
+        "1.07",
+        "0.57",
+        "−0.35 per day",
+        "+0 %"
+      ],
       "checks": [
         "opens with the dated header: the report, its owner, both windows on one line and the day it was read",
         "puts the summary groups before the first metric",
@@ -47,8 +57,8 @@
     "answer": {
       "mustContain": [
         "Team Lightspeed — Then & Now — engagement start",
-        "−43 %",
-        "0.58 per day",
+        "−21 %",
+        "1.64 per day",
         "Data from Lighthouse by LetPeopleWork"
       ],
       "checks": [
@@ -108,7 +118,7 @@
     },
     "answer": {
       "mustContain": ["—", "No finished Work Items in Now"],
-      "mustNotContain": ["0.00 per day"],
+      "mustNotContain": ["null", "NaN"],
       "checks": [
         "every value Lighthouse has no number for is a dash with its reason beside it, never a 0"
       ]

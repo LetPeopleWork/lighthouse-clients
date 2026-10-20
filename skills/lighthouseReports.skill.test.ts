@@ -91,7 +91,7 @@ describe("the lighthouse-reports skill ships", () => {
 
   // @us-05 @slice-05 @error @contract-shape:unbounded-preservation
   // Cases wait outside the skill until it exists; once it does, none may be left behind or lose its fixture.
-  it.skip(`runs its eval cases from its own folder, each with its fixture (${pending})`, () => {
+  it("runs its eval cases from its own folder, each with its fixture", () => {
     const cases = JSON.parse(read(join(SKILL, "evals/cases.json")) || "[]") as {
       readonly fixture?: string;
     }[];

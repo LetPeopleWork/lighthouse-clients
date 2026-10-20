@@ -1,0 +1,229 @@
+{
+  "version": "v26.10.10.1",
+  "routes": {
+    "GET /api/v1/auth/mode": {
+      "mode": "Disabled",
+      "misconfigurationMessage": null
+    },
+    "GET /api/v1/portfolios": [],
+    "GET /api/v1/teams": [
+      {
+        "featureWip": 0,
+        "features": [],
+        "portfolios": [],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-07-23T00:00:00Z",
+        "throughputEndDate": "2026-10-20T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": true,
+        "name": "Gravity",
+        "id": 4,
+        "lastUpdated": "2026-10-20T15:58:06.9176676Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 0
+      },
+      {
+        "featureWip": 0,
+        "features": [],
+        "portfolios": [],
+        "workItemTypes": ["User Story", "Bug"],
+        "useFixedDatesForThroughput": false,
+        "throughputStartDate": "2026-07-23T00:00:00Z",
+        "throughputEndDate": "2026-10-20T00:00:00Z",
+        "hasThroughputBlackoutOverlap": false,
+        "hasForecastFilter": false,
+        "refinementConfigured": false,
+        "name": "Lightspeed",
+        "id": 5,
+        "lastUpdated": "2026-10-20T15:58:07.3128492Z",
+        "serviceLevelExpectationProbability": 85,
+        "serviceLevelExpectationRange": 7,
+        "systemWIPLimit": 0
+      }
+    ],
+    "GET /api/v1/teams/5": {
+      "featureWip": 0,
+      "features": [],
+      "portfolios": [],
+      "workItemTypes": ["User Story", "Bug"],
+      "useFixedDatesForThroughput": false,
+      "throughputStartDate": "2026-07-23T00:00:00Z",
+      "throughputEndDate": "2026-10-20T00:00:00Z",
+      "hasThroughputBlackoutOverlap": false,
+      "hasForecastFilter": false,
+      "refinementConfigured": false,
+      "name": "Lightspeed",
+      "id": 5,
+      "lastUpdated": "2026-10-20T15:58:07.3128492Z",
+      "serviceLevelExpectationProbability": 85,
+      "serviceLevelExpectationRange": 7,
+      "systemWIPLimit": 0
+    },
+    "GET /api/v1/terminology/all": [
+      {
+        "id": 1,
+        "key": "workItem",
+        "description": "Units of Value that move through your system and that your teams work on. Alternatives may be 'Story' or 'Issue'",
+        "defaultValue": "Work Item",
+        "value": ""
+      },
+      {
+        "id": 2,
+        "key": "workItems",
+        "description": "Plural form of 'Work Item'",
+        "defaultValue": "Work Items",
+        "value": ""
+      },
+      {
+        "id": 3,
+        "key": "feature",
+        "description": "Larger unit of work that contains multiple Work Items. Alternatives may be 'Epic' or 'Theme'",
+        "defaultValue": "Feature",
+        "value": ""
+      },
+      {
+        "id": 4,
+        "key": "features",
+        "description": "Plural form of 'Feature'",
+        "defaultValue": "Features",
+        "value": ""
+      },
+      {
+        "id": 5,
+        "key": "cycleTime",
+        "description": "The elapsed time between when a work item started and when a work item finished. Alternatives may be 'Lead Time' or 'Flow Time'",
+        "defaultValue": "Cycle Time",
+        "value": ""
+      },
+      {
+        "id": 6,
+        "key": "throughput",
+        "description": "The number of work items finished per unit of time. Alternatives may be 'Delivery Rate' or 'Flow Velocity'",
+        "defaultValue": "Throughput",
+        "value": ""
+      },
+      {
+        "id": 7,
+        "key": "workInProgress",
+        "description": "The number of work items started but not finished. Alternatives may be 'Flow Load' or 'Ongoing Stuff'",
+        "defaultValue": "Work In Progress",
+        "value": ""
+      },
+      {
+        "id": 8,
+        "key": "wip",
+        "description": "Abbreviation of 'Work In Progress'.",
+        "defaultValue": "WIP",
+        "value": ""
+      },
+      {
+        "id": 9,
+        "key": "workItemAge",
+        "description": "The elapsed time between when a work item started and the current date. Alternatives may be 'Age' or 'In Progress Time'",
+        "defaultValue": "Work Item Age",
+        "value": ""
+      },
+      {
+        "id": 10,
+        "key": "tag",
+        "description": "A user defined indication on your 'Work Items'. Alternatives may be 'Label' or 'Category'",
+        "defaultValue": "Tag",
+        "value": ""
+      },
+      {
+        "id": 11,
+        "key": "workTrackingSystem",
+        "description": "Generic name of the source of your data. Alternatives may be 'Jira Instance' or 'Azure DevOps Organization'",
+        "defaultValue": "Work Tracking System",
+        "value": ""
+      },
+      {
+        "id": 12,
+        "key": "workTrackingSystems",
+        "description": "Plural form of 'Work Tracking System'",
+        "defaultValue": "Work Tracking Systems",
+        "value": ""
+      },
+      {
+        "id": 13,
+        "key": "blocked",
+        "description": "Indication for 'Work Items' that don't progress anymore. Alternatives may be 'On Hold' or 'Stopped'",
+        "defaultValue": "Blocked",
+        "value": ""
+      },
+      {
+        "id": 14,
+        "key": "serviceLevelExpectation",
+        "description": "A forecast of how long it should take a work item to flow from started to finished. Alternatives may be 'Target' or 'Goal'",
+        "defaultValue": "Service Level Expectation",
+        "value": ""
+      },
+      {
+        "id": 15,
+        "key": "sle",
+        "description": "Abbreviation of 'Service Level Expectation'",
+        "defaultValue": "SLE",
+        "value": ""
+      },
+      {
+        "id": 16,
+        "key": "team",
+        "description": "The smallest groups in the organization that deliver 'Work Items'. Alternatives may be 'Squad' or 'Crew'",
+        "defaultValue": "Team",
+        "value": ""
+      },
+      {
+        "id": 17,
+        "key": "teams",
+        "description": "Plural form of 'Team'",
+        "defaultValue": "Teams",
+        "value": ""
+      },
+      {
+        "id": 18,
+        "key": "portfolio",
+        "description": "Collection of work items that belong together and are managed as a unit. Alternatives may be 'Project' or 'Initiative'",
+        "defaultValue": "Portfolio",
+        "value": ""
+      },
+      {
+        "id": 19,
+        "key": "portfolios",
+        "description": "Plural form of 'Portfolio'",
+        "defaultValue": "Portfolios",
+        "value": ""
+      },
+      {
+        "id": 20,
+        "key": "delivery",
+        "description": "A delivery marks a specific point in time where a defined list of Features should be done. Alternative names may be Milestone, Checkpoint, etc.",
+        "defaultValue": "Delivery",
+        "value": ""
+      },
+      {
+        "id": 21,
+        "key": "deliveries",
+        "description": "Plural form of 'Delivery'",
+        "defaultValue": "Deliveries",
+        "value": ""
+      },
+      {
+        "id": 22,
+        "key": "refinement",
+        "description": "The stage where 'Work Items' are clarified and prepared before work on them starts. Alternatives may be 'Grooming' or 'Preparation'",
+        "defaultValue": "Refinement",
+        "value": ""
+      },
+      {
+        "id": 23,
+        "key": "refinements",
+        "description": "Plural form of 'Refinement'",
+        "defaultValue": "Refinements",
+        "value": ""
+      }
+    ]
+  }
+}
