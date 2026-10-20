@@ -26,8 +26,6 @@ import {
 // that answers with the server's own words. lh passes every value on as Lighthouse sent it - it rounds, compares
 // and judges nothing - and its summary names the report, its owner and its two windows. It only ever reads.
 
-const pending = "Pending: lh reads reports (epic 6298, slice 04)";
-
 type Replies = NonNullable<
   NonNullable<Parameters<typeof aFakeLighthouse>[0]>["replies"]
 >;
@@ -199,7 +197,7 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
 
 describe("lh says why a report cannot be read", () => {
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.skip(`says the reader has no access to that Team (${pending})`, async () => {
+  it("says the reader has no access to that Team", async () => {
     const { run } = await lhAgainst({
       [`GET /teams/${LIGHTSPEED.id}/reports/${ENGAGEMENT_START.id}`]: {
         status: 403,
@@ -220,7 +218,7 @@ describe("lh says why a report cannot be read", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.skip(`says a report made by a newer version of Lighthouse can't be shown here (${pending})`, async () => {
+  it("says a report made by a newer version of Lighthouse can't be shown here", async () => {
     const { run } = await lhAgainst();
 
     const read = await run(
@@ -237,7 +235,7 @@ describe("lh says why a report cannot be read", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.skip(`says there is no such report (${pending})`, async () => {
+  it("says there is no such report", async () => {
     const { run } = await lhAgainst({
       [`GET /teams/${LIGHTSPEED.id}/reports/77`]: { status: 404 },
     });
@@ -249,11 +247,11 @@ describe("lh says why a report cannot be read", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.skip.each([
+  it.each([
     ["list", []],
     ["get", ["--id", String(ENGAGEMENT_START.id)]],
   ])(
-    `tells the reader to upgrade a Lighthouse without reports, and does not ask it, for report %s (${pending})`,
+    "tells the reader to upgrade a Lighthouse without reports, and does not ask it, for report %s",
     async (command, more) => {
       const { lighthouse, run } = await lhAgainst(
         {},

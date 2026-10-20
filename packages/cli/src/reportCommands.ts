@@ -4,6 +4,7 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type ReportOwnerKind,
+  readReportRefusal,
   readTerms,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -115,7 +116,8 @@ const readOwnerName = async (
   );
 };
 
-// Only the pretty view needs the owner's name, so --json and --toon ask Lighthouse for the reports alone.
+// The owner is named only once the report was read and only for the pretty view, so a refused read, --json and
+// --toon ask Lighthouse for nothing beyond the reports.
 const mapReportRead = async (
   client: ReportClient,
   owner: ReportOwner,
@@ -123,13 +125,16 @@ const mapReportRead = async (
   outputFormat: OutputFormat,
   render: ReportRenderer,
 ): Promise<CliCommandResult> => {
-  if (outputFormat !== "pretty") {
-    return mapApiResultToCliResult(await read, outputFormat);
+  const result = await read;
+  if (!result.ok) {
+    return getErrorResult(
+      await readReportRefusal(client, result.error, owner.kind),
+    );
   }
-  const [result, ownerName] = await Promise.all([
-    read,
-    readOwnerName(client, owner),
-  ]);
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(result, outputFormat);
+  }
+  const ownerName = await readOwnerName(client, owner);
   return mapApiResultToCliResult(result, outputFormat, (value) =>
     render(value, ownerName),
   );

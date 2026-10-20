@@ -1,4 +1,10 @@
-import type { Terms } from "./terminology";
+import type { LighthouseApiError } from "./index";
+import {
+  readTerms,
+  SEEDED_TERMS,
+  type Terms,
+  type TermsSource,
+} from "./terminology";
 import { dayOf, isDay, isRecord, textOf } from "./wireFacts";
 
 // The summary only says which report this is: its name, its owner and its windows, or how many reports a list
@@ -76,6 +82,9 @@ export const readReportList = (value: unknown): ReportListItem[] | null => {
   return items.every((item) => item !== null) ? items : null;
 };
 
+const ownerTerm = (kind: ReportOwnerKind, terms: Terms): string =>
+  kind === "team" ? terms.team : terms.portfolio;
+
 /** The owner as the instance names it, "Team Lightspeed", or by its id when its name could not be read. */
 export const describeReportOwner = (
   kind: ReportOwnerKind,
@@ -83,7 +92,7 @@ export const describeReportOwner = (
   owner: unknown,
   terms: Terms,
 ): string => {
-  const term = kind === "team" ? terms.team : terms.portfolio;
+  const term = ownerTerm(kind, terms);
   const name = isRecord(owner) ? textOf(owner.name) : undefined;
   return name === undefined ? `${term} [id: ${id}]` : `${term} ${name}`;
 };
@@ -129,3 +138,42 @@ export const describeReportListSummary = (
     `${owner} · ${describeReportCount(reports.length)}`,
     ...reports.map(describeReportListItem),
   ].join("\n");
+
+const FORBIDDEN = 403;
+const NOT_FOUND = 404;
+
+/**
+ * Why a report or a list could not be read, in words the reader can act on: the web's sentence where it has
+ * one. Any other refusal, the client's own "upgrade Lighthouse" among them, keeps its category and reason.
+ */
+export const describeReportRefusal = (
+  error: LighthouseApiError,
+  kind: ReportOwnerKind,
+  terms: Terms,
+): string => {
+  if (error.statusCode === FORBIDDEN) {
+    return `You have no access to that ${ownerTerm(kind, terms)}'s reports.`;
+  }
+  if (error.problemCode === "template-not-supported") {
+    return "This report was made by a newer version of Lighthouse and can't be shown here.";
+  }
+  if (error.statusCode === NOT_FOUND) {
+    return `There is no such report for that ${ownerTerm(kind, terms)}.`;
+  }
+  return `${error.category}: ${error.reason}`;
+};
+
+/**
+ * {@link describeReportRefusal} in the instance's own words. A refusal the client made before asking, as for a
+ * Lighthouse too old for reports, asks that Lighthouse nothing more, not even its words.
+ */
+export const readReportRefusal = async (
+  source: TermsSource,
+  error: LighthouseApiError,
+  kind: ReportOwnerKind,
+): Promise<string> =>
+  describeReportRefusal(
+    error,
+    kind,
+    error.statusCode === undefined ? SEEDED_TERMS : await readTerms(source),
+  );
