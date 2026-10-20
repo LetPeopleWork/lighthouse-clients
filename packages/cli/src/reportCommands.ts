@@ -1,7 +1,10 @@
-import type {
-  CliConnection,
-  LighthouseApiResult,
-  LighthouseClient,
+import {
+  type CliConnection,
+  describeReportOwner,
+  type LighthouseApiResult,
+  type LighthouseClient,
+  type ReportOwnerKind,
+  readTerms,
 } from "@letpeoplework/lighthouse-client";
 import {
   type CliCommandResult,
@@ -11,10 +14,21 @@ import {
   mapApiResultToCliResult,
 } from "./commandResult";
 import type { OutputFormat } from "./output";
+import {
+  type ReportRenderer,
+  renderReport,
+  renderReportList,
+} from "./reportOutput";
 
 type ReportClient = Pick<
   LighthouseClient,
-  "getTeamReport" | "getPortfolioReport"
+  | "getTeamReports"
+  | "getTeamReport"
+  | "getPortfolioReports"
+  | "getPortfolioReport"
+  | "getTeam"
+  | "getPortfolio"
+  | "getTerminology"
 >;
 
 type ReportCommandDependencies = {
@@ -29,7 +43,7 @@ type ReportCommand = (
 ) => Promise<CliCommandResult>;
 
 type ReportOwner = {
-  readonly kind: "Team" | "Portfolio";
+  readonly kind: ReportOwnerKind;
   readonly id: number;
 };
 
@@ -68,24 +82,77 @@ const parseOwner = (
     );
   }
   if (teamId !== undefined) {
-    return { kind: "Team", id: teamId };
+    return { kind: "team", id: teamId };
   }
   if (portfolioId !== undefined) {
-    return { kind: "Portfolio", id: portfolioId };
+    return { kind: "portfolio", id: portfolioId };
   }
   return getErrorResult(
     `Missing --team-id or --portfolio-id for report ${command}.`,
   );
 };
 
-const readReport = (
+const UNREAD = { ok: false as const, error: null };
+
+// The owner's name is only for the heading, so an owner that cannot be read is named by its id instead.
+const readOwnerName = async (
   client: ReportClient,
   owner: ReportOwner,
-  reportId: number,
-): Promise<LighthouseApiResult<unknown>> =>
-  owner.kind === "Team"
-    ? client.getTeamReport(owner.id, reportId)
-    : client.getPortfolioReport(owner.id, reportId);
+): Promise<string> => {
+  const read =
+    owner.kind === "team"
+      ? client.getTeam(owner.id)
+      : client.getPortfolio(owner.id);
+  const [terms, named] = await Promise.all([
+    readTerms(client),
+    read.catch(() => UNREAD),
+  ]);
+  return describeReportOwner(
+    owner.kind,
+    owner.id,
+    named.ok ? named.value : undefined,
+    terms,
+  );
+};
+
+// Only the pretty view needs the owner's name, so --json and --toon ask Lighthouse for the reports alone.
+const mapReportRead = async (
+  client: ReportClient,
+  owner: ReportOwner,
+  read: Promise<LighthouseApiResult<unknown>>,
+  outputFormat: OutputFormat,
+  render: ReportRenderer,
+): Promise<CliCommandResult> => {
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(await read, outputFormat);
+  }
+  const [result, ownerName] = await Promise.all([
+    read,
+    readOwnerName(client, owner),
+  ]);
+  return mapApiResultToCliResult(result, outputFormat, (value) =>
+    render(value, ownerName),
+  );
+};
+
+const runReportList: ReportCommand = async (
+  args,
+  outputFormat,
+  connection,
+  dependencies,
+) => {
+  const owner = parseOwner(args, "list");
+  if (isCliCommandResult(owner)) {
+    return owner;
+  }
+
+  const client = dependencies.createClient(connection);
+  const read =
+    owner.kind === "team"
+      ? client.getTeamReports(owner.id)
+      : client.getPortfolioReports(owner.id);
+  return mapReportRead(client, owner, read, outputFormat, renderReportList);
+};
 
 const runReportGet: ReportCommand = async (
   args,
@@ -106,13 +173,15 @@ const runReportGet: ReportCommand = async (
   }
 
   const client = dependencies.createClient(connection);
-  return mapApiResultToCliResult(
-    await readReport(client, owner, reportId),
-    outputFormat,
-  );
+  const read =
+    owner.kind === "team"
+      ? client.getTeamReport(owner.id, reportId)
+      : client.getPortfolioReport(owner.id, reportId);
+  return mapReportRead(client, owner, read, outputFormat, renderReport);
 };
 
 const REPORT_COMMANDS: ReadonlyMap<string, ReportCommand> = new Map([
+  ["list", runReportList],
   ["get", runReportGet],
 ]);
 

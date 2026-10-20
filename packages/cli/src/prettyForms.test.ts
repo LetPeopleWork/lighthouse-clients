@@ -25,11 +25,15 @@ import {
   OCEAN_EXPLORERS_RANGE,
   oceanExplorersMetrics,
 } from "../../../test-support/metricsAnswers";
+import {
+  LIGHTSPEEDS_ENGAGEMENT_START,
+  LIGHTSPEEDS_REPORTS,
+} from "../../../test-support/reportAnswers";
 import { aLighthouse } from "../test-support/cliHarness";
 import { formatPayload } from "./output";
 
 // Every `lh` form that answers a question or confirms a change has its own view,
-// and every form is accounted for. The list below is the contract: 44 forms change, 10 stay as they are on
+// and every form is accounted for. The list below is the contract: 46 forms change, 10 stay as they are on
 // purpose, each with its reason. The first describe is a guard: a new subcommand or metric that nobody placed on
 // either list fails it.
 
@@ -170,9 +174,14 @@ const CHANGING_FORMS: readonly {
   { slice: "09", args: ["worktracking", "get", "--id", "1"] },
   { slice: "09", args: ["version", "get"] },
   { slice: "09", args: ["health", "check"] },
+  { slice: "reports", args: ["report", "list", "--team-id", "2"] },
+  {
+    slice: "reports",
+    args: ["report", "get", "--team-id", "2", "--id", "1"],
+  },
 ];
 
-// The standalone health sentence is the 44th form: same command, another connection.
+// The standalone health sentence is the 46th form: same command, another connection.
 const STANDALONE_HEALTH_CHECK = { slice: "09", args: ["health", "check"] };
 
 const UNCHANGED_ON_PURPOSE: Readonly<Record<string, string>> = {
@@ -182,8 +191,6 @@ const UNCHANGED_ON_PURPOSE: Readonly<Record<string, string>> = {
     "already a one-line confirmation (story 6156); the style the writes copy",
   "refinement comment": "already a one-line confirmation (story 6156)",
   "refinement take-back": "already a one-line confirmation (story 6156)",
-  "report get":
-    "the generic view of Lighthouse's answer until the report's own summary is built",
   "connection connect": "a dialogue, not an answer",
   "connection disconnect": "already a sentence",
   "connection status": "already Label: value lines",
@@ -226,6 +233,8 @@ const everyRead = () => ({
   listWorkTrackingConnections: ok(threeConnections()),
   getWorkTrackingConnection: ok(aConnection()),
   getVersion: ok("v26.10.3.6"),
+  getTeamReports: ok(JSON.parse(LIGHTSPEEDS_REPORTS) as unknown),
+  getTeamReport: ok(JSON.parse(LIGHTSPEEDS_ENGAGEMENT_START) as unknown),
 });
 
 // What the form printed before it had a view of its own: the generic view of the facts `--json` hands over, or today's
@@ -270,7 +279,7 @@ describe("every lh form is accounted for", () => {
     ]);
     expect(offered.size).toBeGreaterThan(20);
     expect([...offered].filter((form) => !accountedFor.has(form))).toEqual([]);
-    expect(CHANGING_FORMS.length + 1).toBe(44);
+    expect(CHANGING_FORMS.length + 1).toBe(46);
   });
 
   it("gives every metric name lh accepts its own form", async () => {
@@ -300,6 +309,7 @@ const DELIVERED_SLICES: ReadonlySet<string> = new Set([
   "09",
   "sle-risk",
   "process-behaviour-charts",
+  "reports",
 ]);
 const DELIVERED_FORMS = CHANGING_FORMS.filter((form) =>
   DELIVERED_SLICES.has(form.slice),
@@ -328,7 +338,7 @@ describe("every converted lh form has a view of its own", () => {
     noLongerTheGenericView,
   );
 
-  // The 44th form
+  // The 46th form
   it("slice 09: `lh health check` on a standalone Lighthouse no longer prints today's line", async () => {
     const lighthouse = aLighthouse(everyRead(), {
       connection: { mode: "standalone" },

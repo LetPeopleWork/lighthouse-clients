@@ -260,6 +260,7 @@ lh portfolio list --json
 lh metrics team --id <id> --metrics throughput,cycleTime,wip --json
 lh forecast manual --team-id <id> --remaining <n> --target-date <date> --json
 lh refinement get --team-id <id> --json
+lh report list --team-id <id> --json
 lh report get --team-id <id> --id <report id> --json
 lh health check
 ```

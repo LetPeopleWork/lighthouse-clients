@@ -6,4 +6,4 @@
 "@letpeoplework/lighthouse-mcp-http": minor
 ---
 
-Read a Team's or Portfolio's reports with `lh report` and the MCP report tools. `lh report get --team-id <id> --id <report id> --json` (or `--portfolio-id`) hands over the report exactly as Lighthouse answers it, every value unrounded. Needs a Lighthouse newer than v26.10.10.1.
+Read a Team's or Portfolio's reports with `lh report` and the MCP report tools. `lh report list --team-id <id>` names the owner's reports, and `lh report get --team-id <id> --id <report id>` (or `--portfolio-id`) reads one. By default `lh` names the report, its owner and its Then and Now windows, or counts the list; `--json` and `--toon` hand over the report exactly as Lighthouse answers it, every value unrounded and a missing value with its reason. Needs a Lighthouse newer than v26.10.10.1.

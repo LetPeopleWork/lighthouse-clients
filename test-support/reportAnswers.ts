@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { aPortfolio, aTeam } from "./lighthouseAnswers";
 
 /**
  * Lighthouse's answers to the report reads, as text exactly as the server sends them, so a test can prove a
@@ -46,8 +47,10 @@ export const MADE_BY_A_NEWER_VERSION = {
   },
 } as const;
 
-/** The routes the fake Lighthouse answers for both owners' reports, ahead of any a test adds. */
+/** The routes the fake Lighthouse answers for both owners and their reports, ahead of any a test adds. */
 export const theReportReads = () => ({
+  [`GET /teams/${LIGHTSPEED.id}`]: { status: 200, body: aTeam(LIGHTSPEED) },
+  [`GET /portfolios/${APOLLO.id}`]: { status: 200, body: aPortfolio(APOLLO) },
   [`GET /teams/${LIGHTSPEED.id}/reports`]: {
     status: 200,
     text: LIGHTSPEEDS_REPORTS,

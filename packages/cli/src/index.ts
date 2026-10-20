@@ -111,7 +111,9 @@ type CliDomainClientLike = Pick<
   | "addRefinementComment"
   | "takeBackRefinementVote"
   | "getRefinementLog"
+  | "getTeamReports"
   | "getTeamReport"
+  | "getPortfolioReports"
   | "getPortfolioReport"
   | "getTerminology"
   | "listPortfolios"
@@ -1247,10 +1249,13 @@ const getRefinementGroupHelpText = (): string =>
 const getReportGroupHelpText = (): string =>
   [
     "Usage:",
+    "  lh report list (--team-id <id> | --portfolio-id <id>)",
     "  lh report get (--team-id <id> | --portfolio-id <id>) --id <report id>",
     "",
-    "  get reads one of a Team's or a Portfolio's reports. --json and --toon return",
-    "  Lighthouse's answer unchanged. Requires Lighthouse newer than v26.10.10.1.",
+    "  list names a Team's or a Portfolio's reports; get reads one of them. The default",
+    "  view names the report, its owner and its windows, or counts the list. --json and",
+    "  --toon return Lighthouse's answer unchanged, every value as it was sent.",
+    "  Requires Lighthouse newer than v26.10.10.1.",
   ].join("\n");
 
 const getHealthGroupHelpText = (): string =>

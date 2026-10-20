@@ -102,7 +102,7 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
 
   // @driving_port @real-io @us-04 @slice-04 @edge @contract-shape:unbounded-preservation
   // A value Lighthouse has no number for stays absent with its reason; lh never makes it a 0.
-  it.skip(`passes on a Portfolio's report with its missing values and their reason (${pending})`, async () => {
+  it("passes on a Portfolio's report with its missing values and their reason", async () => {
     const { run } = await lhAgainst();
 
     const read = await run(
@@ -124,11 +124,11 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip.each([
+  it.each([
     ["a Team", ofLightspeed, LIGHTSPEEDS_REPORTS],
     ["a Portfolio", ofApollo, APOLLOS_REPORTS],
   ])(
-    `lists the reports of %s exactly as Lighthouse sent them (${pending})`,
+    "lists the reports of %s exactly as Lighthouse sent them",
     async (_owner, owner, answer) => {
       const { run } = await lhAgainst();
 
@@ -142,7 +142,7 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
   );
 
   // @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip(`sums a report up by its name, its owner and its two windows (${pending})`, async () => {
+  it("sums a report up by its name, its owner and its two windows", async () => {
     const { run } = await lhAgainst();
 
     const read = await run(
@@ -162,7 +162,7 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip(`sums a list up by how many reports the owner has (${pending})`, async () => {
+  it("sums a list up by how many reports the owner has", async () => {
     const { run } = await lhAgainst();
 
     const listed = await run("report", "list", ...ofLightspeed, "--pretty");
@@ -175,7 +175,7 @@ describe("lh reads a Team's and a Portfolio's reports", () => {
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
   // Reading never changes anything on the server.
-  it.skip(`only ever reads (${pending})`, async () => {
+  it("only ever reads", async () => {
     const { lighthouse, run } = await lhAgainst();
 
     await run("report", "list", ...ofLightspeed, "--json");
