@@ -55,7 +55,8 @@ const anAssistantReading = async (
   options: {
     readonly replies?: ReportReplies;
     readonly version?: string;
-    readonly saidYes?: boolean;
+    // Left out, the reader set DO_NOT_TRACK, so a scenario counts nothing unless it asks for consent.
+    readonly consent?: "said yes" | "never asked";
   } = {},
 ) => {
   const lighthouse = await aLighthouseWithReports({
@@ -63,7 +64,7 @@ const anAssistantReading = async (
     version: options.version,
   });
   const laptop = await connectedTo(aMachine(), lighthouse.url);
-  if (options.saidYes === true) {
+  if (options.consent === "said yes") {
     await anEarlierAnswer(
       laptop,
       lighthouse.url,
@@ -74,7 +75,7 @@ const anAssistantReading = async (
     HOME: laptop.home,
     LIGHTHOUSE_CLI_CONFIG_PATH: laptop.configPath,
     LIGHTHOUSE_URL: lighthouse.url,
-    ...(options.saidYes === true ? {} : { DO_NOT_TRACK: "1" }),
+    ...(options.consent === undefined ? { DO_NOT_TRACK: "1" } : {}),
   });
   if (server === null) {
     throw new Error("the local server resolved no Lighthouse");
@@ -262,7 +263,9 @@ describe("an assistant is told why a report cannot be read", () => {
 describe("reading a report through the MCP server counts as the report being opened", () => {
   // @driving_port @real-io @us-04 @slice-04 @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:bounded-change
   it(`reports ReportOpened with the report's type and source Mcp, once per read`, async () => {
-    const { client, lighthouse } = await anAssistantReading({ saidYes: true });
+    const { client, lighthouse } = await anAssistantReading({
+      consent: "said yes",
+    });
 
     await calling(client, "lighthouse_team_report_get", {
       id: LIGHTSPEED.id,
@@ -282,12 +285,40 @@ describe("reading a report through the MCP server counts as the report being ope
 
   // @driving_port @real-io @us-04 @slice-04 @error @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:unbounded-preservation
   it("reports nothing for a list, or a report of a type it cannot name", async () => {
-    const { client, lighthouse } = await anAssistantReading({ saidYes: true });
+    const { client, lighthouse } = await anAssistantReading({
+      consent: "said yes",
+    });
 
     await calling(client, "lighthouse_team_report_list", { id: LIGHTSPEED.id });
     await calling(client, "lighthouse_team_report_get", {
       id: LIGHTSPEED.id,
       reportId: A_LATER_TYPE.id,
+    });
+    await pastTheSendBudget();
+
+    expect(lighthouse.handedIn()).toEqual([]);
+  });
+
+  // @driving_port @real-io @us-04 @slice-04 @error @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:unbounded-preservation
+  it.each<[string, Parameters<typeof anAssistantReading>[0]]>([
+    ["a reader who was never asked", { consent: "never asked" }],
+    [
+      "a report the reader has no access to",
+      {
+        consent: "said yes",
+        replies: {
+          [`GET /teams/${LIGHTSPEED.id}/reports/${ENGAGEMENT_START.id}`]: {
+            status: 403,
+          },
+        },
+      },
+    ],
+  ])("reports nothing for %s", async (_what, options) => {
+    const { client, lighthouse } = await anAssistantReading(options);
+
+    await calling(client, "lighthouse_team_report_get", {
+      id: LIGHTSPEED.id,
+      reportId: ENGAGEMENT_START.id,
     });
     await pastTheSendBudget();
 
