@@ -77,7 +77,7 @@ const listDescription = (kind: ReportOwnerKind) =>
   `List the reports a ${kind} holds by ${kind} ID: each report's id, name, type (templateKey) and when it was created. ${HOW_THE_ANSWER_READS} names the ${kind} and counts its reports in the instance's terminology. ${HOW_LIGHTHOUSE_SHOWS_IT} ${NEEDS_A_SERVER}`;
 
 const getDescription = (kind: ReportOwnerKind) =>
-  `Get one of a ${kind}'s reports by ${kind} ID and reportId, exactly as Lighthouse froze it: its windows and every value, a missing value with its reason. ${HOW_LIGHTHOUSE_SHOWS_IT} ${HOW_THE_ANSWER_READS} names the report, its ${kind} and its Then and Now windows. ${NEEDS_A_SERVER}`;
+  `Get one of a ${kind}'s reports by ${kind} ID and reportId, exactly as Lighthouse answers it: its Then side as Lighthouse froze it, its Now side read afresh up to today, and every value, a missing value with its reason. ${HOW_LIGHTHOUSE_SHOWS_IT} ${HOW_THE_ANSWER_READS} names the report, its ${kind} and its Then and Now windows. ${NEEDS_A_SERVER}`;
 
 export const reportToolDefinitions = [
   {
