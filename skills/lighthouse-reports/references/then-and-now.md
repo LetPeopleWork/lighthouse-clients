@@ -187,12 +187,12 @@ of its lines got worse. When no metric is in any group, the summary's change rea
 ## The layout
 
 The page follows the printed report from top to bottom. The same order serves a dashboard (one card per block) and
-a document (one table per block). A Then & Now report read on 30 Oct 2026:
+a document (one table per block). A Then & Now report read on 2 Oct 2026, so its Now ends that day:
 
 ```text
 Team Lightspeed — Then & Now — engagement start
 Then 3 May – 31 Jul 2026 · Now 5 Jul – 2 Oct 2026
-Read from Lighthouse on 30 Oct 2026
+Read from Lighthouse on 2 Oct 2026
 
 Summary
            Then                            Now
@@ -234,7 +234,7 @@ Data from Lighthouse by LetPeopleWork
    engagement start".
 2. **Both windows on one line**, "Then {days} · Now {days}", each written as in the summary's window line, without
    its length.
-3. **The day it was read**: "Read from Lighthouse on {the day you read the report}", written "30 Oct 2026". Working
+3. **The day it was read**: "Read from Lighthouse on {the day you read the report}", written "2 Oct 2026". Working
    from a PDF or pasted values instead, say that here: "From the report PDF you shared", "From the values you
    pasted".
 4. **The summary**, as the section above describes it.

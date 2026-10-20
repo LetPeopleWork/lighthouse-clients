@@ -163,7 +163,7 @@ Add `--json` to every command whose output you read.
 | `lh refinement comment --team-id <id> --work-item <ref> --text <text>` | Only after the user confirmed the comment. |
 | `lh refinement take-back --team-id <id> --work-item <ref>` | Only when the user asks to take back their vote. |
 | `lh report list --team-id <id>` | A Team's saved reports; `--portfolio-id <id>` for a Portfolio's. |
-| `lh report get --team-id <id> --id <report id>` | One saved report's raw values (`--portfolio-id` for a Portfolio's). Lay it out with the lighthouse-reports skill. |
+| `lh report get --team-id <id> --id <report id>` | One saved report: by default a summary naming it, its owner and its windows; `--json` for its raw values (`--portfolio-id` for a Portfolio's). Lay it out with the lighthouse-reports skill. |
 | `lh health check` | Whether Lighthouse is reachable. |
 | `lh version get` | Which Lighthouse version runs. |
 | `lh config output` | Shows the stored output format; `lh config output set --format json` stores one. |
