@@ -1412,6 +1412,21 @@ export type LighthouseClient = {
     workItem: string,
     options?: RefinementReadOptions,
   ) => Promise<LighthouseApiResult<SizingLog>>;
+  /** A report list or a report exactly as Lighthouse answers it, so nothing on the way rounds or judges a value. */
+  readonly getTeamReports: (
+    teamId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getTeamReport: (
+    teamId: number,
+    reportId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioReports: (
+    portfolioId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
+  readonly getPortfolioReport: (
+    portfolioId: number,
+    reportId: number,
+  ) => Promise<LighthouseApiResult<unknown>>;
   readonly getTerminology: () => Promise<
     LighthouseApiResult<readonly TerminologyEntry[]>
   >;
@@ -2190,6 +2205,7 @@ export const FEATURE_REQUIRES_SERVER_NEWER_THAN = {
   // Which Work Items are stale rides on the WIP read as two extra fields. Nothing refuses on this entry: an
   // older server answers the read without them, and the clients say it does not tell which are stale.
   staleness: "v26.10.16.6",
+  reports: "v26.10.10.1",
 } as const;
 
 type GatedFeature = keyof typeof FEATURE_REQUIRES_SERVER_NEWER_THAN;
@@ -2292,6 +2308,12 @@ export const createLighthouseClient = (
       },
     };
   };
+
+  const readReports = async (
+    route: string,
+  ): Promise<LighthouseApiResult<unknown>> =>
+    (await ensureServerSupports("reports")) ??
+    requestJson<unknown>(configuration, dependencies, route, { method: "GET" });
 
   return {
     checkConnectivity: async () => {
@@ -2478,6 +2500,14 @@ export const createLighthouseClient = (
         { method: "GET", headers: voterKeyHeaders(options?.voterKey) },
       );
     },
+    getTeamReports: async (teamId: number) =>
+      readReports(`/v1/teams/${teamId}/reports`),
+    getTeamReport: async (teamId: number, reportId: number) =>
+      readReports(`/v1/teams/${teamId}/reports/${reportId}`),
+    getPortfolioReports: async (portfolioId: number) =>
+      readReports(`/v1/portfolios/${portfolioId}/reports`),
+    getPortfolioReport: async (portfolioId: number, reportId: number) =>
+      readReports(`/v1/portfolios/${portfolioId}/reports/${reportId}`),
     getTerminology: async () =>
       requestJson<readonly TerminologyEntry[]>(
         configuration,

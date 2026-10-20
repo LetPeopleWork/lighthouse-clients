@@ -64,6 +64,7 @@ import {
   findRefinementCommand,
   type VoterDependencies,
 } from "./refinementCommands";
+import { findReportCommand } from "./reportCommands";
 import {
   describeUsageDataOff,
   describeUsageDataOn,
@@ -110,6 +111,8 @@ type CliDomainClientLike = Pick<
   | "addRefinementComment"
   | "takeBackRefinementVote"
   | "getRefinementLog"
+  | "getTeamReport"
+  | "getPortfolioReport"
   | "getTerminology"
   | "listPortfolios"
   | "getPortfolio"
@@ -1241,6 +1244,15 @@ const getRefinementGroupHelpText = (): string =>
     "  from the client that cast it. Requires Lighthouse newer than v26.10.3.6.",
   ].join("\n");
 
+const getReportGroupHelpText = (): string =>
+  [
+    "Usage:",
+    "  lh report get (--team-id <id> | --portfolio-id <id>) --id <report id>",
+    "",
+    "  get reads one of a Team's or a Portfolio's reports. --json and --toon return",
+    "  Lighthouse's answer unchanged. Requires Lighthouse newer than v26.10.10.1.",
+  ].join("\n");
+
 const getHealthGroupHelpText = (): string =>
   ["Usage:", "  lh health check"].join("\n");
 
@@ -1269,6 +1281,7 @@ const getUsageText = async (
     "  worktracking",
     "  feature",
     "  refinement",
+    "  report",
     "  config",
     "  health",
     "  version",
@@ -2902,6 +2915,33 @@ const runRefinementGroup = async (
   return command(args, outputFormat, connectionOrError, dependencies);
 };
 
+const runReportGroup = async (
+  action: string | undefined,
+  args: readonly string[],
+  outputFormat: OutputFormat,
+  dependencies: RunCliCommandDependencies,
+): Promise<CliCommandResult> => {
+  if (action === undefined) {
+    return getSuccessResult(getReportGroupHelpText());
+  }
+
+  const command = findReportCommand(action);
+  if (command === undefined) {
+    return getUnknownSubcommandResult(
+      getReportGroupHelpText(),
+      "report",
+      action,
+    );
+  }
+
+  const connectionOrError = await requireConnection(dependencies);
+  if (isCliCommandResult(connectionOrError)) {
+    return connectionOrError;
+  }
+
+  return command(args, outputFormat, connectionOrError, dependencies);
+};
+
 const runHealthGroup = async (
   action: string | undefined,
   outputFormat: OutputFormat,
@@ -3024,6 +3064,10 @@ export const runCliCommand = async (
 
   if (scope === "refinement") {
     return runRefinementGroup(action, args, outputFormat, dependencies);
+  }
+
+  if (scope === "report") {
+    return runReportGroup(action, args, outputFormat, dependencies);
   }
 
   if (scope === "config") {

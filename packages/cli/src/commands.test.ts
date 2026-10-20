@@ -37,6 +37,8 @@ const getDefaultMockClient = (): MockClient => ({
   addRefinementComment: notStubbed("addRefinementComment"),
   takeBackRefinementVote: notStubbed("takeBackRefinementVote"),
   getRefinementLog: notStubbed("getRefinementLog"),
+  getTeamReport: notStubbed("getTeamReport"),
+  getPortfolioReport: notStubbed("getPortfolioReport"),
   getTerminology: notStubbed("getTerminology"),
   checkConnectivity: async () => ({
     category: "success",

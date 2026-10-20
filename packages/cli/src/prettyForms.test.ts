@@ -182,6 +182,8 @@ const UNCHANGED_ON_PURPOSE: Readonly<Record<string, string>> = {
     "already a one-line confirmation (story 6156); the style the writes copy",
   "refinement comment": "already a one-line confirmation (story 6156)",
   "refinement take-back": "already a one-line confirmation (story 6156)",
+  "report get":
+    "the generic view of Lighthouse's answer until the report's own summary is built",
   "connection connect": "a dialogue, not an answer",
   "connection disconnect": "already a sentence",
   "connection status": "already Label: value lines",

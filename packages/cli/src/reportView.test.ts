@@ -79,7 +79,7 @@ const namesTheWindow = (said: string, start: string, end: string) => {
 
 describe("lh reads a Team's and a Portfolio's reports", () => {
   // @walking_skeleton @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip(`passes on a Team's report exactly as Lighthouse sent it (${pending})`, async () => {
+  it("passes on a Team's report exactly as Lighthouse sent it", async () => {
     const { run } = await lhAgainst();
 
     const read = await run(
@@ -290,7 +290,7 @@ describe("lh says why a report cannot be read", () => {
   );
 
   // @us-04 @slice-04 @contract-shape:pure-function
-  it.skip(`needs a Lighthouse newer than the last release without report reads (${pending})`, () => {
+  it("needs a Lighthouse newer than the last release without report reads", () => {
     expect(
       (FEATURE_REQUIRES_SERVER_NEWER_THAN as Readonly<Record<string, string>>)
         .reports,
