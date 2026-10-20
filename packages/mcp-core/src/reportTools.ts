@@ -9,6 +9,7 @@ import {
   readReportList,
   readReportRefusal,
   readTerms,
+  reportOpenedOccurrencesOf,
 } from "@letpeoplework/lighthouse-client";
 import { z } from "zod";
 import {
@@ -18,6 +19,7 @@ import {
   type McpToolResult,
   withSummaryBlock,
 } from "./toolResult";
+import { type CountedToolResult, countedToolResult } from "./usageDataPort";
 
 // A report's values are Lighthouse's answer handed over whole, so the summary sits in a second block rather than
 // inside the report: an assistant reading the first block reads exactly what the server sent.
@@ -45,7 +47,7 @@ export type ReportToolClient = Pick<
 type ReportTool = (
   argumentsPayload: unknown,
   client: ReportToolClient,
-) => Promise<McpToolResult>;
+) => Promise<McpToolResult | CountedToolResult>;
 
 const HOW_LIGHTHOUSE_SHOWS_IT =
   "Read the lighthouse-reports skill for how Lighthouse shows these values, and quote them as they come.";
@@ -172,10 +174,9 @@ const answerReportRead = async (
   client: ReportToolClient,
   kind: ReportOwnerKind,
   id: number,
-  read: Promise<LighthouseApiResult<unknown>>,
+  result: LighthouseApiResult<unknown>,
   answer: { readonly label: string; readonly summarise: Summarise },
 ): Promise<McpToolResult> => {
-  const result = await read;
   if (!result.ok) {
     return getErrorToolResult(
       `${answer.label}: ${await readReportRefusal(client, result.error, kind)}`,
@@ -202,7 +203,7 @@ const reportList =
       kind === "team"
         ? client.getTeamReports(id)
         : client.getPortfolioReports(id);
-    return answerReportRead(client, kind, id, read, {
+    return answerReportRead(client, kind, id, await read, {
       label: LIST_LABEL,
       summarise: summariseReportList,
     });
@@ -223,10 +224,12 @@ const reportGet =
       kind === "team"
         ? client.getTeamReport(id, reportId)
         : client.getPortfolioReport(id, reportId);
-    return answerReportRead(client, kind, id, read, {
+    const result = await read;
+    const answered = await answerReportRead(client, kind, id, result, {
       label: GET_LABEL,
       summarise: summariseReport,
     });
+    return countedToolResult(answered, reportOpenedOccurrencesOf(result));
   };
 
 const REPORT_TOOLS: ReadonlyMap<string, ReportTool> = new Map([

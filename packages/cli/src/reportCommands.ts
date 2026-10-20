@@ -6,6 +6,7 @@ import {
   type ReportOwnerKind,
   readReportRefusal,
   readTerms,
+  reportOpenedOccurrencesOf,
 } from "@letpeoplework/lighthouse-client";
 import {
   type CliCommandResult,
@@ -13,6 +14,7 @@ import {
   getOptionValue,
   isCliCommandResult,
   mapApiResultToCliResult,
+  withUsage,
 } from "./commandResult";
 import type { OutputFormat } from "./output";
 import {
@@ -118,14 +120,13 @@ const readOwnerName = async (
 
 // The owner is named only once the report was read and only for the pretty view, so a refused read, --json and
 // --toon ask Lighthouse for nothing beyond the reports.
-const mapReportRead = async (
+const printReportRead = async (
   client: ReportClient,
   owner: ReportOwner,
-  read: Promise<LighthouseApiResult<unknown>>,
+  result: LighthouseApiResult<unknown>,
   outputFormat: OutputFormat,
   render: ReportRenderer,
 ): Promise<CliCommandResult> => {
-  const result = await read;
   if (!result.ok) {
     return getErrorResult(
       await readReportRefusal(client, result.error, owner.kind),
@@ -156,7 +157,13 @@ const runReportList: ReportCommand = async (
     owner.kind === "team"
       ? client.getTeamReports(owner.id)
       : client.getPortfolioReports(owner.id);
-  return mapReportRead(client, owner, read, outputFormat, renderReportList);
+  return printReportRead(
+    client,
+    owner,
+    await read,
+    outputFormat,
+    renderReportList,
+  );
 };
 
 const runReportGet: ReportCommand = async (
@@ -178,11 +185,17 @@ const runReportGet: ReportCommand = async (
   }
 
   const client = dependencies.createClient(connection);
-  const read =
-    owner.kind === "team"
-      ? client.getTeamReport(owner.id, reportId)
-      : client.getPortfolioReport(owner.id, reportId);
-  return mapReportRead(client, owner, read, outputFormat, renderReport);
+  const answered = await (owner.kind === "team"
+    ? client.getTeamReport(owner.id, reportId)
+    : client.getPortfolioReport(owner.id, reportId));
+  const printed = await printReportRead(
+    client,
+    owner,
+    answered,
+    outputFormat,
+    renderReport,
+  );
+  return withUsage(printed, answered, reportOpenedOccurrencesOf(answered));
 };
 
 const REPORT_COMMANDS: ReadonlyMap<string, ReportCommand> = new Map([

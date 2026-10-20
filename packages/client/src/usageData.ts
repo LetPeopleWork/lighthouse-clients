@@ -1,3 +1,5 @@
+import type { LighthouseApiResult } from "./index";
+
 /** Where a usage event came from, as Lighthouse names it. A client only ever declares its own. */
 export type UsageDataSource = "Browser" | "Cli" | "Mcp";
 
@@ -21,11 +23,15 @@ export type SizingUsageDataEventName =
 /** The usage event that says which verdict a Team's Refinement showed on its Refinement day. */
 export type VerdictUsageDataEventName = "TeamRefinementDayVerdictShown";
 
+/** The usage event that says a report was read, and of which type. */
+export type ReportUsageDataEventName = "ReportOpened";
+
 /** The usage events a client reports, by the names Lighthouse already counts for the web. */
 export type UsageDataEventName =
   | PlainUsageDataEventName
   | SizingUsageDataEventName
-  | VerdictUsageDataEventName;
+  | VerdictUsageDataEventName
+  | ReportUsageDataEventName;
 
 /** Fewer Work Items ready than needed, enough, more than enough, or no number at all. */
 export type UsageDataRefinementVerdict = "Below" | "In" | "Above" | "None";
@@ -45,7 +51,44 @@ export type UsageDataOccurrence =
   | {
       readonly name: VerdictUsageDataEventName;
       readonly refinementVerdict: UsageDataRefinementVerdict;
+    }
+  | {
+      readonly name: ReportUsageDataEventName;
+      readonly reportTemplate: UsageDataReportTemplate;
     };
+
+/** A report's type as Lighthouse names it when it sends the report. */
+export type ReportTemplateKey = "then-and-now";
+
+/** A report's type in the words usage data publishes, the same the web uses. */
+export type UsageDataReportTemplate = "ThenAndNow";
+
+// A type travels only once it is written out here, so a type Lighthouse adds later discloses nothing until
+// somebody decides what it may say.
+const reportTemplateWeDisclose: Readonly<
+  Record<ReportTemplateKey, UsageDataReportTemplate>
+> = {
+  "then-and-now": "ThenAndNow",
+};
+
+/**
+ * The opening of a report Lighthouse sent: its type and nothing else about it. A refused read, or a report of a
+ * type this version does not know, counts nothing.
+ */
+export const reportOpenedOccurrencesOf = (
+  answered: LighthouseApiResult<unknown>,
+): readonly UsageDataOccurrence[] => {
+  if (!answered.ok || !isRecord(answered.value)) {
+    return [];
+  }
+  const { templateKey } = answered.value;
+  const reportTemplate = Object.entries(reportTemplateWeDisclose).find(
+    ([key]) => key === templateKey,
+  )?.[1];
+  return reportTemplate === undefined
+    ? []
+    : [{ name: "ReportOpened", reportTemplate }];
+};
 
 /** What Lighthouse's answer about a Team's Refinement says about today. */
 export type RefinementMomentFacts = {

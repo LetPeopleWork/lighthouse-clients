@@ -31,8 +31,6 @@ import {
 // and a read Lighthouse refused, or of a type lh cannot name, reports nothing. Nothing about the report, its
 // owner or its numbers ever travels.
 
-const pending = "Pending: lh counts a report read (epic 6298, slice 04)";
-
 const A_YES_KEPT_AN_HOUR_AGO = "lenas-yes-to-usage-data";
 
 const lighthouseWithReports = (
@@ -72,7 +70,7 @@ const getEngagementStart = [
 
 describe("lh report get counts as the report being opened", () => {
   // @driving_port @real-io @us-04 @slice-04 @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:bounded-change
-  it.skip.each([
+  it.each([
     ["a Team's", getEngagementStart],
     [
       "a Portfolio's",
@@ -86,7 +84,7 @@ describe("lh report get counts as the report being opened", () => {
       ],
     ],
   ])(
-    `reports ReportOpened with the report's type when lh reads %s report (${pending})`,
+    `reports ReportOpened with the report's type when lh reads %s report`,
     async (_owner, args) => {
       const lighthouse = await lighthouseWithReports();
       const lena = await lenaWhoSaidYes(lighthouse);
@@ -103,7 +101,7 @@ describe("lh report get counts as the report being opened", () => {
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
   // Scripts read the report as --json; it counts the same, and what lh prints is the same with usage data on.
-  it.skip(`reports the same opening for a read as JSON, and prints the same as with usage data off (${pending})`, async () => {
+  it(`reports the same opening for a read as JSON, and prints the same as with usage data off`, async () => {
     const lighthouse = await lighthouseWithReports();
     const lena = await lenaWhoSaidYes(lighthouse);
 

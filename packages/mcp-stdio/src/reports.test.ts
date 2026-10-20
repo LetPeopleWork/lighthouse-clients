@@ -35,8 +35,6 @@ import { createLocalLighthouseMcpServer } from "./localServer";
 // second, `summary: …`, names the report, its owner and its two windows, or for a list how many reports there
 // are. The four tools only read, and a read Lighthouse refuses comes back as an error saying why.
 
-const pending = "Pending: the MCP server reads reports (epic 6298, slice 04)";
-
 const THE_FOUR_TOOLS = [
   "lighthouse_team_report_list",
   "lighthouse_team_report_get",
@@ -257,7 +255,7 @@ describe("an assistant is told why a report cannot be read", () => {
 
 describe("reading a report through the MCP server counts as the report being opened", () => {
   // @driving_port @real-io @us-04 @slice-04 @kpi-OUT-6298-K4-reports-read-by-clients @contract-shape:bounded-change
-  it.skip(`reports ReportOpened with the report's type and source Mcp, once per read (${pending})`, async () => {
+  it(`reports ReportOpened with the report's type and source Mcp, once per read`, async () => {
     const { client, lighthouse } = await anAssistantReading({ saidYes: true });
 
     await calling(client, "lighthouse_team_report_get", {
