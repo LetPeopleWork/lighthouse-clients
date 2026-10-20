@@ -14,8 +14,6 @@ const PENDING_CASES = join(
   "test-support/pending-skill-evals/lighthouse-reports",
 );
 
-const pending = "Pending: the lighthouse-reports skill (epic 6298, slice 05)";
-
 const read = (path: string): string =>
   existsSync(path) ? readFileSync(path, "utf8") : "";
 
@@ -108,7 +106,7 @@ describe("the lighthouse-reports skill ships", () => {
 
   // @us-05 @slice-05 @error @contract-shape:unbounded-preservation
   // The dry run checks a fixed list of zips, so a skill missing from it could fail to pack without anyone noticing.
-  it.skip(`is packed by CI's dry run and listed in the skills README (${pending})`, () => {
+  it("is packed by CI's dry run and listed in the skills README", () => {
     const ci = read(join(REPOSITORY, ".github/workflows/ci.yml"));
     const expected = /expected=\(([^)]*)\)/u.exec(ci)?.[1]?.split(/\s+/u) ?? [];
 

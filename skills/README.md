@@ -18,6 +18,7 @@ skills/
 | `lighthouse` | Reaching Lighthouse over MCP or `lh`, every tool and command, reading flow metrics | `lighthouse-skill.zip` |
 | `lighthouse-refinement` | Getting a Team ready for its next Refinement | `lighthouse-refinement-skill.zip` |
 | `lighthouse-daily-flow-review` | Walking the board in the daily | `lighthouse-daily-flow-review-skill.zip` |
+| `lighthouse-reports` | Showing a Team's or Portfolio's saved report as Lighthouse shows it, or making a dashboard of it | `lighthouse-reports-skill.zip` |
 
 A skill ships a zip once its folder has a `SKILL.md`. Eval cases written before their skill can wait under
 `test-support/pending-skill-evals/<name>/` and move into `skills/<name>/evals/` with its `SKILL.md`.
