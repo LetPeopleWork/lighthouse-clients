@@ -215,13 +215,13 @@ importers:
         version: link:../client
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
-        version: 1.32.1(zod@4.6.6)
+        version: 1.32.1(zod@4.6.7)
       '@toon-format/toon':
         specifier: ^4.0.0
         version: 4.4.0
       zod:
         specifier: ^4.0.0
-        version: 4.6.6
+        version: 4.6.7
 
   packages/mcp-http:
     dependencies:
@@ -233,7 +233,7 @@ importers:
         version: link:../mcp-core
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
-        version: 1.32.1(zod@4.6.6)
+        version: 1.32.1(zod@4.6.7)
       undici:
         specifier: ^8.1.0
         version: 8.11.2
@@ -248,7 +248,7 @@ importers:
         version: link:../mcp-core
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
-        version: 1.32.1(zod@4.6.6)
+        version: 1.32.1(zod@4.6.7)
       undici:
         specifier: ^8.1.0
         version: 8.11.2
@@ -1570,8 +1570,8 @@ packages:
     peerDependencies:
       zod: ^3.25.28 || ^4
 
-  zod@4.6.6:
-    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
 
@@ -1763,7 +1763,7 @@ snapshots:
       tinyglobby: 0.2.17
       yaml: 2.9.1
 
-  '@modelcontextprotocol/sdk@1.32.1(zod@4.6.6)':
+  '@modelcontextprotocol/sdk@1.32.1(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.8)
       ajv: 8.20.0
@@ -1780,8 +1780,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.6.6
-      zod-to-json-schema: 3.25.2(zod@4.6.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -2684,8 +2684,8 @@ snapshots:
       '@yuku-toolchain/types': 0.18.1
       yuku-core: 0.18.1
 
-  zod-to-json-schema@3.25.2(zod@4.6.6):
+  zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:
-      zod: 4.6.6
+      zod: 4.6.7
 
-  zod@4.6.6: {}
+  zod@4.6.7: {}
