@@ -15,9 +15,6 @@ import { type McpHttpServerHandle, startMcpHttpServer } from "./bin";
 // The shared, hosted MCP server reads a report the same way the local one does: Lighthouse's answer unchanged
 // in the first block and its summary in the second, over the HTTP transport an assistant's MCP SDK speaks.
 
-const pending =
-  "Pending: the shared MCP server reads reports (epic 6298, slice 04)";
-
 describe("an assistant reads a report over the shared MCP server", () => {
   let mcp: McpHttpServerHandle | undefined;
 
@@ -27,7 +24,7 @@ describe("an assistant reads a report over the shared MCP server", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip(`hands over a Team's report exactly as Lighthouse sent it, with its summary (${pending})`, async () => {
+  it("hands over a Team's report exactly as Lighthouse sent it, with its summary", async () => {
     const lighthouse = await aFakeLighthouse({
       replies: theReportReads(),
       version: A_SERVER_WITH_REPORTS,

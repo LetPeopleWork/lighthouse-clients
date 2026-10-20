@@ -169,7 +169,7 @@ describe("an assistant reads reports over the local MCP server", () => {
 
   // @driving_port @real-io @us-04 @slice-04 @edge @contract-shape:unbounded-preservation
   // A value Lighthouse has no number for stays absent with its reason; nothing turns it into a 0.
-  it.skip(`hands over a Portfolio's report with its missing values and their reason (${pending})`, async () => {
+  it("hands over a Portfolio's report with its missing values and their reason", async () => {
     const { client } = await anAssistantReading();
 
     const read = await calling(client, "lighthouse_portfolio_report_get", {
@@ -183,11 +183,11 @@ describe("an assistant reads reports over the local MCP server", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @contract-shape:unbounded-preservation
-  it.skip.each([
+  it.each([
     ["lighthouse_team_report_list", LIGHTSPEED.id, LIGHTSPEEDS_REPORTS, 2],
     ["lighthouse_portfolio_report_list", APOLLO.id, APOLLOS_REPORTS, 1],
   ])(
-    `%s hands over the owner's reports as Lighthouse sent them, and says how many (${pending})`,
+    "%s hands over the owner's reports as Lighthouse sent them, and says how many",
     async (tool, id, answer, count) => {
       const { client } = await anAssistantReading();
 
@@ -204,7 +204,7 @@ describe("an assistant reads reports over the local MCP server", () => {
 
 describe("an assistant is told why a report cannot be read", () => {
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.skip.each<[string, Replies, number, RegExp]>([
+  it.each<[string, Replies, number, RegExp]>([
     [
       "the reader has no access to that Team",
       {
@@ -227,7 +227,7 @@ describe("an assistant is told why a report cannot be read", () => {
       77,
       /no such report/iu,
     ],
-  ])(`says so when %s (${pending})`, async (_why, replies, reportId, says) => {
+  ])("says so when %s", async (_why, replies, reportId, says) => {
     const { client } = await anAssistantReading({ replies });
 
     const read = await calling(client, "lighthouse_team_report_get", {
@@ -240,7 +240,7 @@ describe("an assistant is told why a report cannot be read", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
-  it.skip(`tells the assistant to upgrade a Lighthouse without reports, and does not ask it (${pending})`, async () => {
+  it("tells the assistant to upgrade a Lighthouse without reports, and does not ask it", async () => {
     const { client, lighthouse } = await anAssistantReading({
       version: LAST_SERVER_WITHOUT_REPORTS,
     });
