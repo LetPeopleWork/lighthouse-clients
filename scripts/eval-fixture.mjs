@@ -3,6 +3,8 @@
 //   node scripts/eval-fixture.mjs skills/<skill>/evals/fixtures/<fixture>.json
 // It prints the address to point MCP or lh at, answers each request by method and path (the query is
 // ignored), answers 404 to anything the fixture does not list, and prints every request it receives.
+// A route's value is the body it answers with 200, or { "status": 403, "body": {...} } to answer with
+// another status, such as a refusal.
 
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -21,6 +23,18 @@ const routes = new Map(Object.entries(fixture.routes ?? {}));
 const routeOf = (request) =>
   `${request.method} ${(request.url ?? "").split("?")[0]}`;
 
+const namesItsOwnStatus = (value) =>
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  Number.isInteger(value.status) &&
+  Object.keys(value).every((key) => key === "status" || key === "body");
+
+const replyOf = (value) =>
+  namesItsOwnStatus(value)
+    ? { status: value.status, body: value.body }
+    : { status: 200, body: value };
+
 const answer = (route, response) => {
   if (route === VERSION_ROUTE) {
     response.writeHead(200, { "Content-Type": "text/plain" });
@@ -32,10 +46,10 @@ const answer = (route, response) => {
     response.end(JSON.stringify({ error: "not in the fixture", route }));
     return;
   }
-  response.writeHead(200, { "Content-Type": "application/json" });
-  response.end(JSON.stringify(routes.get(route)));
+  const { status, body } = replyOf(routes.get(route));
+  response.writeHead(status, { "Content-Type": "application/json" });
+  response.end(JSON.stringify(body));
 };
-
 const server = createServer((request, response) => {
   process.stdout.write(`${request.method} ${request.url}\n`);
   request.resume();

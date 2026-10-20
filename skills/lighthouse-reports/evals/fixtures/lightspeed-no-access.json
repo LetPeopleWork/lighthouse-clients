@@ -62,6 +62,22 @@
       "serviceLevelExpectationRange": 7,
       "systemWIPLimit": 0
     },
+    "GET /api/v1/teams/5/reports": {
+      "status": 403,
+      "body": {
+        "type": "https://tools.ietf.org/html/rfc9110#section-15.5.4",
+        "title": "Forbidden",
+        "status": 403
+      }
+    },
+    "GET /api/v1/teams/5/reports/11": {
+      "status": 403,
+      "body": {
+        "type": "https://tools.ietf.org/html/rfc9110#section-15.5.4",
+        "title": "Forbidden",
+        "status": 403
+      }
+    },
     "GET /api/v1/terminology/all": [
       {
         "id": 1,

@@ -127,6 +127,47 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
   });
 
   // @error @real-io @adapter-integration @contract-shape:bounded-change
+  // A refusal such as "no access" is told apart from "no such thing" by its status alone.
+  it("answers a route that names its own status with that status and its body", async () => {
+    const forbidden = { title: "Forbidden", status: 403 };
+    const lighthouse = await serving(
+      aFixture({
+        version: "v26.10.19.10",
+        routes: {
+          "GET /api/v1/teams/5/reports/11": { status: 403, body: forbidden },
+        },
+      }),
+    );
+    expect(lighthouse.url).not.toBeNull();
+
+    const response = await fetch(`${lighthouse.url}/api/v1/teams/5/reports/11`);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual(forbidden);
+  });
+
+  // @error @real-io @adapter-integration @contract-shape:bounded-change
+  // The reports skill's no-access case, read by lh as an assistant would read it.
+  it("serves the reports skill's no-access fixture to lh, which says the reader has no access", async () => {
+    const lighthouse = await serving(
+      join(
+        REPOSITORY,
+        "skills/lighthouse-reports/evals/fixtures/lightspeed-no-access.json",
+      ),
+    );
+    expect(lighthouse.url).not.toBeNull();
+    const priya = await connectedTo(aMachine(), lighthouse.url ?? "");
+
+    const run = await lhOn(priya, {
+      terminal: NO_TERMINAL,
+      env: { DO_NOT_TRACK: "1" },
+    }).run(["report", "get", "--team-id", "5", "--id", "11"]);
+
+    expect(run.exitCode).not.toBe(0);
+    expect(`${run.stdout}${run.stderr}`).toContain("no access");
+  });
+
+  // @error @real-io @adapter-integration @contract-shape:bounded-change
   // "No vote before the person confirmed" is scored from this log, so every write has to appear in it.
   it("prints every write it receives", async () => {
     const vote = "POST /api/v1/teams/3/refinement/work-items/GR-051/votes";
