@@ -3,6 +3,7 @@ import {
   type ReportOwner,
   type ReportOwnerKind,
   type ReportOwnerSource,
+  type ReportRead,
   type ReportReads,
   type ReportSummariser,
   readOwnersReport,
@@ -129,11 +130,15 @@ const answerReportRead = async (
   client: ReportToolClient,
   owner: ReportOwner,
   result: LighthouseApiResult<unknown>,
-  answer: { readonly label: string; readonly summarise: ReportSummariser },
+  answer: {
+    readonly label: string;
+    readonly read: ReportRead;
+    readonly summarise: ReportSummariser;
+  },
 ): Promise<McpToolResult> => {
   if (!result.ok) {
     return getErrorToolResult(
-      `${answer.label}: ${await readReportRefusal(client, result.error, owner.kind)}`,
+      `${answer.label}: ${await readReportRefusal(client, result.error, owner.kind, answer.read)}`,
     );
   }
   const ownerName = await readReportOwner(client, owner);
@@ -160,6 +165,7 @@ const reportList =
       await readOwnersReports(client, owner),
       {
         label: LIST_LABEL,
+        read: "list",
         summarise: summariseReportList,
       },
     );
@@ -180,6 +186,7 @@ const reportGet =
     const result = await readOwnersReport(client, owner, reportId);
     const answered = await answerReportRead(client, owner, result, {
       label: GET_LABEL,
+      read: "report",
       summarise: summariseReport,
     });
     return countedToolResult(answered, reportOpenedOccurrencesOf(result));

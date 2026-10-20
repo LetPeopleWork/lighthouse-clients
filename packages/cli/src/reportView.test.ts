@@ -234,6 +234,21 @@ describe("lh says why a report cannot be read", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
+  it("says there is no such Team when a list's owner does not exist", async () => {
+    const { run } = await lhAgainst({
+      "GET /teams/77/reports": { status: 404 },
+    });
+
+    const read = await run("report", "list", "--team-id", "77");
+
+    expect(read.exitCode).not.toBe(0);
+    expect(`${read.stdout}\n${read.stderr}`).toContain(
+      "There is no such Team.",
+    );
+    expect(`${read.stdout}\n${read.stderr}`).not.toMatch(/no such report/iu);
+  });
+
+  // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
   it.each([
     ["list", []],
     ["get", ["--id", String(ENGAGEMENT_START.id)]],

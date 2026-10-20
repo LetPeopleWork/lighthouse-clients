@@ -3,6 +3,7 @@ import {
   type LighthouseApiResult,
   type LighthouseClient,
   type ReportOwner,
+  type ReportRead,
   type ReportSummariser,
   readOwnersReport,
   readOwnersReports,
@@ -96,11 +97,11 @@ const printReportRead = async (
   owner: ReportOwner,
   result: LighthouseApiResult<unknown>,
   outputFormat: OutputFormat,
-  summarise: ReportSummariser,
+  answer: { readonly read: ReportRead; readonly summarise: ReportSummariser },
 ): Promise<CliCommandResult> => {
   if (!result.ok) {
     return getErrorResult(
-      await readReportRefusal(client, result.error, owner.kind),
+      await readReportRefusal(client, result.error, owner.kind, answer.read),
     );
   }
   if (outputFormat !== "pretty") {
@@ -108,7 +109,7 @@ const printReportRead = async (
   }
   const ownerName = await readReportOwner(client, owner);
   return mapApiResultToCliResult(result, outputFormat, (value) =>
-    summarise(value, ownerName),
+    answer.summarise(value, ownerName),
   );
 };
 
@@ -129,7 +130,7 @@ const runReportList: ReportCommand = async (
     owner,
     await readOwnersReports(client, owner),
     outputFormat,
-    summariseReportList,
+    { read: "list", summarise: summariseReportList },
   );
 };
 
@@ -153,13 +154,10 @@ const runReportGet: ReportCommand = async (
 
   const client = dependencies.createClient(connection);
   const answered = await readOwnersReport(client, owner, reportId);
-  const printed = await printReportRead(
-    client,
-    owner,
-    answered,
-    outputFormat,
-    summariseReport,
-  );
+  const printed = await printReportRead(client, owner, answered, outputFormat, {
+    read: "report",
+    summarise: summariseReport,
+  });
   return withUsage(printed, answered, reportOpenedOccurrencesOf(answered));
 };
 

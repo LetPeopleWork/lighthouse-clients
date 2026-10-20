@@ -229,6 +229,21 @@ describe("an assistant is told why a report cannot be read", () => {
   });
 
   // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
+  it("says there is no such Portfolio when a list's owner does not exist", async () => {
+    const { client } = await anAssistantReading({
+      replies: { "GET /portfolios/77/reports": { status: 404 } },
+    });
+
+    const read = await calling(client, "lighthouse_portfolio_report_list", {
+      id: 77,
+    });
+
+    expect(read.isError).toBe(true);
+    expect(read.said).toContain("There is no such Portfolio.");
+    expect(read.said).not.toMatch(/no such report/iu);
+  });
+
+  // @driving_port @real-io @us-04 @slice-04 @error @contract-shape:unbounded-preservation
   it("tells the assistant to upgrade a Lighthouse without reports, and does not ask it", async () => {
     const { client, lighthouse } = await anAssistantReading({
       version: LAST_SERVER_WITHOUT_REPORTS,

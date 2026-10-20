@@ -161,6 +161,16 @@ export const summariseReportList: ReportSummariser = (value, owner) => {
 const FORBIDDEN = 403;
 const NOT_FOUND = 404;
 
+/** What was read: the owner's list of reports, or one report. */
+export type ReportRead = "list" | "report";
+
+// Lighthouse answers a list with 404 only when the Team or Portfolio itself is unknown, so a missing list names
+// the owner, never a report.
+const NOTHING_THERE: Readonly<Record<ReportRead, (owner: string) => string>> = {
+  list: (owner) => `There is no such ${owner}.`,
+  report: (owner) => `There is no such report for that ${owner}.`,
+};
+
 /**
  * Why a report or a list could not be read, in words the reader can act on: the web's sentence where it has
  * one. Any other refusal, the client's own "upgrade Lighthouse" among them, keeps its category and reason.
@@ -168,6 +178,7 @@ const NOT_FOUND = 404;
 export const describeReportRefusal = (
   error: LighthouseApiError,
   kind: ReportOwnerKind,
+  read: ReportRead,
   terms: Terms,
 ): string => {
   if (error.statusCode === FORBIDDEN) {
@@ -177,7 +188,7 @@ export const describeReportRefusal = (
     return "This report was made by a newer version of Lighthouse and can't be shown here.";
   }
   if (error.statusCode === NOT_FOUND) {
-    return `There is no such report for that ${ownerTerm(kind, terms)}.`;
+    return NOTHING_THERE[read](ownerTerm(kind, terms));
   }
   return `${error.category}: ${error.reason}`;
 };
@@ -190,9 +201,11 @@ export const readReportRefusal = async (
   source: TermsSource,
   error: LighthouseApiError,
   kind: ReportOwnerKind,
+  read: ReportRead,
 ): Promise<string> =>
   describeReportRefusal(
     error,
     kind,
+    read,
     error.statusCode === undefined ? SEEDED_TERMS : await readTerms(source),
   );
