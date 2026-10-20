@@ -230,7 +230,7 @@
     "fixture": "lightspeed-no-access",
     "prompt": "Make a dashboard of Team Lightspeed's \"Then & Now — engagement start\" report.",
     "tools": {
-      "required": ["lighthouse_team_report_get"],
+      "required": ["lighthouse_team_report_list"],
       "forbidden": [
         "lighthouse_team_metrics_cycleTimePercentiles",
         "lighthouse_team_metrics_throughput"

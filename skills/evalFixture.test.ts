@@ -147,25 +147,32 @@ describe("the eval fixture server plays the Lighthouse a fixture describes", () 
   });
 
   // @error @real-io @adapter-integration @contract-shape:bounded-change
-  // The reports skill's no-access case, read by lh as an assistant would read it.
-  it("serves the reports skill's no-access fixture to lh, which says the reader has no access", async () => {
-    const lighthouse = await serving(
-      join(
-        REPOSITORY,
-        "skills/lighthouse-reports/evals/fixtures/lightspeed-no-access.json",
-      ),
-    );
-    expect(lighthouse.url).not.toBeNull();
-    const priya = await connectedTo(aMachine(), lighthouse.url ?? "");
+  // The reports skill's no-access case, read by lh as an assistant would read it: the list first, as the skill
+  // finds a report's id there, and the report itself.
+  it.each([
+    ["list", []],
+    ["get", ["--id", "11"]],
+  ])(
+    "serves the reports skill's no-access fixture to lh report %s, which says the reader has no access",
+    async (command, more) => {
+      const lighthouse = await serving(
+        join(
+          REPOSITORY,
+          "skills/lighthouse-reports/evals/fixtures/lightspeed-no-access.json",
+        ),
+      );
+      expect(lighthouse.url).not.toBeNull();
+      const priya = await connectedTo(aMachine(), lighthouse.url ?? "");
 
-    const run = await lhOn(priya, {
-      terminal: NO_TERMINAL,
-      env: { DO_NOT_TRACK: "1" },
-    }).run(["report", "get", "--team-id", "5", "--id", "11"]);
+      const run = await lhOn(priya, {
+        terminal: NO_TERMINAL,
+        env: { DO_NOT_TRACK: "1" },
+      }).run(["report", command, "--team-id", "5", ...more]);
 
-    expect(run.exitCode).not.toBe(0);
-    expect(`${run.stdout}${run.stderr}`).toContain("no access");
-  });
+      expect(run.exitCode).not.toBe(0);
+      expect(`${run.stdout}${run.stderr}`).toContain("no access");
+    },
+  );
 
   // @error @real-io @adapter-integration @contract-shape:bounded-change
   // "No vote before the person confirmed" is scored from this log, so every write has to appear in it.
