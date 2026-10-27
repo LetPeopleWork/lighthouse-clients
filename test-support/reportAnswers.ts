@@ -33,6 +33,9 @@ export const LIGHTSPEEDS_ENGAGEMENT_START = anAnswer(
 );
 export const APOLLOS_REPORTS = anAnswer("apollos-reports.json");
 export const APOLLOS_QUARTER_REVIEW = anAnswer("apollos-quarter-review.json");
+/** Every report the reader can read, on every owner: Lightspeed's two and Apollo II's one, each naming its owner. */
+export const EVERY_REPORT = anAnswer("all-reports.json");
+export const EVERY_REPORT_READ = "GET /reports";
 
 /** The last Lighthouse release without the report reads, and one that has them. */
 export const LAST_SERVER_WITHOUT_REPORTS = "v26.10.10.1";
