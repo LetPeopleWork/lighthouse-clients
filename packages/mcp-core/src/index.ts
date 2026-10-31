@@ -184,6 +184,7 @@ export type McpToolDefinition = {
     | "lighthouse_blackout_delete"
     | "lighthouse_forecast_manual"
     | "lighthouse_forecast_backtest"
+    | "lighthouse_report_list"
     | "lighthouse_team_report_list"
     | "lighthouse_team_report_get"
     | "lighthouse_portfolio_report_list"

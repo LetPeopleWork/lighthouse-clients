@@ -1,5 +1,7 @@
 import {
+  describeEveryReportRefusal,
   type LighthouseApiResult,
+  type LighthouseClient,
   type ReportOwner,
   type ReportOwnerKind,
   type ReportOwnerSource,
@@ -10,7 +12,9 @@ import {
   readOwnersReports,
   readReportOwner,
   readReportRefusal,
+  readTerms,
   reportOpenedOccurrencesOf,
+  summariseEveryReport,
   summariseReport,
   summariseReportList,
 } from "@letpeoplework/lighthouse-client";
@@ -28,7 +32,9 @@ import { type CountedToolResult, countedToolResult } from "./usageDataPort";
 // A report's values are Lighthouse's answer handed over whole, so the summary sits in a second block rather than
 // inside the report: an assistant reading the first block reads exactly what the server sent.
 
-export type ReportToolClient = ReportReads & ReportOwnerSource;
+export type ReportToolClient = ReportReads &
+  ReportOwnerSource &
+  Pick<LighthouseClient, "getAllReports">;
 
 type ReportTool = (
   argumentsPayload: unknown,
@@ -80,7 +86,18 @@ const listDescription = (kind: ReportOwnerKind) =>
 const getDescription = (kind: ReportOwnerKind) =>
   `Get one of a ${kind}'s reports by ${kind} ID and reportId, exactly as Lighthouse answers it: its Then side as Lighthouse froze it, its Now side read afresh up to today, and every value, a missing value with its reason. ${HOW_LIGHTHOUSE_SHOWS_IT} ${HOW_THE_ANSWER_READS} names the report, its ${kind} and its Then and Now windows. ${NEEDS_A_SERVER}`;
 
+const everyReportDescription = `List every report you can read, across all your Teams and Portfolios, in one call: each report's id, name, type (templateKey), when it was created, and whose it is (ownerKind, ownerName). ${HOW_THE_ANSWER_READS} counts the reports and names each one's owner in the instance's terminology. ${HOW_LIGHTHOUSE_SHOWS_IT} ${NEEDS_A_SERVER}`;
+
 export const reportToolDefinitions: readonly McpToolDefinition[] = [
+  {
+    name: "lighthouse_report_list",
+    description: everyReportDescription,
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
   {
     name: "lighthouse_team_report_list",
     description: listDescription("team"),
@@ -110,12 +127,14 @@ const getSchema = z.object({
 });
 
 export const reportInputSchemas: Record<
+  | "lighthouse_report_list"
   | "lighthouse_team_report_list"
   | "lighthouse_team_report_get"
   | "lighthouse_portfolio_report_list"
   | "lighthouse_portfolio_report_get",
   z.ZodTypeAny
 > = {
+  lighthouse_report_list: z.object({}),
   lighthouse_team_report_list: listSchema,
   lighthouse_team_report_get: getSchema,
   lighthouse_portfolio_report_list: listSchema,
@@ -199,7 +218,21 @@ const reportGet =
     return countedToolResult(answered, reportOpenedOccurrencesOf(result));
   };
 
+const everyReportList: ReportTool = async (_argumentsPayload, client) => {
+  const result = await client.getAllReports();
+  if (!result.ok) {
+    return getErrorToolResult(
+      `${LIST_LABEL}: ${describeEveryReportRefusal(result.error)}`,
+    );
+  }
+  return withSummaryBlock(
+    `${LIST_LABEL}: ${encodePayload(result.value)}`,
+    summariseEveryReport(result.value, await readTerms(client)),
+  );
+};
+
 const REPORT_TOOLS: ReadonlyMap<string, ReportTool> = new Map([
+  ["lighthouse_report_list", everyReportList],
   ["lighthouse_team_report_list", reportList("team")],
   ["lighthouse_team_report_get", reportGet("team")],
   ["lighthouse_portfolio_report_list", reportList("portfolio")],

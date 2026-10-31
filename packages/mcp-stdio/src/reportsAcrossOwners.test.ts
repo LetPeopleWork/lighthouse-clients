@@ -107,7 +107,7 @@ const reported = (lighthouse: FakeLighthouse) =>
 
 describe("an assistant lists every report in one call", () => {
   // @driving_port @us-06 @slice-06 @contract-shape:pure-function
-  it.skip(`offers the tool, marked as only reading and asking for nothing (${PENDING})`, async () => {
+  it("offers the tool, marked as only reading and asking for nothing", async () => {
     const { client } = await anAssistantListing();
 
     const { tools } = await client.listTools();
@@ -118,7 +118,7 @@ describe("an assistant lists every report in one call", () => {
   });
 
   // @walking_skeleton @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:unbounded-preservation
-  it.skip(`hands over every report as Lighthouse sent it, and a summary naming each owner (${PENDING})`, async () => {
+  it("hands over every report as Lighthouse sent it, and a summary naming each owner", async () => {
     const { client, lighthouse } = await anAssistantListing();
 
     const listed = await listing(client);
@@ -134,7 +134,7 @@ describe("an assistant lists every report in one call", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it.skip(`tells the assistant to upgrade a Lighthouse that has no list of every report (${PENDING})`, async () => {
+  it("tells the assistant to upgrade a Lighthouse that has no list of every report", async () => {
     const { client } = await anAssistantListing({
       replies: { [EVERY_REPORT_READ]: { status: 404 } },
       version: A_LIGHTHOUSE_BEFORE_THE_CROSS_OWNER_LIST,
@@ -147,7 +147,7 @@ describe("an assistant lists every report in one call", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:pure-function
-  it.skip(`says there are none when the reader can read no report (${PENDING})`, async () => {
+  it("says there are none when the reader can read no report", async () => {
     const { client } = await anAssistantListing({
       replies: { [EVERY_REPORT_READ]: { status: 200, text: '{"reports":[]}' } },
     });

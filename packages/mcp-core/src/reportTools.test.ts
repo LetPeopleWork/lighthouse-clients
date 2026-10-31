@@ -65,6 +65,14 @@ describe("the report tools an assistant finds", () => {
       .filter((tool) => tool.name.includes("_report_"));
 
     expect(reportTools).toEqual([
+      expect.objectContaining({
+        name: "lighthouse_report_list",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      }),
       listTool("team"),
       getTool("team"),
       listTool("portfolio"),

@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   aLighthouseWithReports,
   ENGAGEMENT_START,
+  EVERY_REPORT,
+  EVERY_REPORT_READ,
   LIGHTSPEED,
   LIGHTSPEEDS_ENGAGEMENT_START,
 } from "../../../test-support/reportAnswers";
@@ -50,6 +52,40 @@ describe("an assistant reads a report over the shared MCP server", () => {
         decodeFacts(facts, facts.slice(0, facts.indexOf(": ") + 2)),
       ).toEqual(JSON.parse(LIGHTSPEEDS_ENGAGEMENT_START));
       expect(result.content[1]?.text).toContain(ENGAGEMENT_START.name);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("lists every report in one call, each with its owner", async () => {
+    const lighthouse = await aLighthouseWithReports({
+      replies: { [EVERY_REPORT_READ]: { status: 200, text: EVERY_REPORT } },
+    });
+    mcp = await startMcpHttpServer({
+      lighthouseUrl: lighthouse.url,
+      host: "127.0.0.1",
+      port: 0,
+    });
+    const client = new Client({ name: "reports-test", version: "0.0.0" });
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`${mcp.url}/mcp`)),
+    );
+
+    try {
+      const result = (await client.callTool({
+        name: "lighthouse_report_list",
+        arguments: {},
+      })) as {
+        readonly isError?: boolean;
+        readonly content: readonly { readonly text?: string }[];
+      };
+      const facts = result.content[0]?.text ?? "";
+
+      expect(result.isError ?? false).toBe(false);
+      expect(
+        decodeFacts(facts, facts.slice(0, facts.indexOf(": ") + 2)),
+      ).toEqual(JSON.parse(EVERY_REPORT));
+      expect(result.content[1]?.text).toContain(LIGHTSPEED.name);
     } finally {
       await client.close();
     }

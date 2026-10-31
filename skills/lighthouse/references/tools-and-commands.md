@@ -74,6 +74,7 @@ Metric tools take optional `startDate` and `endDate` (`YYYY-MM-DD`, both inclusi
 | `lighthouse_team_refinement_vote` | Only after the user confirmed their own vote; see "Refinement votes" in `SKILL.md`. |
 | `lighthouse_team_refinement_comment` | Only after the user confirmed their own comment or question. |
 | `lighthouse_team_refinement_voteTakeBack` | Only when the user asks to take back their vote. |
+| `lighthouse_report_list` | Every report the user can read, on any Team or Portfolio, in one call and with no input: each one's id, name, type (`templateKey`), the day it was made and whose it is. Needs a Lighthouse that has the list of every report; an older one is told to upgrade. |
 | `lighthouse_team_report_list` | The Team's saved reports: each one's id, name, type (`templateKey`) and the day it was made. Needs a Lighthouse newer than v26.10.10.1. |
 | `lighthouse_team_report_get` | One saved report, with `{id, reportId}`: Lighthouse's raw values, unchanged. Lay it out with the lighthouse-reports skill, which says how Lighthouse rounds and shows them. |
 

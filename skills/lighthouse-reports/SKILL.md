@@ -27,7 +27,8 @@ skill answers, not this one.
    `lh portfolio list --json`), matched by name. Never ask the user for an id.
 2. **Find the report.** `lighthouse_team_report_list` / `lighthouse_portfolio_report_list` with `{id}`, or
    `lh report list --team-id <id> --json` / `lh report list --portfolio-id <id> --json`. Match the report by its
-   name; each row carries its `id` and its type (`templateKey`).
+   name; each row carries its `id` and its type (`templateKey`). When the owner is not known, `lighthouse_report_list` or
+   `lh report list --json` lists every report the user can read, each row naming its owner.
 3. **Read it.** `lighthouse_team_report_get` / `lighthouse_portfolio_report_get` with `{id, reportId}`, or
    `lh report get --team-id <id> --id <report id> --json` (`--portfolio-id` for a Portfolio). The first block is
    Lighthouse's answer, unchanged; the `summary` names the report, its owner in the instance's words and both

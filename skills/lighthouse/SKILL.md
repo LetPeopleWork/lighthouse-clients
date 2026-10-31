@@ -261,6 +261,7 @@ lh portfolio list --json
 lh metrics team --id <id> --metrics throughput,cycleTime,wip --json
 lh forecast manual --team-id <id> --remaining <n> --target-date <date> --json
 lh refinement get --team-id <id> --json
+lh report list --json
 lh report list --team-id <id> --json
 lh report get --team-id <id> --id <report id> --json
 lh health check
@@ -317,6 +318,7 @@ Users ask naturally ("tell me about the Mars Colonization Feature"). Claude hand
 | A Team forecast | `lighthouse_team_list` | `lighthouse_forecast_manual`, `lighthouse_forecast_backtest` |
 | How much a Team should refine | `lighthouse_team_list` | `lighthouse_team_refinement_get` with `{id: <team_id>}`; quote its `summary`, it is what the Team sees on its Refinement tab |
 | Vote, comment or take back a vote on a Work Item in refinement | `lighthouse_team_refinement_get` → `referenceId` | `lighthouse_team_refinement_vote` / `lighthouse_team_refinement_comment` / `lighthouse_team_refinement_voteTakeBack`; see below |
+| Every report the user can read, whichever Team or Portfolio holds it | none | `lighthouse_report_list` with no input; each row names its owner |
 | A Team's reports | `lighthouse_team_list` | `lighthouse_team_report_list` with `{id: <team_id>}`; one report: `lighthouse_team_report_get` with `{id, reportId}`; lay it out with the lighthouse-reports skill |
 | A Portfolio's reports | `lighthouse_portfolio_list` | `lighthouse_portfolio_report_list` with `{id: <portfolio_id>}`; one report: `lighthouse_portfolio_report_get` with `{id, reportId}`; lay it out with the lighthouse-reports skill |
 | A Portfolio's settings | `lighthouse_portfolio_list` | `lighthouse_portfolio_get`; `lighthouse_portfolio_refresh` only on request |
