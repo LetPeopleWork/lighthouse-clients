@@ -177,11 +177,18 @@ describe("listing every report through the MCP server counts as every report bei
 
     const listed = await listing(client);
 
-    // The refusal is answered before anything could be counted; the scenario above proves a count arrives when due.
-    await vi.waitFor(() =>
-      expect(lighthouse.operations()).toContain(EVERY_REPORT_READ),
-    );
+    await client.callTool({
+      name: "lighthouse_team_refresh",
+      arguments: { id: LIGHTSPEED.id },
+    });
+
     expect(listed.isError).toBe(true);
-    expect(lighthouse.handedIn()).toEqual([]);
+    await vi.waitFor(
+      () =>
+        expect(reported(lighthouse)).toEqual([
+          aBatchOf("Mcp", { name: "TeamRefreshTriggered" }),
+        ]),
+      { timeout: 3000 },
+    );
   });
 });

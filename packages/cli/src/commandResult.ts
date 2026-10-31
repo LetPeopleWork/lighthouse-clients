@@ -47,6 +47,7 @@ export const REPORTED_COMMANDS: Readonly<
   "portfolio delete": "PortfolioDeleted",
   "portfolio refresh": "PortfolioRefreshTriggered",
   "forecast manual": "TeamManualForecastRun",
+  // Only the list that names no Team or Portfolio counts; a list of one owner's reports reports nothing.
   "report list": "AllReportsListed",
 };
 

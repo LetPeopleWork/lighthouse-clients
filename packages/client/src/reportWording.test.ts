@@ -253,8 +253,16 @@ describe("the summary of every report", () => {
 
 describe("why the list of every report cannot be read", () => {
   it.each<[string, Partial<LighthouseApiError>, RegExp]>([
-    ["an unauthorized reader", { statusCode: 401 }, /not signed in/u],
-    ["a forbidden reader", { statusCode: 403 }, /not signed in/u],
+    [
+      "an unauthorized reader",
+      { statusCode: 401 },
+      /not signed in.*LIGHTHOUSE_API_KEY.*lh connection connect --api-key/su,
+    ],
+    [
+      "a forbidden reader",
+      { statusCode: 403 },
+      /^Lighthouse refused to list reports for you\.$/u,
+    ],
     [
       "a Lighthouse without the list",
       { statusCode: 404 },

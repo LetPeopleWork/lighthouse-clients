@@ -119,8 +119,7 @@ const printReportRead = async (
 };
 
 const namesAnOwner = (args: readonly string[]): boolean =>
-  getOptionValue(args, "--team-id") !== undefined ||
-  getOptionValue(args, "--portfolio-id") !== undefined;
+  args.includes("--team-id") || args.includes("--portfolio-id");
 
 // Lighthouse filters the list to what the caller may read, so lh asks once and relays the answer.
 const runEveryReportList = async (

@@ -213,14 +213,17 @@ export const readReportRefusal = async (
 
 /**
  * Why the list of every report could not be read. There is no one owner to name, so a Lighthouse that has no such
- * list asks to be upgraded, a refused reader is told they are not signed in, and any other refusal keeps its
+ * list asks to be upgraded, an unrecognised reader is told they are not signed in, a forbidden one that Lighthouse refused, and any other refusal keeps its
  * category and reason.
  */
 export const describeEveryReportRefusal = (
   error: LighthouseApiError,
 ): string => {
-  if (error.statusCode === UNAUTHORIZED || error.statusCode === FORBIDDEN) {
-    return "You are not signed in to Lighthouse, or it refused who you are. Sign in with a valid API key and try again.";
+  if (error.statusCode === UNAUTHORIZED) {
+    return "You are not signed in to Lighthouse. Set LIGHTHOUSE_API_KEY, or reconnect with `lh connection connect --api-key <key>`, and try again.";
+  }
+  if (error.statusCode === FORBIDDEN) {
+    return "Lighthouse refused to list reports for you.";
   }
   if (error.statusCode === NOT_FOUND) {
     return "This Lighthouse has no list of every report. Upgrade Lighthouse to list them.";

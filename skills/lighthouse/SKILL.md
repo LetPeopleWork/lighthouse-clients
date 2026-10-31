@@ -302,7 +302,7 @@ Users ask naturally ("tell me about the Mars Colonization Feature"). Claude hand
 - **Quote the `summary` as written.** A tool that carries a `summary` states its answer as the web does; quote it, and reason over the other fields, which are the facts.
 - **Use the tool's words.** An instance may rename Feature, Work Item, Team, Portfolio, Cycle Time, Throughput, WIP, Blocked or SLE. Answer in the words each tool's `summary` uses; where there is none, use those defaults.
 - **Never invent a tool.** Some reads exist only in `lh`: Arrivals per day (their signals are read over MCP with `lighthouse_team_metrics_processBehaviorChart` and `metricType: "Arrivals"`), a Portfolio's current WIP and what is Blocked in it right now, the Predictability Score, a Portfolio's Cycle Time percentiles, and creating, changing or deleting Teams and Portfolios. Over MCP, name the command instead, for example `lh metrics team --id 3 --metrics arrivals`, and do not work the answer out from other reads.
-- **An older Lighthouse is not a fault.** When a read is refused because it "requires a version newer than" the running one, tell the user this Lighthouse must be upgraded for that answer. Do not call it an error in Lighthouse, do not retry, and do not guess the answer.
+- **An older Lighthouse is not a fault.** When a read is refused because it "requires a version newer than" the running one, or says "Upgrade Lighthouse" (as the list of every report does), tell the user this Lighthouse must be upgraded for that answer. Do not call it an error in Lighthouse, do not retry, and do not guess the answer.
 - **No per-person answers.** Lighthouse counts Work Items, not people. Never break an answer down by person or assignee.
 
 ### ID Resolution Table

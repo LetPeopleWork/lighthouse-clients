@@ -133,6 +133,21 @@ describe("lh lists every report without naming an owner", () => {
     );
   });
 
+  it.each(["--team-id", "--portfolio-id"])(
+    `refuses %s given without an id instead of listing every report`,
+    async (flag) => {
+      const { lighthouse, run } = await lhAgainst();
+
+      const listed = await run("report", "list", flag);
+
+      expect(listed.exitCode).not.toBe(0);
+      expect(`${listed.stdout}\n${listed.stderr}`).toContain(
+        "Missing --team-id or --portfolio-id for report list.",
+      );
+      expect(theReportReadsAmong(lighthouse.operations())).toEqual([]);
+    },
+  );
+
   it(`a list naming one Team still reads only that Team's reports`, async () => {
     const { lighthouse, run } = await lhAgainst();
 

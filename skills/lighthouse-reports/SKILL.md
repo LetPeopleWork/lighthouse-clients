@@ -70,12 +70,12 @@ version of the skill cannot lay it out, give its values as the report holds them
 
 ## When the report cannot be read
 
-- **No access.** Quote the refusal ("You have no access to that Team's reports.") and show no numbers. Do not
+- **No access.** Quote the refusal ("You have no access to that Team's reports.", or for the list of every report "Lighthouse refused to list reports for you.") and show no numbers. Do not
   rebuild the report from metric tools.
 - **No such report.** Quote the refusal and list the owner's reports by name, so the user can pick one.
 - **No such Team or Portfolio.** A list refused with "There is no such Team." means the owner itself is unknown: say
   so and ask which one they meant, or find it with `lighthouse_team_list` / `lighthouse_portfolio_list`.
-- **An older Lighthouse.** A refusal saying the read needs a newer Lighthouse means this Lighthouse is too old to
+- **An older Lighthouse.** A refusal saying the read needs a newer Lighthouse ("requires a version newer than", or "This Lighthouse has no list of every report. Upgrade Lighthouse to list them.") means this Lighthouse is too old to
   read reports from. Say so plainly, "Upgrade Lighthouse to read its reports here", and offer to work from a report
   PDF or values the user supplies. It is not a fault; do not retry.
 - **A report made by a newer Lighthouse.** Quote the refusal; it says the report can't be shown here.

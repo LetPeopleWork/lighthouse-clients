@@ -163,6 +163,7 @@ Add `--json` to every command whose output you read.
 | `lh refinement vote --team-id <id> --work-item <ref> --answer yes` | Only after the user confirmed; `yes-but` needs `--comment`. `--as <name>` carries their name without sign-in. |
 | `lh refinement comment --team-id <id> --work-item <ref> --text <text>` | Only after the user confirmed the comment. |
 | `lh refinement take-back --team-id <id> --work-item <ref>` | Only when the user asks to take back their vote. |
+| `lh report list` | Every report the user can read, on any Team or Portfolio, with each one's owner; needs a Lighthouse that has the list of every report. Pass `--team-id` or `--portfolio-id` to list one owner's. |
 | `lh report list --team-id <id>` | A Team's saved reports; `--portfolio-id <id>` for a Portfolio's. |
 | `lh report get --team-id <id> --id <report id>` | One saved report: by default a summary naming it, its owner and its windows; `--json` for its raw values (`--portfolio-id` for a Portfolio's). Lay it out with the lighthouse-reports skill. |
 | `lh health check` | Whether Lighthouse is reachable. |
