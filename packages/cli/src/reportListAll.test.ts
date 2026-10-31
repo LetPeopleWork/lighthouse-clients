@@ -42,7 +42,6 @@ const lhAgainst = async (replies: ReportReplies = {}, version?: string) => {
 };
 
 describe("lh lists every report without naming an owner", () => {
-  // @walking_skeleton @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:unbounded-preservation
   it(`passes on every report exactly as Lighthouse sent it, each with its owner`, async () => {
     const { run } = await lhAgainst();
 
@@ -52,7 +51,6 @@ describe("lh lists every report without naming an owner", () => {
     expect(JSON.parse(listed.stdout)).toEqual(JSON.parse(EVERY_REPORT));
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @contract-shape:pure-function
   it(`sums the list up by report, each naming its id and its owner`, async () => {
     const { run } = await lhAgainst();
 
@@ -68,7 +66,6 @@ describe("lh lists every report without naming an owner", () => {
     expect(listed.stdout).toMatch(/\b3 reports\b/u);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:pure-function
   it(`names each owner's kind in the instance's own words`, async () => {
     const { run } = await lhAgainst({
       "GET /terminology/all": {
@@ -85,7 +82,6 @@ describe("lh lists every report without naming an owner", () => {
     expect(listed.stdout).not.toMatch(/\bTeam\b|\bPortfolio\b/u);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it(`only ever reads, and reads once`, async () => {
     const { lighthouse, run } = await lhAgainst();
 
@@ -101,7 +97,6 @@ describe("lh lists every report without naming an owner", () => {
     ).toEqual([]);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:pure-function
   it(`says there are no reports when the reader can read none`, async () => {
     const { run } = await lhAgainst({
       [EVERY_REPORT_READ]: { status: 200, text: '{"reports":[]}' },
@@ -113,7 +108,6 @@ describe("lh lists every report without naming an owner", () => {
     expect(listed.stdout).toMatch(/\b0 reports\b/u);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it(`tells the reader to upgrade a Lighthouse that has no list of every report`, async () => {
     const { run } = await lhAgainst(
       { [EVERY_REPORT_READ]: { status: 404 } },
@@ -128,7 +122,6 @@ describe("lh lists every report without naming an owner", () => {
     );
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it(`says the reader is not signed in when Lighthouse refuses who they are`, async () => {
     const { run } = await lhAgainst({ [EVERY_REPORT_READ]: { status: 401 } });
 
@@ -140,7 +133,6 @@ describe("lh lists every report without naming an owner", () => {
     );
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @contract-shape:unbounded-preservation
   it(`a list naming one Team still reads only that Team's reports`, async () => {
     const { lighthouse, run } = await lhAgainst();
 

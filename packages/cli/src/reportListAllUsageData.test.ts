@@ -49,7 +49,6 @@ const reported = (lighthouse: FakeLighthouse) =>
   lighthouse.handedIn().map(({ batch }) => batch);
 
 describe("lh report list with no owner counts as every report being listed", () => {
-  // @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:bounded-change
   it("reports AllReportsListed by name alone", async () => {
     const lighthouse = await aLighthouseListingEverything();
     const lh = await martinWhoAnswered(
@@ -65,7 +64,6 @@ describe("lh report list with no owner counts as every report being listed", () 
     ]);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it("reports nothing for a reader who said no", async () => {
     const lighthouse = await aLighthouseListingEverything();
     const lh = await martinWhoAnswered(lighthouse, aNo());
@@ -75,7 +73,6 @@ describe("lh report list with no owner counts as every report being listed", () 
     expect(reported(lighthouse)).toEqual([]);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it("reports nothing for a list Lighthouse refused", async () => {
     const lighthouse = await aLighthouseListingEverything({ status: 403 });
     const lh = await martinWhoAnswered(
@@ -88,7 +85,6 @@ describe("lh report list with no owner counts as every report being listed", () 
     expect(reported(lighthouse)).toEqual([]);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:unbounded-preservation
   it("reports nothing for a list of one Team's reports", async () => {
     const lighthouse = await aLighthouseListingEverything();
     const lh = await martinWhoAnswered(

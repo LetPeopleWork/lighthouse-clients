@@ -31,8 +31,7 @@ import { createLocalLighthouseMcpServer } from "./localServer";
 const THE_TOOL = "lighthouse_report_list";
 const A_YES_KEPT_AN_HOUR_AGO = "martins-yes-to-usage-data";
 
-// RESOLVED AT DELIVER: the release carrying this Epic is not cut yet, so this tag is a stand-in. DELIVER reads the
-// real last Lighthouse tag without the cross-owner list from the releases and puts it here before enabling these.
+// The last Lighthouse release without the list of every report.
 const A_LIGHTHOUSE_BEFORE_THE_CROSS_OWNER_LIST = "v26.10.25.1";
 
 const closers: (() => Promise<void>)[] = [];
@@ -104,7 +103,6 @@ const reported = (lighthouse: FakeLighthouse) =>
   lighthouse.handedIn().map(({ batch }) => batch);
 
 describe("an assistant lists every report in one call", () => {
-  // @driving_port @us-06 @slice-06 @contract-shape:pure-function
   it("offers the tool, marked as only reading and asking for nothing", async () => {
     const { client } = await anAssistantListing();
 
@@ -115,7 +113,6 @@ describe("an assistant lists every report in one call", () => {
     expect(Object.keys(tool?.inputSchema.properties ?? {})).toEqual([]);
   });
 
-  // @walking_skeleton @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:unbounded-preservation
   it("hands over every report as Lighthouse sent it, and a summary naming each owner", async () => {
     const { client, lighthouse } = await anAssistantListing();
 
@@ -131,7 +128,6 @@ describe("an assistant lists every report in one call", () => {
     ]);
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it("tells the assistant to upgrade a Lighthouse that has no list of every report", async () => {
     const { client } = await anAssistantListing({
       replies: { [EVERY_REPORT_READ]: { status: 404 } },
@@ -144,7 +140,6 @@ describe("an assistant lists every report in one call", () => {
     expect(listed.said).toContain("Upgrade Lighthouse");
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:pure-function
   it("says there are none when the reader can read no report", async () => {
     const { client } = await anAssistantListing({
       replies: { [EVERY_REPORT_READ]: { status: 200, text: '{"reports":[]}' } },
@@ -158,7 +153,6 @@ describe("an assistant lists every report in one call", () => {
 });
 
 describe("listing every report through the MCP server counts as every report being listed", () => {
-  // @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:bounded-change
   it("reports AllReportsListed by name alone, with source Mcp", async () => {
     const { client, lighthouse } = await anAssistantListing({
       consent: "said yes",
@@ -175,7 +169,6 @@ describe("listing every report through the MCP server counts as every report bei
     );
   });
 
-  // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
   it("reports nothing for a list Lighthouse refused", async () => {
     const { client, lighthouse } = await anAssistantListing({
       consent: "said yes",
