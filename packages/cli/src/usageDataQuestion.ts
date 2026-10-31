@@ -10,7 +10,7 @@ const USAGE_DATA_DETAILS =
   "Details: https://docs.lighthouse.letpeople.work/settings/usagedata.html";
 
 /** The question lh asks once per Lighthouse, below a command's answer, on stderr. No is the default. */
-export const USAGE_DATA_QUESTION = [
+export const USAGE_DATA_QUESTION: string = [
   "May Lighthouse send usage data?",
   "lh tells your Lighthouse which commands you use (never names, ids,",
   "URLs or anything you typed), so we can see what helps.",

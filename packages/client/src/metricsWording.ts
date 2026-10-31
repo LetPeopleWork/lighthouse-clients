@@ -127,9 +127,9 @@ const readDailyCountChart = (value: unknown): DailyCountChartView | null => {
     : { ...counts, total: value.total };
 };
 
-export const readThroughput = readDailyCountChart;
+export const readThroughput: typeof readDailyCountChart = readDailyCountChart;
 
-export const readArrivals = readDailyCountChart;
+export const readArrivals: typeof readDailyCountChart = readDailyCountChart;
 
 const dayAfter = (day: string, offset: number): string =>
   new Date(utcOf(day) + offset * DAY_IN_MS).toISOString().slice(0, 10);
@@ -340,9 +340,11 @@ export const readCycleTime = (value: unknown): CycleTimeView | null => {
     : { percentiles, closedItems };
 };
 
-export const readWorkItemAgePercentiles = readPercentileValues;
+export const readWorkItemAgePercentiles: typeof readPercentileValues =
+  readPercentileValues;
 
-export const readCycleTimePercentiles = readPercentileValues;
+export const readCycleTimePercentiles: typeof readPercentileValues =
+  readPercentileValues;
 
 const readWorkItemAgeEntry = (value: unknown): WorkItemAgeEntry | null =>
   isRecord(value) &&
@@ -579,10 +581,11 @@ const readContributors = (
 };
 
 /** Time in State's bar on its own, as one read answers it. */
-export const readTimeInStateBar = readStates;
+export const readTimeInStateBar: typeof readStates = readStates;
 
 /** The Work Items contributing to one state of Time in State, as one read answers them. */
-export const readTimeInStateContributors = readContributors;
+export const readTimeInStateContributors: typeof readContributors =
+  readContributors;
 
 /** Time in State: the bar, the Work Items it can be narrowed to, and one state's contributors when one was asked for. */
 export type CumulativeStateTimeView = {

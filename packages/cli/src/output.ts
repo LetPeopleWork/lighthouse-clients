@@ -4,11 +4,13 @@ export type OutputFormat = "pretty" | "json" | "toon";
 
 export const DEFAULT_OUTPUT_FORMAT: OutputFormat = "pretty";
 
-export const OUTPUT_FORMAT_FLAGS = {
+export const OUTPUT_FORMAT_FLAGS: Readonly<
+  Record<"--pretty" | "--json" | "--toon", OutputFormat>
+> = {
   "--pretty": "pretty",
   "--json": "json",
   "--toon": "toon",
-} as const satisfies Record<string, OutputFormat>;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);

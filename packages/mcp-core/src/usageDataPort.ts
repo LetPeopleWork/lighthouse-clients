@@ -22,7 +22,7 @@ import type { McpToolResult } from "./toolResult";
  */
 export type McpUsageDataPort = (step: UsageDataStep) => Promise<void>;
 
-export const USAGE_DATA_ELICITATION_MESSAGE = [
+export const USAGE_DATA_ELICITATION_MESSAGE: string = [
   "May Lighthouse send usage data?",
   "The Lighthouse MCP server tells your Lighthouse which tools you use (never names, ids, URLs or anything you typed), so we can see what helps.",
   "Details: https://docs.lighthouse.letpeople.work/settings/usagedata.html",
