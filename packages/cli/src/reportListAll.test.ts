@@ -23,9 +23,6 @@ import {
 // call to a Lighthouse on a real socket. Lighthouse decides what the reader may see; lh passes the list on as it
 // was sent and names each report's owner, so the next `lh report get` can be written from it. It only ever reads.
 
-const PENDING =
-  "pending: every report through the clients (epic 6350, slice 06)";
-
 // The last Lighthouse release without the list of every report.
 const A_LIGHTHOUSE_BEFORE_THE_CROSS_OWNER_LIST = "v26.10.25.1";
 
@@ -46,7 +43,7 @@ const lhAgainst = async (replies: ReportReplies = {}, version?: string) => {
 
 describe("lh lists every report without naming an owner", () => {
   // @walking_skeleton @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:unbounded-preservation
-  it(`passes on every report exactly as Lighthouse sent it, each with its owner (${PENDING})`, async () => {
+  it(`passes on every report exactly as Lighthouse sent it, each with its owner`, async () => {
     const { run } = await lhAgainst();
 
     const listed = await run("report", "list", "--json");
@@ -56,7 +53,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @contract-shape:pure-function
-  it(`sums the list up by report, each naming its id and its owner (${PENDING})`, async () => {
+  it(`sums the list up by report, each naming its id and its owner`, async () => {
     const { run } = await lhAgainst();
 
     const listed = await run("report", "list", "--pretty");
@@ -72,7 +69,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:pure-function
-  it(`names each owner's kind in the instance's own words (${PENDING})`, async () => {
+  it(`names each owner's kind in the instance's own words`, async () => {
     const { run } = await lhAgainst({
       "GET /terminology/all": {
         status: 200,
@@ -89,7 +86,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it(`only ever reads, and reads once (${PENDING})`, async () => {
+  it(`only ever reads, and reads once`, async () => {
     const { lighthouse, run } = await lhAgainst();
 
     await run("report", "list", "--json");
@@ -105,7 +102,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:pure-function
-  it(`says there are no reports when the reader can read none (${PENDING})`, async () => {
+  it(`says there are no reports when the reader can read none`, async () => {
     const { run } = await lhAgainst({
       [EVERY_REPORT_READ]: { status: 200, text: '{"reports":[]}' },
     });
@@ -117,7 +114,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it.skip(`tells the reader to upgrade a Lighthouse that has no list of every report (${PENDING})`, async () => {
+  it(`tells the reader to upgrade a Lighthouse that has no list of every report`, async () => {
     const { run } = await lhAgainst(
       { [EVERY_REPORT_READ]: { status: 404 } },
       A_LIGHTHOUSE_BEFORE_THE_CROSS_OWNER_LIST,
@@ -132,7 +129,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it.skip(`says the reader is not signed in when Lighthouse refuses who they are (${PENDING})`, async () => {
+  it(`says the reader is not signed in when Lighthouse refuses who they are`, async () => {
     const { run } = await lhAgainst({ [EVERY_REPORT_READ]: { status: 401 } });
 
     const listed = await run("report", "list");
@@ -144,7 +141,7 @@ describe("lh lists every report without naming an owner", () => {
   });
 
   // @driving_port @real-io @us-06 @slice-06 @contract-shape:unbounded-preservation
-  it.skip(`a list naming one Team still reads only that Team's reports (${PENDING})`, async () => {
+  it(`a list naming one Team still reads only that Team's reports`, async () => {
     const { lighthouse, run } = await lhAgainst();
 
     const listed = await run(

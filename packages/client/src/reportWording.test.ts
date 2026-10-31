@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { LighthouseApiError } from "./index";
 import {
+  describeEveryReportRefusal,
   describeReportOwner,
   describeReportRefusal,
+  readEveryReport,
   readReport,
   readReportList,
   readReportRefusal,
+  summariseEveryReport,
   summariseReport,
   summariseReportList,
 } from "./reportWording";
@@ -163,6 +166,111 @@ describe("the summary of a report list", () => {
   ])("says nothing of an answer with %s", (_what, answer) => {
     expect(readReportList(answer)).toBeNull();
     expect(summariseReportList(answer, "Team Lightspeed")).toBeNull();
+  });
+});
+
+const A_TEAM_REPORT = {
+  id: 1,
+  name: "Then & Now — engagement start",
+  templateKey: "then-and-now",
+  createdOn: "2026-10-02",
+  ownerKind: "Team",
+  ownerName: "Lightspeed",
+};
+
+const A_PORTFOLIO_REPORT = {
+  id: 2,
+  name: "Quarter review",
+  ownerKind: "Portfolio",
+  ownerName: "Apollo II",
+};
+
+describe("the summary of every report", () => {
+  it("counts the reports, then names each with its id, type, owner and created day", () => {
+    const list = { reports: [A_TEAM_REPORT, A_PORTFOLIO_REPORT] };
+
+    expect(summariseEveryReport(list, SEEDED_TERMS)).toBe(
+      [
+        "2 reports",
+        "ID 1 · Then & Now — engagement start · then-and-now · Team Lightspeed · Fri 2 Oct 2026",
+        "ID 2 · Quarter review · Portfolio Apollo II",
+      ].join("\n"),
+    );
+  });
+
+  it("counts a single report in the singular", () => {
+    expect(
+      summariseEveryReport({ reports: [A_PORTFOLIO_REPORT] }, SEEDED_TERMS),
+    ).toMatch(/^1 report\n/u);
+  });
+
+  it("counts none when the list is empty", () => {
+    expect(summariseEveryReport({ reports: [] }, SEEDED_TERMS)).toBe(
+      "0 reports",
+    );
+  });
+
+  it("names an owner's kind in the instance's words", () => {
+    const said = summariseEveryReport(
+      { reports: [A_TEAM_REPORT, A_PORTFOLIO_REPORT] },
+      RENAMED,
+    );
+
+    expect(said).toContain("Squad Lightspeed");
+    expect(said).toContain("Program Apollo II");
+  });
+
+  it("reads the owner's kind whatever its case", () => {
+    expect(
+      readEveryReport({
+        reports: [{ ...A_TEAM_REPORT, ownerKind: "PORTFOLIO" }],
+      })?.[0]?.ownerKind,
+    ).toBe("portfolio");
+  });
+
+  it.each<[string, unknown]>([
+    ["no answer", null],
+    ["a bare list", [A_TEAM_REPORT]],
+    ["no reports in it", { communityCap: 1 }],
+    [
+      "a row without its owner's kind",
+      { reports: [{ ...A_TEAM_REPORT, ownerKind: undefined }] },
+    ],
+    [
+      "a row without its owner's name",
+      { reports: [A_PORTFOLIO_REPORT, { ...A_TEAM_REPORT, ownerName: "" }] },
+    ],
+    [
+      "a row whose owner kind is unknown",
+      { reports: [{ ...A_TEAM_REPORT, ownerKind: "Department" }] },
+    ],
+    ["a row that is not a report", { reports: [A_TEAM_REPORT, null] }],
+  ])("says nothing of an answer with %s", (_what, answer) => {
+    expect(readEveryReport(answer)).toBeNull();
+    expect(summariseEveryReport(answer, SEEDED_TERMS)).toBeNull();
+  });
+});
+
+describe("why the list of every report cannot be read", () => {
+  it.each<[string, Partial<LighthouseApiError>, RegExp]>([
+    ["an unauthorized reader", { statusCode: 401 }, /not signed in/u],
+    ["a forbidden reader", { statusCode: 403 }, /not signed in/u],
+    [
+      "a Lighthouse without the list",
+      { statusCode: 404 },
+      /Upgrade Lighthouse/u,
+    ],
+    [
+      "any other refusal",
+      {
+        category: "dependency-failure",
+        reason: "Lighthouse is down",
+        statusCode: 500,
+      },
+      /^dependency-failure: Lighthouse is down$/u,
+    ],
+  ])("says it for %s", (_what, facts, said) => {
+    expect(describeEveryReportRefusal(aRefusal(facts))).toMatch(said);
   });
 });
 

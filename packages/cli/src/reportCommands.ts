@@ -1,5 +1,6 @@
 import {
   type CliConnection,
+  describeEveryReportRefusal,
   type LighthouseApiResult,
   type LighthouseClient,
   type ReportOwner,
@@ -127,7 +128,7 @@ const runEveryReportList = async (
 ): Promise<CliCommandResult> => {
   const result = await client.getAllReports();
   if (!result.ok) {
-    return getErrorResult(`${result.error.category}: ${result.error.reason}`);
+    return getErrorResult(describeEveryReportRefusal(result.error));
   }
   if (outputFormat !== "pretty") {
     return mapApiResultToCliResult(result, outputFormat);
