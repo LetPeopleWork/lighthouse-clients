@@ -35,7 +35,8 @@ export const REPORTED_COMMANDS: Readonly<
     | "portfolio create"
     | "portfolio delete"
     | "portfolio refresh"
-    | "forecast manual",
+    | "forecast manual"
+    | "report list",
     PlainUsageDataEventName
   >
 > = {
@@ -46,6 +47,7 @@ export const REPORTED_COMMANDS: Readonly<
   "portfolio delete": "PortfolioDeleted",
   "portfolio refresh": "PortfolioRefreshTriggered",
   "forecast manual": "TeamManualForecastRun",
+  "report list": "AllReportsListed",
 };
 
 export type ReportedCommand = keyof typeof REPORTED_COMMANDS;

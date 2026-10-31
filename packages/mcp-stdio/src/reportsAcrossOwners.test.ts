@@ -28,8 +28,6 @@ import { createLocalLighthouseMcpServer } from "./localServer";
 // server, from a Lighthouse on a real socket. The first block is Lighthouse's answer unchanged; the second,
 // `summary: …`, says how many reports there are and names each one's owner. The tool only reads.
 
-const PENDING =
-  "pending: every report through the clients (epic 6350, slice 06)";
 const THE_TOOL = "lighthouse_report_list";
 const A_YES_KEPT_AN_HOUR_AGO = "martins-yes-to-usage-data";
 
@@ -161,7 +159,7 @@ describe("an assistant lists every report in one call", () => {
 
 describe("listing every report through the MCP server counts as every report being listed", () => {
   // @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:bounded-change
-  it.skip(`reports AllReportsListed by name alone, with source Mcp (${PENDING})`, async () => {
+  it("reports AllReportsListed by name alone, with source Mcp", async () => {
     const { client, lighthouse } = await anAssistantListing({
       consent: "said yes",
     });
@@ -178,7 +176,7 @@ describe("listing every report through the MCP server counts as every report bei
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it.skip(`reports nothing for a list Lighthouse refused (${PENDING})`, async () => {
+  it("reports nothing for a list Lighthouse refused", async () => {
     const { client, lighthouse } = await anAssistantListing({
       consent: "said yes",
       replies: { [EVERY_REPORT_READ]: { status: 403 } },

@@ -22,6 +22,7 @@ import {
   getOptionValue,
   isCliCommandResult,
   mapApiResultToCliResult,
+  occurrencesOf,
   withUsage,
 } from "./commandResult";
 import type { OutputFormat } from "./output";
@@ -130,12 +131,17 @@ const runEveryReportList = async (
   if (!result.ok) {
     return getErrorResult(describeEveryReportRefusal(result.error));
   }
-  if (outputFormat !== "pretty") {
-    return mapApiResultToCliResult(result, outputFormat);
-  }
-  const terms = await readTerms(client);
-  return mapApiResultToCliResult(result, outputFormat, (value) =>
-    summariseEveryReport(value, terms),
+  const terms = outputFormat === "pretty" ? await readTerms(client) : undefined;
+  return withUsage(
+    mapApiResultToCliResult(
+      result,
+      outputFormat,
+      terms === undefined
+        ? undefined
+        : (value) => summariseEveryReport(value, terms),
+    ),
+    result,
+    occurrencesOf("report list"),
   );
 };
 

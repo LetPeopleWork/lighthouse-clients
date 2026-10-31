@@ -24,9 +24,6 @@ import {
 // once per run, after Lighthouse answered. Nothing about the reports, their owners or how many there were
 // travels with it. Listing one owner's reports, a refused list, or a reader who said no, reports nothing.
 
-const PENDING =
-  "pending: every report through the clients (epic 6350, slice 06)";
-
 const A_YES_KEPT_AN_HOUR_AGO = "martins-yes-to-usage-data";
 
 const aLighthouseListingEverything = (
@@ -53,7 +50,7 @@ const reported = (lighthouse: FakeLighthouse) =>
 
 describe("lh report list with no owner counts as every report being listed", () => {
   // @driving_port @real-io @us-06 @slice-06 @kpi-OUT-6350-K5-all-reports-listed-by-clients @contract-shape:bounded-change
-  it.skip(`reports AllReportsListed by name alone (${PENDING})`, async () => {
+  it("reports AllReportsListed by name alone", async () => {
     const lighthouse = await aLighthouseListingEverything();
     const lh = await martinWhoAnswered(
       lighthouse,
@@ -69,7 +66,7 @@ describe("lh report list with no owner counts as every report being listed", () 
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it.skip(`reports nothing for a reader who said no (${PENDING})`, async () => {
+  it("reports nothing for a reader who said no", async () => {
     const lighthouse = await aLighthouseListingEverything();
     const lh = await martinWhoAnswered(lighthouse, aNo());
 
@@ -79,7 +76,7 @@ describe("lh report list with no owner counts as every report being listed", () 
   });
 
   // @driving_port @real-io @us-06 @slice-06 @error @contract-shape:unbounded-preservation
-  it.skip(`reports nothing for a list Lighthouse refused (${PENDING})`, async () => {
+  it("reports nothing for a list Lighthouse refused", async () => {
     const lighthouse = await aLighthouseListingEverything({ status: 403 });
     const lh = await martinWhoAnswered(
       lighthouse,
@@ -92,7 +89,7 @@ describe("lh report list with no owner counts as every report being listed", () 
   });
 
   // @driving_port @real-io @us-06 @slice-06 @edge @contract-shape:unbounded-preservation
-  it.skip(`reports nothing for a list of one Team's reports (${PENDING})`, async () => {
+  it("reports nothing for a list of one Team's reports", async () => {
     const lighthouse = await aLighthouseListingEverything();
     const lh = await martinWhoAnswered(
       lighthouse,

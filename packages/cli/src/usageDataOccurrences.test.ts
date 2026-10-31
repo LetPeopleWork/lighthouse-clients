@@ -12,7 +12,7 @@ import {
 const ANSWERED: LighthouseApiResult<undefined> = { ok: true, value: undefined };
 
 describe("which commands count, and what each counts", () => {
-  it("counts exactly the seven commands the web counts too, each by the web's name", () => {
+  it("counts exactly the eight commands the web counts too, each by the web's name", () => {
     expect(REPORTED_COMMANDS).toEqual({
       "team create": "TeamCreated",
       "team delete": "TeamDeleted",
@@ -21,6 +21,7 @@ describe("which commands count, and what each counts", () => {
       "portfolio delete": "PortfolioDeleted",
       "portfolio refresh": "PortfolioRefreshTriggered",
       "forecast manual": "TeamManualForecastRun",
+      "report list": "AllReportsListed",
     });
   });
 

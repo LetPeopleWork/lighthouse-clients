@@ -225,9 +225,12 @@ const everyReportList: ReportTool = async (_argumentsPayload, client) => {
       `${LIST_LABEL}: ${describeEveryReportRefusal(result.error)}`,
     );
   }
-  return withSummaryBlock(
-    `${LIST_LABEL}: ${encodePayload(result.value)}`,
-    summariseEveryReport(result.value, await readTerms(client)),
+  return countedToolResult(
+    withSummaryBlock(
+      `${LIST_LABEL}: ${encodePayload(result.value)}`,
+      summariseEveryReport(result.value, await readTerms(client)),
+    ),
+    [{ name: "AllReportsListed" }],
   );
 };
 

@@ -13,7 +13,8 @@ export type PlainUsageDataEventName =
   | "PortfolioDeleted"
   | "TeamManualForecastRun"
   | "TeamRefreshTriggered"
-  | "PortfolioRefreshTriggered";
+  | "PortfolioRefreshTriggered"
+  | "AllReportsListed";
 
 /** The usage events that say when, relative to the Team's Refinement, a vote was cast. */
 export type SizingUsageDataEventName =
