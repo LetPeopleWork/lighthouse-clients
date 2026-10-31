@@ -15,6 +15,7 @@ import {
   summariseReportList,
 } from "@letpeoplework/lighthouse-client";
 import { z } from "zod";
+import type { McpToolDefinition } from "./index";
 import {
   encodePayload,
   getErrorToolResult,
@@ -79,7 +80,7 @@ const listDescription = (kind: ReportOwnerKind) =>
 const getDescription = (kind: ReportOwnerKind) =>
   `Get one of a ${kind}'s reports by ${kind} ID and reportId, exactly as Lighthouse answers it: its Then side as Lighthouse froze it, its Now side read afresh up to today, and every value, a missing value with its reason. ${HOW_LIGHTHOUSE_SHOWS_IT} ${HOW_THE_ANSWER_READS} names the report, its ${kind} and its Then and Now windows. ${NEEDS_A_SERVER}`;
 
-export const reportToolDefinitions = [
+export const reportToolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_report_list",
     description: listDescription("team"),
@@ -108,7 +109,13 @@ const getSchema = z.object({
   reportId: z.number().int(),
 });
 
-export const reportInputSchemas = {
+export const reportInputSchemas: Record<
+  | "lighthouse_team_report_list"
+  | "lighthouse_team_report_get"
+  | "lighthouse_portfolio_report_list"
+  | "lighthouse_portfolio_report_get",
+  z.ZodTypeAny
+> = {
   lighthouse_team_report_list: listSchema,
   lighthouse_team_report_get: getSchema,
   lighthouse_portfolio_report_list: listSchema,

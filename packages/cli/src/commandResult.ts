@@ -1,9 +1,9 @@
 import {
   type LighthouseApiResult,
+  type PlainUsageDataEventName,
   readTerms,
   type Terms,
   type TermsSource,
-  type UsageDataEventName,
   type UsageDataOccurrence,
 } from "@letpeoplework/lighthouse-client";
 import {
@@ -27,7 +27,18 @@ export type CliCommandResult = {
 };
 
 /** The commands whose success the web counts too, each by the event name the web reports for it. */
-export const REPORTED_COMMANDS = {
+export const REPORTED_COMMANDS: Readonly<
+  Record<
+    | "team create"
+    | "team delete"
+    | "team refresh"
+    | "portfolio create"
+    | "portfolio delete"
+    | "portfolio refresh"
+    | "forecast manual",
+    PlainUsageDataEventName
+  >
+> = {
   "team create": "TeamCreated",
   "team delete": "TeamDeleted",
   "team refresh": "TeamRefreshTriggered",
@@ -35,7 +46,7 @@ export const REPORTED_COMMANDS = {
   "portfolio delete": "PortfolioDeleted",
   "portfolio refresh": "PortfolioRefreshTriggered",
   "forecast manual": "TeamManualForecastRun",
-} as const satisfies Readonly<Record<string, UsageDataEventName>>;
+};
 
 export type ReportedCommand = keyof typeof REPORTED_COMMANDS;
 

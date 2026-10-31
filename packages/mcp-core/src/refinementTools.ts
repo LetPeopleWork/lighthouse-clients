@@ -22,6 +22,7 @@ import {
   type VotedRow,
 } from "@letpeoplework/lighthouse-client";
 import { z } from "zod";
+import type { McpToolDefinition } from "./index";
 import {
   encodePayload,
   getErrorToolResult,
@@ -90,7 +91,7 @@ const teamIdProperty = {
   description: "The team's numeric id.",
 } as const;
 
-export const refinementWriteToolDefinitions = [
+export const refinementWriteToolDefinitions: readonly McpToolDefinition[] = [
   {
     name: "lighthouse_team_refinement_vote",
     description:
@@ -149,7 +150,12 @@ export const refinementWriteToolDefinitions = [
   },
 ] as const;
 
-export const refinementWriteInputSchemas = {
+export const refinementWriteInputSchemas: Record<
+  | "lighthouse_team_refinement_vote"
+  | "lighthouse_team_refinement_comment"
+  | "lighthouse_team_refinement_voteTakeBack",
+  z.ZodTypeAny
+> = {
   lighthouse_team_refinement_vote: z.object({
     id: z.number().int(),
     workItem: z.string(),
