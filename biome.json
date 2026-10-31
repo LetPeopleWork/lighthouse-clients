@@ -26,6 +26,8 @@
       "**",
       "!**/dist",
       "!**/dist-types",
+      "!reports",
+      "!.stryker-tmp",
       "!**/*.tsbuildinfo",
       "!**/package.json",
       "!test-support/stalenessContract",
