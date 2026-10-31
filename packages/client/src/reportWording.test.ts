@@ -245,6 +245,10 @@ describe("the summary of every report", () => {
       { reports: [{ ...A_TEAM_REPORT, ownerKind: "Department" }] },
     ],
     ["a row that is not a report", { reports: [A_TEAM_REPORT, null] }],
+    [
+      "a row without its id",
+      { reports: [{ ...A_TEAM_REPORT, id: undefined }] },
+    ],
   ])("says nothing of an answer with %s", (_what, answer) => {
     expect(readEveryReport(answer)).toBeNull();
     expect(summariseEveryReport(answer, SEEDED_TERMS)).toBeNull();

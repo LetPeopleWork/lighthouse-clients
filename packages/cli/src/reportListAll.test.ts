@@ -97,6 +97,14 @@ describe("lh lists every report without naming an owner", () => {
     ).toEqual([]);
   });
 
+  it("asks for the instance's words only when it sums the list up", async () => {
+    const { lighthouse, run } = await lhAgainst();
+
+    await run("report", "list", "--json");
+
+    expect(lighthouse.operations()).not.toContain("GET /terminology/all");
+  });
+
   it(`says there are no reports when the reader can read none`, async () => {
     const { run } = await lhAgainst({
       [EVERY_REPORT_READ]: { status: 200, text: '{"reports":[]}' },
