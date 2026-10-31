@@ -38,6 +38,7 @@ const getDefaultMockClient = (): MockClient => ({
   takeBackRefinementVote: notStubbed("takeBackRefinementVote"),
   getRefinementLog: notStubbed("getRefinementLog"),
   getTeamReports: notStubbed("getTeamReports"),
+  getAllReports: notStubbed("getAllReports"),
   getTeamReport: notStubbed("getTeamReport"),
   getPortfolioReports: notStubbed("getPortfolioReports"),
   getPortfolioReport: notStubbed("getPortfolioReport"),

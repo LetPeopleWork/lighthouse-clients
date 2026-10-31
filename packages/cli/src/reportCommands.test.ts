@@ -27,10 +27,11 @@ const lhAgainstReports = async () => {
 
 const REPORT_HELP = [
   "Usage:",
-  "  lh report list (--team-id <id> | --portfolio-id <id>)",
+  "  lh report list [--team-id <id> | --portfolio-id <id>]",
   "  lh report get (--team-id <id> | --portfolio-id <id>) --id <report id>",
   "",
-  "  list names a Team's or a Portfolio's reports; get reads one of them. The default",
+  "  list names a Team's or a Portfolio's reports, or every report you can read when it",
+  "  names neither; get reads one of them. The default",
   "  view names the report, its owner and its windows, or counts the list. --json and",
   "  --toon return Lighthouse's answer unchanged, every value as it was sent.",
   "  Requires Lighthouse newer than v26.10.10.1.",
@@ -104,11 +105,6 @@ describe("lh report refuses what it cannot read, without asking Lighthouse", () 
         "1",
       ],
       "Give either --team-id or --portfolio-id for report get, not both.",
-    ],
-    [
-      "a list without an owner",
-      ["list"],
-      "Missing --team-id or --portfolio-id for report list.",
     ],
     [
       "a report without an owner",

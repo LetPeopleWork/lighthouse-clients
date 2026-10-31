@@ -209,3 +209,60 @@ export const readReportRefusal = async (
     read,
     error.statusCode === undefined ? SEEDED_TERMS : await readTerms(source),
   );
+
+/** One report of the cross-owner list: which report it is and whose it is. */
+export type EveryReportItem = ReportListItem & {
+  readonly ownerKind: ReportOwnerKind;
+  readonly ownerName: string;
+};
+
+const OWNER_KINDS: Readonly<Record<string, ReportOwnerKind>> = {
+  team: "team",
+  portfolio: "portfolio",
+};
+
+const readEveryReportItem = (value: unknown): EveryReportItem | null => {
+  const item = readReportListItem(value);
+  if (item === null || !isRecord(value)) {
+    return null;
+  }
+  const ownerKind = OWNER_KINDS[textOf(value.ownerKind)?.toLowerCase() ?? ""];
+  const ownerName = textOf(value.ownerName);
+  return ownerKind === undefined || ownerName === undefined
+    ? null
+    : { ...item, ownerKind, ownerName };
+};
+
+/** Every report with its owner, or null when the answer holds no list or any report cannot say which and whose it is. */
+export const readEveryReport = (value: unknown): EveryReportItem[] | null => {
+  if (!isRecord(value) || !Array.isArray(value.reports)) {
+    return null;
+  }
+  const items = value.reports.map(readEveryReportItem);
+  return items.every((item) => item !== null) ? items : null;
+};
+
+const describeEveryReportItem = (item: EveryReportItem, terms: Terms) =>
+  [
+    `ID ${item.id}`,
+    item.name,
+    item.templateKey,
+    `${ownerTerm(item.ownerKind, terms)} ${item.ownerName}`,
+    item.createdOn === undefined ? undefined : dayOf(item.createdOn),
+  ]
+    .filter((part) => part !== undefined)
+    .join(" · ");
+
+/** How many reports there are, then each one's id, name, type, owner and created day; the owner's kind in the instance's words. */
+export const summariseEveryReport = (
+  value: unknown,
+  terms: Terms,
+): string | null => {
+  const reports = readEveryReport(value);
+  return reports === null
+    ? null
+    : [
+        reports.length === 1 ? "1 report" : `${reports.length} reports`,
+        ...reports.map((item) => describeEveryReportItem(item, terms)),
+      ].join("\n");
+};

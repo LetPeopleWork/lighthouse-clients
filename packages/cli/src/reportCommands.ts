@@ -9,7 +9,9 @@ import {
   readOwnersReports,
   readReportOwner,
   readReportRefusal,
+  readTerms,
   reportOpenedOccurrencesOf,
+  summariseEveryReport,
   summariseReport,
   summariseReportList,
 } from "@letpeoplework/lighthouse-client";
@@ -27,6 +29,7 @@ type ReportClient = Pick<
   LighthouseClient,
   | "getTeamReports"
   | "getTeamReport"
+  | "getAllReports"
   | "getPortfolioReports"
   | "getPortfolioReport"
   | "getTeam"
@@ -113,12 +116,40 @@ const printReportRead = async (
   );
 };
 
+const namesAnOwner = (args: readonly string[]): boolean =>
+  getOptionValue(args, "--team-id") !== undefined ||
+  getOptionValue(args, "--portfolio-id") !== undefined;
+
+// Lighthouse filters the list to what the caller may read, so lh asks once and relays the answer.
+const runEveryReportList = async (
+  client: ReportClient,
+  outputFormat: OutputFormat,
+): Promise<CliCommandResult> => {
+  const result = await client.getAllReports();
+  if (!result.ok) {
+    return getErrorResult(`${result.error.category}: ${result.error.reason}`);
+  }
+  if (outputFormat !== "pretty") {
+    return mapApiResultToCliResult(result, outputFormat);
+  }
+  const terms = await readTerms(client);
+  return mapApiResultToCliResult(result, outputFormat, (value) =>
+    summariseEveryReport(value, terms),
+  );
+};
+
 const runReportList: ReportCommand = async (
   args,
   outputFormat,
   connection,
   dependencies,
 ) => {
+  if (!namesAnOwner(args)) {
+    return runEveryReportList(
+      dependencies.createClient(connection),
+      outputFormat,
+    );
+  }
   const owner = parseOwner(args, "list");
   if (isCliCommandResult(owner)) {
     return owner;

@@ -1420,6 +1420,8 @@ export type LighthouseClient = {
     teamId: number,
     reportId: number,
   ) => Promise<LighthouseApiResult<unknown>>;
+  /** Every report the caller may read, on every Team and Portfolio, exactly as Lighthouse answers it. */
+  readonly getAllReports: () => Promise<LighthouseApiResult<unknown>>;
   readonly getPortfolioReports: (
     portfolioId: number,
   ) => Promise<LighthouseApiResult<unknown>>;
@@ -2504,6 +2506,7 @@ export const createLighthouseClient = (
       readReports(`/v1/teams/${teamId}/reports`),
     getTeamReport: async (teamId: number, reportId: number) =>
       readReports(`/v1/teams/${teamId}/reports/${reportId}`),
+    getAllReports: async () => readReports("/v1/reports"),
     getPortfolioReports: async (portfolioId: number) =>
       readReports(`/v1/portfolios/${portfolioId}/reports`),
     getPortfolioReport: async (portfolioId: number, reportId: number) =>
