@@ -1,5 +1,11 @@
 # @letpeoplework/lighthouse-mcp-http
 
+## 1.7.1
+
+### Patch Changes
+
+- The mcp-http container image builds again: Node 26 no longer ships corepack, so the image installs pnpm itself.
+
 ## 1.7.0
 
 ### Minor Changes
