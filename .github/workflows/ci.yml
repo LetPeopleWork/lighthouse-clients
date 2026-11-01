@@ -69,6 +69,15 @@ jobs:
             && echo "mcp-http smoke: PASS" \
             || (echo "mcp-http smoke: FAIL - unexpected output"; exit 1)
 
+      # The release job pushes this image only after npm has published, so a base-image bump that breaks
+      # the Dockerfile must fail here, on the pull request, not halfway through a release.
+      - name: Build the mcp-http container and smoke it
+        run: |
+          docker build -f packages/mcp-http/Dockerfile -t mcp-http:verify .
+          docker run --rm mcp-http:verify 2>&1 | grep -q "Missing LIGHTHOUSE_URL" \
+            && echo "mcp-http container smoke: PASS" \
+            || (echo "mcp-http container smoke: FAIL - unexpected output"; exit 1)
+
   # The integration smoke with the packages built from this commit, before anything is published.
   # The latest leg gates the release: it is the server users run today. The dev-latest leg carries server
   # changes not yet released, so it may fail for reasons this commit cannot fix. On a push to main it only

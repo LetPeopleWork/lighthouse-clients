@@ -1,5 +1,5 @@
 FROM node:26-alpine
-RUN corepack enable
+RUN npm install -g pnpm@12.15.0
 WORKDIR /app
 
 COPY packages/mcp-http/package.json ./packages/mcp-http/package.json
