@@ -210,7 +210,7 @@ importers:
         version: 4.4.0
       undici:
         specifier: ^8.1.0
-        version: 8.12.3
+        version: 8.12.4
 
   packages/client: {}
 
@@ -242,7 +242,7 @@ importers:
         version: 1.32.2(zod@4.6.7)
       undici:
         specifier: ^8.1.0
-        version: 8.12.3
+        version: 8.12.4
 
   packages/mcp-stdio:
     dependencies:
@@ -257,7 +257,7 @@ importers:
         version: 1.32.2(zod@4.6.7)
       undici:
         specifier: ^8.1.0
-        version: 8.12.3
+        version: 8.12.4
 
 packages:
 
@@ -1973,8 +1973,8 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.12.3:
-    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
     engines: {node: '>=22.19.0'}
 
   unicorn-magic@0.3.0:
@@ -3722,7 +3722,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@8.12.3: {}
+  undici@8.12.4: {}
 
   unicorn-magic@0.3.0: {}
 
